@@ -1,4 +1,5 @@
-import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import { suite, table, test, type TestScope } from '@overkill-dev/test';
 
 import { Random } from 'fast-check';
 import { xoroshiro128plus } from 'pure-rand/generator/xoroshiro128plus';
@@ -31,19 +32,24 @@ function treeWidth(tree: Tree): number {
     return tree === null ? 0 : Math.max(tree.length, ...tree.map(treeWidth));
 }
 
-function assertIndexedDomain(scope: TestScope, value: IndexedInput): void {
-    scope.assert.equal(value.values.length > 0 && value.values.length <= 3, true);
-    scope.assert.equal(value.index >= 0 && value.index < value.values.length, true);
-    scope.assert.equal(value.dependent.length <= 3, true);
-    scope.assert.equal(
-        value.dependent.every(function withinBounds(element) {
-            return element >= 0 && element <= value.values.length;
-        }),
-        true
-    );
-    scope.assert.equal(value.text.length > 0 && value.text.length <= 3, true);
-    scope.assert.equal(value.bytes.length > 0 && value.bytes.length <= 3, true);
-}
+const assertIndexedDomain = defineCompositeAssertion({
+    name: 'indexed domain',
+    assert(check, value: IndexedInput) {
+        return check.group([
+            check.equal(value.values.length > 0 && value.values.length <= 3, true),
+            check.equal(value.index >= 0 && value.index < value.values.length, true),
+            check.equal(value.dependent.length <= 3, true),
+            check.equal(
+                value.dependent.every(function withinBounds(element) {
+                    return element >= 0 && element <= value.values.length;
+                }),
+                true
+            ),
+            check.equal(value.text.length > 0 && value.text.length <= 3, true),
+            check.equal(value.bytes.length > 0 && value.bytes.length <= 3, true)
+        ]);
+    }
+});
 
 const indexedGenerator = gen.array(gen.integer({ min: 0, max: 100 }), { minLength: 1, maxLength: 8 }).flatMap(
     function indexedArray(values) {
@@ -59,71 +65,71 @@ const indexedGenerator = gen.array(gen.integer({ min: 0, max: 100 }), { minLengt
     }
 );
 
-function assertDependentTraversal(scope: TestScope, seed: number): number {
+type MappedInput = { readonly source: number; readonly display: number; readonly repeated: readonly string[]; };
+
+const assertMappedInput = defineCompositeAssertion({
+    name: 'mapped input',
+    assert(check, candidate: GeneratedInput<MappedInput>) {
+        const value = candidate.reconstruct();
+        return check.group([
+            check.equal(value.source % 2, 0),
+            check.equal(value.display, 1 / value.source),
+            check.deepEqual(candidate.reconstruct().repeated, [ 'same', 'same' ])
+        ]);
+    }
+});
+
+const seeds = Array.from({ length: 10 }, function (_value, seed) {
+    return seed;
+});
+const recursiveLimits = [ 0, 1, 2, 4 ];
+const recursiveGenerator = gen.recursive<Tree>({
+    leaf: gen.constant(null),
+    branch(child) {
+        return gen.integer({ min: 1, max: 3 }).flatMap(function dependentBranch(length) {
+            return gen.array(child, { minLength: length, maxLength: length }).map<Tree>(function (children) {
+                return children;
+            });
+        });
+    },
+    maxDepth: 3
+});
+function indexedCandidates(seed: number): readonly GeneratedInput<IndexedInput>[] {
     const root = generateInput(
         indexedGenerator,
         new Random(xoroshiro128plus(seed)),
         undefined,
         generatorContext(3, 2, 100_000)
     );
-    const descendants = shrinkDescendants(root, 30, function children(candidate) {
-        return candidate.shrink();
-    });
-    for (const candidate of [ root, ...descendants ]) {
-        const value = candidate.reconstruct();
-        assertIndexedDomain(scope, value);
-        value.values.length = 0;
-        value.dependent.fill(-1);
-        value.bytes.fill(255);
-        assertIndexedDomain(scope, candidate.reconstruct());
-    }
-    return descendants.length;
-}
-
-function assertRecursiveTraversal(scope: TestScope, maxDepth: number, seed: number): number {
-    const generator = gen.recursive<Tree>({
-        leaf: gen.constant(null),
-        branch(child) {
-            return gen.integer({ min: 1, max: 3 }).flatMap(function dependentBranch(length) {
-                return gen.array(child, { minLength: length, maxLength: length }).map<Tree>(
-                    function recursiveValue(children) {
-                        return children;
-                    }
-                );
-            });
-        },
-        maxDepth: 3
-    });
-    const context = { ...generatorContext(3, maxDepth, 100_000) };
-    const root = generateInput(generator, new Random(xoroshiro128plus(seed)), undefined, context);
-    Object.assign(context, { maxDepth: 10, maxSize: 10 });
-    const candidates = [
+    return [
         root,
-        ...shrinkDescendants(root, 20, function children(candidate) {
+        ...shrinkDescendants(root, 30, function (candidate) {
             return candidate.shrink();
         })
     ];
-    for (const candidate of candidates) {
-        scope.assert.equal(treeDepth(candidate.reconstruct()) <= Math.min(maxDepth, 3), true);
-        scope.assert.equal(treeWidth(candidate.reconstruct()) <= 3, true);
-    }
-    return candidates
-        .filter(function expanded(candidate) {
-            return candidate.reconstruct() !== null;
+}
+function recursiveCandidates(maxDepth: number, seed: number): readonly GeneratedInput<Tree>[] {
+    const context = { ...generatorContext(3, maxDepth, 100_000) };
+    const root = generateInput(recursiveGenerator, new Random(xoroshiro128plus(seed)), undefined, context);
+    Object.assign(context, { maxDepth: 10, maxSize: 10 });
+    return [
+        root,
+        ...shrinkDescendants(root, 20, function (candidate) {
+            return candidate.shrink();
         })
-        .length;
+    ];
 }
+const recursiveBounds = defineCompositeAssertion({
+    name: 'retained recursive limits',
+    assert(check, candidate: GeneratedInput<Tree>, maxDepth: number) {
+        return check.group([
+            check.equal(treeDepth(candidate.reconstruct()) <= Math.min(maxDepth, 3), true),
+            check.equal(treeWidth(candidate.reconstruct()) <= 3, true)
+        ]);
+    }
+});
 
-type MappedInput = { readonly source: number; readonly display: number; readonly repeated: readonly string[]; };
-
-function assertMappedInput(scope: TestScope, candidate: GeneratedInput<MappedInput>): void {
-    const value = candidate.reconstruct();
-    scope.assert.equal(value.source % 2, 0);
-    scope.assert.equal(value.display, 1 / value.source);
-    scope.assert.deepEqual(candidate.reconstruct().repeated, [ 'same', 'same' ]);
-}
-
-export const testNode: TestNode = suite('reconstructed generator validity', [
+export const testNode = suite('reconstructed generator validity', [
     test('reconstructs the exact dependent candidates selected by contextual shrinking', function (scope: TestScope) {
         const domain = prepareGenerator(indexedGenerator, generatorContext(3, 2, 100_000));
         const root = generatedCandidate(domain, 42);
@@ -154,22 +160,61 @@ export const testNode: TestNode = suite('reconstructed generator validity', [
         scope.assert.equal(actual.length > 10, true);
         return scope.assert.collect();
     }),
-    test('retains dependent indexes, changing element bounds, and container caps', function (scope) {
-        let examined = 0;
-        for (let seed = 0; seed < 10; seed += 1) {
-            examined += assertDependentTraversal(scope, seed);
+    table({
+        title: 'retains dependent indexes and container caps after mutation',
+        cases: seeds,
+        caseTitle(seed) {
+            return `seed ${seed}`;
+        },
+        test({ assert, parameters: seed }) {
+            for (const candidate of indexedCandidates(seed)) {
+                const value = candidate.reconstruct();
+                assert(assertIndexedDomain, value);
+                Reflect.set(value.values, 'length', 0);
+                Reflect.apply(Array.prototype.fill, value.dependent, [ -1 ]);
+                value.bytes.fill(255);
+                assert(assertIndexedDomain, candidate.reconstruct());
+            }
+            return assert.collect();
         }
-        scope.assert.equal(examined > 30, true);
+    }),
+    test('explores more than thirty dependent shrink descendants', function (scope) {
+        scope.assert.equal(
+            seeds.reduce(function (count, seed) {
+                return count + indexedCandidates(seed).length - 1;
+            }, 0) > 30,
+            true
+        );
         return scope.assert.collect();
     }),
-    test('snapshots limits and retains recursive depth through dependent reconstruction', function (scope) {
-        let expanded = 0;
-        for (const maxDepth of [ 0, 1, 2, 4 ]) {
-            for (let seed = 0; seed < 10; seed += 1) {
-                expanded += assertRecursiveTraversal(scope, maxDepth, seed);
+    table({
+        title: 'snapshots recursive limits through dependent reconstruction',
+        cases: recursiveLimits.flatMap(function (maxDepth) {
+            return seeds.map(function (seed) {
+                return { maxDepth, seed };
+            });
+        }),
+        caseTitle({ maxDepth, seed }) {
+            return `depth ${maxDepth}, seed ${seed}`;
+        },
+        test({ assert, parameters: { maxDepth, seed } }) {
+            for (const candidate of recursiveCandidates(maxDepth, seed)) {
+                assert(recursiveBounds, candidate, maxDepth);
             }
+            return assert.collect();
         }
-        scope.assert.equal(expanded > 0, true);
+    }),
+    test('explores non-null recursive branches', function (scope) {
+        scope.assert.equal(
+            recursiveLimits.some(function (maxDepth) {
+                return seeds.some(function (seed) {
+                    return recursiveCandidates(maxDepth, seed).some(function (candidate) {
+                        return candidate.reconstruct() !== null;
+                    });
+                });
+            }),
+            true
+        );
         return scope.assert.collect();
     }),
     test('preserves filtering and permits repeated and expanding mapped outputs', function (scope) {
@@ -190,7 +235,7 @@ export const testNode: TestNode = suite('reconstructed generator validity', [
         const candidates = Iterator.from(root.shrink()).take(10).toArray();
         scope.assert.equal(candidates.length > 0, true);
         for (const candidate of [ root, ...candidates ]) {
-            assertMappedInput(scope, candidate);
+            scope.assert(assertMappedInput, candidate);
         }
         scope.assert.equal(
             candidates.some(function largerDisplay(candidate) {

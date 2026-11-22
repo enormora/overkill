@@ -1,4 +1,5 @@
-import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import { suite, test } from '@overkill-dev/test';
 
 import {
     generatedCandidate,
@@ -15,24 +16,29 @@ type CompositeInput = {
     readonly values: readonly number[];
 };
 
-function assertCompositeDomain(scope: TestScope, input: CompositeInput): void {
-    scope.assert.deepEqual(
-        Object.keys(input).toSorted(function compareKeys(left, right) {
-            return left.localeCompare(right);
-        }),
-        [ 'flag', 'pair', 'values' ]
-    );
-    scope.assert.equal(input.pair[0], 'name');
-    scope.assert.equal(input.pair[1] >= 1 && input.pair[1] <= 9, true);
-    scope.assert.equal([ true, null ].includes(input.flag), true);
-    scope.assert.equal(input.values.length > 0 && input.values.length <= 2, true);
-    scope.assert.equal(
-        input.values.every(function inDomain(value) {
-            return value >= 4 && value <= 7;
-        }),
-        true
-    );
-}
+const assertCompositeDomain = defineCompositeAssertion({
+    name: 'composite domain',
+    assert(check, input: CompositeInput) {
+        return check.group([
+            check.deepEqual(
+                Object.keys(input).toSorted(function compareKeys(left, right) {
+                    return left.localeCompare(right);
+                }),
+                [ 'flag', 'pair', 'values' ]
+            ),
+            check.equal(input.pair[0], 'name'),
+            check.equal(input.pair[1] >= 1 && input.pair[1] <= 9, true),
+            check.equal([ true, null ].includes(input.flag), true),
+            check.equal(input.values.length > 0 && input.values.length <= 2, true),
+            check.equal(
+                input.values.every(function inDomain(value) {
+                    return value >= 4 && value <= 7;
+                }),
+                true
+            )
+        ]);
+    }
+});
 
 type IndexedInput = {
     readonly values: readonly number[];
@@ -40,17 +46,22 @@ type IndexedInput = {
     readonly dependent: readonly number[];
 };
 
-function assertIndexedDomain(scope: TestScope, input: IndexedInput): void {
-    scope.assert.equal(input.index >= 0 && input.index < input.values.length, true);
-    scope.assert.equal(
-        input.dependent.every(function respectsSource(value) {
-            return value >= 0 && value <= input.values.length;
-        }),
-        true
-    );
-}
+const assertIndexedDomain = defineCompositeAssertion({
+    name: 'indexed domain',
+    assert(check, input: IndexedInput) {
+        return check.group([
+            check.equal(input.index >= 0 && input.index < input.values.length, true),
+            check.equal(
+                input.dependent.every(function respectsSource(value) {
+                    return value >= 0 && value <= input.values.length;
+                }),
+                true
+            )
+        ]);
+    }
+});
 
-export const testNode: TestNode = suite('generator composition', [
+export const testNode = suite('generator composition', [
     test('preserves tuple positions, required record fields, and choices', function (scope) {
         const generator = gen.record({
             pair: gen.tuple(gen.constant('name'), gen.integer({ min: 1, max: 9 })),
@@ -61,7 +72,7 @@ export const testNode: TestNode = suite('generator composition', [
         for (let seed = 0; seed < 20; seed += 1) {
             const root = generatedCandidate(domain, seed);
             for (const candidate of [ root, ...shrinkCandidates(domain, root, 40) ]) {
-                assertCompositeDomain(scope, candidate.value);
+                scope.assert(assertCompositeDomain, candidate.value);
             }
         }
         return scope.assert.collect();
@@ -134,7 +145,7 @@ export const testNode: TestNode = suite('generator composition', [
         for (let seed = 0; seed < 20; seed += 1) {
             const root = generatedCandidate(domain, seed);
             for (const candidate of [ root, ...shrinkCandidates(domain, root, 100) ]) {
-                assertIndexedDomain(scope, candidate.value);
+                scope.assert(assertIndexedDomain, candidate.value);
                 examined += 1;
             }
         }

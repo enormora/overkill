@@ -1,3 +1,5 @@
+import { randomBytes } from 'node:crypto';
+import { promisify } from 'node:util';
 import { createDeterministicClock } from '@enormora/clock';
 import { z } from 'zod';
 import { createRunFacts } from '../run/run-facts.ts';
@@ -145,3 +147,10 @@ export function recordUnresolvedSeed(): void {
         wallClock: createDeterministicClock({ initialUnixEpochMicroseconds: 0n })
     });
 }
+
+export const drawEntropy = promisify(function requestEntropy(
+    size: number,
+    complete: (error: Error | null, bytes: Uint8Array) => void
+): void {
+    randomBytes(size, complete);
+});

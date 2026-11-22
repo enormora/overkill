@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { processMeasurement, type ProcessRequest } from '../packages/bench/bench.entry-point.ts';
 
@@ -13,7 +13,7 @@ const command = {
     completion: { kind: 'exit', readiness: null, steps: [], expectedExitCodes: [ 0 ] }
 } as const;
 
-export const testNode: TestNode = suite('external process contracts', [
+export const testNode = suite('external process contracts', [
     test('retains explicit module absence in process evidence', function (scope) {
         const execution = {
             status: 'failed',

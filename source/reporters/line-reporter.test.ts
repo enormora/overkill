@@ -1,4 +1,4 @@
-import { type TestNode, suite, test, doubleUsage, testDouble, type TestDouble } from '@overkill-dev/test';
+import { suite, test, doubleUsage, testDouble, type TestDouble } from '@overkill-dev/test';
 
 import figures from 'figures';
 import colors from 'yoctocolors';
@@ -93,7 +93,7 @@ async function reportNestedSuiteRun(reporter: RealTimeReporter): Promise<void> {
     });
 }
 
-export const testNode: TestNode = suite('Line reporter', [
+export const testNode = suite('Line reporter', [
     test('reports the start event', async function (scope) {
         const log = testDouble<LogFunction>();
         const reporter = lineReporterWithLog(log);

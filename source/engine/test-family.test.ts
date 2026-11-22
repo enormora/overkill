@@ -1,4 +1,4 @@
-import { type TestNode, table, suite, test } from '@overkill-dev/test';
+import { table, suite, test } from '@overkill-dev/test';
 
 import {
     defineTestFamily,
@@ -79,7 +79,7 @@ const invalidDefinitions = [
     }
 ];
 
-export const testNode: TestNode = suite('executable family definitions', [
+export const testNode = suite('executable family definitions', [
     test('rejects copied definitions when binding settings', function (scope) {
         const family = defineTestFamily(settingsDefinition(function () {
             return null;

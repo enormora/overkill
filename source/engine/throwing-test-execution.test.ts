@@ -1,6 +1,11 @@
 import { AssertionError } from 'node:assert';
 import assert from 'node:assert/strict';
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import {
+    type CompositeAssertionReturn,
+    type CompositeCheckBuilder,
+    defineCompositeAssertion
+} from '@overkill-dev/test/assert';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 
 import { createPermissionDenialRuntimePolicy } from '../run/capability-policy.ts';
 
@@ -65,67 +70,72 @@ function firstAssertionFailure(outcome: FailOutcome): AssertionTestFailure | nul
     return null;
 }
 
-function assertSourceLocationInThisFile(scope: TestScope, location: unknown): void {
+const sourceLocationInThisFileChecks = function (
+    check: CompositeCheckBuilder<'assert'>,
+    location: unknown
+): CompositeAssertionReturn<'assert'> {
     if (typeof location !== 'object' || location === null || !Object.hasOwn(location, 'kind')) {
-        scope.assert.fail({ message: 'Expected source location.' });
-
-        return;
+        const initialChecks = check.annotated('Expected source location.').fail();
+        return initialChecks;
     }
-
     if (Reflect.get(location, 'kind') !== 'known') {
-        scope.assert.equal(Reflect.get(location, 'kind'), 'known');
-
-        return;
+        const initialChecks = check.equal(Reflect.get(location, 'kind'), 'known');
+        return initialChecks;
     }
-
     const file: unknown = Reflect.get(location, 'file');
-
-    scope.require.string(file);
-    scope.assert.match(
-        file.replaceAll('\\', '/'),
-        /source\/engine\/throwing-test-execution\.test\.[cm]?[jt]s$/u
-    );
-}
-
-function assertNodeAssertionFailure(scope: TestScope, failure: AssertionTestFailure): void {
-    const check = failure.checks[0];
-    const child = check.kind === 'composite' ? check.children[0] : null;
-
-    if (child === null) {
-        scope.assert.equal(check.kind, 'composite');
-
-        return;
+    if (typeof file !== 'string') {
+        return check.string(file);
     }
+    return check.group([
+        check.string(file),
+        check.match(
+            file.replaceAll('\\', '/'),
+            /source\/engine\/throwing-test-execution\.test\.[cm]?[jt]s$/u
+        )
+    ]);
+};
 
-    if (child.kind !== 'foreign') {
-        scope.assert.equal(child.kind, 'foreign');
-
-        return;
+const assertNodeAssertionFailure = defineCompositeAssertion({
+    name: 'node assertion failure',
+    assert(checkResult, failure: AssertionTestFailure) {
+        const check = failure.checks[0];
+        const child = check.kind === 'composite' ? check.children[0] : null;
+        if (child === null) {
+            const initialChecks = checkResult.equal(check.kind, 'composite');
+            return initialChecks;
+        }
+        if (child.kind !== 'foreign') {
+            const initialChecks = checkResult.equal(child.kind, 'foreign');
+            return initialChecks;
+        }
+        return checkResult.group([
+            checkResult.deepEqual([ child.label, child.source ], [ 'node:assert', 'assert' ]),
+            sourceLocationInThisFileChecks(
+                checkResult.annotated('source location in this file'),
+                child.sourceLocations[0]
+            )
+        ]);
     }
+});
 
-    scope.assert.deepEqual([ child.label, child.source ], [ 'node:assert', 'assert' ]);
-    assertSourceLocationInThisFile(scope, child.sourceLocations[0]);
-}
-
-function assertUnknownNodeAssertionLocation(scope: TestScope, failure: AssertionTestFailure): void {
-    const check = failure.checks[0];
-    if (check.kind !== 'composite') {
-        scope.assert.equal(check.kind, 'composite');
-
-        return;
+const assertUnknownNodeAssertionLocation = defineCompositeAssertion({
+    name: 'unknown node assertion location',
+    assert(checkResult, failure: AssertionTestFailure) {
+        const check = failure.checks[0];
+        if (check.kind !== 'composite') {
+            const initialChecks = checkResult.equal(check.kind, 'composite');
+            return initialChecks;
+        }
+        const child = check.children[0];
+        if (child.kind !== 'foreign') {
+            const initialChecks = checkResult.equal(child.kind, 'foreign');
+            return initialChecks;
+        }
+        return checkResult.deepEqual(child.sourceLocations, [ { kind: 'unknown' } ]);
     }
+});
 
-    const child = check.children[0];
-    if (child.kind !== 'foreign') {
-        scope.assert.equal(child.kind, 'foreign');
-
-        return;
-    }
-
-    scope.assert.deepEqual(child.sourceLocations, [ { kind: 'unknown' } ]);
-}
-
-export const testNode: TestNode = suite('Throwing test execution', [
+export const testNode = suite('Throwing test execution', [
     test('retains preparation failures alongside a thrown Node assertion', async function (scope: TestScope) {
         const policy = createPermissionDenialRuntimePolicy();
         scope.cleanup(function stopPreparationPolicy() {
@@ -226,7 +236,7 @@ export const testNode: TestNode = suite('Throwing test execution', [
             scope.require.notNull(outcome);
             const failure = firstAssertionFailure(outcome);
             scope.require.notNull(failure);
-            assertNodeAssertionFailure(scope, failure);
+            scope.assert(assertNodeAssertionFailure, failure);
 
             return scope.assert.collect();
         }
@@ -272,7 +282,7 @@ export const testNode: TestNode = suite('Throwing test execution', [
             scope.require.notNull(outcome);
             const failure = firstAssertionFailure(outcome);
             scope.require.notNull(failure);
-            assertUnknownNodeAssertionLocation(scope, failure);
+            scope.assert(assertUnknownNodeAssertionLocation, failure);
 
             return scope.assert.collect();
         }

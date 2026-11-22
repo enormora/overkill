@@ -1,4 +1,4 @@
-import { type TestNode, suite, test, testDouble } from '@overkill-dev/test';
+import { suite, test, testDouble } from '@overkill-dev/test';
 
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 
@@ -57,7 +57,7 @@ function failingPool(mode: FailureMode): FailedPool {
         }
     };
 }
-export const testNode: TestNode = suite('worker execution failure policy', [
+export const testNode = suite('worker execution failure policy', [
     test('retains host failure evidence ahead of a coincident worker rejection', async function (scope) {
         const fixture = failingPool('host');
         const completed = await executeWorkerPoolUnits(fixture.runtime, placementPlan(), 0);

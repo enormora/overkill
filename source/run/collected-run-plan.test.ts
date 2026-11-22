@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import {
     attachTestBodyResourceAttachments,
@@ -64,7 +64,7 @@ function collectedCasesWithAttachments(): readonly [CollectedRunCase, CollectedR
     return [ plannedCase, discoveredCase ];
 }
 
-export const testNode: TestNode = suite('Collected run plan', [
+export const testNode = suite('Collected run plan', [
     test('collectedRunPlanFromTestPlan() carries resource attachment summaries', function (scope) {
         const [ plannedCase, discoveredCase ] = collectedCasesWithAttachments();
 

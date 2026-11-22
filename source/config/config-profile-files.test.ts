@@ -1,4 +1,5 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 
 import { configFixtureCwd, createSingleConfigModuleLoader } from '../test-support/run-config-module-loader.ts';
 import type { LoadedConfig } from './config-loader.ts';
@@ -15,16 +16,17 @@ async function loadConfigValue(config: unknown): Promise<LoadedConfig> {
     return await loadConfig({ configPath: null, cwd: configFixtureCwd });
 }
 
-function assertProfileFiles(
-    files: ProfileFiles | null,
-    expected: ExpectedProfileFiles,
-    scope: TestScope
-): void {
-    scope.require.notNull(files);
-    scope.assert.deepEqual(files, expected);
-}
+const assertProfileFiles = defineCompositeAssertion({
+    name: 'profile files',
+    assert(check, files: ProfileFiles | null, expected: ExpectedProfileFiles) {
+        if (files === null) {
+            return check.notNull(files);
+        }
+        return check.group([ check.notNull(files), check.deepEqual(files, expected) ]);
+    }
+});
 
-export const testNode: TestNode = suite('Profile file selection', [
+export const testNode = suite('Profile file selection', [
     test('normalizes profile file discovery', async function (scope: TestScope) {
         const config = await loadConfigValue({
             profiles: {
@@ -48,14 +50,14 @@ export const testNode: TestNode = suite('Profile file selection', [
 
         scope.require.defined(microtestProfile);
         scope.require.defined(safeProfile);
-        assertProfileFiles(microtestProfile.files, {
+        scope.assert(assertProfileFiles, microtestProfile.files, {
             exclude: [],
             include: [ 'source/**/*.test.ts' ]
-        }, scope);
-        assertProfileFiles(safeProfile.files, {
+        });
+        scope.assert(assertProfileFiles, safeProfile.files, {
             exclude: [ 'source/unit/**/*.slow.test.ts' ],
             include: [ 'source/unit/**/*.test.ts' ]
-        }, scope);
+        });
 
         return scope.assert.collect();
     }),

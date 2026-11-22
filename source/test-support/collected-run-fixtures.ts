@@ -1,10 +1,16 @@
 import { orchestrator, type CollectedRun, type RunCommand } from '../packages/run/run.entry-point.ts';
-import type { LifecycleFixtureState } from '../integration-tests/integration/fixtures/collected-lifecycle.test.ts';
-import { defaultMicrotestProfile, defaultRunConfig, defaultRunRequest } from './run-command-factory.ts';
+import type { LifecycleFixtureState } from '../integration-tests/runtime/fixtures/collected-lifecycle.test.ts';
+import {
+    isolatedRunStateDirectory,
+    defaultMicrotestProfile,
+    defaultRunConfig,
+    defaultRunRequest
+} from './run-command-factory.ts';
 
 export function collectedRunCommand(): RunCommand {
     return {
         config: defaultRunConfig({
+            runtimeStateDir: isolatedRunStateDirectory(),
             profiles: {
                 microtest: defaultMicrotestProfile({ execution: { processModel: 'in-process', scheduling: 'serial' } })
             }
@@ -12,7 +18,7 @@ export function collectedRunCommand(): RunCommand {
         cwd: process.cwd(),
         engine: { kind: 'default' },
         request: defaultRunRequest({
-            paths: [ 'source/integration-tests/integration/fixtures/collected-lifecycle.test.ts' ],
+            paths: [ 'source/integration-tests/runtime/fixtures/collected-lifecycle.test.ts' ],
             order: 'plan'
         })
     };
@@ -24,7 +30,7 @@ export async function collectLifecycleRun(command: RunCommand): Promise<{
 }> {
     const initialized = await orchestrator.initialize(command);
     const collected = await initialized.collect();
-    const { state } = await import('../integration-tests/integration/fixtures/collected-lifecycle.test.ts');
+    const { state } = await import('../integration-tests/runtime/fixtures/collected-lifecycle.test.ts');
     state.calls.length = 0;
     state.scopes.length = 0;
     state.cleanupCount = 0;

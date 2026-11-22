@@ -1,12 +1,13 @@
-import assert from 'node:assert/strict';
 import { Hash } from 'node:crypto';
-import { mock } from 'node:test';
-import { type TestNode, suite, test, type TestRandom } from '@overkill-dev/test';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import { suite, test, testDouble, type TestRandom } from '@overkill-dev/test';
 
-import type { ExecuteExecution } from '../packages/engine/engine.entry-point.ts';
+import type { ExecuteExecution, RunResult } from '../packages/engine/engine.entry-point.ts';
 
 import { createTestEngine } from '../test-support/create-test-engine.ts';
 import { createTestRandom } from './case-random.ts';
+
+type RandomCaseRun = { readonly records: ReadonlyMap<string, RandomEvidence>; readonly result: RunResult; };
 
 type RandomEvidence = { readonly seed: string; readonly values: readonly number[]; };
 
@@ -16,8 +17,8 @@ function draw(random: TestRandom): readonly number[] {
     });
 }
 
-function caseEvidence(records: ReadonlyMap<string, RandomEvidence>, title: string): RandomEvidence {
-    const evidence = records.get(title);
+function caseEvidence(run: RandomCaseRun, title: string): RandomEvidence {
+    const evidence = run.records.get(title);
     if (evidence === undefined) {
         throw new Error(`Missing random evidence for ${title}.`);
     }
@@ -28,7 +29,7 @@ async function executeRandomCases(
     seed: bigint,
     titles: readonly string[],
     execution: ExecuteExecution
-): Promise<ReadonlyMap<string, RandomEvidence>> {
+): Promise<RandomCaseRun> {
     const engine = createTestEngine();
     const evidence = new Map<string, RandomEvidence>();
     const nodes = titles.map(function randomCase(title) {
@@ -61,22 +62,43 @@ async function executeRandomCases(
             startedAt: '1970-01-01T00:00:00.000Z'
         }
     );
-    assert.equal(result.status, 'passed');
-    return evidence;
+    return { records: evidence, result };
 }
 
 function randomFromZeroDigest(): TestRandom {
-    const digest = mock.method(Hash.prototype, 'digest', function zeroDigest() {
-        return Buffer.alloc(32);
-    });
+    const originalDigest = Object.getOwnPropertyDescriptors(Hash.prototype).digest;
+    Object.defineProperty(Hash.prototype, 'digest', { ...originalDigest, value: testDouble.returns(Buffer.alloc(32)) });
     try {
         return createTestRandom(0n);
     } finally {
-        digest.mock.restore();
+        Object.defineProperty(Hash.prototype, 'digest', originalDigest);
     }
 }
 
-export const testNode: TestNode = suite('case random streams', [
+const passedRandomCases = defineCompositeAssertion({
+    name: 'random cases complete successfully',
+    assert(check, first: RandomCaseRun, ...remaining: readonly RandomCaseRun[]) {
+        return check.group([
+            check.equal(first.result.status, 'passed'),
+            ...remaining.map(function completedCase(run) {
+                return check.equal(run.result.status, 'passed');
+            })
+        ]);
+    }
+});
+
+const stableCaseStreams = defineCompositeAssertion({
+    name: 'selection and scheduling preserve each case stream',
+    assert(check, full: RandomCaseRun, narrowed: RandomCaseRun, concurrent: RandomCaseRun) {
+        return check.group([
+            check.deepEqual(caseEvidence(narrowed, 'second'), caseEvidence(full, 'second')),
+            check.deepEqual(caseEvidence(concurrent, 'first'), caseEvidence(full, 'first')),
+            check.deepEqual(caseEvidence(concurrent, 'second'), caseEvidence(full, 'second'))
+        ]);
+    }
+});
+
+export const testNode = suite('case random streams', [
     test('recovers from an all-zero hashed generator state', function (scope) {
         const random = randomFromZeroDigest();
         scope.assert.notDeepEqual(draw(random), draw(random));
@@ -164,9 +186,8 @@ export const testNode: TestNode = suite('case random streams', [
             mode: 'concurrent-in-process',
             maxConcurrency: 2
         });
-        scope.assert.deepEqual(caseEvidence(narrowed, 'second'), caseEvidence(full, 'second'));
-        scope.assert.deepEqual(caseEvidence(concurrent, 'first'), caseEvidence(full, 'first'));
-        scope.assert.deepEqual(caseEvidence(concurrent, 'second'), caseEvidence(full, 'second'));
+        scope.assert(passedRandomCases, full, narrowed, concurrent);
+        scope.assert(stableCaseStreams, full, narrowed, concurrent);
         scope.assert.notDeepEqual(caseEvidence(full, 'first'), caseEvidence(full, 'second'));
         return scope.assert.collect();
     }),
@@ -174,6 +195,7 @@ export const testNode: TestNode = suite('case random streams', [
         const serial = { mode: 'serial-in-process' } as const;
         const first = await executeRandomCases(42n, [ 'case' ], serial);
         const second = await executeRandomCases(42n + 2n ** 64n, [ 'case' ], serial);
+        scope.assert(passedRandomCases, first, second);
         scope.assert.notDeepEqual(caseEvidence(first, 'case'), caseEvidence(second, 'case'));
         return scope.assert.collect();
     }),

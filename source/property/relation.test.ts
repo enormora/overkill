@@ -1,24 +1,48 @@
-import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
-import { test as subjectTest } from '../packages/test/test.entry-point.ts';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import { suite, test } from '@overkill-dev/test';
+import {
+    type RunResult,
+    type PropertyWitnessFile,
+    type PropertyInvocationEvidence,
+    serializeValue
+} from '../packages/engine/engine.entry-point.ts';
 
-import type { PropertyWitnessFile } from '../engine/witness-file.ts';
-import { serializeValue, type RunResult } from '../packages/engine/engine.entry-point.ts';
+import { test as subjectTest } from '../packages/test/test.entry-point.ts';
 
 import { executePropertyNode, propertyExecutionDefaults } from '../test-support/property-execution.ts';
 import { property, withProperties } from './property-authoring.ts';
 import { gen } from './generators.ts';
 import { relation } from './relation.ts';
 
-function confirmedRelationWitness(scope: TestScope, result: RunResult): PropertyWitnessFile {
-    const evidence = result.perTest[0]?.property?.invocations[0];
-    scope.assert.equal(result.summary.failed, 1);
-    scope.assert.equal(JSON.stringify(evidence?.retained?.input), JSON.stringify(serializeValue(0)));
+type RetainedRelationInputEvidence = {
+    readonly result: RunResult;
+    readonly confirmedRelationWitnessEvidence: PropertyInvocationEvidence | undefined;
+};
+
+const retainedRelationInput = defineCompositeAssertion({
+    name: 'retained relation input',
+    assert(
+        check,
+        { result, confirmedRelationWitnessEvidence }: RetainedRelationInputEvidence
+    ) {
+        return check.group([
+            check.equal(result.summary.failed, 1),
+            check.equal(
+                JSON.stringify(confirmedRelationWitnessEvidence?.retained?.input),
+                JSON.stringify(serializeValue(0))
+            )
+        ]);
+    }
+});
+
+function confirmedRelationWitness(evidence: PropertyInvocationEvidence | undefined): PropertyWitnessFile {
     const witness = evidence?.confirmedWitness;
-    scope.require.defined(witness);
+    if (witness === undefined || witness === null) {
+        throw new Error('Expected a confirmed relation witness.');
+    }
     return witness;
 }
-
-export const testNode: TestNode = suite('metamorphic relations', [
+export const testNode = suite('metamorphic relations', [
     test(
         'shrinks original inputs and replays the relation without generation',
         async function (scope) {
@@ -43,11 +67,27 @@ export const testNode: TestNode = suite('metamorphic relations', [
                 })
             });
             const result = await executePropertyNode(node, propertyExecutionDefaults);
-            const witness = confirmedRelationWitness(scope, result);
+
+            const confirmedRelationWitnessEvidence = result.perTest[0]?.property?.invocations[0];
+            scope.assert(retainedRelationInput, { result, confirmedRelationWitnessEvidence });
+            const confirmedRelationWitnessWitness = confirmedRelationWitness(confirmedRelationWitnessEvidence);
+
             transformations = 0;
-            const replayed = await executePropertyNode(node, { ...propertyExecutionDefaults, replay: witness });
-            scope.assert.equal(replayed.summary.failed, 1);
-            scope.assert.equal(transformations, 1);
+            const replayed = await executePropertyNode(node, {
+                ...propertyExecutionDefaults,
+                replay: confirmedRelationWitnessWitness
+            });
+            scope.assert(
+                defineCompositeAssertion({
+                    name: 'shrinks original inputs and replays the relation without generation',
+                    assert(check) {
+                        return check.group([
+                            check.equal(replayed.summary.failed, 1),
+                            check.equal(transformations, 1)
+                        ]);
+                    }
+                })
+            );
             return scope.assert.collect();
         }
     ),
@@ -88,8 +128,17 @@ export const testNode: TestNode = suite('metamorphic relations', [
             ...propertyExecutionDefaults,
             policy: { ...propertyExecutionDefaults.policy, newTrials: 1 }
         });
-        scope.assert.equal(result.summary.passed, 1);
-        scope.assert.deepEqual(steps, [ 'transform', 'run', 'run', 'check', 'cleanup', 'cleanup' ]);
+        scope.assert(
+            defineCompositeAssertion({
+                name: 'awaits callbacks in order and exposes mutated independent inputs',
+                assert(check) {
+                    return check.group([
+                        check.equal(result.summary.passed, 1),
+                        check.deepEqual(steps, [ 'transform', 'run', 'run', 'check', 'cleanup', 'cleanup' ])
+                    ]);
+                }
+            })
+        );
         return scope.assert.collect();
     }),
     test('nested relations preserve one boundary assertion', async function (scope) {
@@ -140,8 +189,12 @@ export const testNode: TestNode = suite('metamorphic relations', [
             }),
             propertyExecutionDefaults
         );
-        scope.assert.equal(result.summary.failed, 1);
-        scope.assert.equal(checks, 0);
+        scope.assert(defineCompositeAssertion({
+            name: 'operation errors stop the remaining callbacks',
+            assert(check) {
+                return check.group([ check.equal(result.summary.failed, 1), check.equal(checks, 0) ]);
+            }
+        }));
         return scope.assert.collect();
     })
 ]);

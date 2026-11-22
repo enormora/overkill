@@ -1,8 +1,8 @@
-import { table, type TestNode, suite, test } from '@overkill-dev/test';
+import { table, suite, test } from '@overkill-dev/test';
 
 import { processPolicyObservation } from '../test-support/process-policy-observation.ts';
 
-export const testNode: TestNode = suite('process boundary policy observation', [
+export const testNode = suite('process boundary policy observation', [
     test('reports foreign IPC listeners and releases only its own observation', function (scope) {
         const fixture = processPolicyObservation(null, false);
         fixture.events.on('message', fixture.owned);

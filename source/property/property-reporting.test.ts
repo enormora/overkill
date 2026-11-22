@@ -1,4 +1,4 @@
-import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
+import { suite, test, type TestScope } from '@overkill-dev/test';
 
 import { executePropertyNode, propertyExecutionDefaults } from '../test-support/property-execution.ts';
 import { propertyEvidenceSchema } from '../run/property-evidence-schema.ts';
@@ -6,7 +6,7 @@ import { formatPropertyDiagnostics } from '../reporters/failure-summary.ts';
 import { property } from './property-authoring.ts';
 import { gen } from './generators.ts';
 
-export const testNode: TestNode = suite('property reporting', [
+export const testNode = suite('property reporting', [
     test('reports passing exploration without manufacturing a failure', async function (scope: TestScope) {
         const result = await executePropertyNode(
             property({

@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import {
     workerImplementationLifetime,
@@ -6,7 +6,7 @@ import {
     aggregateLeaseFailure
 } from '../test-support/worker-implementation-lifetime.ts';
 
-export const testNode: TestNode = suite('worker implementation lease ownership', [
+export const testNode = suite('worker implementation lease ownership', [
     test('runs inline plans without creating a body lease', async function (scope) {
         const fixture = workerImplementationLifetime(healthyImplementationLease);
         const result = await fixture.lifetime.with('worker', fixture.inline, async function (plan) {

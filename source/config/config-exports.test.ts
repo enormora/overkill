@@ -1,10 +1,10 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 
 import { defineOutputRenderer, type DefinedOutputRenderer } from '../packages/engine/engine.entry-point.ts';
 import { createReportingContext } from '../engine/reporting-context.ts';
 import { defineFixedReporter, type FixedDefinedReporter } from '../test-support/reporter-definition.ts';
 import { configFixtureCwd, createSingleConfigModuleLoader } from '../test-support/run-config-module-loader.ts';
-import type { LoadedConfig, ConfigLoader } from './config-loader.ts';
+import type { LoadedConfig } from './config-loader.ts';
 import { ConfigError } from './config-error.ts';
 
 const configFileName = 'overkill.config.js';
@@ -37,12 +37,12 @@ function reporter(): FixedDefinedReporter {
 }
 
 async function loadModule(module: unknown): Promise<LoadedConfig> {
-    const loadConfig: ConfigLoader = createSingleConfigModuleLoader(configFileName, module);
+    const loadConfig = createSingleConfigModuleLoader(configFileName, module);
 
     return await loadConfig({ configPath: null, cwd: configFixtureCwd });
 }
 
-export const testNode: TestNode = suite('Configuration exports', [
+export const testNode = suite('Configuration exports', [
     test('accepts branded reporter and output renderer values', async function (scope: TestScope) {
         const config = await loadModule({
             config: {

@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 import type { EngineCaseBody } from '../../test-support/create-test-engine.ts';
 
 import { test as subjectTest, table, defineMacro, defineParameterizedTestBody } from '../test/test.entry-point.ts';
@@ -16,7 +16,7 @@ function parameterizedBody(scope: Parameters<EngineCaseBody>[0], value: number):
     return scope.assert.collect();
 }
 
-export const testNode: TestNode = suite('checker body ownership', [
+export const testNode = suite('checker body ownership', [
     test('captures low-level engine callbacks without running them', function (scope) {
         const source: EngineCaseBody = function () {
             throw new Error('Do not invoke');

@@ -1,5 +1,5 @@
 import { isDeepStrictEqual } from 'node:util';
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import standardValues from './fixtures/property-values-v1.json' with { type: 'json' };
 import versionOneGraph from './fixtures/property-graph-v1.json' with { type: 'json' };
@@ -65,7 +65,7 @@ function expressionState(value: unknown): unknown {
     return expression instanceof RegExp ? expression.lastIndex : null;
 }
 
-export const testNode: TestNode = suite('property graph codecs', [
+export const testNode = suite('property graph codecs', [
     test('round trips every supported standard value family', async function (scope) {
         const values: readonly unknown[] = [
             null,

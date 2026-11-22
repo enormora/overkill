@@ -1,4 +1,4 @@
-import { table, type TestNode, suite, test } from '@overkill-dev/test';
+import { table, suite, test } from '@overkill-dev/test';
 
 import { defineTestFamily } from '../packages/engine/engine.entry-point.ts';
 import { createInMemoryRealTimeReporter } from '../reporters/in-memory-reporter.ts';
@@ -44,7 +44,7 @@ function registeredProfile(config: NormalizedConfig): DefinedFamilyProfile {
 }
 const unsupportedPolicies = Object.entries({ coverage: {}, retries: { maxAttempts: 2 }, attachments: {} });
 
-export const testNode: TestNode = suite('imported analysis profile configuration', [
+export const testNode = suite('imported analysis profile configuration', [
     test('rejects missing, forged, and mismatched normalized settings bindings', function (scope) {
         const config = normalizeConfig({ profiles: { types: definition } });
         const profile = registeredProfile(config);

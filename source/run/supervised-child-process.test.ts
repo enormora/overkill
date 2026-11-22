@@ -1,4 +1,4 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 
 import { childRoleArgument, supervisedChildRole } from './child-process-roles.ts';
 import {
@@ -164,7 +164,7 @@ function emitRestrictedOutput(stdout: OutputRecord, stderr: OutputRecord): void 
     );
 }
 
-export const testNode: TestNode = suite('Supervised child processes', [
+export const testNode = suite('Supervised child processes', [
     test('sanitizes the microtest child environment', async function (scope: TestScope) {
         const fixture = createStarterFixture();
         const child = await fixture.startSupervisedChild({

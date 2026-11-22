@@ -1,4 +1,4 @@
-import { type TestNode, table, suite, test } from '@overkill-dev/test';
+import { table, suite, test } from '@overkill-dev/test';
 
 import { defaultIntegrationProfile } from '../test-support/run-command-factory.ts';
 
@@ -21,7 +21,7 @@ function hostConfig(): NormalizedConfig {
     });
 }
 
-export const testNode: TestNode = suite('benchmark host configuration', [
+export const testNode = suite('benchmark host configuration', [
     table({
         title: 'copies integration placement policy',
         cases: [ 'supervised-process', 'worker-pool' ] as const,

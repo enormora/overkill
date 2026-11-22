@@ -1,10 +1,10 @@
-import { type TestNode, table, suite, test } from '@overkill-dev/test';
+import { table, suite, test } from '@overkill-dev/test';
 
 import { replayCommandRouting } from '../test-support/replay-command-routing.ts';
 
 import { commandLineExitCodes } from './command-line-command.ts';
 
-export const testNode: TestNode = suite('replay command operands and delivery', [
+export const testNode = suite('replay command operands and delivery', [
     test('routes retained run ids and includes maintenance diagnostics', async function (scope) {
         const fixture = replayCommandRouting('none');
         const result = await fixture.commands.replayRun(fixture.context);

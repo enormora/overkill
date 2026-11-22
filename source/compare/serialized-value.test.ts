@@ -1,8 +1,8 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { serializeValue, serializeValueWithBudget } from './serialized-value.ts';
 
-export const testNode: TestNode = suite('Serialized values', [
+export const testNode = suite('Serialized values', [
     test('preserves primitive edge cases explicitly', function (scope) {
         const symbol = Symbol.for('id');
 

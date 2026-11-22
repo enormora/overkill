@@ -1,8 +1,8 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { createPool } from './worker-pool-creation.ts';
 
-export const testNode: TestNode = suite('idle fresh-worker pool policy', [
+export const testNode = suite('idle fresh-worker pool policy', [
     test('keeps fresh-worker pools idle until work is assigned', async function (scope) {
         const pool = createPool({
             cwd: '/project',

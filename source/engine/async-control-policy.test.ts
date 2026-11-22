@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 import { createDeterministicClock } from '@enormora/clock';
 import type { EngineCaseBody } from '../test-support/create-test-engine.ts';
 
@@ -83,7 +83,7 @@ function recordedRunnerErrorMessages(reporter: InMemoryRealTimeReporter): readon
     });
 }
 
-export const testNode: TestNode = suite('async scope control policy', [
+export const testNode = suite('async scope control policy', [
     test('scope.drainMicrotasks() waits for already queued promise work', async function (scope) {
         const result = await executeSingleBody(async function testBody(testScope) {
             let finished = false;

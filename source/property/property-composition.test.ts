@@ -1,4 +1,5 @@
-import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import { suite, test, type TestScope } from '@overkill-dev/test';
 import { type EngineCaseBody, createTestEngine } from '../test-support/create-test-engine.ts';
 import {
     createTestFacade,
@@ -6,21 +7,21 @@ import {
     table as subjectTable,
     suite as subjectSuite
 } from '../packages/test/test.entry-point.ts';
-
 import {
-    readTestBodyFamily,
     type TestNode as SubjectTestNode,
+    readTestBodyFamily,
     type TestPlan,
     type TestPlanCase,
     createRoot,
     createTestPlan,
-    createWorkloadTestCase
+    createWorkloadTestCase,
+    stampTestNodeFamily
 } from '../packages/engine/engine.entry-point.ts';
 
 import { defineResource, defineRuntime, withResource, withRuntime } from '../packages/test/resources.entry-point.ts';
 
 import { unexecutedGenerator } from '../test-support/property-generator.ts';
-import { stampTestNodeFamily } from '../engine/test-node.ts';
+
 import { defaultPropertyPolicy } from '../engine/property-policy.ts';
 import { resolveTestPlanCollectionPolicy } from '../run/run-selection.ts';
 import { property, withProperties } from './property-authoring.ts';
@@ -33,31 +34,45 @@ function unexpectedBody(): never {
     throw new Error('Nested body must not execute.');
 }
 
-async function assertUnavailableResourceProperty(scope: TestScope, body: EngineCaseBody): Promise<void> {
-    const plan = planFor(subjectTest('resource property', body));
-    scope.assert.equal(plan.cases[0].testFamily, 'property');
-    scope.assert.deepEqual(plan.cases[0].resourceAttachments.directResources, [ {
-        key: 'fixture',
-        resourceName: 'fixture'
-    } ]);
-    const result = await createTestEngine().execute(plan);
-    scope.require.defined(result.perTest);
-    scope.assert.equal(result.summary.failed, 1);
-    scope.assert.includes(
-        JSON.stringify(result.perTest[0]?.outcome),
-        'Property execution requires resolved collection policy.'
-    );
-}
-
-function assertNestedPropertyDeclaration(scope: TestScope, planned: TestPlanCase, body: EngineCaseBody): void {
-    scope.assert.equal(planned.testFamily, 'property');
-    if (planned.execution.kind !== 'body') {
-        throw new Error('Expected an executable property declaration.');
+const assertUnavailableResourceProperty = defineCompositeAssertion({
+    name: 'unavailable resource property',
+    async assert(check, body: EngineCaseBody) {
+        const plan = planFor(subjectTest('resource property', body));
+        const initialChecks = check.group([
+            check.equal(plan.cases[0].testFamily, 'property'),
+            check.deepEqual(plan.cases[0].resourceAttachments.directResources, [ {
+                key: 'fixture',
+                resourceName: 'fixture'
+            } ])
+        ]);
+        const result = await createTestEngine().execute(plan);
+        return check.group([
+            initialChecks,
+            check.defined(result.perTest),
+            check.equal(result.summary.failed, 1),
+            check.includes(
+                JSON.stringify(result.perTest[0]?.outcome),
+                'Property execution requires resolved collection policy.'
+            )
+        ]);
     }
-    scope.assert.equal(readTestBodyFamily(planned.execution.body)?.definition, readTestBodyFamily(body)?.definition);
-}
+});
 
-export const testNode: TestNode = suite('property composition', [
+const assertNestedPropertyDeclaration = defineCompositeAssertion({
+    name: 'nested property declaration',
+    assert(check, planned: TestPlanCase, body: EngineCaseBody) {
+        const initialChecks = check.equal(planned.testFamily, 'property');
+        if (planned.execution.kind !== 'body') {
+            throw new Error('Expected an executable property declaration.');
+        }
+        return check.group([
+            initialChecks,
+            check.equal(readTestBodyFamily(planned.execution.body)?.definition, readTestBodyFamily(body)?.definition)
+        ]);
+    }
+});
+
+export const testNode = suite('property composition', [
     test('property profiles reject resource descriptors before acquisition', function (scope) {
         let acquisitions = 0;
         const resource = defineResource({
@@ -110,7 +125,7 @@ export const testNode: TestNode = suite('property composition', [
             withProperties(withResource(resource, unexpectedBody))
         ];
         for (const body of bodies) {
-            await assertUnavailableResourceProperty(scope, body);
+            await scope.assert(assertUnavailableResourceProperty, body);
         }
         scope.assert.equal(acquisitions, 0);
         return scope.assert.collect();
@@ -156,7 +171,7 @@ export const testNode: TestNode = suite('property composition', [
             const plan = planFor(node);
             scope.assert.equal(plan.cases.length, 2);
             for (const planned of plan.cases) {
-                assertNestedPropertyDeclaration(scope, planned, body);
+                scope.assert(assertNestedPropertyDeclaration, planned, body);
             }
         }
         return scope.assert.collect();

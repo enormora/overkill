@@ -159,3 +159,23 @@ export function benchmarkHtmlTimelineFixture(title: string, name: string): RunRe
         } ]
     };
 }
+
+type BenchmarkBudgetFixture = {
+    readonly result: RunResult;
+    readonly measured: PerTestResult & { readonly benchmark: BenchmarkExecutionResult; };
+    readonly benchmark: BenchmarkExecutionResult;
+    readonly budget: BenchmarkExecutionResult['budgets'][number];
+};
+export function benchmarkBudgetFixture(title: string): BenchmarkBudgetFixture {
+    const result = benchmarkHtmlFixture(title);
+    const measured = fixtureTest(result);
+    const { benchmark } = measured;
+    if (benchmark === null) {
+        throw new Error('Benchmark fixture requires measurements.');
+    }
+    const budget = benchmark.budgets[0];
+    if (budget === undefined) {
+        throw new Error('Benchmark fixture requires a budget.');
+    }
+    return { result, measured: { ...measured, benchmark }, benchmark, budget };
+}

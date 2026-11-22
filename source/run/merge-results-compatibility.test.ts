@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { createCaseId, createDefaultWorkId } from '../engine/identity.ts';
 
@@ -10,7 +10,7 @@ const record = mergeRecordFixture('first', 1, 1);
 const { facts } = record;
 const { reproducibility } = facts;
 
-export const testNode: TestNode = suite('merge compatibility', [
+export const testNode = suite('merge compatibility', [
     test('decodes historical records without manufacturing merge evidence', function (scope) {
         const historical = structuredClone(record);
         Reflect.deleteProperty(historical.facts.reproducibility, 'selectedIdentities');

@@ -1,4 +1,10 @@
-import { type TestNode, defineMacro, test, suite, type TestScope } from '@overkill-dev/test';
+import {
+    type CompositeAssertionReference,
+    type CompositeAssertionReturn,
+    defineCompositeAssertion
+} from '@overkill-dev/test/assert';
+
+import { defineMacro, test, suite } from '@overkill-dev/test';
 
 import {
     type AnyResourceDefinition,
@@ -184,65 +190,78 @@ function dependencyReadFailureScenario(): DependencyReadFailureScenario {
     return { dependencyError, runtime };
 }
 
-async function assertAsyncDispose(scope: TestScope): Promise<void> {
-    const events = createEventLog();
-    const runtime = defineRuntime({
-        name: 'async-dispose',
-        dimensions: {},
-        resources: { resource: disposableResource(events) },
-        requirements: []
-    });
-
-    await using session = await startRuntime({ runtime, signal: testSignal() });
-
-    scope.assert.equal(session.context.resource, 'handle');
-    scope.assert.deepEqual(events.values(), [ 'acquire' ]);
-}
-
-async function assertNullDispose(scope: TestScope): Promise<void> {
-    const session = await startRuntime({ runtime: nullDisposeRuntime(), signal: testSignal() });
-
-    await session.disposeOnce({ signal: testSignal() });
-    scope.assert.equal(session.context.resource, 'handle');
-}
-
-async function assertInvalidDescriptors(scope: TestScope): Promise<void> {
-    const invalidRuntimeError = assertLifecycleError(
-        await rejectedValue(startRuntime(invalidRuntimeRequest()))
-    );
-    const invalidResourceError = assertLifecycleError(
-        await rejectedValue(startRuntime(invalidResourceRuntimeRequest()))
-    );
-
-    scope.assert.deepEqual(invalidRuntimeError.failures().map(graphFailureSummary), [ [ 'graph', 'runtime' ] ]);
-    scope.assert.deepEqual(invalidResourceError.failures().map(graphFailureSummary), [ [ 'graph', 'resource' ] ]);
-}
-
-async function assertDependencyReadFailure(scope: TestScope): Promise<void> {
-    const scenario = dependencyReadFailureScenario();
-    const error = assertLifecycleError(
-        await rejectedValue(startRuntime({ runtime: scenario.runtime, signal: testSignal() }))
-    );
-
-    scope.assert.deepEqual(error.failures().map(lifecycleFailureSummary), [
-        [ 'acquire', 'runtime', scenario.dependencyError ]
-    ]);
-}
-
-const disposalTestCase = defineMacro(function (title: string, assertion: (scope: TestScope) => Promise<void>) {
-    return test({
-        title,
-        annotations: {},
-        controls: {},
-        async body(scope) {
-            await assertion(scope);
-
-            return scope.assert.collect();
-        }
-    });
+const assertAsyncDispose = defineCompositeAssertion({
+    name: 'async dispose',
+    async assert(check) {
+        const events = createEventLog();
+        const runtime = defineRuntime({
+            name: 'async-dispose',
+            dimensions: {},
+            resources: { resource: disposableResource(events) },
+            requirements: []
+        });
+        await using session = await startRuntime({ runtime, signal: testSignal() });
+        return check.group([
+            check.equal(session.context.resource, 'handle'),
+            check.deepEqual(events.values(), [ 'acquire' ])
+        ]);
+    }
 });
 
-export const testNode: TestNode = suite('Resource lifecycle disposal', [
+const assertNullDispose = defineCompositeAssertion({
+    name: 'null dispose',
+    async assert(check) {
+        const session = await startRuntime({ runtime: nullDisposeRuntime(), signal: testSignal() });
+        await session.disposeOnce({ signal: testSignal() });
+        return check.group([ check.equal(session.context.resource, 'handle') ]);
+    }
+});
+
+const assertInvalidDescriptors = defineCompositeAssertion({
+    name: 'invalid descriptors',
+    async assert(check) {
+        const invalidRuntimeError = assertLifecycleError(
+            await rejectedValue(startRuntime(invalidRuntimeRequest()))
+        );
+        const invalidResourceError = assertLifecycleError(
+            await rejectedValue(startRuntime(invalidResourceRuntimeRequest()))
+        );
+        return check.group([
+            check.deepEqual(invalidRuntimeError.failures().map(graphFailureSummary), [ [ 'graph', 'runtime' ] ]),
+            check.deepEqual(invalidResourceError.failures().map(graphFailureSummary), [ [ 'graph', 'resource' ] ])
+        ]);
+    }
+});
+
+const assertDependencyReadFailure = defineCompositeAssertion({
+    name: 'dependency read failure',
+    async assert(check) {
+        const scenario = dependencyReadFailureScenario();
+        const error = assertLifecycleError(
+            await rejectedValue(startRuntime({ runtime: scenario.runtime, signal: testSignal() }))
+        );
+        return check.group([ check.deepEqual(error.failures().map(lifecycleFailureSummary), [
+            [ 'acquire', 'runtime', scenario.dependencyError ]
+        ]) ]);
+    }
+});
+
+const disposalTestCase = defineMacro(
+    function (title: string, assertion: CompositeAssertionReference<[], Promise<CompositeAssertionReturn<'assert'>>>) {
+        return test({
+            title,
+            annotations: {},
+            controls: {},
+            async body(scope) {
+                await scope.assert(assertion);
+
+                return scope.assert.collect();
+            }
+        });
+    }
+);
+
+export const testNode = suite('Resource lifecycle disposal', [
     disposalTestCase('runtime session supports async disposal', assertAsyncDispose),
     disposalTestCase('runtime session skips resources without dispose callbacks', assertNullDispose),
     disposalTestCase('startRuntime rejects malformed descriptors', assertInvalidDescriptors),

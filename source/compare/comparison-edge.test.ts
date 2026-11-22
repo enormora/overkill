@@ -1,4 +1,4 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 
 import { rawProperty } from './raw-comparison.ts';
 import {
@@ -9,7 +9,7 @@ import {
     compareStringEquality
 } from './comparison.ts';
 
-export const testNode: TestNode = suite('Value comparison edge cases', [
+export const testNode = suite('Value comparison edge cases', [
     test('raw properties tolerate inaccessible proxy descriptors', function (scope) {
         const value = new Proxy({ value: 42 }, {
             getOwnPropertyDescriptor() {

@@ -32,7 +32,7 @@ function failedCase(result: PerTestResult, kind: 'body-error' | 'cleanup-error')
 }
 
 export async function createMutationEvidenceFixture(
-    scope: TestScope,
+    cleanup: TestScope['cleanup'],
     retainDiagnostics: boolean
 ): Promise<MutationEvidenceFixture> {
     const { baseline, reply } = mutationCoverageFixture('off');
@@ -54,7 +54,7 @@ export async function createMutationEvidenceFixture(
         disableBail: true,
         files: null
     });
-    scope.cleanup(lifecycle.dispose);
+    cleanup(lifecycle.dispose);
     await lifecycle.select(collectedMutationPlan(reply.result.perTest.map(function work(result) {
         return result.workId;
     })));

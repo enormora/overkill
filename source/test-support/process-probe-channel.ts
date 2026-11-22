@@ -23,7 +23,10 @@ type ProbeChannel = {
     readonly events: readonly string[];
     readonly deliver: (value: unknown) => void;
 };
-export async function processProbeChannel(scope: TestScope, input: ProbeChannelScenario): Promise<ProbeChannel> {
+export async function processProbeChannel(
+    cleanup: TestScope['cleanup'],
+    input: ProbeChannelScenario
+): Promise<ProbeChannel> {
     const emitter = new EventEmitter();
     const events: string[] = [];
     const socket = new Duplex({
@@ -90,7 +93,7 @@ export async function processProbeChannel(scope: TestScope, input: ProbeChannelS
                 : await pending;
         }
     };
-    scope.cleanup(function releaseProbeChannel() {
+    cleanup(function releaseProbeChannel() {
         socket.destroy();
     });
     const probe = await openProcessProbe(runtime);

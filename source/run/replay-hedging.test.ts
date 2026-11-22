@@ -1,4 +1,4 @@
-import { table, type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { table, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { withRecordedWorkerTrace } from '../test-support/replay-record-fixture.ts';
@@ -68,44 +68,8 @@ function sourceDecisions(fixture: Fixture): Entries {
 async function withSource<Value>(fixture: Fixture, entries: Entries, execute: () => Promise<Value>): Promise<Value> {
     return await withRecordedWorkerTrace(fixture.runtime, { entries }, execute);
 }
-async function assertAuthority(scope: TestScope, matching: boolean): Promise<void> {
-    const fixture = hedgeFixture();
-    const authorities: HedgedAuthorities = new Map();
-    fixture.runtime.activeTasks.add(fixture.primary);
-    await withSource(fixture, sourceDecisions(fixture), async function reversedCompletions() {
-        await recordCompletedHedgedTaskRun(
-            authorities,
-            taskResult(fixture.duplicate, matching),
-            fixture.duplicate,
-            fixture.runtime
-        );
-        scope.assert.equal(
-            fixture
-                .runtime
-                .taskResults
-                .flatMap(function (result) {
-                    return result.perTest;
-                })
-                .length,
-            0
-        );
-        scope.assert.true(isDeferredReplayTask(fixture.duplicate));
-        await recordCompletedHedgedTaskRun(
-            authorities,
-            taskResult(fixture.primary, true),
-            fixture.primary,
-            fixture.runtime
-        );
-        scope.assert.equal(pendingReplayHedges(fixture.runtime, fixture.primary).length, 0);
-    });
-    const results = fixture.runtime.taskResults.flatMap(function (result) {
-        return result.perTest;
-    });
-    scope.assert.equal(results.length, 1);
-    scope.assert.equal(results.at(-1)?.verdict, matching ? 'pass' : 'fail');
-    scope.assert.equal(fixture.runtime.runState.artifacts().length, matching ? 0 : 1);
-}
-export const testNode: TestNode = suite('recorded hedge result authority', [
+
+export const testNode = suite('recorded hedge result authority', [
     test(
         'keeps results without inventing an authority when the source has no trace',
         async function (scope) {
@@ -129,8 +93,42 @@ export const testNode: TestNode = suite('recorded hedge result authority', [
         },
         async test(scope) {
             const matching = scope.parameters;
+            const authorityFixture = hedgeFixture();
+            const authorityAuthorities: HedgedAuthorities = new Map();
+            authorityFixture.runtime.activeTasks.add(authorityFixture.primary);
+            await withSource(authorityFixture, sourceDecisions(authorityFixture), async function reversedCompletions() {
+                await recordCompletedHedgedTaskRun(
+                    authorityAuthorities,
+                    taskResult(authorityFixture.duplicate, matching),
+                    authorityFixture.duplicate,
+                    authorityFixture.runtime
+                );
+                scope.assert.equal(
+                    authorityFixture
+                        .runtime
+                        .taskResults
+                        .flatMap(function (result) {
+                            return result.perTest;
+                        })
+                        .length,
+                    0
+                );
+                scope.assert.true(isDeferredReplayTask(authorityFixture.duplicate));
+                await recordCompletedHedgedTaskRun(
+                    authorityAuthorities,
+                    taskResult(authorityFixture.primary, true),
+                    authorityFixture.primary,
+                    authorityFixture.runtime
+                );
+                scope.assert.equal(pendingReplayHedges(authorityFixture.runtime, authorityFixture.primary).length, 0);
+            });
+            const authorityResults = authorityFixture.runtime.taskResults.flatMap(function (result) {
+                return result.perTest;
+            });
+            scope.assert.equal(authorityResults.length, 1);
+            scope.assert.equal(authorityResults.at(-1)?.verdict, matching ? 'pass' : 'fail');
+            scope.assert.equal(authorityFixture.runtime.runState.artifacts().length, matching ? 0 : 1);
 
-            await assertAuthority(scope, matching);
             return scope.assert.collect();
         }
     }),

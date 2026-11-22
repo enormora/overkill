@@ -1,10 +1,10 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 
 import { createReportingContext } from '../engine/reporting-context.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { createBriefReporter } from './brief-reporter.ts';
 
-export const testNode: TestNode = suite('witness reporting', [
+export const testNode = suite('witness reporting', [
     test('brief reporter prints replay commands for complete witness artifacts', async function (scope: TestScope) {
         const reporter = createBriefReporter()(createReportingContext({ projectRoot: null }));
         scope.require.notNull(reporter.onFinish);

@@ -1,10 +1,10 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { workerOutput } from '../test-support/worker-output.ts';
 
-export const testNode: TestNode = suite('worker output capture', [
+export const testNode = suite('worker output capture', [
     test('forwards stream bytes and monotonic timestamps to the worker port', function (scope) {
-        const fixture = workerOutput(scope);
+        const fixture = workerOutput(scope.cleanup);
         const capture = fixture.capture.captureOutput(fixture.task, fixture.clock);
         fixture.streams.stdout.write('out');
         fixture.clock.advanceByMilliseconds(1);
@@ -20,7 +20,7 @@ export const testNode: TestNode = suite('worker output capture', [
         return scope.assert.collect();
     }),
     test('restores the original stream destinations', function (scope) {
-        const fixture = workerOutput(scope);
+        const fixture = workerOutput(scope.cleanup);
         const capture = fixture.capture.captureOutput(fixture.task, fixture.clock);
         fixture.streams.stdout.write('captured');
         capture.restore();
@@ -34,7 +34,7 @@ export const testNode: TestNode = suite('worker output capture', [
         return scope.assert.collect();
     }),
     test('invokes callbacks for both supported write signatures', function (scope) {
-        const fixture = workerOutput(scope);
+        const fixture = workerOutput(scope.cleanup);
         const capture = fixture.capture.captureOutput(fixture.task, fixture.clock);
         const completed: (Error | null | undefined)[] = [];
         fixture.streams.stdout.write('first', function (error) {
@@ -48,7 +48,7 @@ export const testNode: TestNode = suite('worker output capture', [
         return scope.assert.collect();
     }),
     test('suppresses output while acknowledging writes and restores it afterwards', function (scope) {
-        const fixture = workerOutput(scope);
+        const fixture = workerOutput(scope.cleanup);
         const capture = fixture.capture.suppressOutput();
         const completed: (Error | null | undefined)[] = [];
         fixture.streams.stdout.write('first', function (error) {
@@ -67,7 +67,7 @@ export const testNode: TestNode = suite('worker output capture', [
         return scope.assert.collect();
     }),
     test('restores an enclosing capture after nested suppression', function (scope) {
-        const fixture = workerOutput(scope);
+        const fixture = workerOutput(scope.cleanup);
         const outer = fixture.capture.captureOutput(fixture.task, fixture.clock);
         const inner = fixture.capture.suppressOutput();
         fixture.streams.stdout.write('suppressed');

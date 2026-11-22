@@ -1,12 +1,12 @@
-import { randomBytes } from 'node:crypto';
-import { promisify } from 'node:util';
-import { type TestNode, doubleUsage, rule, suite, test, testDouble, type TestScope } from '@overkill-dev/test';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import { doubleUsage, rule, suite, test, testDouble } from '@overkill-dev/test';
 
 import { withExecutionObservation } from '../engine/execution-observation.ts';
 import { fakeWorkerPoolRuntimeDependencies } from '../test-support/worker-pool-runtime-fixtures.ts';
 import {
     type RecordSessionSnapshot,
     recordFixture,
+    drawEntropy,
     recordFixtureWithPersistenceProbes,
     recordUnresolvedSeed,
     recordId,
@@ -20,44 +20,67 @@ import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { createRuntimeCapabilityPolicy } from './capability-policy.ts';
 
 const recordingEnvironment = {};
-const drawEntropy = promisify(function requestEntropy(
-    size: number,
-    complete: (error: Error | null, bytes: Uint8Array) => void
-): void {
-    randomBytes(size, complete);
+
+const assertStartedRecord = defineCompositeAssertion({
+    name: 'started record',
+    assert(check, record: RecordSessionSnapshot | undefined, recordPath: string) {
+        if (record === undefined) {
+            return check.defined(record);
+        }
+        return check.group([
+            check.deepEqual({
+                facts: record.facts,
+                runtime: record.runtime,
+                seed: record.request.seed,
+                startedAt: record.startedAt,
+                version: record.versions.engine
+            }, {
+                facts: null,
+                runtime: null,
+                seed: { value: '42' },
+                startedAt: '1970-01-01T00:00:00.000Z',
+                version: null
+            }),
+            check.equal(recordPath, `/project/state/runs/${recordId}.json`)
+        ]);
+    }
 });
 
-function assertStartedRecord(scope: TestScope, record: RecordSessionSnapshot | undefined, recordPath: string): void {
-    scope.require.defined(record);
-    scope.assert.deepEqual({
-        facts: record.facts,
-        runtime: record.runtime,
-        seed: record.request.seed,
-        startedAt: record.startedAt,
-        version: record.versions.engine
-    }, { facts: null, runtime: null, seed: { value: '42' }, startedAt: '1970-01-01T00:00:00.000Z', version: null });
-    scope.assert.equal(recordPath, `/project/state/runs/${recordId}.json`);
-}
+const assertCompletedRecord = defineCompositeAssertion({
+    name: 'completed record',
+    assert(check, record: RecordSessionSnapshot | undefined, result: RunResult) {
+        if (record === undefined) {
+            return check.defined(record);
+        }
+        return check.group([
+            check.equal(record.status, 'completed'),
+            check.deepEqual<unknown, unknown>(record.facts, facts),
+            check.deepEqual<unknown, unknown>(record.execution, profile.execution),
+            check.deepEqual<unknown, unknown>(record.result, result)
+        ]);
+    }
+});
 
-function assertCompletedRecord(scope: TestScope, record: RecordSessionSnapshot | undefined, result: RunResult): void {
-    scope.require.defined(record);
-    scope.assert.equal(record.status, 'completed');
-    scope.assert.deepEqual<unknown, unknown>(record.facts, facts);
-    scope.assert.deepEqual<unknown, unknown>(record.execution, profile.execution);
-    scope.assert.deepEqual<unknown, unknown>(record.result, result);
-}
+const assertInterruptedRecord = defineCompositeAssertion({
+    name: 'interrupted record',
+    assert(check, record: RecordSessionSnapshot | undefined) {
+        if (record === undefined) {
+            return check.defined(record);
+        }
+        if (record.result === null) {
+            return check.defined(record.result);
+        }
+        return check.group([
+            check.equal(record.status, 'interrupted'),
+            check.deepEqual<unknown, unknown>(record.facts, facts),
+            check.equal(record.result.summary.passed, 3),
+            check.equal(record.result.runnerErrors.at(-1)?.message, 'Run interrupted before completion.'),
+            check.deepEqual<unknown, unknown>(record.result.runnerErrors[0]?.cause, { kind: 'bigint', value: '42' })
+        ]);
+    }
+});
 
-function assertInterruptedRecord(scope: TestScope, record: RecordSessionSnapshot | undefined): void {
-    scope.require.defined(record);
-    scope.require.defined(record.result);
-    scope.assert.equal(record.status, 'interrupted');
-    scope.assert.deepEqual<unknown, unknown>(record.facts, facts);
-    scope.assert.equal(record.result.summary.passed, 3);
-    scope.assert.equal(record.result.runnerErrors.at(-1)?.message, 'Run interrupted before completion.');
-    scope.assert.deepEqual<unknown, unknown>(record.result.runnerErrors[0]?.cause, { kind: 'bigint', value: '42' });
-}
-
-export const testNode: TestNode = suite('Run record session', [
+export const testNode = suite('Run record session', [
     test(
         'record persistence excludes runner entropy while retaining user randomness checks',
         async function (scope) {
@@ -113,7 +136,7 @@ export const testNode: TestNode = suite('Run record session', [
                 rawDataDirectory: `state/runs/${recordId}/coverage/raw`
             };
             await session.start(coverage);
-            assertStartedRecord(scope, writes[0], session.path);
+            scope.assert(assertStartedRecord, writes[0], session.path);
             await session.recordFacts(facts, null);
             const result = runResultFactory.build();
             await session.checkpointResult(result);
@@ -126,7 +149,7 @@ export const testNode: TestNode = suite('Run record session', [
                 ...result,
                 maintenanceDiagnostics: []
             });
-            assertCompletedRecord(scope, writes[3], result);
+            scope.assert(assertCompletedRecord, writes[3], result);
             return scope.assert.collect();
         }
     ),
@@ -185,7 +208,7 @@ export const testNode: TestNode = suite('Run record session', [
         });
         await session.checkpointResult(result);
         await session.interrupt(new Error('Reporter failed'));
-        assertInterruptedRecord(scope, writes[3]);
+        scope.assert(assertInterruptedRecord, writes[3]);
         return scope.assert.collect();
     }),
     test('early interruptions retain absent facts', async function (scope) {

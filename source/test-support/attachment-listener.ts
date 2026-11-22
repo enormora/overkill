@@ -35,7 +35,10 @@ type AttachmentListenerFixture = {
     readonly finished: readonly (string | null)[];
     readonly connect: () => AttachmentListenerSocket;
 };
-export function attachmentListener(scope: TestScope, scenario: AttachmentListenerScenario): AttachmentListenerFixture {
+export function attachmentListener(
+    cleanup: TestScope['cleanup'],
+    scenario: AttachmentListenerScenario
+): AttachmentListenerFixture {
     const events: string[] = [];
     const operations: AttachmentOperation[] = [];
     const finished: (string | null)[] = [];
@@ -46,7 +49,7 @@ export function attachmentListener(scope: TestScope, scenario: AttachmentListene
     let accept: (socket: Duplex) => void = function () {
         throw new Error('Attachment listener was not started.');
     };
-    scope.cleanup(async function () {
+    cleanup(async function () {
         for (const socket of sockets) {
             socket.destroy();
         }

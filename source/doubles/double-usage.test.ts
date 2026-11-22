@@ -1,4 +1,4 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 import { P } from 'ts-pattern';
 import { type EngineCaseBody, createTestEngine as createEngine } from '../test-support/create-test-engine.ts';
 
@@ -105,7 +105,7 @@ function failureSummaries(result: RunResult): readonly string[] | null {
     });
 }
 
-export const testNode: TestNode = suite('Double usage', [
+export const testNode = suite('Double usage', [
     test(
         'negated ordinary argument assertions reject matching calls and accept different calls',
         async function (scope) {

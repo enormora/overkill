@@ -1,4 +1,4 @@
-import { table, type TestNode, suite, test } from '@overkill-dev/test';
+import { table, suite, test } from '@overkill-dev/test';
 
 import { ConfigError } from '../run/config.entry-point.ts';
 import { RunResolutionError } from '../run/run.entry-point.ts';
@@ -6,7 +6,7 @@ import { mutationPolicyResolution } from '../../test-support/mutation-policy-res
 import { resolveMutationPolicyRequest } from './mutation-policy-resolver.ts';
 
 const sandbox = { originalRoot: '/project', root: '/sandbox', files: [], sharedRoots: [] };
-export const testNode: TestNode = suite('mutation policy resolution', [
+export const testNode = suite('mutation policy resolution', [
     test('freezes selected microtests against the loaded configuration', async function (scope) {
         const fixture = await mutationPolicyResolution('/project/overkill.config.js', null);
         const response = await resolveMutationPolicyRequest(fixture.request, fixture.runtime);

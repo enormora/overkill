@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import type { WorkerPoolAssignmentPolicy, WorkerLifecycle } from '../config/types.ts';
 import {
@@ -80,7 +80,7 @@ function assignedLanes(
     });
 }
 
-export const testNode: TestNode = suite('Worker pool lanes', [
+export const testNode = suite('Worker pool lanes', [
     test('partition mixed worker lifecycles', function (scope) {
         const units = [
             workUnit('reuse-1', 'reuse'),

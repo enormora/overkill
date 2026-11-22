@@ -1,4 +1,4 @@
-import { type TestNode, type TestScope, table, suite, test } from '@overkill-dev/test';
+import { table, suite, test } from '@overkill-dev/test';
 
 import { createDefaultWorkId, workIdentityKey } from '../engine/identity.ts';
 import { createBoundaryFailureArtifact, type BoundaryFailure } from '../engine/run-artifact.ts';
@@ -80,12 +80,16 @@ function nativeCompletion(failure: BoundaryFailure): RunResult {
     });
 }
 
-function bindNativeCatalog(scope: TestScope, runtime: SupervisedRunRuntime): void {
+function bindNativeCatalog(runtime: SupervisedRunRuntime): void {
     const plan = createCollectedPlan();
     const file = plan.files[0];
-    scope.require.defined(file);
+    if (file === undefined) {
+        throw new Error('Expected file to satisfy defined.');
+    }
     const testCase = file.cases[0];
-    scope.require.defined(testCase);
+    if (testCase === undefined) {
+        throw new Error('Expected testCase to satisfy defined.');
+    }
     runtime.collectedPlan.write({
         ...plan,
         files: [ {
@@ -101,7 +105,7 @@ function bindNativeCatalog(scope: TestScope, runtime: SupervisedRunRuntime): voi
     });
 }
 
-function activeNativeRuntime(scope: TestScope): SupervisedRunRuntime {
+function activeNativeRuntime(): SupervisedRunRuntime {
     const runtime = runningSupervisedRuntime();
     runtime.state.addActiveCase(
         workIdentityKey(work),
@@ -109,11 +113,11 @@ function activeNativeRuntime(scope: TestScope): SupervisedRunRuntime {
         0,
         { index: 0 }
     );
-    bindNativeCatalog(scope, runtime);
+    bindNativeCatalog(runtime);
     return runtime;
 }
 
-export const testNode: TestNode = suite('supervised native completion evidence', [
+export const testNode = suite('supervised native completion evidence', [
     table({
         title: 'retains completion evidence after active ownership clears',
         cases: failures,
@@ -121,7 +125,7 @@ export const testNode: TestNode = suite('supervised native completion evidence',
             return failure.kind;
         },
         test(scope) {
-            const runtime = activeNativeRuntime(scope);
+            const runtime = activeNativeRuntime();
             const result = nativeCompletion(scope.parameters);
             runtime.state.removeActiveCase(workIdentityKey(work));
             handleChildMessage({ kind: 'result', result }, runtime);

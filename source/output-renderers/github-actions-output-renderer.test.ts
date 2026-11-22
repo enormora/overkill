@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import type { OutputLineIntent, OutputRenderer } from '../engine/reporter-output.ts';
 import { createReportingContext } from '../engine/reporting-context.ts';
@@ -19,7 +19,7 @@ function createRenderer(): OutputRenderer {
     return createGithubActionsOutputRenderer()(createReportingContext({ projectRoot: null }));
 }
 
-export const testNode: TestNode = suite('GitHub Actions output renderer', [
+export const testNode = suite('GitHub Actions output renderer', [
     test(
         'renders located diagnostics as workflow commands',
         function (scope) {

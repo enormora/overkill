@@ -1,4 +1,4 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 
 import type { CollectorCompleteness } from '../engine/measurement-evidence.ts';
 import type { MetricCollector, MetricReadings } from './measurement-types.ts';
@@ -28,7 +28,7 @@ function collectorReturning(readings: MetricReadings, completeness: CollectorCom
         }
     };
 }
-export const testNode: TestNode = suite('collector result admission', [
+export const testNode = suite('collector result admission', [
     test('rejects a reading reused by another invocation', function (scope) {
         const collector = collectorReturning({ count: availableMetric(7, metric) }, { kind: 'complete' });
         const strategy = measurementStrategy([ collector ]);

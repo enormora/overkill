@@ -1,8 +1,8 @@
-import { type TestNode, table, suite, test } from '@overkill-dev/test';
+import { table, suite, test } from '@overkill-dev/test';
 
 import { historySystemAccess, historySystemScenario } from '../test-support/history-system-access.ts';
 
-export const testNode: TestNode = suite('history system access adaptation', [
+export const testNode = suite('history system access adaptation', [
     table({
         title: 'classifies history paths',
         cases: [ 'file', 'other', 'symbolic-link', 'missing' ] as const,

@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { createCaseId, createDefaultWorkId } from '../engine/identity.ts';
 import {
@@ -17,7 +17,7 @@ const identity: BaselineIdentity = {
     comparisonContext: {},
     work: createDefaultWorkId(createCaseId('output.test.ts', [], 'output', null))
 };
-export const testNode: TestNode = suite('baseline contracts', [
+export const testNode = suite('baseline contracts', [
     test('preserves expectations without calling proposal callbacks', function (scope) {
         for (const mode of [ 'none', 'bootstrap' ] as const) {
             scope.assert.equal(

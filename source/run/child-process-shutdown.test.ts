@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { createDeterministicClock } from '@enormora/clock';
 
@@ -80,7 +80,7 @@ function shutdownFixture(): ShutdownFixture {
         }
     };
 }
-export const testNode: TestNode = suite('bounded child shutdown', [
+export const testNode = suite('bounded child shutdown', [
     test('termination waiting stays bounded when the child never closes', function (scope) {
         const fixture = shutdownFixture();
         startChildShutdown(fixture.child.child);

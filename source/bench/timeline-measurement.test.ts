@@ -1,77 +1,59 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import { type TestScope, suite, test } from '@overkill-dev/test';
+import { captureTimeline, authoredEvents } from '../test-support/benchmark-timeline-fixture.ts';
 
-import { inlineAttachmentFixture, attachmentWork, type AttachmentFixture } from '../test-support/attachment-fixture.ts';
-import { defaultAttachmentLimits, type AttachmentLimits } from '../engine/runtime-attachment.ts';
-import { runWithAttachmentExecution } from '../run/resource-lifecycle-state.ts';
 import {
     wallClockMeasurement,
     cpuCalibration,
     moduleMeasurement,
-    type BenchmarkTimelineEvent
-} from '../packages/bench/bench.entry-point.ts';
-import { timelineMeasurement, measurementTimelinePolicy } from './timeline-measurement.ts';
+    timelineMeasurement,
+    rawMeasurement,
+    calibratedMeasurement
+} from '../packages/test/bench.entry-point.ts';
+
+import { measurementTimelinePolicy } from './timeline-measurement.ts';
 import { withBenchmarkTimeline } from './timeline-execution.ts';
 import { sampleTimeline, timelineContext } from './timeline-context.ts';
-import { rawMeasurement, calibratedMeasurement, resolveCalibratedMeasurement } from './calibrated-measurement.ts';
-import { benchmarkTimelineReportSchema } from './timeline-schema.ts';
 
-async function recordAuthoredEvents(scope: TestScope): Promise<void> {
-    timelineContext.getStore()?.invocation('measured', 1);
-    sampleTimeline.mark('<marker>');
-    scope.assert.equal(
-        sampleTimeline.span('value', function () {
-            return 7;
-        }),
-        7
-    );
-    const first = sampleTimeline.span('first', async function () {
-        return await Promise.resolve(1);
-    });
-    const second = sampleTimeline.span('second', async function () {
-        return await Promise.resolve(2);
-    });
-    scope.assert.deepEqual(await Promise.all([ first, second ]), [ 1, 2 ]);
-    scope.assert.throws(function () {
-        sampleTimeline.span('failure', function () {
-            throw new Error('authored failure');
-        });
-    }, { message: 'authored failure' });
-    await scope.assert.rejects(async function asynchronousFailure() {
-        return await sampleTimeline.span('async failure', async function () {
-            await Promise.resolve();
-            throw new Error('asynchronous authored failure');
-        });
-    }, { message: 'asynchronous authored failure' });
-    await timelineContext.getStore()?.retain();
-}
+import { resolveCalibratedMeasurement } from './calibrated-measurement.ts';
 
-async function captureTimeline(
-    limits: AttachmentLimits,
-    operation: () => Promise<void>
-): Promise<AttachmentFixture> {
-    const fixture = inlineAttachmentFixture(limits, [ attachmentWork ]);
-    await runWithAttachmentExecution(fixture.execution, async function ownedRun() {
-        await fixture.execution.runAttempt(attachmentWork, { index: 0 }, async function attempt() {
-            await withBenchmarkTimeline(
-                timelineMeasurement(wallClockMeasurement(), { maximumEvents: 4096 }),
-                operation
-            );
+const recordAuthoredEvents = defineCompositeAssertion({
+    name: 'record authored events',
+    async assert(check) {
+        timelineContext.getStore()?.invocation('measured', 1);
+        sampleTimeline.mark('<marker>');
+        const initialChecks = check.equal(
+            sampleTimeline.span('value', function () {
+                return 7;
+            }),
+            7
+        );
+        const first = sampleTimeline.span('first', async function () {
+            return await Promise.resolve(1);
         });
-    });
-    return fixture;
-}
-
-function authoredEvents(fixture: AttachmentFixture): readonly BenchmarkTimelineEvent[] {
-    const content = fixture.store.artifacts()[0]?.payload.content;
-    if (content?.kind !== 'json') {
-        throw new Error('Expected timeline evidence.');
+        const second = sampleTimeline.span('second', async function () {
+            return await Promise.resolve(2);
+        });
+        const intermediateChecks = check.group([
+            check.deepEqual(await Promise.all([ first, second ]), [ 1, 2 ]),
+            check.throws(function () {
+                sampleTimeline.span('failure', function () {
+                    throw new Error('authored failure');
+                });
+            }, { message: 'authored failure' }),
+            await check.rejects(async function asynchronousFailure() {
+                return await sampleTimeline.span('async failure', async function () {
+                    await Promise.resolve();
+                    throw new Error('asynchronous authored failure');
+                });
+            }, { message: 'asynchronous authored failure' })
+        ]);
+        await timelineContext.getStore()?.retain();
+        return check.group([ initialChecks, intermediateChecks ]);
     }
-    return benchmarkTimelineReportSchema.parse(content.value).events.filter(function authored(event) {
-        return event.source === 'authored';
-    });
-}
+});
 
-export const testNode: TestNode = suite('benchmark timelines', [
+export const testNode = suite('benchmark timelines', [
     test('keeps authored operations synchronous and inert without capture', function (scope) {
         sampleTimeline.mark('disabled');
         scope.assert.equal(
@@ -83,7 +65,9 @@ export const testNode: TestNode = suite('benchmark timelines', [
         return scope.assert.collect();
     }),
     test('retains authored failures, synchronous values, and overlapping spans', async function (scope) {
-        const fixture = await captureTimeline(defaultAttachmentLimits, recordAuthoredEvents.bind(null, scope));
+        const fixture = await captureTimeline({}, async function recordTimeline() {
+            await scope.assert(recordAuthoredEvents);
+        });
         scope.assert.partialDeepEqual(authoredEvents(fixture), [
             { name: '<marker>', phase: 'measured', sample: 1 },
             { name: 'value', outcome: 'complete' },
@@ -120,7 +104,6 @@ export const testNode: TestNode = suite('benchmark timelines', [
     }),
     test('reports event and attachment byte omissions without breaking execution', async function (scope: TestScope) {
         const fixture = await captureTimeline({
-            ...defaultAttachmentLimits,
             maxInlineBytes: 1,
             maxArtifactBytes: 1
         }, async function () {

@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import {
     attachmentCoordination,
@@ -7,7 +7,7 @@ import {
 } from '../test-support/attachment-coordination.ts';
 import { attachmentWork, attachmentPeerWork } from '../test-support/attachment-fixture.ts';
 
-export const testNode: TestNode = suite('run attachment coordination', [
+export const testNode = suite('run attachment coordination', [
     test('retains case evidence and filters it by attempt and work identity', async function (scope) {
         const { coordinator } = attachmentCoordination(null);
         const artifact = await captureCoordinatedAttachment(coordinator, attachmentWork, { index: 0 }, null);

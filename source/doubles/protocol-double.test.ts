@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { rule } from './double-rule.ts';
 import {
@@ -14,7 +14,7 @@ async function asyncIterableValues(source: AsyncIterable<string>): Promise<reado
     return await Array.fromAsync(source);
 }
 
-export const testNode: TestNode = suite('Protocol double', [
+export const testNode = suite('Protocol double', [
     test('testIterator.yields() creates a well-formed consumable iterator', function body(scope) {
         const values = testIterator.yields([ 'a', 'b' ], 'done');
 

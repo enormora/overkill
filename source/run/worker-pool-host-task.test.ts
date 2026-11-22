@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { defaultFailureArtifactPolicy } from '../packages/engine/engine.entry-point.ts';
 import { readWorkerPoolTaskWithoutPort } from './worker-pool-host-task.ts';
@@ -145,7 +145,7 @@ function collectTask(): WorkerPoolTask {
     };
 }
 
-export const testNode: TestNode = suite({
+export const testNode = suite({
     ...testCaseMetadata,
     title: 'Worker pool host task',
     children: [

@@ -1,4 +1,5 @@
-import { type TestNode, table, suite, test, type TestScope } from '@overkill-dev/test';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import { table, suite, test, type TestScope } from '@overkill-dev/test';
 
 import { executePropertyNode, propertyExecutionDefaults } from '../test-support/property-execution.ts';
 import type { RunResult } from '../packages/engine/engine.entry-point.ts';
@@ -6,18 +7,26 @@ import type { RunResult } from '../packages/engine/engine.entry-point.ts';
 import { property } from './property-authoring.ts';
 import { gen } from './generators.ts';
 
-function assertConfirmedRecipe(scope: TestScope, result: RunResult, phase: string): void {
-    const evidence = result.perTest[0]?.property?.invocations[0];
-    scope.require.defined(evidence);
-    scope.require.notNull(evidence.summary);
-    scope.assert.equal(result.summary.failed, 1);
-    scope.assert.equal(evidence.summary.accounting.phases.confirmation.executed, 1);
-    scope.assert.equal(evidence.original?.trial?.phase, phase);
-    scope.assert.equal(evidence.shrinkStatus, 'shrink-state-unavailable');
-    scope.assert.notNull(evidence.confirmedWitness);
-}
+const assertConfirmedRecipe = defineCompositeAssertion({
+    name: 'confirmed recipe',
+    assert(check, result: RunResult, phase: string) {
+        const evidence = result.perTest[0]?.property?.invocations[0];
+        if (evidence === undefined) {
+            return check.defined(evidence);
+        }
+        return check.group([
+            check.equal(result.summary.failed, 1),
+            check.partialDeepEqual(evidence, {
+                summary: { accounting: { phases: { confirmation: { executed: 1 } } } },
+                original: { trial: { phase } },
+                shrinkStatus: 'shrink-state-unavailable'
+            }),
+            check.notNull(evidence.confirmedWitness)
+        ]);
+    }
+});
 
-export const testNode: TestNode = suite('input recipe confirmation', [
+export const testNode = suite('input recipe confirmation', [
     table({
         title: 'confirms fresh inputs without shrink state',
         cases: [ 'examples', 'automatic-edges', 'exhaustive' ] as const,
@@ -57,7 +66,7 @@ export const testNode: TestNode = suite('input recipe confirmation', [
                 }
             );
             scope.assert.deepEqual(seen, phase === 'examples' ? [ 42, 42 ] : [ 0, 0 ]);
-            assertConfirmedRecipe(scope, result, phase);
+            scope.assert(assertConfirmedRecipe, result, phase);
             return scope.assert.collect();
         }
     }),

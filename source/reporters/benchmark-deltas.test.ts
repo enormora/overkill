@@ -1,18 +1,12 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
-import { benchmarkHtmlFixture } from '../test-support/benchmark-html-fixture.ts';
+import { benchmarkBudgetFixture } from '../test-support/benchmark-html-fixture.ts';
 import { createBenchmarkHtmlReport } from './benchmark-html-model.ts';
 import { renderBenchmarkHtml } from './benchmark-html-document.ts';
 import { difference, percentDifference } from './benchmark-deltas.ts';
 
-function budgetHtml(scope: TestScope): string {
-    const result = benchmarkHtmlFixture('budget deltas');
-    const measured = result.perTest[0];
-    scope.require.defined(measured);
-    const { benchmark } = measured;
-    scope.require.defined(benchmark);
-    const budget = benchmark.budgets[0];
-    scope.require.defined(budget);
+function budgetHtml(): string {
+    const { result, measured, benchmark, budget } = benchmarkBudgetFixture('budget deltas');
     return renderBenchmarkHtml(
         createBenchmarkHtmlReport({
             result: {
@@ -30,9 +24,9 @@ function budgetHtml(scope: TestScope): string {
         ''
     );
 }
-export const testNode: TestNode = suite('benchmark budget deltas', [
+export const testNode = suite('benchmark budget deltas', [
     test('renders both bound deltas beside the recorded decision', function (scope) {
-        const html = budgetHtml(scope);
+        const html = budgetHtml();
         scope.assert.includes(html, '<td>2</td><td>10</td><td>3</td><td>150</td><td>-5</td><td>-50</td>');
         scope.assert.includes(html, 'Delta from minimum %');
         scope.assert.includes(html, 'Delta from maximum %');

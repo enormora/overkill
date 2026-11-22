@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { defaultFailureArtifactPolicy } from '../packages/engine/engine.entry-point.ts';
 import { resolveRootTestAnnotations } from '../engine/test-data.ts';
@@ -32,7 +32,7 @@ function createFakeTerminal(columns: number): FakeTerminal {
     };
 }
 
-export const testNode: TestNode = suite('Dot reporter ordering', [
+export const testNode = suite('Dot reporter ordering', [
     test('dot reporter prints order and seed on run start', async function (scope) {
         const terminal = createFakeTerminal(80);
         const reporter = createDotReporter({

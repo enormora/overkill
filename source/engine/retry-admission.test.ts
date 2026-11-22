@@ -1,4 +1,4 @@
-import { table, type TestNode, suite } from '@overkill-dev/test';
+import { table, suite } from '@overkill-dev/test';
 
 import {
     defineReporter,
@@ -95,7 +95,7 @@ function failRetryStart(event: ReporterEvent): void {
     }
 }
 
-export const testNode: TestNode = suite('Retry admission', [
+export const testNode = suite('Retry admission', [
     table({
         title: 'rejects invalid total attempt limits',
         cases: [ 0, -1, 1.5, Number.NaN, Number.POSITIVE_INFINITY ],

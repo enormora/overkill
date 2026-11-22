@@ -1,10 +1,10 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { createReportingContext } from '../engine/reporting-context.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { createNullReporter } from './null-reporter.ts';
 
-export const testNode: TestNode = suite('Null reporter', [
+export const testNode = suite('Null reporter', [
     test('accepts a final result without producing output', async function (scope) {
         const reporter = createNullReporter()(createReportingContext({ projectRoot: null }));
 

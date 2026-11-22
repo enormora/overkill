@@ -1,4 +1,5 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import { suite, test } from '@overkill-dev/test';
 import type { ReporterEvent } from '../engine/reporter.ts';
 
 import {
@@ -39,75 +40,53 @@ function isCapturedOutputArtifact(artifact: RunArtifact): artifact is CapturedOu
     return artifact.payload.kind === 'captured-output';
 }
 
-function assertConcurrentArtifactScope(
-    scope: TestScope,
-    artifacts: ReturnType<SupervisedRunState['artifacts']>,
-    activeCases: readonly CaseId[]
-): void {
-    const capturedArtifacts = artifacts.filter(isCapturedOutputArtifact);
-
-    for (const artifact of capturedArtifacts) {
-        scope.assert.equal(artifact.payload.kind, 'captured-output');
-        scope.assert.equal(artifact.id.scope.kind, 'case');
-        if (artifact.id.scope.kind === 'case') {
-            scope.assert.equal(artifact.id.scope.confidence, 'concurrent-active');
-            scope.assert.deepEqual(artifact.id.scope.activeCases, activeCases);
+const assertCapturedOutputCap = defineCompositeAssertion({
+    name: 'captured output limits',
+    assert(check, artifacts: ReturnType<SupervisedRunState['artifacts']>) {
+        const capped = artifacts[0];
+        const overflow = artifacts[1];
+        if (capped?.payload.kind !== 'captured-output') {
+            return check.partialDeepEqual({ artifact: capped }, { artifact: { payload: { kind: 'captured-output' } } });
         }
-        scope.assert.equal(artifact.payload.text, 'shared output');
+        if (overflow?.payload.kind !== 'captured-output') {
+            return check.partialDeepEqual({ artifact: overflow }, {
+                artifact: { payload: { kind: 'captured-output' } }
+            });
+        }
+        return check.group([
+            check.equal(capped.payload.byteLength, capturedOutputLimitBytes),
+            check.equal(overflow.payload.byteLength, 0),
+            check.equal(overflow.payload.stream, 'stderr'),
+            check.true(overflow.payload.truncated),
+            check.equal(artifacts.length, 2)
+        ]);
     }
-}
+});
 
-function capturedOutputArtifact(
-    scope: TestScope,
-    artifacts: ReturnType<SupervisedRunState['artifacts']>,
-    index: number
-): CapturedOutputArtifact | null {
-    const artifact = artifacts[index];
-
-    scope.require.defined(artifact);
-    scope.assert.equal(artifact.payload.kind, 'captured-output');
-
-    return isCapturedOutputArtifact(artifact) ? artifact : null;
-}
-
-function assertCapturedOutputCap(
-    scope: TestScope,
-    artifacts: ReturnType<SupervisedRunState['artifacts']>
-): void {
-    const capped = capturedOutputArtifact(scope, artifacts, 0);
-    const overflow = capturedOutputArtifact(scope, artifacts, 1);
-
-    if (capped === null || overflow === null) {
-        return;
+const assertRunCapturedOutput = defineCompositeAssertion({
+    name: 'run captured output',
+    assert(check, state: SupervisedRunState, testCase: CaseId) {
+        const artifact = state.artifacts()[0];
+        if (artifact === undefined) {
+            return check.defined(artifact);
+        }
+        if (!isCapturedOutputArtifact(artifact)) {
+            return check.equal(artifact.payload.kind, 'captured-output');
+        }
+        return check.group([
+            check.equal(artifact.id.scope.kind, 'run'),
+            check.deepEqual(artifact.id.runtimes, []),
+            check.equal(artifact.id.workload, null),
+            check.equal(artifact.payload.text, 'setup output'),
+            check.deepEqual(
+                state.caseArtifacts({ familyVariant: null, case: testCase, runtimes: [], workload: null }, {
+                    index: 0
+                }),
+                []
+            )
+        ]);
     }
-
-    scope.assert.equal(capped.payload.byteLength, capturedOutputLimitBytes);
-    scope.assert.equal(overflow.payload.byteLength, 0);
-    scope.assert.equal(overflow.payload.stream, 'stderr');
-    scope.assert.equal(overflow.payload.truncated, true);
-    scope.assert.equal(artifacts.length, 2);
-}
-
-function assertRunCapturedOutput(
-    scope: TestScope,
-    state: SupervisedRunState,
-    testCase: CaseId
-): void {
-    const artifact = capturedOutputArtifact(scope, state.artifacts(), 0);
-
-    if (artifact === null) {
-        return;
-    }
-
-    scope.assert.equal(artifact.id.scope.kind, 'run');
-    scope.assert.deepEqual(artifact.id.runtimes, []);
-    scope.assert.equal(artifact.id.workload, null);
-    scope.assert.equal(artifact.payload.text, 'setup output');
-    scope.assert.deepEqual(
-        state.caseArtifacts({ familyVariant: null, case: testCase, runtimes: [], workload: null }, { index: 0 }),
-        []
-    );
-}
+});
 
 function propertyCheckpoint(): PropertyCaseEvidence {
     const observation: PropertyFailureObservation = {
@@ -129,24 +108,31 @@ function propertyCheckpoint(): PropertyCaseEvidence {
     };
 }
 
-function assertInterruptedProperty(
-    scope: TestScope,
-    results: ReturnType<SupervisedRunState['perTestResults']>,
-    property: PropertyCaseEvidence
-): void {
-    const result = results[0];
-    scope.require.defined(result);
-    scope.require.defined(result.property);
-    const invocation = result.property.invocations[0];
-    scope.require.defined(invocation);
-    scope.assert.equal(result.verdict, 'crashed');
-    scope.assert.equal(invocation.shrinkStatus, 'interrupted');
-    scope.assert.equal(
-        JSON.stringify(invocation.retained),
-        JSON.stringify(property.invocations[0]?.retained)
-    );
-    scope.assert.equal(JSON.stringify(result.attempts[0].property), JSON.stringify(result.property));
-}
+const assertInterruptedProperty = defineCompositeAssertion({
+    name: 'interrupted property',
+    assert(check, results: ReturnType<SupervisedRunState['perTestResults']>, property: PropertyCaseEvidence) {
+        const result = results[0];
+        if (result === undefined) {
+            return check.defined(result);
+        }
+        if (result.property === null) {
+            return check.defined(result.property);
+        }
+        const invocation = result.property.invocations[0];
+        if (invocation === undefined) {
+            return check.defined(invocation);
+        }
+        return check.group([
+            check.equal(result.verdict, 'crashed'),
+            check.equal(invocation.shrinkStatus, 'interrupted'),
+            check.equal(
+                JSON.stringify(invocation.retained),
+                JSON.stringify(property.invocations[0]?.retained)
+            ),
+            check.equal(JSON.stringify(result.attempts[0].property), JSON.stringify(result.property))
+        ]);
+    }
+});
 
 type CompletionFixture = {
     readonly state: SupervisedRunState;
@@ -185,7 +171,7 @@ function completionFixture(): CompletionFixture {
     return { state, key, selected, start, end };
 }
 
-function variantFixture(scope: TestScope): VariantFixture {
+function variantFixture(): VariantFixture {
     const fixture = completionFixture();
     const result = runResultFactory
         .build({
@@ -196,11 +182,51 @@ function variantFixture(scope: TestScope): VariantFixture {
             } ]
         })
         .perTest[0];
-    scope.require.defined(result);
+    if (result === undefined) {
+        throw new Error('Expected result to satisfy defined.');
+    }
     return { ...fixture, result, workId: result.workId };
 }
 
-export const testNode: TestNode = suite('Supervised run state', [
+const concurrentOutputEvidence = defineCompositeAssertion({
+    name: 'captured output retains every concurrent case owner',
+    assert(check, artifacts: readonly RunArtifact[], activeCases: readonly CaseId[]) {
+        const captured = artifacts.filter(isCapturedOutputArtifact);
+        return check.group([
+            check.equal(artifacts.length, 2),
+            check.equal(captured.length, 2),
+            ...captured.map(function caseOwnership(artifact) {
+                const owner = artifact.id.scope;
+                if (owner.kind !== 'case') {
+                    return check.equal(owner.kind, 'case');
+                }
+                return check.group([
+                    check.equal(artifact.payload.kind, 'captured-output'),
+                    check.equal(owner.confidence, 'concurrent-active'),
+                    check.deepEqual(owner.activeCases, activeCases),
+                    check.equal(artifact.payload.text, 'shared output')
+                ]);
+            })
+        ]);
+    }
+});
+const runtimeOutputEvidence = defineCompositeAssertion({
+    name: 'captured output retains runtime scenario identity',
+    assert(check, artifact: RunArtifact | undefined, runtime: RunArtifact['id']['runtimes'][number]) {
+        if (artifact === undefined) {
+            return check.defined(artifact);
+        }
+        if (!isCapturedOutputArtifact(artifact)) {
+            return check.equal(artifact.payload.kind, 'captured-output');
+        }
+        return check.group([
+            check.deepEqual(artifact.id.runtimes, [ runtime ]),
+            check.equal(artifact.id.workload, null)
+        ]);
+    }
+});
+
+export const testNode = suite('Supervised run state', [
     test('rejects stale and duplicate completion without changing accepted history', function (scope) {
         const { state, selected, start, end } = completionFixture();
         applyEvent(start, state, selected, 0);
@@ -236,7 +262,7 @@ export const testNode: TestNode = suite('Supervised run state', [
         return scope.assert.collect();
     }),
     test('rejects variant substitution and contradictory final snapshots', function (scope) {
-        const { state, result, key, selected, start, workId } = variantFixture(scope);
+        const { state, result, key, selected, start, workId } = variantFixture();
         scope.assert.throws(function () {
             state.assertEvent({
                 ...start,
@@ -257,7 +283,7 @@ export const testNode: TestNode = suite('Supervised run state', [
         return scope.assert.collect();
     }),
     test('reconciles retained body outcomes after a policy failure', function (scope) {
-        const fixture = variantFixture(scope);
+        const fixture = variantFixture();
         const final: PerTestResult = {
             ...fixture.result,
             outcome: null,
@@ -290,14 +316,12 @@ export const testNode: TestNode = suite('Supervised run state', [
         scope.assert.equal(state.captureMode('live'), 'live');
         return scope.assert.collect();
     }),
-    test('preserves authored live capture while terminal output drains', function (scope: TestScope) {
-        const state = createSupervisedRunState('first-failure-and-final');
-        const result = runResultFactory.build({ perTest: [ { id: caseId('live') } ] }).perTest[0];
-        scope.require.defined(result);
-        const key = workIdentityKey(result.workId);
+    test('preserves authored live capture after a case finishes', function (scope) {
+        const { state, key, result } = variantFixture();
         state.addActiveCase(key, { capture: 'live', id: result.id, workId: result.workId }, 0, { index: 0 });
         state.recordTestAttemptResult(key, result, 'final', 1);
         state.removeActiveCase(key);
+        scope.assert.equal(state.captureMode('buffered'), 'live');
         state.beginOutputDraining();
         scope.assert.equal(state.captureMode('buffered'), 'live');
         return scope.assert.collect();
@@ -324,7 +348,7 @@ export const testNode: TestNode = suite('Supervised run state', [
             1
         );
         state.recordTerminalActiveCases('crashed', 10);
-        assertInterruptedProperty(scope, state.perTestResults(), property);
+        scope.assert(assertInterruptedProperty, state.perTestResults(), property);
         return scope.assert.collect();
     }),
     test('ignores property progress received after case termination', function (scope) {
@@ -336,7 +360,7 @@ export const testNode: TestNode = suite('Supervised run state', [
         state.recordPropertyProgress(key, 0, property);
         state.recordTerminalActiveCases('crashed', 10);
         state.recordPropertyProgress(key, 0, { invocations: [] });
-        assertInterruptedProperty(scope, state.perTestResults(), property);
+        scope.assert(assertInterruptedProperty, state.perTestResults(), property);
         return scope.assert.collect();
     }),
     test('retains property evidence on interruption and ignores stale attempts', function (scope) {
@@ -348,7 +372,7 @@ export const testNode: TestNode = suite('Supervised run state', [
         state.recordPropertyProgress(key, 0, property);
         state.recordPropertyProgress(key, 1, { invocations: [] });
         state.recordTerminalActiveCases('crashed', 10);
-        assertInterruptedProperty(scope, state.perTestResults(), property);
+        scope.assert(assertInterruptedProperty, state.perTestResults(), property);
         return scope.assert.collect();
     }),
     test(
@@ -362,10 +386,7 @@ export const testNode: TestNode = suite('Supervised run state', [
             addActiveCase(state, secondCase);
             state.recordCapturedOutput('stdout', Buffer.from('shared output'), 1);
 
-            const artifacts = state.artifacts();
-
-            scope.assert.equal(artifacts.length, 2);
-            assertConcurrentArtifactScope(scope, artifacts, [ firstCase, secondCase ]);
+            scope.assert(concurrentOutputEvidence, state.artifacts(), [ firstCase, secondCase ]);
 
             return scope.assert.collect();
         }
@@ -392,12 +413,7 @@ export const testNode: TestNode = suite('Supervised run state', [
         );
         state.recordCapturedOutput('stdout', Buffer.from('scenario output'), 1);
 
-        const artifact = capturedOutputArtifact(scope, state.artifacts(), 0);
-
-        if (artifact !== null) {
-            scope.assert.deepEqual(artifact.id.runtimes, [ runtime ]);
-            scope.assert.equal(artifact.id.workload, null);
-        }
+        scope.assert(runtimeOutputEvidence, state.artifacts()[0], runtime);
 
         return scope.assert.collect();
     }),
@@ -407,7 +423,7 @@ export const testNode: TestNode = suite('Supervised run state', [
 
         state.recordCapturedOutput('stderr', Buffer.from('setup output'), 1);
 
-        assertRunCapturedOutput(scope, state, testCase);
+        scope.assert(assertRunCapturedOutput, state, testCase);
 
         return scope.assert.collect();
     }),
@@ -423,7 +439,7 @@ export const testNode: TestNode = suite('Supervised run state', [
             state.recordCapturedOutput('stderr', Buffer.alloc(0), 4);
         }
 
-        assertCapturedOutputCap(scope, state.artifacts());
+        scope.assert(assertCapturedOutputCap, state.artifacts());
 
         return scope.assert.collect();
     })

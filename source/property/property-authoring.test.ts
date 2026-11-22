@@ -1,4 +1,4 @@
-import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
+import { suite, test, type TestScope } from '@overkill-dev/test';
 import {
     suite as subjectSuite,
     test as subjectTest,
@@ -33,7 +33,7 @@ function unexpectedPropertyBody(): never {
     throw new Error('Property body must not execute.');
 }
 
-export const testNode: TestNode = suite('property authoring', [
+export const testNode = suite('property authoring', [
     test('configured wrappers reject family metadata without a declaration', function (scope) {
         const body = attachTestBodyFamily(function malformedPropertyBody() {
             throw new Error('Malformed property body must not execute.');

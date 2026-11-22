@@ -17,8 +17,9 @@ export function sourceErrorObserverProbe(testModuleUrl: string): string {
                 title: 'source error observer probe', annotations: {}, controls: {},
                 children: [globalErrorObserverTestNode]
             }))));
+            const failures = result.perTest.filter(test => test.verdict !== 'pass');
+            assert.equal(result.summary.failed, 0, JSON.stringify(failures));
             assert.equal(result.summary.passed, 13);
-            assert.equal(result.summary.failed, 0);
             assert.deepEqual(result.runnerErrors, []);
         } finally {
             observer.stop();

@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { defaultPropertyPolicy } from '../engine/property-policy.ts';
 import { capturePropertyInput, decodePropertyInput } from './property-graph.ts';
@@ -22,7 +22,7 @@ function numericCodec(): PropertyInputCodec<number> {
     return { name: 'number', version: 2, previousDecoders: [], encode: Number, decode: Number };
 }
 
-export const testNode: TestNode = suite('property codec validation', [
+export const testNode = suite('property codec validation', [
     test('rejects hidden native state after prototype replacement', function (scope) {
         for (
             const value of [

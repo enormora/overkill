@@ -1,6 +1,8 @@
+import { readFile } from 'node:fs/promises';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import type { TestScope } from '@overkill-dev/test';
 
-import type { RunResult, WorkId } from '../packages/engine/engine.entry-point.ts';
+import { parseWitnessFile, type RunResult, type WorkId } from '../packages/engine/engine.entry-point.ts';
 import type { AttachmentLimits } from '../engine/runtime-attachment.ts';
 import { createResourceLifecycleRuntimePolicy } from '../run/resource-lifecycle.ts';
 import { runWithAttachmentExecution } from '../run/resource-lifecycle-state.ts';
@@ -41,13 +43,13 @@ async function executeWithEvidence(
 }
 
 export async function executeEvidence(
-    scope: TestScope,
+    cleanup: TestScope['cleanup'],
     body: EngineCaseBody,
     attempts: number,
     limits: AttachmentLimits
 ): Promise<EvidenceRun> {
     return await executeWithEvidence(body, attempts, async function (work) {
-        return await attachmentFixtureForWork(scope, limits, work);
+        return await attachmentFixtureForWork(cleanup, limits, work);
     });
 }
 
@@ -60,3 +62,67 @@ export async function executeInlineEvidence(
         return inlineAttachmentFixture(limits, work);
     });
 }
+
+export const assertPreparedFile = defineCompositeAssertion({
+    name: 'prepared file',
+    async assert(check, fixture: AttachmentFixture) {
+        const artifact = fixture.store.selectedArtifacts()[0];
+        if (artifact?.payload.content.kind !== 'file') {
+            throw new TypeError('Expected retained evidence file.');
+        }
+        return check.group([ check.equal(await readFile(artifact.payload.content.path, 'utf8'), 'before cleanup') ]);
+    }
+});
+
+export const assertNativeEvidence = defineCompositeAssertion({
+    name: 'native evidence',
+    async assert(check, fixture: AttachmentFixture) {
+        const witness = fixture.store.selectedArtifacts().find(function nativeWitness(artifact) {
+            return artifact.id.subtype === 'witness';
+        });
+        if (witness?.payload.content.kind !== 'file') {
+            throw new Error('Expected native witness file.');
+        }
+        const value = parseWitnessFile(JSON.parse(await readFile(witness.payload.content.path, 'utf8')));
+        return check.group([ check.partialDeepEqual(value, {
+            version: 1,
+            seed: null,
+            simulation: { name: 'api' }
+        }) ]);
+    }
+});
+
+export const assertCapturedText = defineCompositeAssertion({
+    name: 'captured text',
+    assert(check, fixture: AttachmentFixture, name: string, expected: string) {
+        const artifact = fixture.store.selectedArtifacts().find(function matchingOutput(entry) {
+            return entry.payload.name === name;
+        });
+        if (artifact?.payload.content.kind !== 'text') {
+            throw new Error('Expected retained service output.');
+        }
+        return check.group([ check.equal(artifact.payload.content.text, expected) ]);
+    }
+});
+
+export const assertSeededWitness = defineCompositeAssertion({
+    name: 'retains the seed and request fault configuration',
+    async assert(check, fixture: EvidenceRun) {
+        const witness = fixture.store.selectedArtifacts().find(function (artifact) {
+            return artifact.id.subtype === 'witness';
+        });
+        if (witness?.payload.content.kind !== 'file') {
+            throw new Error('Expected seeded witness file.');
+        }
+        const value = parseWitnessFile(JSON.parse(await readFile(witness.payload.content.path, 'utf8')));
+        return check.group([
+            check.partialDeepEqual(value, {
+                seed: '9007199254740993',
+                scenario: 'fault',
+                runtimeSnapshot: { phase: 'request' },
+                faultConfiguration: { delay: 5 }
+            }),
+            check.deepEqual(fixture.result.runnerErrors, [])
+        ]);
+    }
+});

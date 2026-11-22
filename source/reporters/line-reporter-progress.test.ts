@@ -1,4 +1,4 @@
-import { type TestNode, suite, test, doubleUsage, testDouble, type TestDouble } from '@overkill-dev/test';
+import { suite, test, doubleUsage, testDouble, type TestDouble } from '@overkill-dev/test';
 
 import figures from 'figures';
 import colors from 'yoctocolors';
@@ -103,7 +103,7 @@ async function reportLongCase(reporter: RealTimeReporter, completion: 'final' | 
     });
 }
 
-export const testNode: TestNode = suite('Line reporter progress', [
+export const testNode = suite('Line reporter progress', [
     test('aligns durations to the right when a test fits in the terminal', async function (scope) {
         const log = testDouble<LogFunction>();
         const reporter = lineReporterWithLog(log, true, true);

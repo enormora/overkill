@@ -1,4 +1,4 @@
-import { type TestNode, table, suite } from '@overkill-dev/test';
+import { table, suite } from '@overkill-dev/test';
 
 import { parseWitnessFile, type SimulationWitnessFile } from '../packages/engine/engine.entry-point.ts';
 import { propertyCorpusEntry } from '../test-support/property-corpus.ts';
@@ -16,7 +16,7 @@ const simulation: SimulationWitnessFile = {
     faultConfiguration: null
 };
 
-export const testNode: TestNode = suite('witness file compatibility', [
+export const testNode = suite('witness file compatibility', [
     table({
         title: 'preserves version one witness',
         cases: [

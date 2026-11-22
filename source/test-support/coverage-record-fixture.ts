@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { z } from 'zod';
 import type { RunFacts, NormalizedConfig } from '../packages/run/run.entry-point.ts';
@@ -148,4 +148,24 @@ export async function withMemoryCoverageRecordFixture<Value>(
     work: (fixture: CoverageRecordFixture) => Promise<Value>
 ): Promise<Value> {
     return await work(await createCoverageRecordFixture(config, failedWrites, 'target/coverage-record-unit'));
+}
+
+export async function writeNativeCoverage(directory: string): Promise<void> {
+    const url = new URL('../integration-tests/runtime/fixtures/coverage-source.ts', import.meta.url);
+    const source = await readFile(url, 'utf8');
+    await writeFile(
+        path.join(directory, 'coverage-test.json'),
+        JSON.stringify({
+            result: [ {
+                functions: [ {
+                    functionName: '',
+                    isBlockCoverage: true,
+                    ranges: [ { count: 0, endOffset: source.length, startOffset: 0 } ]
+                } ],
+                scriptId: '1',
+                url: url.href
+            } ],
+            timestamp: 0
+        })
+    );
 }

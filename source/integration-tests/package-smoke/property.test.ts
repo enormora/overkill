@@ -1,10 +1,13 @@
 import { execFile } from 'node:child_process';
-import { cp, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import path from 'node:path';
-import { type TestNode, suite, test, type TestScope } from '#tests';
+import { cp, mkdir, mkdtemp, writeFile } from 'node:fs/promises';
 
-import { createProgram, getPreEmitDiagnostics, ModuleKind, ScriptTarget } from 'typescript';
+import path from 'node:path';
+import { suite } from '@overkill-dev/test';
+import { createProgram, ModuleKind, ScriptTarget } from 'typescript';
+import { packageConsumer } from './support/package-consumer.ts';
+
+import { consumerEnvironment } from './support/consumer-environment.ts';
+import { consumerCompilerTypes, consumerTypeDiagnostics } from './support/consumer-types.ts';
 
 import {
     microtestLoadBoundaryScript,
@@ -22,8 +25,8 @@ async function runNode(argumentsList: readonly string[], cwd: string): Promise<S
     return await new Promise(function executeScript(resolve, reject) {
         execFile(
             process.execPath,
-            Array.from(argumentsList),
-            { cwd, encoding: 'utf8' },
+            [ '--disable-warning=PERM0004', ...Array.from(argumentsList) ],
+            { env: consumerEnvironment(cwd), cwd, encoding: 'utf8' },
             function (error, stdout, stderr) {
                 if (error === null) {
                     resolve({ code: 0, stdout, stderr });
@@ -37,24 +40,28 @@ async function runNode(argumentsList: readonly string[], cwd: string): Promise<S
     });
 }
 
-async function standardConsumer(scope: TestScope): Promise<string> {
-    const directory = await mkdtemp(path.join(tmpdir(), 'overkill-property-consumer-'));
-    scope.cleanup(async function () {
-        await rm(directory, { recursive: true, force: true });
-    });
-    const packages = path.join(directory, 'node_modules/@overkill-dev');
-    await mkdir(packages, { recursive: true });
-    await cp(path.join(import.meta.dirname, 'node_modules/@overkill-dev/test'), path.join(packages, 'test'), {
-        recursive: true
-    });
-    return directory;
-}
+const consumerFacade = packageConsumer('packaged property authoring', function consumerFixture(consumerDirectory) {
+    async function standardConsumer(): Promise<string> {
+        const directory = await mkdtemp(path.join(consumerDirectory, 'overkill-property-consumer-'));
 
-export const testNode: TestNode = suite('packaged property authoring', [
+        const packages = path.join(directory, 'node_modules/@overkill-dev');
+        await mkdir(packages, { recursive: true });
+        await cp(path.join(consumerDirectory, 'node_modules/@overkill-dev/test'), path.join(packages, 'test'), {
+            recursive: true
+        });
+        return directory;
+    }
+    return { consumerDirectory, standardConsumer };
+});
+const { test } = consumerFacade;
+
+export const testNode = suite('packaged property authoring', [
     test('packaged witness replay preserves lifecycle and input graphs', async function (scope) {
+        const { consumerDirectory } = scope.resources.consumer;
+
         const result = await runNode(
             [ '--input-type=module', '--eval', propertyReplayScript ],
-            import.meta.dirname
+            consumerDirectory
         );
         scope.assert.equal(result.code, 0);
         scope.assert.equal(result.stderr, '');
@@ -62,9 +69,11 @@ export const testNode: TestNode = suite('packaged property authoring', [
         return scope.assert.collect();
     }),
     test('runner codec boundary preserves historical decoding in published packages', async function (scope) {
+        const { consumerDirectory } = scope.resources.consumer;
+
         const result = await runNode(
             [ '--input-type=module', '--eval', propertyCodecScript ],
-            import.meta.dirname
+            consumerDirectory
         );
         scope.assert.equal(result.code, 0);
         scope.assert.equal(result.stderr, '');
@@ -72,12 +81,12 @@ export const testNode: TestNode = suite('packaged property authoring', [
         return scope.assert.collect();
     }),
     test('packaged leaf and standard declarations share nominal generator types', async function (scope) {
-        const sourcePath = path.join(import.meta.dirname, 'property-consumer.mts');
-        scope.cleanup(async function () {
-            await rm(sourcePath, { force: true });
-        });
+        const { consumerDirectory } = scope.resources.consumer;
+
+        const sourcePath = path.join(consumerDirectory, 'property-consumer.mts');
         await writeFile(sourcePath, propertyTypeScript);
         const program = createProgram([ sourcePath ], {
+            ...consumerCompilerTypes,
             module: ModuleKind.NodeNext,
             target: ScriptTarget.ESNext,
             strict: true,
@@ -85,17 +94,17 @@ export const testNode: TestNode = suite('packaged property authoring', [
             types: [ 'node' ]
         });
         scope.assert.deepEqual(
-            getPreEmitDiagnostics(program).map(function diagnosticText(diagnostic) {
-                return diagnostic.messageText;
-            }),
+            await consumerTypeDiagnostics(program, consumerDirectory),
             []
         );
         return scope.assert.collect();
     }),
     test('leaf and standard package copies share property ownership and declarations', async function (scope) {
+        const { consumerDirectory } = scope.resources.consumer;
+
         const result = await runNode(
             [ '--input-type=module', '--eval', propertyAuthoringScript ],
-            import.meta.dirname
+            consumerDirectory
         );
         scope.assert.equal(result.code, 0);
         scope.assert.equal(result.stderr, '');
@@ -105,7 +114,9 @@ export const testNode: TestNode = suite('packaged property authoring', [
     test(
         'standard-only installation exposes property authoring without loading it at the root',
         async function (scope) {
-            const directory = await standardConsumer(scope);
+            const { standardConsumer } = scope.resources.consumer;
+
+            const directory = await standardConsumer();
             for (const script of [ propertySubpathScript, propertyLoadBoundaryScript ]) {
                 const result = await runNode([ '--input-type=module', '--eval', script ], directory);
                 scope.assert.equal(result.code, 0);
@@ -115,7 +126,9 @@ export const testNode: TestNode = suite('packaged property authoring', [
         }
     ),
     test('ordinary microtest CLI startup does not load the installed property package', async function (scope) {
-        const directory = await standardConsumer(scope);
+        const { standardConsumer } = scope.resources.consumer;
+
+        const directory = await standardConsumer();
         await writeFile(path.join(directory, 'load-boundary.mjs'), microtestLoadBoundaryScript);
         await writeFile(
             path.join(directory, 'overkill.config.mjs'),

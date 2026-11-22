@@ -1,4 +1,5 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import type { ThrownMatcher } from '@overkill-dev/test/assert';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 
 import {
     createAsyncControlState,
@@ -9,6 +10,17 @@ import {
     type AsyncControlState
 } from './async-control.ts';
 
+type RejectionChecks = {
+    readonly rejects: (thunk: () => PromiseLike<unknown>, matcher: ThrownMatcher) => Promise<void>;
+};
+function rejectionAssertions(rejects: TestScope['assert']['rejects']): RejectionChecks {
+    return {
+        async rejects(thunk, matcher) {
+            await rejects<ThrownMatcher>(thunk, matcher);
+        }
+    };
+}
+
 async function settleRecords(state: AsyncControlState): Promise<void> {
     await Promise.all(
         state.inFlightRecords().map(async function (record) {
@@ -16,7 +28,7 @@ async function settleRecords(state: AsyncControlState): Promise<void> {
         })
     );
 }
-export const testNode: TestNode = suite('asynchronous task ownership', [
+export const testNode = suite('asynchronous task ownership', [
     test('runs registered cleanups once in reverse registration order', async function (scope) {
         const state = createAsyncControlState();
         const calls: number[] = [];
@@ -56,7 +68,7 @@ export const testNode: TestNode = suite('asynchronous task ownership', [
             });
         }, { message: 'scope.cleanup() cannot be called after test cleanup has started.' });
         scope.assert.throws(function () {
-            startInFlight(state, scope.assert, async function () {
+            startInFlight(state, rejectionAssertions(scope.assert.rejects), async function () {
                 return 42;
             });
         }, { message: 'scope.startInFlight() cannot be called after test cleanup has started.' });
@@ -65,7 +77,7 @@ export const testNode: TestNode = suite('asynchronous task ownership', [
     }),
     test('tracks a successful task until it is awaited', async function (scope) {
         const state = createAsyncControlState();
-        const task = startInFlight(state, scope.assert, async function () {
+        const task = startInFlight(state, rejectionAssertions(scope.assert.rejects), async function () {
             return 42;
         });
         scope.assert.equal(await task.wait(), 42);
@@ -76,7 +88,7 @@ export const testNode: TestNode = suite('asynchronous task ownership', [
     }),
     test('records assertions about task rejections as observation', async function (scope) {
         const state = createAsyncControlState();
-        const task = startInFlight(state, scope.assert, async function () {
+        const task = startInFlight(state, rejectionAssertions(scope.assert.rejects), async function () {
             throw new Error('Task failed.');
         });
         await task.rejects({ type: Error, message: 'Task failed.' });
@@ -87,7 +99,7 @@ export const testNode: TestNode = suite('asynchronous task ownership', [
     test('retains synchronous operation failures through the task promise', async function (scope) {
         const state = createAsyncControlState();
         const failure = new Error('Operation failed.');
-        const task = startInFlight(state, scope.assert, function () {
+        const task = startInFlight(state, rejectionAssertions(scope.assert.rejects), function () {
             throw failure;
         });
         await scope.assert.rejects(async function () {
@@ -99,7 +111,7 @@ export const testNode: TestNode = suite('asynchronous task ownership', [
     }),
     test('reports a settled task which was never observed', async function (scope) {
         const state = createAsyncControlState();
-        startInFlight(state, scope.assert, async function () {
+        startInFlight(state, rejectionAssertions(scope.assert.rejects), async function () {
             return 42;
         });
         await settleRecords(state);
@@ -113,7 +125,7 @@ export const testNode: TestNode = suite('asynchronous task ownership', [
     test('reports pending tasks and releases the retained ownership records', async function (scope) {
         const state = createAsyncControlState();
         const completion = Promise.withResolvers<number>();
-        const task = startInFlight(state, scope.assert, async function () {
+        const task = startInFlight(state, rejectionAssertions(scope.assert.rejects), async function () {
             return completion.promise;
         });
         scope.assert.partialDeepEqual<unknown, unknown>(validateInFlightTasks(state), [ {

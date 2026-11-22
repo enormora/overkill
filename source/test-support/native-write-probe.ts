@@ -15,8 +15,8 @@ type WriteListener = {
 
 const pendingWriteBytes = 16_777_216;
 
-function closeWriteListener(scope: TestScope, server: Server, sockets: ReadonlySet<Socket>): void {
-    scope.cleanup(async function closeWriteProbe() {
+function closeWriteListener(cleanup: TestScope['cleanup'], server: Server, sockets: ReadonlySet<Socket>): void {
+    cleanup(async function closeWriteProbe() {
         for (const socket of sockets) {
             socket.destroy();
         }
@@ -32,14 +32,14 @@ function closeWriteListener(scope: TestScope, server: Server, sockets: ReadonlyS
     });
 }
 
-async function listenForWriteProbe(scope: TestScope): Promise<WriteListener> {
+async function listenForWriteProbe(cleanup: TestScope['cleanup']): Promise<WriteListener> {
     const accepted = Promise.withResolvers<Socket>();
     const sockets = new Set<Socket>();
     const server = createServer(function accept(socket) {
         sockets.add(socket);
         accepted.resolve(socket);
     });
-    closeWriteListener(scope, server, sockets);
+    closeWriteListener(cleanup, server, sockets);
     await new Promise<void>(function listen(resolve, reject) {
         server.once('error', reject);
         server.listen(0, '127.0.0.1', resolve);
@@ -81,8 +81,8 @@ async function writeProbeBytes(socket: Socket): Promise<void> {
     });
 }
 
-export async function createNativeWriteProbe(scope: TestScope): Promise<NativeWriteProbe> {
-    const listener = await listenForWriteProbe(scope);
+export async function createNativeWriteProbe(cleanup: TestScope['cleanup']): Promise<NativeWriteProbe> {
+    const listener = await listenForWriteProbe(cleanup);
     const { socket, peer } = await connectWriteProbe(listener);
     peer.pause();
     return {

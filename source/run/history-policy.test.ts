@@ -1,10 +1,10 @@
-import { type TestNode, table, suite, test } from '@overkill-dev/test';
+import { table, suite, test } from '@overkill-dev/test';
 
 import { idleHistoryScenario } from '../test-support/history-access.ts';
 
 import { historyPolicy } from '../test-support/history-policy.ts';
 
-export const testNode: TestNode = suite('history operations and replay availability', [
+export const testNode = suite('history operations and replay availability', [
     test(
         'distinguishes complete, interrupted and unavailable replay records',
         async function (scope) {

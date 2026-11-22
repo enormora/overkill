@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import type { RunResult } from '../packages/engine/engine.entry-point.ts';
 
@@ -26,7 +26,7 @@ async function budgetedReconstruction(failing: boolean): Promise<RunResult> {
     );
 }
 
-export const testNode: TestNode = suite('property input reconstruction', [
+export const testNode = suite('property input reconstruction', [
     test('reports exhausted reconstruction work as inconclusive', async function (scope) {
         const result = await budgetedReconstruction(false);
         scope.assert.equal(result.summary.inconclusive, 1);

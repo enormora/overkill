@@ -1,4 +1,4 @@
-import { type TestNode, table, suite, test } from '@overkill-dev/test';
+import { table, suite, test } from '@overkill-dev/test';
 
 import { processProbeReportStorage, processProbeReport } from '../test-support/process-probe-report.ts';
 
@@ -8,7 +8,7 @@ const invalidReportMatchers = {
     oversized: { message: 'Node probe exceeded the final report limit.' }
 } as const;
 
-export const testNode: TestNode = suite('bounded process probe reports', [
+export const testNode = suite('bounded process probe reports', [
     test('combines partial reads and releases file and directory ownership', async function (scope) {
         const fixture = processProbeReportStorage('pass');
         const storage = await fixture.prepare();

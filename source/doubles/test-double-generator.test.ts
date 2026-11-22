@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { rule } from './double-rule.ts';
 import { testDouble } from './test-double.ts';
@@ -6,7 +6,7 @@ import { testDouble } from './test-double.ts';
 type LoadNumbers = (prefix: string) => Generator<string, string, number>;
 type LoadAsyncNumbers = (prefix: string) => AsyncGenerator<string, string, number>;
 
-export const testNode: TestNode = suite('Test double generator', [
+export const testNode = suite('Test double generator', [
     test('testDouble.yields() returns fresh tracked iterators', function (scope) {
         const loadNumbers = testDouble.yields<LoadNumbers>([ 'a', 'b' ], 'done');
         const first = loadNumbers('first');

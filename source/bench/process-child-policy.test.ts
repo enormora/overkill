@@ -1,10 +1,10 @@
-import { type TestNode, table, suite, test, testDouble } from '@overkill-dev/test';
+import { table, suite, test, testDouble } from '@overkill-dev/test';
 
 import { pipeProcess, terminalProcess, processLaunch, stoppedProcess } from '../test-support/process-child-runtime.ts';
 import { launchPipeProcess, launchTerminalProcess, sendProcessGroupSignal, stopProcessChild } from './process-child.ts';
 import { ProcessDeadlineError } from './process-deadline.ts';
 
-export const testNode: TestNode = suite('process transport ownership', [
+export const testNode = suite('process transport ownership', [
     test('captures separate pipe streams and waits for output closure', async function (scope) {
         const fixture = pipeProcess(null, 42);
         fixture.receive('output', 'warning');

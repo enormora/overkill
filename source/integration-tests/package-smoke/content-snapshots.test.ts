@@ -1,26 +1,13 @@
 import { execFile } from 'node:child_process';
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { type TestNode, test } from '#tests';
 
 import { uneval } from 'devalue';
 
 import { defaultRunRequest } from '../../test-support/run-command-factory.ts';
+import { packageConsumer } from './support/package-consumer.ts';
+import { consumerEnvironment } from './support/consumer-environment.ts';
 
-async function executeConsumer(file: string): Promise<string> {
-    return new Promise(function executeSnapshotConsumer(resolve, reject) {
-        execFile(process.execPath, [ file ], {
-            cwd: import.meta.dirname,
-            timeout: 180_000
-        }, function completed(error, stdout, stderr) {
-            if (error === null) {
-                resolve(stdout);
-            } else {
-                reject(new Error(stderr, { cause: error }));
-            }
-        });
-    });
-}
 const script = `
 import assert from 'node:assert/strict';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
@@ -57,13 +44,35 @@ try {
 }
 `;
 
-export const testNode: TestNode = test(
+const consumerFacade = packageConsumer(
+    'compares content snapshots across packaged execution boundaries',
+    function consumerFixture(consumerDirectory) {
+        async function executeConsumer(file: string): Promise<string> {
+            return new Promise(function executeSnapshotConsumer(resolve, reject) {
+                execFile(process.execPath, [ '--disable-warning=PERM0004', file ], {
+                    env: consumerEnvironment(consumerDirectory),
+                    cwd: consumerDirectory,
+                    timeout: 180_000
+                }, function completed(error, stdout, stderr) {
+                    if (error === null) {
+                        resolve(stdout);
+                    } else {
+                        reject(new Error(stderr, { cause: error }));
+                    }
+                });
+            });
+        }
+        return { consumerDirectory, executeConsumer };
+    }
+);
+const { test } = consumerFacade;
+
+export const testNode = test(
     'compares content snapshots across packaged execution boundaries',
     async function (scope) {
-        const directory = await mkdtemp(join(import.meta.dirname, 'snapshot-script-'));
-        scope.cleanup(async function removeConsumerScript() {
-            await rm(directory, { recursive: true, force: true });
-        });
+        const { consumerDirectory, executeConsumer } = scope.resources.consumer;
+
+        const directory = await mkdtemp(join(consumerDirectory, 'snapshot-script-'));
         const file = join(directory, 'consumer.mjs');
         await writeFile(file, script);
         const output = await executeConsumer(file);

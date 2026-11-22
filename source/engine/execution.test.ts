@@ -1,4 +1,4 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 import { defineNarrowingCompositeAssertion } from '@overkill-dev/test/assert';
 import { type EngineCaseBody, createTestEngine as createEngine } from '../test-support/create-test-engine.ts';
 
@@ -105,7 +105,7 @@ function createPlanWithUnusedTable(
     }));
 }
 
-export const testNode: TestNode = suite('Test case execution', [
+export const testNode = suite('Test case execution', [
     test('returns passing and failing outcomes with run counts', async function (scope) {
         const engine = createEngine();
         const testPlan = engine.createTestPlan(

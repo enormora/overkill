@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { InvocationDeadlineExceededError } from '../run/run.entry-point.ts';
 import { memoryCampaignWorker } from '../../test-support/memory-campaign-worker.ts';
@@ -10,7 +10,7 @@ const { signal } = new AbortController();
 async function register(worker: CampaignWorker): Promise<void> {
     await worker.respond({ kind: 'register', root: '/project' }, signal, null);
 }
-export const testNode: TestNode = suite('campaign worker authority', [
+export const testNode = suite('campaign worker authority', [
     test('assigns a stable campaign identity to a canonical sandbox', async function (scope) {
         const fixture = await memoryCampaignWorker.create();
         const result = await fixture.worker.respond({ kind: 'register', root: '/project/alias' }, signal, null);

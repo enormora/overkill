@@ -1,6 +1,6 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 
-import type { SourceLocation } from '../assertion-protocol/assertion-node-shape.ts';
 import { resolveRootTestAnnotations } from '../engine/test-data.ts';
 import { createReportingContext } from '../engine/reporting-context.ts';
 import type { OutputLineIntent, ReporterOutput } from '../engine/reporter-output.ts';
@@ -106,23 +106,17 @@ function failEvent(): Extract<ReporterEvent, { readonly kind: 'test-end'; }> {
     };
 }
 
-function assertFailureAnnotations(scope: TestScope, failureOutput: readonly OutputLineIntent[]): void {
-    const locatedAnnotation = failureOutput[0]?.annotation;
-    const unlocatedAnnotation = failureOutput[1]?.annotation;
-
-    scope.require.defined(locatedAnnotation);
-    scope.require.defined(unlocatedAnnotation);
-    scope.require.notNull(locatedAnnotation.location);
-    const location: SourceLocation = locatedAnnotation.location;
-
-    scope.assert.deepEqual(location, {
-        column: 5,
-        file: 'source/users.test.ts',
-        kind: 'known',
-        line: 10
-    });
-    scope.assert.equal(unlocatedAnnotation.location, null);
-}
+const assertFailureAnnotations = defineCompositeAssertion({
+    name: 'failure annotations',
+    assert(check, failureOutput: readonly OutputLineIntent[]) {
+        return check.group([
+            check.partialDeepEqual(failureOutput[0]?.annotation ?? {}, {
+                location: { column: 5, file: 'source/users.test.ts', kind: 'known', line: 10 }
+            }),
+            check.partialDeepEqual(failureOutput[1]?.annotation ?? {}, { location: null })
+        ]);
+    }
+});
 
 function runnerErrorEvent(): Extract<ReporterEvent, { readonly kind: 'runner-error'; }> {
     return {
@@ -138,24 +132,36 @@ function runnerErrorEvent(): Extract<ReporterEvent, { readonly kind: 'runner-err
     };
 }
 
-function assertRunnerErrorOutput(scope: TestScope, errorOutput: readonly OutputLineIntent[]): void {
-    scope.assert.deepEqual(
-        errorOutput.map(function toText(intent) {
-            return intent.text;
-        }),
-        [ 'runner-error cannot collect tests' ]
-    );
-    scope.require.defined(errorOutput[0]);
-    const runnerErrorIntent = errorOutput[0];
-    scope.require.notNull(runnerErrorIntent.annotation);
-    const { annotation } = runnerErrorIntent;
+const assertRunnerErrorOutput = defineCompositeAssertion({
+    name: 'runner error output',
+    assert(check, errorOutput: readonly OutputLineIntent[]) {
+        const initialChecks = check.deepEqual(
+            errorOutput.map(function toText(intent) {
+                return intent.text;
+            }),
+            [ 'runner-error cannot collect tests' ]
+        );
+        if (errorOutput[0] === undefined) {
+            return check.group([ initialChecks, check.defined(errorOutput[0]) ]);
+        }
 
-    scope.assert.equal(annotation.location, null);
-    scope.assert.equal(annotation.severity, 'error');
-    scope.assert.equal(annotation.title, 'Runner error');
-}
+        const runnerErrorIntent = errorOutput[0];
+        if (runnerErrorIntent.annotation === null) {
+            return check.group([ initialChecks, check.notNull(runnerErrorIntent.annotation) ]);
+        }
+        const laterChecks = check.notNull(runnerErrorIntent.annotation);
+        const { annotation } = runnerErrorIntent;
+        return check.group([
+            initialChecks,
+            laterChecks,
+            check.equal(annotation.location, null),
+            check.equal(annotation.severity, 'error'),
+            check.equal(annotation.title, 'Runner error')
+        ]);
+    }
+});
 
-export const testNode: TestNode = suite('Brief reporter', [
+export const testNode = suite('Brief reporter', [
     test(
         'retry failures do not create annotations or increment completion counts',
         async function (scope) {
@@ -367,7 +373,7 @@ export const testNode: TestNode = suite('Brief reporter', [
                 'fail source/users.test.ts: users > creates profile: boom'
             ]
         );
-        assertFailureAnnotations(scope, failureOutput);
+        scope.assert(assertFailureAnnotations, failureOutput);
 
         return scope.assert.collect();
     }),
@@ -380,7 +386,7 @@ export const testNode: TestNode = suite('Brief reporter', [
         const errorOutput = await readOutput(reporter.onEvent(runnerErrorEvent()));
 
         scope.assert.deepEqual(suiteOutput, []);
-        assertRunnerErrorOutput(scope, errorOutput);
+        scope.assert(assertRunnerErrorOutput, errorOutput);
 
         return scope.assert.collect();
     }),

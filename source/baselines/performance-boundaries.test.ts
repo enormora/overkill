@@ -1,4 +1,5 @@
-import { type TestNode, table, type TestScope, suite, test, testDouble } from '@overkill-dev/test';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import { table, type TestScope, suite, test, testDouble } from '@overkill-dev/test';
 
 import type { RunResult } from '../packages/engine/engine.entry-point.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
@@ -71,16 +72,22 @@ const input = {
     profile: 'startup'
 } as const;
 
-async function assertPendingProposal(
-    scope: TestScope,
-    workflow: Awaited<ReturnType<typeof createPerformanceWorkflow>>
-): Promise<void> {
-    scope.assert.equal(workflow.changes.length, 1);
-    const work = workflow.changes[0]?.baseline.work;
-    scope.require.defined(work);
-    scope.assert.deepEqual(work, createDefaultWorkId(event.case));
-    scope.assert.deepEqual(await workflow.store.list(), []);
-}
+const assertPendingProposal = defineCompositeAssertion({
+    name: 'pending proposal',
+    async assert(check, workflow: Awaited<ReturnType<typeof createPerformanceWorkflow>>) {
+        const initialChecks = check.equal(workflow.changes.length, 1);
+        const work = workflow.changes[0]?.baseline.work;
+        if (work === undefined) {
+            return check.group([ initialChecks, check.defined(work) ]);
+        }
+        return check.group([
+            initialChecks,
+            check.defined(work),
+            check.deepEqual(work, createDefaultWorkId(event.case)),
+            check.deepEqual(await workflow.store.list(), [])
+        ]);
+    }
+});
 async function presentationWorkflow(
     selectedAdapter: PerformanceBaselineAdapter
 ): Promise<PerformanceWorkflow> {
@@ -114,7 +121,7 @@ function completedRun(): RunResult {
     });
 }
 
-export const testNode: TestNode = suite('performance baseline boundaries', [
+export const testNode = suite('performance baseline boundaries', [
     test('does not observe intermediate attempts', async function (scope) {
         const workflow = await presentationWorkflow({
             ...adapter,
@@ -216,7 +223,7 @@ export const testNode: TestNode = suite('performance baseline boundaries', [
         scope.assert.deepEqual(workflow.evaluate(event).errors, []);
         scope.assert.deepEqual(workflow.evaluate(event).errors, []);
         scope.assert.equal(observations, 1);
-        await assertPendingProposal(scope, workflow);
+        await scope.assert(assertPendingProposal, workflow);
         return scope.assert.collect();
     }),
     test('applies comparison failures to the final result and its attempt', async function (scope) {

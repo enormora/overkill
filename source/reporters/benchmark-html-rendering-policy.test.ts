@@ -1,20 +1,14 @@
-import { type TestNode, table, type TestScope, suite, test } from '@overkill-dev/test';
+import { table, type TestScope, suite, test } from '@overkill-dev/test';
 
-import { benchmarkHtmlFixture } from '../test-support/benchmark-html-fixture.ts';
+import { benchmarkHtmlFixture, benchmarkBudgetFixture } from '../test-support/benchmark-html-fixture.ts';
 import { validateReporterRunFacts } from '../engine/reporter.ts';
 import { createBenchmarkHtmlReporter } from './benchmark-html-reporter.ts';
 import { createBenchmarkHtmlReport } from './benchmark-html-model.ts';
 import { renderBenchmarkHtml } from './benchmark-html-document.ts';
 import type { BenchmarkHtmlReport } from './benchmark-html-data.ts';
 
-function unboundedBenchmarkHtml(scope: TestScope): string {
-    const result = benchmarkHtmlFixture('unbounded');
-    const measured = result.perTest[0];
-    scope.require.defined(measured);
-    const { benchmark } = measured;
-    scope.require.defined(benchmark);
-    const budget = benchmark.budgets[0];
-    scope.require.defined(budget);
+function unboundedBenchmarkHtml(): string {
+    const { result, measured, benchmark, budget } = benchmarkBudgetFixture('unbounded');
     return renderBenchmarkHtml(
         createBenchmarkHtmlReport({
             result: {
@@ -100,7 +94,7 @@ function lifecycleModel(): BenchmarkHtmlReport {
         context: { id: null, startedAt: null, facts: null }
     });
 }
-export const testNode: TestNode = suite('benchmark HTML rendering', [
+export const testNode = suite('benchmark HTML rendering', [
     table({
         title: 'renders garbage collection evidence',
         cases: [ null, { mode: 'off' as const } ],
@@ -210,7 +204,7 @@ export const testNode: TestNode = suite('benchmark HTML rendering', [
         return scope.assert.collect();
     }),
     test('renders open budget intervals without inferred estimates', function (scope) {
-        const html = unboundedBenchmarkHtml(scope);
+        const html = unboundedBenchmarkHtml();
         scope.assert.includes(
             html,
             '<td>unavailable</td><td>-unbounded</td><td>unbounded</td><td>1</td><td>unbounded</td>'

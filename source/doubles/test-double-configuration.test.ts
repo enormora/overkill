@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { rule } from './double-rule.ts';
 import { testDouble } from './test-double.ts';
@@ -11,7 +11,7 @@ type ClientFactory = {
     new (baseUrl: string): ClientWithId;
 };
 
-export const testNode: TestNode = suite('Test double configuration', [
+export const testNode = suite('Test double configuration', [
     test('rejects invalid configuration arguments', function (scope) {
         const createDoubleFromUnknowns = testDouble as unknown as (
             ...configuration: readonly unknown[]

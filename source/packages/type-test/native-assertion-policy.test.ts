@@ -1,4 +1,4 @@
-import { type TestNode, table, suite, test } from '@overkill-dev/test';
+import { table, suite, test } from '@overkill-dev/test';
 
 import * as ast from 'typescript-beta/ast';
 
@@ -68,7 +68,7 @@ function annotatedCall(messages: readonly ast.Expression[]): ast.CallExpression 
         )
     );
 }
-export const testNode: TestNode = suite('native assertion boundary validation', [
+export const testNode = suite('native assertion boundary validation', [
     test('recognizes installed adapter declaration ownership', async function (scope) {
         const fixture = ownedMatcher('/project/node_modules/@overkill-dev/type-test/index.d.ts');
         const result = await nativeReference(fixture.analysis, referenceCall('', true));

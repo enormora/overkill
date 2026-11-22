@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { createDeterministicClock, type DeterministicClock, type Clock } from '@enormora/clock';
 
@@ -101,7 +101,7 @@ async function failureObservations(
     return { cancellation, caughtCancellation, caughtFailure, failure };
 }
 
-export const testNode: TestNode = suite({
+export const testNode = suite({
     ...testCaseMetadata,
     title: 'resource lifecycle timing policy',
     children: [

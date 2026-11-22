@@ -1,11 +1,11 @@
-import { table, type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { table, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { generatorContext } from '../test-support/generator-execution.ts';
 import { gen } from './generators.ts';
 import { readGeneratorCodec, readGeneratorEnumeration, readGeneratorEdges, isGenerator } from './generator.ts';
 import { enumerateDomain, doubleDomain } from './generator-enumeration.ts';
 
-export const testNode: TestNode = suite('fixed generator domain admission', [
+export const testNode = suite('fixed generator domain admission', [
     table({
         title: 'rejects unbranded generator domain',
         cases: [ { description: 'codec reader', input: readGeneratorCodec }, {

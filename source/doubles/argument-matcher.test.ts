@@ -1,9 +1,9 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 import { P } from 'ts-pattern';
 import { subjectAssertion } from '../test-support/assertion-reference-boundary.ts';
 import { doubleUsage as subjectUsage, matches, rule, testDouble } from '../packages/doubles/doubles.entry-point.ts';
 
-export const testNode: TestNode = suite('typed argument patterns', [
+export const testNode = suite('typed argument patterns', [
     test('wrapped rules require exact arity while raw rules preserve prefixes', function (scope) {
         const wrapped = testDouble<(id: string, extra?: number) => string>({
             rules: [ rule.when(matches(P.string)).returns('matched') ],

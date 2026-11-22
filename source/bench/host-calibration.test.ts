@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import {
     calibrateBenchmarkHost,
@@ -24,7 +24,7 @@ function referenceCalibration(machineClass: string, medianMicroseconds: number):
     };
 }
 
-export const testNode: TestNode = suite('benchmark calibration', [
+export const testNode = suite('benchmark calibration', [
     test('records real reference samples and stable machine attribution', function (scope) {
         const first = calibrateBenchmarkHost();
         const second = calibrateBenchmarkHost();

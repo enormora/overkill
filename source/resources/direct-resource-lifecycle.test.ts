@@ -1,4 +1,11 @@
-import { type TestNode, defineMacro, test, suite, type TestScope } from '@overkill-dev/test';
+import {
+    type CompositeAssertionReference,
+    type CompositeAssertionReturn,
+    type CompositeCheckBuilder,
+    defineCompositeAssertion
+} from '@overkill-dev/test/assert';
+
+import { defineMacro, test, suite } from '@overkill-dev/test';
 
 import {
     defineResource,
@@ -220,150 +227,178 @@ function scopedResource(scope: ResourceScope): ScopedResource {
     });
 }
 
-function assertSessionContext(
-    scope: TestScope,
+const sessionContextChecks = function (
+    check: CompositeCheckBuilder<'assert'>,
     session: ServiceContextSession,
     events: EventLog,
     acquisitions: number
-): void {
-    scope.assert.equal(acquisitions, 1);
-    scope.assert.deepEqual(Object.keys(session.context), [ 'service' ]);
-    scope.assert.deepEqual(session.context.service.results, [ 'server' ]);
-    scope.assert.deepEqual(events.values(), [
-        'database signal',
-        'database acquire',
-        'server',
-        'server acquire'
+): CompositeAssertionReturn<'assert'> {
+    return check.group([
+        check.equal(acquisitions, 1),
+        check.deepEqual(Object.keys(session.context), [ 'service' ]),
+        check.deepEqual(session.context.service.results, [ 'server' ]),
+        check.deepEqual(events.values(), [
+            'database signal',
+            'database acquire',
+            'server',
+            'server acquire'
+        ])
     ]);
-}
+};
 
-async function assertSessionDisposal(
-    scope: TestScope,
+const sessionDisposalChecks = async function (
+    check: CompositeCheckBuilder<'assert'>,
     session: DisposableSession,
     events: EventLog
-): Promise<void> {
+): Promise<CompositeAssertionReturn<'assert'>> {
     await session.disposeOnce({ signal: testSignal() });
     await session.disposeOnce({ signal: testSignal() });
-    scope.assert.deepEqual(events.values().slice(4), [ 'server dispose', 'database dispose' ]);
-}
+    return check.group([ check.deepEqual(events.values().slice(4), [ 'server dispose', 'database dispose' ]) ]);
+};
 
-async function assertDirectResourceLifecycle(scope: TestScope): Promise<void> {
-    let acquisitions = 0;
-    const events = createEventLog();
-    const database = databaseResource(events, function recordAcquisition() {
-        acquisitions += 1;
-    });
-    const server = serverResource(events, database, 'server');
-    const session = await startResources({ resources: { service: server }, signal: testSignal() });
-
-    assertSessionContext(scope, session, events, acquisitions);
-    await assertSessionDisposal(scope, session, events);
-}
-
-async function assertSharedDependencyHandles(scope: TestScope): Promise<void> {
-    let acquisitions = 0;
-    const events = createEventLog();
-    const database = databaseResource(events, function recordAcquisition() {
-        acquisitions += 1;
-    });
-    const session = await startResources({
-        resources: {
-            server: serverResource(events, database, 'server'),
-            store: database,
-            worker: serverResource(events, database, 'worker')
-        },
-        signal: testSignal()
-    });
-
-    scope.assert.equal(acquisitions, 1);
-    scope.assert.deepEqual(session.context.store.query('store'), [ 'store' ]);
-    await session.disposeOnce({ signal: testSignal() });
-    scope.assert.deepEqual(events.values().slice(6), [
-        'worker dispose',
-        'server dispose',
-        'database dispose'
-    ]);
-}
-
-async function assertStartupFailureCleanup(scope: TestScope): Promise<void> {
-    const events = createEventLog();
-    const acquireError = new Error('setup failed');
-    const disposeError = new Error('cleanup failed');
-    const error = assertLifecycleError(
-        await rejectedValue(startResources({
-            resources: {
-                disposable: disposableResource(events, disposeError),
-                failing: failingResource(acquireError)
-            },
-            signal: testSignal()
-        }))
-    );
-
-    scope.assert.deepEqual(events.values(), [ 'disposable acquire', 'disposable dispose' ]);
-    scope.assert.deepEqual(
-        error.failures().map(function failureSummary(failure) {
-            return [ failure.phase, failure.resourceName, failure.cause ];
-        }),
-        [
-            [ 'acquire', 'failing', acquireError ],
-            [ 'dispose', 'disposable', disposeError ]
-        ]
-    );
-}
-
-async function assertAsyncDisposal(scope: TestScope): Promise<void> {
-    const events = createEventLog();
-    const database = databaseResource(events, function recordAcquisition(): void {
-        return undefined;
-    });
-    const session = await startResources({ resources: { database }, signal: testSignal() });
-
-    const dispose: unknown = Reflect.get(session, runtimeAsyncDisposeSymbol());
-
-    scope.require.function(dispose);
-    await dispose();
-    scope.assert.deepEqual(events.values(), [
-        'database signal',
-        'database acquire',
-        'database dispose'
-    ]);
-}
-
-async function assertNullDispose(scope: TestScope): Promise<void> {
-    const resource = scopedResource('per-case');
-    const session = await startResources({ resources: { resource }, signal: testSignal() });
-
-    await session.disposeOnce({ signal: testSignal() });
-    scope.assert.equal(session.context.resource, 'scoped');
-}
-
-async function assertScopeValidation(scope: TestScope): Promise<void> {
-    const perCaseResource = scopedResource('per-case');
-    const broaderResource = scopedResource('per-run');
-    const error = assertLifecycleError(
-        await rejectedCallback(function validateBroaderScope() {
-            assertPerCaseResourceGraph({ broaderResource });
-        })
-    );
-
-    assertPerCaseResourceGraph({ perCaseResource });
-    scope.assert.equal(error.failures()[0]?.resourceName, 'scoped');
-}
-
-const lifecycleTestCase = defineMacro(function (title: string, assertion: (scope: TestScope) => Promise<void>) {
-    return test({
-        title,
-        annotations: {},
-        controls: {},
-        async body(scope) {
-            await assertion(scope);
-
-            return scope.assert.collect();
-        }
-    });
+const assertDirectResourceLifecycle = defineCompositeAssertion({
+    name: 'direct resource lifecycle',
+    async assert(check) {
+        let acquisitions = 0;
+        const events = createEventLog();
+        const database = databaseResource(events, function recordAcquisition() {
+            acquisitions += 1;
+        });
+        const server = serverResource(events, database, 'server');
+        const session = await startResources({ resources: { service: server }, signal: testSignal() });
+        return check.group([
+            sessionContextChecks(check.annotated('session context'), session, events, acquisitions),
+            await sessionDisposalChecks(check.annotated('session disposal'), session, events)
+        ]);
+    }
 });
 
-export const testNode: TestNode = suite('Direct resource lifecycle', [
+const assertSharedDependencyHandles = defineCompositeAssertion({
+    name: 'shared dependency handles',
+    async assert(check) {
+        let acquisitions = 0;
+        const events = createEventLog();
+        const database = databaseResource(events, function recordAcquisition() {
+            acquisitions += 1;
+        });
+        const session = await startResources({
+            resources: {
+                server: serverResource(events, database, 'server'),
+                store: database,
+                worker: serverResource(events, database, 'worker')
+            },
+            signal: testSignal()
+        });
+        const initialChecks = check.group([
+            check.equal(acquisitions, 1),
+            check.deepEqual(session.context.store.query('store'), [ 'store' ])
+        ]);
+        await session.disposeOnce({ signal: testSignal() });
+        return check.group([
+            initialChecks,
+            check.deepEqual(events.values().slice(6), [
+                'worker dispose',
+                'server dispose',
+                'database dispose'
+            ])
+        ]);
+    }
+});
+
+const assertStartupFailureCleanup = defineCompositeAssertion({
+    name: 'startup failure cleanup',
+    async assert(check) {
+        const events = createEventLog();
+        const acquireError = new Error('setup failed');
+        const disposeError = new Error('cleanup failed');
+        const error = assertLifecycleError(
+            await rejectedValue(startResources({
+                resources: {
+                    disposable: disposableResource(events, disposeError),
+                    failing: failingResource(acquireError)
+                },
+                signal: testSignal()
+            }))
+        );
+        return check.group([
+            check.deepEqual(events.values(), [ 'disposable acquire', 'disposable dispose' ]),
+            check.deepEqual(
+                error.failures().map(function failureSummary(failure) {
+                    return [ failure.phase, failure.resourceName, failure.cause ];
+                }),
+                [
+                    [ 'acquire', 'failing', acquireError ],
+                    [ 'dispose', 'disposable', disposeError ]
+                ]
+            )
+        ]);
+    }
+});
+
+const assertAsyncDisposal = defineCompositeAssertion({
+    name: 'asynchronous resource disposal',
+    async assert(check) {
+        const events = createEventLog();
+        const database = databaseResource(events, function recordAcquisition(): void {
+            return undefined;
+        });
+        const session = await startResources({ resources: { database }, signal: testSignal() });
+
+        const dispose: unknown = Reflect.get(session, runtimeAsyncDisposeSymbol());
+
+        if (typeof dispose !== 'function') {
+            return check.function(dispose);
+        }
+        await Reflect.apply(dispose, undefined, []);
+        return check.deepEqual(events.values(), [
+            'database signal',
+            'database acquire',
+            'database dispose'
+        ]);
+    }
+});
+
+const assertNullDispose = defineCompositeAssertion({
+    name: 'null dispose',
+    async assert(check) {
+        const resource = scopedResource('per-case');
+        const session = await startResources({ resources: { resource }, signal: testSignal() });
+        await session.disposeOnce({ signal: testSignal() });
+        return check.group([ check.equal(session.context.resource, 'scoped') ]);
+    }
+});
+
+const assertScopeValidation = defineCompositeAssertion({
+    name: 'scope validation',
+    async assert(check) {
+        const perCaseResource = scopedResource('per-case');
+        const broaderResource = scopedResource('per-run');
+        const error = assertLifecycleError(
+            await rejectedCallback(function validateBroaderScope() {
+                assertPerCaseResourceGraph({ broaderResource });
+            })
+        );
+        assertPerCaseResourceGraph({ perCaseResource });
+        return check.group([ check.equal(error.failures()[0]?.resourceName, 'scoped') ]);
+    }
+});
+
+const lifecycleTestCase = defineMacro(
+    function (title: string, assertion: CompositeAssertionReference<[], Promise<CompositeAssertionReturn<'assert'>>>) {
+        return test({
+            title,
+            annotations: {},
+            controls: {},
+            async body(scope) {
+                await scope.assert(assertion);
+
+                return scope.assert.collect();
+            }
+        });
+    }
+);
+
+export const testNode = suite('Direct resource lifecycle', [
     lifecycleTestCase(
         'startResources exposes direct handles and disposes them once in reverse order',
         assertDirectResourceLifecycle

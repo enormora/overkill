@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { withMemoryCoverageRecordFixture } from '../test-support/coverage-record-fixture.ts';
 import { createUnitRunOrchestrator } from '../test-support/create-deterministic-run-orchestrator.ts';
@@ -7,7 +7,7 @@ import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { createCoverageRunRecord } from './coverage-run-record.ts';
 import { finalizeRunResult } from './run-result-finalization.ts';
 
-export const testNode: TestNode = suite('Run result finalization', [
+export const testNode = suite('Run result finalization', [
     test('coverage and duration history precede the result checkpoint', async function (scope) {
         return await withMemoryCoverageRecordFixture(
             defaultRunConfig(),
@@ -20,7 +20,7 @@ export const testNode: TestNode = suite('Run result finalization', [
                             .request
                             .command
                             .request,
-                        paths: [ 'source/integration-tests/integration/fixtures/passing.test.ts' ]
+                        paths: [ 'source/integration-tests/runtime/fixtures/passing.test.ts' ]
                     }
                 };
                 const run = await createUnitRunOrchestrator().resolve(command);

@@ -1,4 +1,5 @@
-import { table, type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import { table, suite, test } from '@overkill-dev/test';
 
 import type { RunResult } from '../packages/engine/engine.entry-point.ts';
 
@@ -11,7 +12,7 @@ import { createSupervisedRunCommand } from './run-isolated-command.ts';
 import { runSupervisedCommand } from './supervised-run.ts';
 
 const metadata = { definitionLocations: [ { kind: 'unknown' } ] } as const;
-const file = 'source/integration-tests/integration/fixtures/passing.test.ts';
+const file = 'source/integration-tests/runtime/fixtures/passing.test.ts';
 const profile = defaultMicrotestProfile();
 const command = {
     config: defaultRunConfig(),
@@ -123,28 +124,24 @@ async function executeProtocolPhase(phase: Phase): Promise<RunResult> {
     );
 }
 
-async function assertProtocolOrder(scope: TestScope, phase: Phase): Promise<void> {
-    if (phase === 'before-collection') {
-        await scope.assert.rejects(async function rejectPrematureResult() {
-            return await executeProtocolPhase(phase);
-        }, { message: 'Invalid supervised child IPC lifecycle.' });
-    } else {
-        const completed = await executeProtocolPhase(phase);
-        scope.assert.equal(completed.status, 'failed');
+const protocolFailure = defineCompositeAssertion({
+    name: 'attributes protocol violations to the correct phase',
+    assert(check, completed: Awaited<ReturnType<typeof executeProtocolPhase>>, phase: (typeof phases)[number]) {
         const error = completed.runnerErrors[0];
-        scope.require.defined(error);
-        scope.assert.equal(
-            error.subtype,
-            phase === 'collection-error' ? 'loader' : 'runtime-policy'
-        );
-        scope.assert.equal(error.attributedTo, null);
-        if (phase === 'active-attempt') {
-            scope.assert.equal(completed.perTest[0]?.verdict, 'crashed');
+        if (error === undefined) {
+            return check.defined(error);
         }
+        const failure = check.group([
+            check.equal(completed.status, 'failed'),
+            check.equal(error.subtype, phase === 'collection-error' ? 'loader' : 'runtime-policy'),
+            check.equal(error.attributedTo, null)
+        ]);
+        return phase === 'active-attempt'
+            ? check.group([ failure, check.equal(completed.perTest[0]?.verdict, 'crashed') ])
+            : failure;
     }
-}
-
-export const testNode: TestNode = suite('supervised child protocol order', [
+});
+export const testNode = suite('supervised child protocol order', [
     table({
         title: 'validates messages during each protocol phase',
         cases: phases,
@@ -153,15 +150,30 @@ export const testNode: TestNode = suite('supervised child protocol order', [
         },
         async test(scope) {
             const phase = scope.parameters;
+            if (phase === 'before-collection') {
+                await scope.assert.rejects(async function rejectPrematureResult() {
+                    return await executeProtocolPhase(phase);
+                }, { message: 'Invalid supervised child IPC lifecycle.' });
+            } else {
+                scope.assert(protocolFailure, await executeProtocolPhase(phase), phase);
+            }
 
-            await assertProtocolOrder(scope, phase);
             return scope.assert.collect();
         }
     }),
     test('collection timings remain valid when parent timing collection is absent', async function (scope) {
         const completed = await executeProtocolPhase('collection-timing');
-        scope.assert.equal(completed.status, 'passed');
-        scope.assert.deepEqual(completed.runnerErrors, []);
+        scope.assert(
+            defineCompositeAssertion({
+                name: 'collection timings remain valid when parent timing collection is absent',
+                assert(check) {
+                    return check.group([
+                        check.equal(completed.status, 'passed'),
+                        check.deepEqual(completed.runnerErrors, [])
+                    ]);
+                }
+            })
+        );
         return scope.assert.collect();
     })
 ]);

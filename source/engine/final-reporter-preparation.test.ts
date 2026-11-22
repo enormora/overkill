@@ -1,4 +1,4 @@
-import { table, type TestNode, suite, test } from '@overkill-dev/test';
+import { table, suite, test } from '@overkill-dev/test';
 
 import { createInMemoryFinalResultReporter, createInMemoryRealTimeReporter } from '../reporters/in-memory-reporter.ts';
 import { createPlainOutputRenderer } from './reporter-output.ts';
@@ -32,7 +32,7 @@ function deliveredReporters(final: boolean, kind: 'empty' | 'final' | 'live'): r
             return reporter.name;
         });
 }
-export const testNode: TestNode = suite('final result reporter preparation', [
+export const testNode = suite('final result reporter preparation', [
     table({
         title: 'selects reporter definitions for final delivery',
         cases: [ false, true ].flatMap(function (final) {

@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import {
     sandboxPaths,
@@ -13,7 +13,7 @@ import {
     validateProtectedMutationFiles
 } from './mutation-sandbox.ts';
 
-export const testNode: TestNode = suite('mutation sandbox origin policy', [
+export const testNode = suite('mutation sandbox origin policy', [
     test('preserves original file roles and discovers external module roots', async function (scope) {
         const result = await prepareMutationSandbox(
             sandboxInput,

@@ -70,7 +70,7 @@ export async function collectCoverageScript(fixture: CoverageSourceFixture, file
     const environment: Readonly<Record<string, string | undefined>> = Reflect.get(process, 'env');
 
     await new Promise<void>(function executeScript(resolve, reject) {
-        execFile(process.execPath, [ '--allow-inspector', file ], {
+        execFile(process.execPath, [ '--disable-warning=PERM0004', '--allow-inspector', file ], {
             cwd: fixture.projectRoot,
             env: { ...environment, NODE_DISABLE_COMPILE_CACHE: '1', NODE_V8_COVERAGE: fixture.rawDataDirectory }
         }, function completedScript(error) {

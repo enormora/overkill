@@ -1,11 +1,11 @@
-import { type TestNode, table, suite, test } from '@overkill-dev/test';
+import { table, suite, test } from '@overkill-dev/test';
 
 import { planningInput } from '../test-support/benchmark-plan-input.ts';
 import { defaultIntegrationProfile, defaultMicrotestProfile } from '../test-support/run-command-factory.ts';
 import { createPlacementResolution, resolveCollectedHost, benchmarkPlacementForCases } from './collected-placement.ts';
 import { collectedRunCaseEntries } from './collected-run-plan.ts';
 
-export const testNode: TestNode = suite('delegated collection placement defaults', [
+export const testNode = suite('delegated collection placement defaults', [
     table({
         title: 'uses default pool assignment policies',
         cases: [ 'in-process', 'supervised-process' ] as const,

@@ -27,13 +27,13 @@ export type MutationInvocationFixture = {
     readonly baseline: () => CampaignBaseline | null;
 };
 export function mutationInvocations(
-    scope: TestScope,
+    cleanup: TestScope['cleanup'],
     baseline: CampaignBaseline | null,
     reply: RunExecutionReply
 ): MutationInvocationFixture {
     const clock = createDeterministicClock({ initialUnixEpochMicroseconds: 0n });
     const budget = createInvocationBudget(invocationMilliseconds, null, clock);
-    scope.cleanup(budget.dispose);
+    cleanup(budget.dispose);
     const campaign = createStoredValue(baseline);
     const admissions: string[] = [];
     const executions: JsonValue[] = [];

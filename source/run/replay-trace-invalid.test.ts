@@ -1,4 +1,4 @@
-import { table, type TestNode, suite } from '@overkill-dev/test';
+import { table, suite } from '@overkill-dev/test';
 
 import { placementPlan } from './worker-pool-placement-validation.test.ts';
 import type { PlacementPlan } from './run-types.ts';
@@ -317,7 +317,7 @@ function invalidPlacements(): readonly InvalidPlacement[] {
         }
     ];
 }
-export const testNode: TestNode = suite('invalid retained replay decisions', [
+export const testNode = suite('invalid retained replay decisions', [
     table({
         title: 'rejects invalid replay execution evidence',
         cases: invalidTraces(),

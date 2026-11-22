@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { createUnitRunOrchestrator } from '../test-support/create-deterministic-run-orchestrator.ts';
 import { defaultMicrotestProfile, defaultRunConfig, defaultRunRequest } from '../test-support/run-command-factory.ts';
@@ -7,9 +7,9 @@ import type { NormalizedConfig } from '../config/types.ts';
 import { orderedRunItems } from './run-ordering.ts';
 import type { ResolvedRun, RunCommand, RunRequest } from './run-types.ts';
 
-const selectionFixturePath = 'source/integration-tests/integration/fixtures/selection.test.ts';
+const selectionFixturePath = 'source/integration-tests/runtime/fixtures/selection.test.ts';
 
-const localConfig: NormalizedConfig = defaultRunConfig({
+const localConfig = defaultRunConfig({
     profiles: {
         microtest: defaultMicrotestProfile({
             execution: { processModel: 'in-process', scheduling: 'serial' },
@@ -17,7 +17,7 @@ const localConfig: NormalizedConfig = defaultRunConfig({
         })
     }
 });
-const supervisedConfig: NormalizedConfig = defaultRunConfig({
+const supervisedConfig = defaultRunConfig({
     profiles: {
         microtest: defaultMicrotestProfile({
             execution: { processModel: 'supervised-process', scheduling: 'serial' },
@@ -58,7 +58,7 @@ function caseTitles(resolvedRun: ResolvedRun): readonly string[] {
     });
 }
 
-export const testNode: TestNode = suite('Run ordering', [
+export const testNode = suite('Run ordering', [
     test(
         'orchestrator.resolve() keeps source-stable order for lexical requests',
         async function (scope) {

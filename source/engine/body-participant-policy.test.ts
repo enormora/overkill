@@ -1,8 +1,8 @@
-import { type TestNode, table, suite } from '@overkill-dev/test';
+import { table, suite } from '@overkill-dev/test';
 
 import { bodyParticipant } from '../test-support/body-participant.ts';
 
-export const testNode: TestNode = suite(
+export const testNode = suite(
     'referenced body participant admission',
     [ table({
         title: 'readmits bodies without losing execution mode',

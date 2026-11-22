@@ -1,4 +1,10 @@
-import { type TestNode, defineMacro, test, suite, type TestScope } from '@overkill-dev/test';
+import {
+    type CompositeAssertionReference,
+    type CompositeAssertionReturn,
+    defineCompositeAssertion
+} from '@overkill-dev/test/assert';
+
+import { defineMacro, test, suite } from '@overkill-dev/test';
 
 import {
     defineResource,
@@ -20,11 +26,7 @@ type EventLog = {
     readonly add: (...events: readonly string[]) => void;
     readonly values: () => readonly string[];
 };
-type Deferred<Value> = {
-    readonly promise: Promise<Value>;
-    readonly reject: (cause: unknown) => void;
-    readonly resolve: (value: Value) => void;
-};
+
 type DatabaseResource = ResourceDefinition<'database', Database, EmptyResourceDependencies>;
 type ServerDependencies = { readonly database: DatabaseResource; };
 type RuntimeRequest = StartRuntimeRequest<RuntimeDefinition>;
@@ -66,25 +68,6 @@ function createEventLog(): EventLog {
         values() {
             return Array.from(events);
         }
-    };
-}
-
-function deferred<Value>(): Deferred<Value> {
-    let resolvePromise: (value: Value) => void = function resolveBeforeAssignment(): void {
-        throw new Error('Deferred promise was not initialized.');
-    };
-    let rejectPromise: (cause: unknown) => void = function rejectBeforeAssignment(): void {
-        throw new Error('Deferred promise was not initialized.');
-    };
-    const promise = new Promise<Value>(function assignPromiseCallbacks(resolve, reject) {
-        resolvePromise = resolve;
-        rejectPromise = reject;
-    });
-
-    return {
-        promise,
-        reject: rejectPromise,
-        resolve: resolvePromise
     };
 }
 
@@ -229,7 +212,7 @@ function sharedDependencyScenario(): SharedDependencyScenario {
 
 function slowResource(
     events: EventLog,
-    gate: Deferred<undefined>
+    gate: PromiseWithResolvers<undefined>
 ): ResourceDefinition<'slow', string, EmptyResourceDependencies> {
     return defineResource({
         name: 'slow',
@@ -415,110 +398,135 @@ function assertLifecycleError(error: unknown): ResourceLifecycleError {
     return error;
 }
 
-async function assertRuntimeLifecycle(scope: TestScope): Promise<void> {
-    const events = createEventLog();
-    const server = runtimeLifecycleServer(events, runtimeLifecycleDatabase(events));
-    const runtime = defineRuntime({
-        name: 'api',
-        dimensions: {},
-        resources: { server },
-        requirements: [ { kind: 'serial' } ]
-    });
-    const session = await startRuntime({ runtime, signal: testSignal() });
-
-    scope.assert.deepEqual(Object.keys(session.context), [ 'server' ]);
-    scope.assert.deepEqual(session.context.server.results, [ 'ready' ]);
-    scope.assert.deepEqual(events.values(), [ 'database signal', 'database acquire', 'server', 'server acquire' ]);
-    await session.disposeOnce({ signal: testSignal() });
-    await session.disposeOnce({ signal: testSignal() });
-    scope.assert.deepEqual(events.values(), lifecycleEvents());
-}
-
-async function assertSharedDependencies(scope: TestScope): Promise<void> {
-    const scenario = sharedDependencyScenario();
-    const session = await startRuntime({ runtime: scenario.runtime, signal: testSignal() });
-
-    scope.assert.equal(scenario.acquisitions(), 1);
-    scope.assert.equal(session.context.store, scenario.database);
-    scope.assert.deepEqual(scenario.events.values().toSorted(compareText), [ 'server', 'worker' ]);
-    await session.disposeOnce({ signal: testSignal() });
-    scope.assert.deepEqual(scenario.events.values().slice(2), [
-        'worker dispose',
-        'server dispose',
-        'database dispose'
-    ]);
-}
-
-async function assertConcurrentAcquisition(scope: TestScope): Promise<void> {
-    const events = createEventLog();
-    const gate = deferred<undefined>();
-    const runtime = defineRuntime({
-        name: 'concurrent',
-        dimensions: {},
-        resources: { slow: slowResource(events, gate), fast: fastResource(events) },
-        requirements: []
-    });
-    const sessionPromise = startRuntime({ runtime, signal: testSignal() });
-
-    await Promise.resolve();
-    await Promise.resolve();
-    scope.assert.deepEqual(events.values(), [ 'slow start', 'fast start' ]);
-    gate.resolve(undefined);
-
-    const session = await sessionPromise;
-
-    scope.assert.deepEqual(session.context, { slow: 'slow', fast: 'fast' });
-}
-
-async function assertAcquireFailureCleanup(scope: TestScope): Promise<void> {
-    const scenario = acquireFailureScenario();
-    const error = assertLifecycleError(
-        await rejectedValue(startRuntime({ runtime: scenario.runtime, signal: testSignal() }))
-    );
-
-    scope.assert.deepEqual(scenario.events.values(), [ 'database acquire', 'server acquire', 'database dispose' ]);
-    scope.assert.deepEqual(error.failures().map(failureSummary), [
-        [ 'acquire', 'server', scenario.acquireError ],
-        [ 'dispose', 'database', scenario.disposeError ]
-    ]);
-}
-
-async function assertDisposalFailure(scope: TestScope): Promise<void> {
-    const scenario = disposalFailureScenario();
-    const session = await startRuntime({ runtime: scenario.runtime, signal: testSignal() });
-    const error = assertLifecycleError(await rejectedValue(session.disposeOnce({ signal: testSignal() })));
-    const repeatedError = await rejectedValue(session.disposeOnce({ signal: testSignal() }));
-
-    scope.assert.equal(repeatedError, error);
-    scope.assert.deepEqual(scenario.events.values(), [ 'second dispose', 'first dispose' ]);
-    scope.assert.deepEqual(error.failures().map(failureSummary), [
-        [ 'dispose', 'second', scenario.secondDisposeError ],
-        [ 'dispose', 'first', scenario.firstDisposeError ]
-    ]);
-}
-
-async function assertGraphFailures(scope: TestScope): Promise<void> {
-    const duplicateError = assertLifecycleError(await rejectedValue(startRuntime(duplicateRuntimeRequest())));
-    const cycleError = assertLifecycleError(await rejectedValue(startRuntime(cycleRuntimeRequest())));
-
-    scope.assert.deepEqual(duplicateError.failures().map(graphFailureSummary), [ [ 'graph', 'database' ] ]);
-    scope.assert.deepEqual(cycleError.failures().map(graphFailureSummary), [ [ 'graph', 'cycle' ] ]);
-}
-
-const lifecycleTestCase = defineMacro(function (title: string, assertion: (scope: TestScope) => Promise<void>) {
-    return test({
-        title,
-        annotations: {},
-        controls: {},
-        async body(scope) {
-            await assertion(scope);
-
-            return scope.assert.collect();
-        }
-    });
+const assertRuntimeLifecycle = defineCompositeAssertion({
+    name: 'runtime lifecycle',
+    async assert(check) {
+        const events = createEventLog();
+        const server = runtimeLifecycleServer(events, runtimeLifecycleDatabase(events));
+        const runtime = defineRuntime({
+            name: 'api',
+            dimensions: {},
+            resources: { server },
+            requirements: [ { kind: 'serial' } ]
+        });
+        const session = await startRuntime({ runtime, signal: testSignal() });
+        const initialChecks = check.group([
+            check.deepEqual(Object.keys(session.context), [ 'server' ]),
+            check.deepEqual(session.context.server.results, [ 'ready' ]),
+            check.deepEqual(events.values(), [ 'database signal', 'database acquire', 'server', 'server acquire' ])
+        ]);
+        await session.disposeOnce({ signal: testSignal() });
+        await session.disposeOnce({ signal: testSignal() });
+        return check.group([ initialChecks, check.deepEqual(events.values(), lifecycleEvents()) ]);
+    }
 });
 
-export const testNode: TestNode = suite('Resource lifecycle', [
+const assertSharedDependencies = defineCompositeAssertion({
+    name: 'shared dependencies',
+    async assert(check) {
+        const scenario = sharedDependencyScenario();
+        const session = await startRuntime({ runtime: scenario.runtime, signal: testSignal() });
+        const initialChecks = check.group([
+            check.equal(scenario.acquisitions(), 1),
+            check.equal(session.context.store, scenario.database),
+            check.deepEqual(scenario.events.values().toSorted(compareText), [ 'server', 'worker' ])
+        ]);
+        await session.disposeOnce({ signal: testSignal() });
+        return check.group([
+            initialChecks,
+            check.deepEqual(scenario.events.values().slice(2), [
+                'worker dispose',
+                'server dispose',
+                'database dispose'
+            ])
+        ]);
+    }
+});
+
+const assertConcurrentAcquisition = defineCompositeAssertion({
+    name: 'concurrent acquisition',
+    async assert(check) {
+        const events = createEventLog();
+        const gate = Promise.withResolvers<undefined>();
+        const runtime = defineRuntime({
+            name: 'concurrent',
+            dimensions: {},
+            resources: { slow: slowResource(events, gate), fast: fastResource(events) },
+            requirements: []
+        });
+        const sessionPromise = startRuntime({ runtime, signal: testSignal() });
+        await Promise.resolve();
+        await Promise.resolve();
+        const initialChecks = check.deepEqual(events.values(), [ 'slow start', 'fast start' ]);
+        gate.resolve(undefined);
+        const session = await sessionPromise;
+        return check.group([ initialChecks, check.deepEqual(session.context, { slow: 'slow', fast: 'fast' }) ]);
+    }
+});
+
+const assertAcquireFailureCleanup = defineCompositeAssertion({
+    name: 'acquire failure cleanup',
+    async assert(check) {
+        const scenario = acquireFailureScenario();
+        const error = assertLifecycleError(
+            await rejectedValue(startRuntime({ runtime: scenario.runtime, signal: testSignal() }))
+        );
+        return check.group([
+            check.deepEqual(scenario.events.values(), [ 'database acquire', 'server acquire', 'database dispose' ]),
+            check.deepEqual(error.failures().map(failureSummary), [
+                [ 'acquire', 'server', scenario.acquireError ],
+                [ 'dispose', 'database', scenario.disposeError ]
+            ])
+        ]);
+    }
+});
+
+const assertDisposalFailure = defineCompositeAssertion({
+    name: 'disposal failure',
+    async assert(check) {
+        const scenario = disposalFailureScenario();
+        const session = await startRuntime({ runtime: scenario.runtime, signal: testSignal() });
+        const error = assertLifecycleError(await rejectedValue(session.disposeOnce({ signal: testSignal() })));
+        const repeatedError = await rejectedValue(session.disposeOnce({ signal: testSignal() }));
+        return check.group([
+            check.equal(repeatedError, error),
+            check.deepEqual(scenario.events.values(), [ 'second dispose', 'first dispose' ]),
+            check.deepEqual(error.failures().map(failureSummary), [
+                [ 'dispose', 'second', scenario.secondDisposeError ],
+                [ 'dispose', 'first', scenario.firstDisposeError ]
+            ])
+        ]);
+    }
+});
+
+const assertGraphFailures = defineCompositeAssertion({
+    name: 'graph failures',
+    async assert(check) {
+        const duplicateError = assertLifecycleError(await rejectedValue(startRuntime(duplicateRuntimeRequest())));
+        const cycleError = assertLifecycleError(await rejectedValue(startRuntime(cycleRuntimeRequest())));
+        return check.group([
+            check.deepEqual(duplicateError.failures().map(graphFailureSummary), [ [ 'graph', 'database' ] ]),
+            check.deepEqual(cycleError.failures().map(graphFailureSummary), [ [ 'graph', 'cycle' ] ])
+        ]);
+    }
+});
+
+const lifecycleTestCase = defineMacro(
+    function (title: string, assertion: CompositeAssertionReference<[], Promise<CompositeAssertionReturn<'assert'>>>) {
+        return test({
+            title,
+            annotations: {},
+            controls: {},
+            async body(scope) {
+                await scope.assert(assertion);
+
+                return scope.assert.collect();
+            }
+        });
+    }
+);
+
+export const testNode = suite('Resource lifecycle', [
     lifecycleTestCase(
         'startRuntime acquires dependencies and disposes them once in reverse order',
         assertRuntimeLifecycle

@@ -27,7 +27,10 @@ function observerParticipant(
     }
     return participant;
 }
-export async function resourceObserverBinding(scope: TestScope): Promise<ResourceObserverBinding> {
+export async function resourceObserverBinding(
+    cleanup: TestScope['cleanup'],
+    signal: AbortSignal
+): Promise<ResourceObserverBinding> {
     const fixture = resourceImplementationBinding();
     const observer = defineResourceCheckObserverReference(fixture.owner.reference);
     const participant = observerParticipant(observer);
@@ -41,8 +44,8 @@ export async function resourceObserverBinding(scope: TestScope): Promise<Resourc
     };
     const inputs: unknown[] = [];
     const checks = resourceCheckSession(completeObservation);
-    await checks.session.install(scope.signal);
-    scope.cleanup(async function () {
+    await checks.session.install(signal);
+    cleanup(async function () {
         await checks.session.close(function () {
             return undefined;
         });

@@ -1,4 +1,4 @@
-import { table, type TestNode, suite, test, testDouble } from '@overkill-dev/test';
+import { table, suite, test, testDouble } from '@overkill-dev/test';
 
 import { createDeterministicClock, type DeterministicClock } from '@enormora/clock';
 
@@ -56,7 +56,7 @@ function scenario(): Scenario {
     });
     return { session, clock, connection, sent };
 }
-export const testNode: TestNode = suite('resource observation session policy', [
+export const testNode = suite('resource observation session policy', [
     test('matches acknowledgements to pending requests', async function (scope) {
         const fixture = scenario();
         const pending = fixture.session.exchange({ kind: 'flush', request: 'request' });

@@ -23,7 +23,7 @@ type ActiveAttempt = ReturnType<WorkerPoolTaskRun['activeAttempt']['read']>;
 
 type BatchEnvelopeId = ReturnType<WorkerPoolTaskRun['envelopeId']['read']>;
 
-const integrationPath = 'source/integration-tests/integration/fixtures/passing.test.ts';
+const integrationPath = 'source/integration-tests/runtime/fixtures/passing.test.ts';
 
 export const crashLimitMessage = 'Worker-pool stopped after 3 worker crashes.';
 

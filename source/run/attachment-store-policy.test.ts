@@ -1,4 +1,4 @@
-import { table, type TestNode, suite, test } from '@overkill-dev/test';
+import { table, suite, test } from '@overkill-dev/test';
 
 import { defaultAttachmentLimits } from '../engine/runtime-attachment.ts';
 import { inlineAttachmentFixture, attachmentWork as work } from '../test-support/attachment-fixture.ts';
@@ -15,7 +15,7 @@ const open: Extract<AttachmentOperation, { readonly kind: 'open'; }> = {
     metadata: { name: 'evidence', mediaType: 'text/plain' },
     branch: null
 };
-export const testNode: TestNode = suite('inline attachment store protocol boundaries', [
+export const testNode = suite('inline attachment store protocol boundaries', [
     table({
         title: 'rejects invalid metadata',
         cases: [

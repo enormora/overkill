@@ -1,4 +1,5 @@
-import { type TestNode, defineMacro, type TestScope, suite, test } from '@overkill-dev/test';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import { suite, test } from '@overkill-dev/test';
 
 import { defineResource } from '../packages/resources/resources.entry-point.ts';
 import { assertResourceDependencyScopes, resourceDependencyScopeAllowed } from '../resources/resource-graph.ts';
@@ -196,111 +197,24 @@ function localLane(): PlacementLane {
     };
 }
 
-function assertDependencyScopes(scope: TestScope): void {
-    const scopes = [ 'per-run', 'per-file', 'per-suite', 'shared-per-worker', 'per-case' ] as const;
-    const allowed = scopes.map(function resourceRow(resourceScope) {
-        return scopes.map(function dependencyCell(dependencyScope) {
-            return resourceDependencyScopeAllowed({ scope: resourceScope }, { scope: dependencyScope });
-        });
-    });
-
-    scope.assert.deepEqual(allowed, [
-        [ true, false, false, false, false ],
-        [ true, true, false, false, false ],
-        [ true, true, true, false, false ],
-        [ true, false, false, true, false ],
-        [ true, true, true, true, true ]
-    ]);
-}
-
-function assertDependencyGraphs(scope: TestScope): void {
-    const dependency = defineResource({
-        acquire() {
-            return 'dependency';
-        },
-        dispose: null,
-        name: 'dependency',
-        requirements: [],
-        scope: 'per-case'
-    });
-    const resource = defineResource({
-        acquire() {
-            return 'resource';
-        },
-        dependencies: { dependency },
-        dispose: null,
-        name: 'resource',
-        requirements: [],
-        scope: 'per-case'
-    });
-    const invalidResource = defineResource({
-        acquire() {
-            return 'invalid-resource';
-        },
-        dependencies: { dependency },
-        deserializeHandle: String,
-        dispose: null,
-        name: 'invalid-resource',
-        requirements: [],
-        scope: 'per-run',
-        serializeHandle: String
-    });
-
-    assertResourceDependencyScopes({ resource });
-    scope.assert.throws(function rejectNarrowerDependency() {
-        assertResourceDependencyScopes({ invalidResource });
-    }, {
-        message: 'Resource "invalid-resource" uses per-run scope and cannot depend on ' +
-            'resource "dependency" with per-case scope.'
-    });
-}
-
-function assertIdentityConflicts(scope: TestScope): void {
-    const plan = identityConflictPlan();
-    const conflictKinds = collectedPlanCompatibilityConflicts(plan).map(function conflictKind(conflict) {
-        return conflict.kind;
-    });
-    const missingRuntimeKinds = collectedPlanCompatibilityConflicts(withoutFirstRuntime(plan)).map(
-        function conflictKind(conflict) {
+const assertIdentityConflicts = defineCompositeAssertion({
+    name: 'identity conflicts',
+    assert(check) {
+        const plan = identityConflictPlan();
+        const conflictKinds = collectedPlanCompatibilityConflicts(plan).map(function conflictKind(conflict) {
             return conflict.kind;
-        }
-    );
-
-    scope.assert.deepEqual(conflictKinds, [ 'resource-definition', 'runtime-definition' ]);
-    scope.assert.deepEqual(missingRuntimeKinds, [ 'resource-definition' ]);
-}
-
-function assertExecutionConflicts(scope: TestScope): void {
-    const plan = collectedPlan();
-    const [ first, second ] = collectedRunCaseEntries(plan);
-    scope.require.object(first);
-    scope.require.object(second);
-    const units = [
-        workUnit('reuse', [ first.workId ], 'reuse', [ 'shared' ]),
-        workUnit('fresh', [ second.workId ], 'fresh-worker-per-unit', [ 'shared' ])
-    ];
-    const conflicts = executionPlanCompatibilityConflicts({
-        requiredLifecycleLanes: 2,
-        selectedPlan: plan,
-        units,
-        workerCount: { hostMaximum: 1, profileMaximum: null, requested: null, resolved: 1 }
-    });
-
-    scope.assert.deepEqual(
-        conflicts.map(function conflictKind(conflict) {
-            return conflict.kind;
-        }),
-        [ 'worker-capacity', 'worker-lifecycle' ]
-    );
-    scope.assert.throws(function rejectMissingLifecycle() {
-        executionPlanCompatibilityConflicts({
-            requiredLifecycleLanes: 1,
-            selectedPlan: plan,
-            units: [],
-            workerCount: { hostMaximum: 0, profileMaximum: null, requested: null, resolved: 0 }
         });
-    }, { message: 'Worker capacity conflict requires lifecycles.' });
-}
+        const missingRuntimeKinds = collectedPlanCompatibilityConflicts(withoutFirstRuntime(plan)).map(
+            function conflictKind(conflict) {
+                return conflict.kind;
+            }
+        );
+        return check.group([
+            check.deepEqual(conflictKinds, [ 'resource-definition', 'runtime-definition' ]),
+            check.deepEqual(missingRuntimeKinds, [ 'resource-definition' ])
+        ]);
+    }
+});
 
 function ownershipPlacementKinds(
     plan: CollectedRunPlan,
@@ -314,49 +228,15 @@ function ownershipPlacementKinds(
 }
 
 function requiredPlanWork(
-    scope: TestScope,
     plan: CollectedRunPlan
 ): readonly [WorkUnit['work'][number], WorkUnit['work'][number]] {
     const [ first, second ] = collectedRunCaseEntries(plan);
 
-    scope.require.object(first);
-    scope.require.object(second);
+    if (first === undefined || second === undefined) {
+        throw new Error('Expected two planned cases.');
+    }
 
     return [ first.workId, second.workId ];
-}
-
-function assertOwnershipPlacements(scope: TestScope): void {
-    const runPlan = resourcePlan('per-run');
-    const [ firstRun, secondRun ] = requiredPlanWork(scope, runPlan);
-    const filePlan = resourcePlan('per-file');
-    const [ firstFile, secondFile ] = requiredPlanWork(scope, filePlan);
-
-    scope.assert.deepEqual(
-        ownershipPlacementKinds(runPlan, [
-            workUnit('run', [ firstRun, secondRun ], 'reuse', [])
-        ]),
-        [ 'executor-lane' ]
-    );
-    scope.assert.deepEqual(
-        ownershipPlacementKinds(filePlan, [
-            workUnit('file', [ firstFile ], 'reuse', [])
-        ]),
-        [ 'work-unit' ]
-    );
-    scope.assert.deepEqual(
-        ownershipPlacementKinds(filePlan, [
-            workUnit('first', [ firstFile ], 'fresh-worker-per-unit', []),
-            workUnit('second', [ secondFile ], 'fresh-worker-per-unit', [])
-        ]),
-        [ 'infrastructure-worker' ]
-    );
-    scope.assert.deepEqual(
-        ownershipPlacementKinds(filePlan, [
-            workUnit('first', [ firstFile ], 'reuse', []),
-            workUnit('second', [ secondFile ], 'reuse', [])
-        ]),
-        [ 'executor-lane' ]
-    );
 }
 
 const work = {
@@ -408,64 +288,183 @@ const describedConflicts: readonly RunExecutionPlanConflict[] = [
     }
 ];
 
-function assertErrorDescriptions(scope: TestScope): void {
-    const error = new RunExecutionPlanError(describedConflicts, undefined);
-    const unknownError = new RunExecutionPlanError([
-        { kind: 'unknown' } as unknown as RunExecutionPlanConflict
-    ], undefined);
-    const descriptions = [
-        'requires handle projection',
-        'cannot depend on',
-        'incompatible definitions',
-        'incompatible worker lifecycles',
-        'requires 2 lifecycle lanes',
-        'requires a file set',
-        'has no group for file set',
-        'Runtime identity',
-        'Process model'
-    ];
-
-    scope.assert.deepEqual(
-        descriptions.map(function messageIncluded(description) {
-            return error.message.includes(description);
-        }),
-        descriptions.map(function () {
-            return true;
-        })
-    );
-    scope.assert.equal(
-        unknownError.message,
-        'Execution plan is incompatible: Execution plan has an unknown incompatibility.'
-    );
-    scope.assert.throws(function rejectEmptyConflicts() {
-        return new RunExecutionPlanError([], undefined);
-    }, { message: 'Execution plan conflicts must not be empty.' });
-}
-
-const compatibilityTest = defineMacro(function (title: string, assertion: (scope: TestScope) => void) {
-    return test({
-        title,
-        body(scope) {
-            assertion(scope);
-
-            return scope.assert.collect();
-        }
-    });
+const assertErrorDescriptions = defineCompositeAssertion({
+    name: 'error descriptions',
+    assert(check) {
+        const error = new RunExecutionPlanError(describedConflicts, undefined);
+        const unknownError = new RunExecutionPlanError([
+            { kind: 'unknown' } as unknown as RunExecutionPlanConflict
+        ], undefined);
+        const descriptions = [
+            'requires handle projection',
+            'cannot depend on',
+            'incompatible definitions',
+            'incompatible worker lifecycles',
+            'requires 2 lifecycle lanes',
+            'requires a file set',
+            'has no group for file set',
+            'Runtime identity',
+            'Process model'
+        ];
+        return check.group([
+            check.deepEqual(
+                descriptions.map(function messageIncluded(description) {
+                    return error.message.includes(description);
+                }),
+                descriptions.map(function () {
+                    return true;
+                })
+            ),
+            check.equal(
+                unknownError.message,
+                'Execution plan is incompatible: Execution plan has an unknown incompatibility.'
+            ),
+            check.throws(function rejectEmptyConflicts() {
+                return new RunExecutionPlanError([], undefined);
+            }, { message: 'Execution plan conflicts must not be empty.' })
+        ]);
+    }
 });
 
-export const testNode: TestNode = suite('Execution plan compatibility', [
-    compatibilityTest('resource dependency scopes follow ownership nesting', function assertScopes(scope) {
-        assertDependencyScopes(scope);
-        assertDependencyGraphs(scope);
+export const testNode = suite('Execution plan compatibility', [
+    suite('resource dependency scopes follow ownership nesting', [
+        test('dependency scopes', function (scope) {
+            const scopes = [ 'per-run', 'per-file', 'per-suite', 'shared-per-worker', 'per-case' ] as const;
+            const allowed = scopes.map(function resourceRow(resourceScope) {
+                return scopes.map(function dependencyCell(dependencyScope) {
+                    return resourceDependencyScopeAllowed({ scope: resourceScope }, { scope: dependencyScope });
+                });
+            });
+
+            scope.assert.deepEqual(allowed, [
+                [ true, false, false, false, false ],
+                [ true, true, false, false, false ],
+                [ true, true, true, false, false ],
+                [ true, false, false, true, false ],
+                [ true, true, true, true, true ]
+            ]);
+
+            return scope.assert.collect();
+        }),
+        test('dependency graphs', function (scope) {
+            const dependency = defineResource({
+                acquire() {
+                    return 'dependency';
+                },
+                dispose: null,
+                name: 'dependency',
+                requirements: [],
+                scope: 'per-case'
+            });
+            const resource = defineResource({
+                acquire() {
+                    return 'resource';
+                },
+                dependencies: { dependency },
+                dispose: null,
+                name: 'resource',
+                requirements: [],
+                scope: 'per-case'
+            });
+            const invalidResource = defineResource({
+                acquire() {
+                    return 'invalid-resource';
+                },
+                dependencies: { dependency },
+                deserializeHandle: String,
+                dispose: null,
+                name: 'invalid-resource',
+                requirements: [],
+                scope: 'per-run',
+                serializeHandle: String
+            });
+
+            assertResourceDependencyScopes({ resource });
+            scope.assert.throws(function rejectNarrowerDependency() {
+                assertResourceDependencyScopes({ invalidResource });
+            }, {
+                message: 'Resource "invalid-resource" uses per-run scope and cannot depend on ' +
+                    'resource "dependency" with per-case scope.'
+            });
+
+            return scope.assert.collect();
+        })
+    ]),
+    test('collected compatibility reports resource and runtime identity conflicts', function (scope) {
+        scope.assert(assertIdentityConflicts);
+        return scope.assert.collect();
     }),
-    compatibilityTest(
-        'collected compatibility reports resource and runtime identity conflicts',
-        assertIdentityConflicts
-    ),
-    compatibilityTest(
-        'execution compatibility reports lifecycle and worker capacity conflicts',
-        assertExecutionConflicts
-    ),
-    compatibilityTest('resource ownership selects lane and unit placements', assertOwnershipPlacements),
-    compatibilityTest('execution plan errors describe every incompatibility', assertErrorDescriptions)
+    test('execution compatibility reports lifecycle and worker capacity conflicts', function (scope) {
+        const plan = collectedPlan();
+        const [ first, second ] = collectedRunCaseEntries(plan);
+        if (first === undefined || second === undefined) {
+            throw new Error('Expected two planned cases.');
+        }
+        const units = [
+            workUnit('reuse', [ first.workId ], 'reuse', [ 'shared' ]),
+            workUnit('fresh', [ second.workId ], 'fresh-worker-per-unit', [ 'shared' ])
+        ];
+        const conflicts = executionPlanCompatibilityConflicts({
+            requiredLifecycleLanes: 2,
+            selectedPlan: plan,
+            units,
+            workerCount: { hostMaximum: 1, profileMaximum: null, requested: null, resolved: 1 }
+        });
+
+        scope.assert.deepEqual(
+            conflicts.map(function conflictKind(conflict) {
+                return conflict.kind;
+            }),
+            [ 'worker-capacity', 'worker-lifecycle' ]
+        );
+        scope.assert.throws(function rejectMissingLifecycle() {
+            executionPlanCompatibilityConflicts({
+                requiredLifecycleLanes: 1,
+                selectedPlan: plan,
+                units: [],
+                workerCount: { hostMaximum: 0, profileMaximum: null, requested: null, resolved: 0 }
+            });
+        }, { message: 'Worker capacity conflict requires lifecycles.' });
+
+        return scope.assert.collect();
+    }),
+    test('resource ownership selects lane and unit placements', function (scope) {
+        const runPlan = resourcePlan('per-run');
+        const [ firstRun, secondRun ] = requiredPlanWork(runPlan);
+        const filePlan = resourcePlan('per-file');
+        const [ firstFile, secondFile ] = requiredPlanWork(filePlan);
+
+        scope.assert.deepEqual(
+            ownershipPlacementKinds(runPlan, [
+                workUnit('run', [ firstRun, secondRun ], 'reuse', [])
+            ]),
+            [ 'executor-lane' ]
+        );
+        scope.assert.deepEqual(
+            ownershipPlacementKinds(filePlan, [
+                workUnit('file', [ firstFile ], 'reuse', [])
+            ]),
+            [ 'work-unit' ]
+        );
+        scope.assert.deepEqual(
+            ownershipPlacementKinds(filePlan, [
+                workUnit('first', [ firstFile ], 'fresh-worker-per-unit', []),
+                workUnit('second', [ secondFile ], 'fresh-worker-per-unit', [])
+            ]),
+            [ 'infrastructure-worker' ]
+        );
+        scope.assert.deepEqual(
+            ownershipPlacementKinds(filePlan, [
+                workUnit('first', [ firstFile ], 'reuse', []),
+                workUnit('second', [ secondFile ], 'reuse', [])
+            ]),
+            [ 'executor-lane' ]
+        );
+
+        return scope.assert.collect();
+    }),
+    test('execution plan errors describe every incompatibility', function (scope) {
+        scope.assert(assertErrorDescriptions);
+        return scope.assert.collect();
+    })
 ]);

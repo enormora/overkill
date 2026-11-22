@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import {
     measurementStrategy,
@@ -12,7 +12,7 @@ import {
 import { referenceResource } from '../test-support/normalized-machine.ts';
 import { normalizationDefinition as definition } from '../test-support/automatic-normalization.ts';
 
-export const testNode: TestNode = suite('automatic normalization policy', [
+export const testNode = suite('automatic normalization policy', [
     test('adds CPU references to built-in timing and collector metrics without a wrapper', function (scope) {
         const resolved = definition(measurementStrategy([ processCpuCollector() ]));
         scope.assert.deepEqual(

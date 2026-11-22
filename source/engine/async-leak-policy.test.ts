@@ -1,10 +1,10 @@
-import { table, type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { table, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { managedCase } from '../test-support/managed-resource-acquisition.ts';
 
 import { activeResourceLeakError, createDisabledAsyncLeakMonitor } from './async-leak-diagnostics.ts';
 
-export const testNode: TestNode = suite('async leak diagnostic policy', [
+export const testNode = suite('async leak diagnostic policy', [
     test('reports sorted increases while ignoring pipe handles', function (scope: TestScope) {
         const testCase = managedCase();
         const error = activeResourceLeakError({

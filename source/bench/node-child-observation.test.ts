@@ -1,8 +1,8 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { nodeChildObservation } from '../test-support/node-child-observation.ts';
 
-export const testNode: TestNode = suite('child runtime metric ownership', [
+export const testNode = suite('child runtime metric ownership', [
     test('converts process readings and retains metric provenance', function (scope) {
         const fixture = nodeChildObservation(2);
         const report = fixture.observation.snapshot();

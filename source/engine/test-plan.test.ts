@@ -1,4 +1,4 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 
 import { serializeValue } from '../compare/serialized-value.ts';
 import { createTestEngine as createEngine } from '../test-support/create-test-engine.ts';
@@ -24,7 +24,7 @@ function parameterIdentity(parameters: Readonly<Record<string, unknown>>): strin
     return JSON.stringify(serializeValue(parameters));
 }
 
-export const testNode: TestNode = suite('Test plan construction', [
+export const testNode = suite('Test plan construction', [
     test('expands suites and tables into executable cases', function (scope) {
         const engine = createEngine();
         const root = engine.createRoot({

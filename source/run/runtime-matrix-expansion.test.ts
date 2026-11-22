@@ -1,4 +1,5 @@
-import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import { suite, test, type TestScope } from '@overkill-dev/test';
 
 import { createCaseId, createDefaultWorkId } from '../engine/identity.ts';
 import type { TestPlan, TestPlanCase } from '../engine/test-plan.ts';
@@ -207,21 +208,25 @@ function scenarioSidecarRuntimeGraph(value: string): TestPlanCase['resourceAttac
     };
 }
 
-function assertScenarioRuntimeIdentities(
-    scope: TestScope,
-    defaultExpansion: TestPlan,
-    selectedExpansion: TestPlan
-): void {
-    const defaultRuntime = defaultExpansion.cases[0].workId.runtimes[0];
-    const selectedRuntime = selectedExpansion.cases[0].workId.runtimes[0];
+const assertScenarioRuntimeIdentities = defineCompositeAssertion({
+    name: 'scenario runtime identities',
+    assert(check, defaultExpansion: TestPlan, selectedExpansion: TestPlan) {
+        const defaultRuntime = defaultExpansion.cases[0].workId.runtimes[0];
+        const selectedRuntime = selectedExpansion.cases[0].workId.runtimes[0];
+        if (defaultRuntime === undefined) {
+            return check.defined(defaultRuntime);
+        }
+        if (selectedRuntime === undefined) {
+            return check.defined(selectedRuntime);
+        }
+        return check.group([
+            check.deepEqual(defaultRuntime.scenarios, { api: 'default' }),
+            check.deepEqual(selectedRuntime.scenarios, { api: 'payments-500' })
+        ]);
+    }
+});
 
-    scope.require.defined(defaultRuntime);
-    scope.require.defined(selectedRuntime);
-    scope.assert.deepEqual(defaultRuntime.scenarios, { api: 'default' });
-    scope.assert.deepEqual(selectedRuntime.scenarios, { api: 'payments-500' });
-}
-
-export const testNode: TestNode = suite('Runtime matrix expansion', [
+export const testNode = suite('Runtime matrix expansion', [
     test('expands one matrix into work identities and selected resources', function (scope) {
         const expanded = expandRuntimeMatrices(
             testPlan(testCaseWithRuntimeGraphs([ matrixRuntimeGraph('node'), sidecarRuntimeGraph() ]))
@@ -348,7 +353,7 @@ export const testNode: TestNode = suite('Runtime matrix expansion', [
 
         scope.assert.equal(defaultExpansion.cases.length, 1);
         scope.assert.equal(selectedExpansion.cases.length, 1);
-        assertScenarioRuntimeIdentities(scope, defaultExpansion, selectedExpansion);
+        scope.assert(assertScenarioRuntimeIdentities, defaultExpansion, selectedExpansion);
 
         return scope.assert.collect();
     }),

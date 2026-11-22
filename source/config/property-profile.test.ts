@@ -1,4 +1,4 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 
 import { defaultPropertyPolicy } from '../engine/property-policy.ts';
 import { normalizeConfig } from './config.ts';
@@ -17,7 +17,7 @@ function integrationProfile(config: NormalizedConfig): IntegrationProfileConfig 
     return profile;
 }
 
-export const testNode: TestNode = suite('property profile', [
+export const testNode = suite('property profile', [
     test(
         'integration profiles resolve explicit property budgets and copy them independently',
         function (scope: TestScope) {

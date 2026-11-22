@@ -1,4 +1,5 @@
-import { type TestNode, table, type TestScope, suite, test } from '@overkill-dev/test';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import { table, suite, test } from '@overkill-dev/test';
 
 import { defaultAttachmentLimits } from '../engine/runtime-attachment.ts';
 import { createDefaultWorkId } from '../engine/identity.ts';
@@ -12,15 +13,20 @@ const owner = { kind: 'case', work, attempt } as const;
 const metadata = { name: 'log', mediaType: 'application/json' };
 const producer = { kind: 'case' } as const;
 
-function assertPreparedOwner(scope: TestScope, operation: AttachmentOperation | undefined): void {
-    scope.require.defined(operation);
-    if (operation.kind !== 'prepare') {
-        throw new Error('Expected a prepared attachment.');
+const assertPreparedOwner = defineCompositeAssertion({
+    name: 'prepared owner',
+    assert(check, operation: AttachmentOperation | undefined) {
+        if (operation === undefined) {
+            return check.defined(operation);
+        }
+        if (operation.kind !== 'prepare') {
+            throw new Error('Expected a prepared attachment.');
+        }
+        return check.group([ check.equal(operation.owner.kind, 'case') ]);
     }
-    scope.assert.equal(operation.owner.kind, 'case');
-}
+});
 
-export const testNode: TestNode = suite('attachment execution ownership', [
+export const testNode = suite('attachment execution ownership', [
     test('sends a JSON snapshot with attempt and branch ownership', async function (scope) {
         const recorded = recordAttachmentExchange();
         const execution = createAttachmentExecution(recorded.exchange, defaultAttachmentLimits);
@@ -202,7 +208,7 @@ export const testNode: TestNode = suite('attachment execution ownership', [
             message: 'Attachment escaped its test attempt.'
         });
         scope.assert.equal(execution.takeErrors({ kind: 'run' }).length, 2);
-        assertPreparedOwner(scope, recorded.operations[0]);
+        scope.assert(assertPreparedOwner, recorded.operations[0]);
         return scope.assert.collect();
     }),
     test('registers resource consumers and failures', async function (scope) {

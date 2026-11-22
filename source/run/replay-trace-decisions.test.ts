@@ -1,4 +1,5 @@
-import { table, type TestNode, type TestScope, suite } from '@overkill-dev/test';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import { table, suite } from '@overkill-dev/test';
 
 import { placementPlan, fakeWorkerRuntime } from './worker-pool-placement-validation.test.ts';
 import {
@@ -83,26 +84,35 @@ function batchTrace(plan: PlacementPlan): PlacementTrace {
     });
     return trace.finish();
 }
-function assertBatch(scope: TestScope): void {
-    const plan = batchedPlan();
-    const lane = plan.lanes[0];
-    scope.require.defined(lane);
-    const dispatcher = createReplayDispatcher(fakeWorkerRuntime(plan), plan, {
-        status: 'completed',
-        placementTrace: batchTrace(plan)
-    });
-    const lease = dispatcher.pull(lane);
-    scope.require.defined(lease);
-    scope.assert.equal(lease.envelopeId, 'recorded-batch');
-    scope.assert.deepEqual(
-        lease.members.map(function work(member) {
-            return member.unit.work;
-        }),
-        plan.units.map(function work(unit) {
-            return unit.work;
-        })
-    );
-}
+const assertBatch = defineCompositeAssertion({
+    name: 'batch replay',
+    assert(check) {
+        const plan = batchedPlan();
+        const lane = plan.lanes[0];
+        if (lane === undefined) {
+            throw new Error('Expected a replay lane.');
+        }
+        const dispatcher = createReplayDispatcher(fakeWorkerRuntime(plan), plan, {
+            status: 'completed',
+            placementTrace: batchTrace(plan)
+        });
+        const lease = dispatcher.pull(lane);
+        if (lease === null) {
+            throw new Error('Expected a replay lease.');
+        }
+        return check.group([
+            check.equal(lease.envelopeId, 'recorded-batch'),
+            check.deepEqual(
+                lease.members.map(function work(member) {
+                    return member.unit.work;
+                }),
+                plan.units.map(function work(unit) {
+                    return unit.work;
+                })
+            )
+        ]);
+    }
+});
 function completeSplitChildren(
     trace: PlacementTraceRecorder,
     parent: PlacementPlan['units'][number],
@@ -133,31 +143,34 @@ function splitTrace(plan: PlacementPlan): PlacementTrace {
     completeSplitChildren(trace, parent, children);
     return trace.finish();
 }
-function assertSplit(scope: TestScope): void {
-    const source = batchedPlan();
-    const unit = firstUnit(source);
-    const work = source.units.flatMap(function members(entry) {
-        return entry.work;
-    });
-    const parent = { ...unit, work: [ unit.work[0], ...work.slice(1) ] as const };
-    const plan = {
-        ...source,
-        units: [ parent ],
-        assignments: [ source.assignments[0] ].filter(function present(value) {
-            return value !== undefined;
-        })
-    };
-    const compiled = compileReplayTrace(plan, { status: 'completed', placementTrace: splitTrace(plan) });
-    scope.assert.deepEqual(
-        Array.from(compiled.assignments.values(), function child(entry) {
-            return entry.unit;
-        }),
-        [
-            { parent: parent.id, child: 'left' },
-            { parent: parent.id, child: 'right' }
-        ]
-    );
-}
+const assertSplit = defineCompositeAssertion({
+    name: 'split',
+    assert(check) {
+        const source = batchedPlan();
+        const unit = firstUnit(source);
+        const work = source.units.flatMap(function members(entry) {
+            return entry.work;
+        });
+        const parent = { ...unit, work: [ unit.work[0], ...work.slice(1) ] as const };
+        const plan = {
+            ...source,
+            units: [ parent ],
+            assignments: [ source.assignments[0] ].filter(function present(value) {
+                return value !== undefined;
+            })
+        };
+        const compiled = compileReplayTrace(plan, { status: 'completed', placementTrace: splitTrace(plan) });
+        return check.group([ check.deepEqual(
+            Array.from(compiled.assignments.values(), function child(entry) {
+                return entry.unit;
+            }),
+            [
+                { parent: parent.id, child: 'left' },
+                { parent: parent.id, child: 'right' }
+            ]
+        ) ]);
+    }
+});
 function hedgeTrace(plan: PlacementPlan): PlacementTrace {
     const unit = firstUnit(plan);
     const trace = createPlacementTraceRecorder();
@@ -168,18 +181,27 @@ function hedgeTrace(plan: PlacementPlan): PlacementTrace {
     trace.recordDecision({ kind: 'hedge-conflict', authoritativeAttempt: duplicate, conflictingAttempt: primary });
     return trace.finish();
 }
-function assertHedge(scope: TestScope): void {
-    const plan = twoLanePlan();
-    const compiled = compileReplayTrace(plan, { status: 'completed', placementTrace: hedgeTrace(plan) });
-    scope.assert.equal(
-        JSON.stringify(compiled.assignments.get('attempt-2')?.reason),
-        JSON.stringify({ kind: 'hedge', primaryAttempt: 'attempt-1' })
-    );
-    scope.assert.equal(
-        JSON.stringify(compiled.entries.at(-1)),
-        JSON.stringify({ kind: 'hedge-conflict', authoritativeAttempt: 'attempt-2', conflictingAttempt: 'attempt-1' })
-    );
-}
+const assertHedge = defineCompositeAssertion({
+    name: 'hedge',
+    assert(check) {
+        const plan = twoLanePlan();
+        const compiled = compileReplayTrace(plan, { status: 'completed', placementTrace: hedgeTrace(plan) });
+        return check.group([
+            check.equal(
+                JSON.stringify(compiled.assignments.get('attempt-2')?.reason),
+                JSON.stringify({ kind: 'hedge', primaryAttempt: 'attempt-1' })
+            ),
+            check.equal(
+                JSON.stringify(compiled.entries.at(-1)),
+                JSON.stringify({
+                    kind: 'hedge-conflict',
+                    authoritativeAttempt: 'attempt-2',
+                    conflictingAttempt: 'attempt-1'
+                })
+            )
+        ]);
+    }
+});
 function recoveryTrace(plan: PlacementPlan): PlacementTrace {
     const unit = firstUnit(plan);
     const trace = createPlacementTraceRecorder();
@@ -193,16 +215,21 @@ function recoveryTrace(plan: PlacementPlan): PlacementTrace {
     );
     return trace.finish();
 }
-function assertRecovery(scope: TestScope): void {
-    const plan = twoLanePlan();
-    const compiled = compileReplayTrace(plan, { status: 'completed', placementTrace: recoveryTrace(plan) });
-    scope.assert.equal(compiled.assignments.get('attempt-2')?.lane, 'worker-2');
-    scope.assert.equal(
-        JSON.stringify(compiled.assignments.get('attempt-2')?.reason),
-        JSON.stringify({ kind: 'recovery', previousAttempt: 'attempt-1' })
-    );
-}
-export const testNode: TestNode = suite(
+const assertRecovery = defineCompositeAssertion({
+    name: 'recovery',
+    assert(check) {
+        const plan = twoLanePlan();
+        const compiled = compileReplayTrace(plan, { status: 'completed', placementTrace: recoveryTrace(plan) });
+        return check.group([
+            check.equal(compiled.assignments.get('attempt-2')?.lane, 'worker-2'),
+            check.equal(
+                JSON.stringify(compiled.assignments.get('attempt-2')?.reason),
+                JSON.stringify({ kind: 'recovery', previousAttempt: 'attempt-1' })
+            )
+        ]);
+    }
+});
+export const testNode = suite(
     'dynamic replay decisions',
     [ table({
         title: 'retains placement decisions in compiled traces',
@@ -218,7 +245,7 @@ export const testNode: TestNode = suite(
         test(scope) {
             const entry = scope.parameters;
 
-            entry.verify(scope);
+            scope.assert(entry.verify);
             return scope.assert.collect();
         }
     }) ]

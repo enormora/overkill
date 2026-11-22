@@ -1,4 +1,4 @@
-import { table, type TestNode, suite } from '@overkill-dev/test';
+import { table, suite } from '@overkill-dev/test';
 
 import { observationCase } from '../test-support/observation-lifetime.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
@@ -17,7 +17,7 @@ const contractOutcome: TestOutcome = {
     } ]
 };
 const outcomes: readonly (TestOutcome | null)[] = [ null, { kind: 'pass' }, contractOutcome ];
-export const testNode: TestNode = suite('case leak attribution policy', [
+export const testNode = suite('case leak attribution policy', [
     table({
         title: 'handles with resource checks and ambiguous ownership',
         cases: outcomes.flatMap(function (outcome) {

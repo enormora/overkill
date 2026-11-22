@@ -1,4 +1,4 @@
-import { type TestNode, table, suite, test } from '@overkill-dev/test';
+import { table, suite, test } from '@overkill-dev/test';
 
 import {
     benchmarkBaselineSessionFixture,
@@ -10,7 +10,7 @@ import { performanceBaselineError } from '../baselines/performance-evaluation.ts
 import { readPerformanceBaselineReport } from '../baselines/performance-report.ts';
 import { openBenchmarkBaselineSession } from './benchmark-baseline-session.ts';
 
-export const testNode: TestNode = suite('benchmark baseline session ownership', [
+export const testNode = suite('benchmark baseline session ownership', [
     test('preserves prepared results and attaches the baseline report', async function (scope) {
         const fixture = benchmarkBaselineSessionFixture(benchmarkSessionScenario);
         const session = await openBenchmarkBaselineSession(fixture.input, fixture.store);

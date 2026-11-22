@@ -1,4 +1,5 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import { suite, test } from '@overkill-dev/test';
 
 import type { CaseId } from '../engine/identity.ts';
 import type { ProcessUsageSnapshot } from '../engine/process-usage.ts';
@@ -53,14 +54,15 @@ function noBudgets(): ProcessBudgets {
     };
 }
 
-function assertBreach(
-    scope: TestScope,
-    actual: ProcessBudgetBreach | null,
-    expected: ProcessBudgetBreach
-): void {
-    scope.require.defined(actual);
-    scope.assert.deepEqual(actual, expected);
-}
+const assertBreach = defineCompositeAssertion({
+    name: 'breach',
+    assert(check, actual: ProcessBudgetBreach | null, expected: ProcessBudgetBreach) {
+        if (actual === null) {
+            return check.defined(actual);
+        }
+        return check.group([ check.deepEqual(actual, expected) ]);
+    }
+});
 
 function activeCaseStates(): readonly [SupervisedRunState, SupervisedRunState, SupervisedRunState] {
     const singleState = createSupervisedRunState('first-failure-and-final');
@@ -100,15 +102,20 @@ function activeCaseStates(): readonly [SupervisedRunState, SupervisedRunState, S
     return [ createSupervisedRunState('first-failure-and-final'), singleState, multiState ];
 }
 
-function assertCaseId(scope: TestScope, actual: CaseId | null, expected: CaseId): void {
-    scope.require.defined(actual);
-    scope.assert.deepEqual(actual, expected);
-}
+const assertCaseId = defineCompositeAssertion({
+    name: 'case id',
+    assert(check, actual: CaseId | null, expected: CaseId) {
+        if (actual === null) {
+            return check.defined(actual);
+        }
+        return check.group([ check.deepEqual(actual, expected) ]);
+    }
+});
 
-export const testNode: TestNode = suite('Supervised run process policy', [
+export const testNode = suite('Supervised run process policy', [
     test('findProcessBudgetBreach() selects the first exceeded process budget', function (scope) {
-        assertBreach(
-            scope,
+        scope.assert(
+            assertBreach,
             findProcessBudgetBreach(
                 {
                     ...noBudgets(),
@@ -120,8 +127,8 @@ export const testNode: TestNode = suite('Supervised run process policy', [
             ),
             { budget: 1, metric: 'activeResourceCount', observed: 2, sample }
         );
-        assertBreach(
-            scope,
+        scope.assert(
+            assertBreach,
             findProcessBudgetBreach(
                 {
                     ...noBudgets(),
@@ -164,8 +171,8 @@ export const testNode: TestNode = suite('Supervised run process policy', [
             message: 'Process budget exceeded: activeResourceCount observed 2, budget 1.',
             subtype: 'process-exhaustion'
         });
-        assertCaseId(scope, processExhaustionError(breach, singleState).attributedTo, firstCaseId);
-        assertCaseId(scope, crashError(singleState, 'Crashed.').attributedTo, firstCaseId);
+        scope.assert(assertCaseId, processExhaustionError(breach, singleState).attributedTo, firstCaseId);
+        scope.assert(assertCaseId, crashError(singleState, 'Crashed.').attributedTo, firstCaseId);
         scope.assert.equal(processExhaustionError(breach, multiState).attributedTo, null);
         const activeWork = Array.from(multiState.activeCases.values(), function work(testCase) {
             return testCase.workId;

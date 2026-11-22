@@ -1,4 +1,4 @@
-import { type TestNode, suite, test, doubleUsage, testDouble, type TestDouble } from '@overkill-dev/test';
+import { suite, test, doubleUsage, testDouble, type TestDouble } from '@overkill-dev/test';
 
 import { defaultFailureArtifactPolicy } from '../packages/engine/engine.entry-point.ts';
 import { serializedValueDiff } from '../compare/comparison.ts';
@@ -128,7 +128,7 @@ async function reportRealTimeTapRun(reporter: RealTimeReporter): Promise<void> {
     await reporter.onEvent({ kind: 'run-end', result: runResultFactory.build({ summary: { planned: 2 } }) });
 }
 
-export const testNode: TestNode = suite('Tap console reporter', [
+export const testNode = suite('Tap console reporter', [
     test('reports the final result without any test cases formatted as TAP', async function (scope) {
         const log = testDouble<LogFunction>();
         const reporter = tapConsoleReporterWithLog(log);

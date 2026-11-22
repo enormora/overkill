@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import figures from 'figures';
 import colors from 'yoctocolors';
@@ -143,7 +143,7 @@ function createFailureDetailResult(): RunResult {
     });
 }
 
-export const testNode: TestNode = suite('Dot reporter', [
+export const testNode = suite('Dot reporter', [
     test('declares raw stdout', function (scope) {
         const terminal = createFakeTerminal(80);
         const reporter = createDotRuntimeReporter({

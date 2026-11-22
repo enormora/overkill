@@ -1,4 +1,4 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 import type { EngineCaseBody } from '../test-support/create-test-engine.ts';
 
 import {
@@ -59,7 +59,7 @@ function runtimeAttachments(
     };
 }
 
-export const testNode: TestNode = suite('Test body resource attachment', [
+export const testNode = suite('Test body resource attachment', [
     test(
         'hasAttachedResourceDescriptors() reads resource descriptors from attachment metadata',
         function (scope) {

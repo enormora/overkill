@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { rule } from './double-rule.ts';
 import { testDouble } from './test-double.ts';
@@ -7,7 +7,7 @@ type ClientWithId = {
     readonly id: string;
 };
 
-export const testNode: TestNode = suite('Test double construction', [
+export const testNode = suite('Test double construction', [
     test('construction rules can call custom answers', function (scope) {
         type ClientConstructor = new (id: string) => ClientWithId;
 

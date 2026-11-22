@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { executePropertyNode, propertyExecutionDefaults } from '../test-support/property-execution.ts';
 import { serializeValue, defineReporter, type PropertyCaseEvidence } from '../packages/engine/engine.entry-point.ts';
@@ -55,7 +55,7 @@ const rejectPropertyProgress = defineReporter(function rejectCheckpoints() {
     };
 });
 
-export const testNode: TestNode = suite('shrink failure paths', [
+export const testNode = suite('shrink failure paths', [
     test(
         'confirms a replayable example when compatible shrink state is unavailable',
         async function (scope) {

@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 import { test as subjectTest } from '../packages/test/test.entry-point.ts';
 
 import { executePropertyNode, propertyExecutionDefaults } from '../test-support/property-execution.ts';
@@ -32,7 +32,7 @@ async function nestedWitness(): Promise<PropertyWitnessFile> {
     return witness;
 }
 
-export const testNode: TestNode = suite('property corpus invocation targets', [
+export const testNode = suite('property corpus invocation targets', [
     test('direct nested replay substitutes only the keyed target', async function (scope) {
         const saved = await nestedWitness();
         const values: number[] = [];

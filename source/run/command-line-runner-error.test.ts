@@ -1,6 +1,6 @@
-import { type TestNode, suite, test, testDouble } from '@overkill-dev/test';
+import { suite, test, testDouble } from '@overkill-dev/test';
 
-import type { LoadedConfig, ConfiguredRunCommand, RunCommand, RunRequest } from '../packages/run/run.entry-point.ts';
+import type { LoadedConfig, ConfiguredRunCommand, RunCommand } from '../packages/run/run.entry-point.ts';
 import type { TestPlan } from '../packages/engine/engine.entry-point.ts';
 
 import { createTestEngine } from '../test-support/create-test-engine.ts';
@@ -29,7 +29,7 @@ const memoryReporter = defineFixedReporter({
     sinks: [ { kind: 'memory' } ]
 });
 
-const defaultRequest: RunRequest = defaultRunRequest();
+const defaultRequest = defaultRunRequest();
 
 async function loadDefaultRunConfig(): Promise<LoadedConfig> {
     return {
@@ -162,7 +162,7 @@ function createRunOnlyOrchestrator(run: ConfiguredRunOrchestrator['run']): Confi
     };
 }
 
-export const testNode: TestNode = suite('Command line runner error', [
+export const testNode = suite('Command line runner error', [
     test('commandLineRunner.runTests() formats non-error internal crashes', async function (scope) {
         const run = testDouble.rejects<ConfiguredRunOrchestrator['run']>('unexpected string failure');
         const runner = createCommandLineRunner(createRunnerDependencies(createRunOnlyOrchestrator(run)));

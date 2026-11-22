@@ -1,8 +1,8 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { workerPoolShutdown } from '../test-support/worker-pool-shutdown.ts';
 
-export const testNode: TestNode = suite('worker pool shutdown ownership', [
+export const testNode = suite('worker pool shutdown ownership', [
     test('registers each worker exit once across repeated task dispatch', async function (scope) {
         const fixture = workerPoolShutdown(null, null);
         const worker = fixture.addWorker();

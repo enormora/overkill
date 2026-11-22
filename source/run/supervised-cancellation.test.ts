@@ -1,4 +1,4 @@
-import { table, type TestNode, suite } from '@overkill-dev/test';
+import { table, suite } from '@overkill-dev/test';
 
 import { createUnitRunOrchestrator } from '../test-support/create-deterministic-run-orchestrator.ts';
 import { createFakeSupervisedChildProcess } from '../test-support/fake-supervised-child-process.ts';
@@ -11,7 +11,7 @@ import { runSupervisedCommand } from './supervised-run.ts';
 import { SupervisedCollectionError, supervisedCancellationMessage } from './run-errors.ts';
 
 const metadata = { definitionLocations: [ { kind: 'unknown' } ] } as const;
-const file = 'source/integration-tests/integration/fixtures/passing.test.ts';
+const file = 'source/integration-tests/runtime/fixtures/passing.test.ts';
 const command = {
     config: defaultRunConfig(),
     cwd: process.cwd(),
@@ -103,7 +103,7 @@ async function cancelAt(phase: Phase): Promise<EngineRunResult> {
     return completion;
 }
 
-export const testNode: TestNode = suite(
+export const testNode = suite(
     'supervised invocation cancellation',
     [ table({
         title: 'cancellation during respects child completion',

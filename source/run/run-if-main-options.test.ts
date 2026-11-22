@@ -1,4 +1,5 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 
 import {
     type TestPlan,
@@ -12,9 +13,8 @@ import {
     defineFixedReporter,
     type FixedDefinedReporter
 } from '../test-support/reporter-definition.ts';
-import { normalizeConfig } from '../config/config.ts';
-import type { LoadedConfig } from '../config/config-loader.ts';
-import type { MicrotestProfileConfig } from '../config/types.ts';
+import { normalizeConfig, type LoadedConfig, type MicrotestProfileConfig } from '../packages/run/run.entry-point.ts';
+
 import { defaultRunEngine } from './default-run-engine.ts';
 import { directRunFacts, runConfig } from './run-if-main-facts.ts';
 import {
@@ -129,70 +129,89 @@ function directTestPlan(): TestPlan {
     }));
 }
 
-async function assertReporterSelection(scope: TestScope): Promise<void> {
-    const optionReporter = createReporter('option');
-    const profileReporter = createReporter('profile');
-    const configReporter = createReporter('config');
-    const defaultReporters = await selectedReporters(directProfile(null, 'concurrent'), loadedConfig(null), undefined);
+const assertReporterSelection = defineCompositeAssertion({
+    name: 'reporter selection',
+    async assert(check) {
+        const optionReporter = createReporter('option');
+        const profileReporter = createReporter('profile');
+        const configReporter = createReporter('config');
+        const defaultReporters = await selectedReporters(
+            directProfile(null, 'concurrent'),
+            loadedConfig(null),
+            undefined
+        );
+        const initialChecks = check.group([
+            check.deepEqual(
+                await selectedReporters(directProfile(null, 'concurrent'), loadedConfig([ configReporter ]), {
+                    reporters: [ optionReporter ]
+                }),
+                [ optionReporter ]
+            ),
+            check.deepEqual(
+                await selectedReporters(directProfile([ profileReporter ], 'serial'), loadedConfig(null), undefined),
+                [ profileReporter ]
+            ),
+            check.deepEqual(
+                await selectedReporters(directProfile(null, 'concurrent'), loadedConfig([ configReporter ]), undefined),
+                [ configReporter ]
+            )
+        ]);
+        const defaultReporter = defaultReporters[0];
+        if (defaultReporter === undefined) {
+            return check.group([ initialChecks, check.defined(defaultReporter) ]);
+        }
+        return check.group([
+            initialChecks,
+            check.defined(defaultReporter),
+            check.equal(defaultReporter(createReportingContext({ projectRoot: null })).name, 'line')
+        ]);
+    }
+});
 
-    scope.assert.deepEqual(
-        await selectedReporters(directProfile(null, 'concurrent'), loadedConfig([ configReporter ]), {
-            reporters: [ optionReporter ]
-        }),
-        [ optionReporter ]
-    );
-    scope.assert.deepEqual(
-        await selectedReporters(directProfile([ profileReporter ], 'serial'), loadedConfig(null), undefined),
-        [ profileReporter ]
-    );
-    scope.assert.deepEqual(
-        await selectedReporters(directProfile(null, 'concurrent'), loadedConfig([ configReporter ]), undefined),
-        [ configReporter ]
-    );
-    const defaultReporter = defaultReporters[0];
-    scope.require.defined(defaultReporter);
-    scope.assert.equal(defaultReporter(createReportingContext({ projectRoot: null })).name, 'line');
-}
+const assertOutputAndRootOptions = defineCompositeAssertion({
+    name: 'output and root options',
+    assert(check) {
+        return check.group([
+            check.equal(selectedOutputRenderer(loadedConfig(null), undefined), outputRenderer),
+            check.equal(selectedOutputRenderer(loadedConfig(null), { outputRenderer, reporters: [] }), outputRenderer),
+            check.deepEqual(rootAnnotations(undefined), {}),
+            check.deepEqual(rootControls(undefined), {}),
+            check.deepEqual(
+                rootAnnotations({
+                    root: {
+                        annotations: { tags: [ 'direct' ] },
+                        title: 'root'
+                    }
+                }),
+                { tags: [ 'direct' ] }
+            ),
+            check.deepEqual(
+                rootControls({
+                    root: {
+                        controls: { timeoutMilliseconds: 50 },
+                        title: 'root'
+                    }
+                }),
+                { timeoutMilliseconds: 50 }
+            ),
+            check.equal(
+                rootTitle({
+                    root: {
+                        annotations: {},
+                        controls: {},
+                        title: 'root'
+                    }
+                }, '/project'),
+                'root'
+            )
+        ]);
+    }
+});
 
-function assertOutputAndRootOptions(scope: TestScope): void {
-    scope.assert.equal(selectedOutputRenderer(loadedConfig(null), undefined), outputRenderer);
-    scope.assert.equal(selectedOutputRenderer(loadedConfig(null), { outputRenderer, reporters: [] }), outputRenderer);
-    scope.assert.deepEqual(rootAnnotations(undefined), {});
-    scope.assert.deepEqual(rootControls(undefined), {});
-    scope.assert.deepEqual(
-        rootAnnotations({
-            root: {
-                annotations: { tags: [ 'direct' ] },
-                title: 'root'
-            }
-        }),
-        { tags: [ 'direct' ] }
-    );
-    scope.assert.deepEqual(
-        rootControls({
-            root: {
-                controls: { timeoutMilliseconds: 50 },
-                title: 'root'
-            }
-        }),
-        { timeoutMilliseconds: 50 }
-    );
-    scope.assert.equal(
-        rootTitle({
-            root: {
-                annotations: {},
-                controls: {},
-                title: 'root'
-            }
-        }, '/project'),
-        'root'
-    );
-}
-
-export const testNode: TestNode = suite('Run if main options', [
+export const testNode = suite('Run if main options', [
     test('resolves direct execution options', async function (scope) {
-        await assertReporterSelection(scope);
-        assertOutputAndRootOptions(scope);
+        await scope.assert(assertReporterSelection);
+        scope.assert(assertOutputAndRootOptions);
 
         return scope.assert.collect();
     }),

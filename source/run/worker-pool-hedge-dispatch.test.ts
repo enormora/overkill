@@ -1,4 +1,10 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import {
+    type CompositeAssertionReturn,
+    type CompositeCheckBuilder,
+    defineCompositeAssertion
+} from '@overkill-dev/test/assert';
+
+import { suite, test } from '@overkill-dev/test';
 
 import type { PlacementPlan } from './run-types.ts';
 import { fakeWorkerRuntime, placementPlan, testCaseMetadata } from './worker-pool-placement-validation.test.ts';
@@ -264,98 +270,122 @@ function readyHedgeLease(runtime: WorkerPoolRunRuntime, plan: PlacementPlan): He
     };
 }
 
-function assertIncompatibleLaneSuppressesHedge(scope: TestScope): void {
-    const unit = hedgeSafeUnit();
-    const plan = twoLanePlan(unit);
-    const runtime = runtimeWithHedging(plan);
-    const entry = readyHedgeLease(runtime, plan);
-    const state: HedgeDispatchState = {
-        ...hedgeDispatchState(runtime, plan, [ entry ], new Set()),
-        laneCanLeaseHedgeCandidate() {
-            return false;
-        }
-    };
+const assertIncompatibleLaneSuppressesHedge = defineCompositeAssertion({
+    name: 'incompatible lane suppresses hedge',
+    assert(check) {
+        const unit = hedgeSafeUnit();
+        const plan = twoLanePlan(unit);
+        const runtime = runtimeWithHedging(plan);
+        const entry = readyHedgeLease(runtime, plan);
+        const state: HedgeDispatchState = {
+            ...hedgeDispatchState(runtime, plan, [ entry ], new Set()),
+            laneCanLeaseHedgeCandidate() {
+                return false;
+            }
+        };
+        return check.group([
+            check.equal(laneHasPotentialHedge(state, secondLane(plan)), false),
+            check.equal(selectHedgeCandidate(state, secondLane(plan)), null)
+        ]);
+    }
+});
 
-    scope.assert.equal(laneHasPotentialHedge(state, secondLane(plan)), false);
-    scope.assert.equal(selectHedgeCandidate(state, secondLane(plan)), null);
-}
-
-function assertEarlyHedgeDelay(
-    scope: TestScope,
+const earlyHedgeDelayChecks = function (
+    check: CompositeCheckBuilder<'assert'>,
     state: HedgeDispatchState,
     lane: PlacementLane
-): void {
-    scope.assert.equal(laneHasPotentialHedge(state, lane), true);
-    scope.assert.equal(hedgeWakeDelay(state, lane), 50);
-    scope.assert.equal(selectHedgeCandidate(state, lane), null);
-}
+): CompositeAssertionReturn<'assert'> {
+    return check.group([
+        check.equal(laneHasPotentialHedge(state, lane), true),
+        check.equal(hedgeWakeDelay(state, lane), 50),
+        check.equal(selectHedgeCandidate(state, lane), null)
+    ]);
+};
 
-function assertSampledHedgeDelay(scope: TestScope): void {
-    const unit = hedgeSafeUnit();
-    const plan = twoLanePlan(unit);
-    const runtime = runtimeWithSampledHedging(plan, unit);
-    const earlyState = hedgeDispatchState(runtime, plan, [ activeHedgeLease(runtime, plan) ], new Set());
-    const readyEntry = readyHedgeLease(runtime, plan);
-    const readyState = hedgeDispatchState(runtime, plan, [ readyEntry ], new Set());
+const assertSampledHedgeDelay = defineCompositeAssertion({
+    name: 'sampled hedge delay',
+    assert(check) {
+        const unit = hedgeSafeUnit();
+        const plan = twoLanePlan(unit);
+        const runtime = runtimeWithSampledHedging(plan, unit);
+        const earlyState = hedgeDispatchState(runtime, plan, [ activeHedgeLease(runtime, plan) ], new Set());
+        const readyEntry = readyHedgeLease(runtime, plan);
+        const readyState = hedgeDispatchState(runtime, plan, [ readyEntry ], new Set());
+        return check.group([
+            earlyHedgeDelayChecks(check.annotated('early hedge delay'), earlyState, secondLane(plan)),
+            check.equal(hedgeWakeDelay(readyState, secondLane(plan)), 0),
+            check.equal(selectHedgeCandidate(readyState, secondLane(plan)), readyEntry)
+        ]);
+    }
+});
 
-    assertEarlyHedgeDelay(scope, earlyState, secondLane(plan));
-    scope.assert.equal(hedgeWakeDelay(readyState, secondLane(plan)), 0);
-    scope.assert.equal(selectHedgeCandidate(readyState, secondLane(plan)), readyEntry);
-}
+const assertDuplicateHedgeSuppression = defineCompositeAssertion({
+    name: 'duplicate hedge suppression',
+    assert(check) {
+        const unit = hedgeSafeUnit();
+        const plan = twoLanePlan(unit);
+        const runtime = runtimeWithHedging(plan);
+        const entry = readyHedgeLease(runtime, plan);
+        const state = hedgeDispatchState(runtime, plan, [ entry ], new Set([ unitHedgeWorkKey(unit) ]));
+        return check.group([
+            check.equal(laneHasPotentialHedge(state, secondLane(plan)), false),
+            check.equal(hedgeWakeDelay(state, secondLane(plan)), null),
+            check.equal(selectHedgeCandidate(state, secondLane(plan)), null)
+        ]);
+    }
+});
 
-function assertDuplicateHedgeSuppression(scope: TestScope): void {
-    const unit = hedgeSafeUnit();
-    const plan = twoLanePlan(unit);
-    const runtime = runtimeWithHedging(plan);
-    const entry = readyHedgeLease(runtime, plan);
-    const state = hedgeDispatchState(runtime, plan, [ entry ], new Set([ unitHedgeWorkKey(unit) ]));
+const assertIdleHedgeCheckClears = defineCompositeAssertion({
+    name: 'idle hedge check clears',
+    assert(check) {
+        const unit = hedgeSafeUnit();
+        const plan = splitCandidatePlan(unit);
+        const dispatcher = createWorkDispatcher(runtimeWithSampledHedging(plan, unit), plan);
+        const filler = pullRequiredLease(dispatcher, secondLane(plan));
+        pullRequiredLease(dispatcher, firstLane(plan));
+        dispatcher.finish(filler, {
+            learnWarmth: true,
+            retainReservation: true,
+            workerCrashed: false
+        });
+        const initialChecks = check.equal(dispatcher.blocked(secondLane(plan)), false);
+        dispatcher.clear();
+        return check.group([ initialChecks, check.equal(dispatcher.pull(secondLane(plan)), null) ]);
+    }
+});
 
-    scope.assert.equal(laneHasPotentialHedge(state, secondLane(plan)), false);
-    scope.assert.equal(hedgeWakeDelay(state, secondLane(plan)), null);
-    scope.assert.equal(selectHedgeCandidate(state, secondLane(plan)), null);
-}
+const assertHedgingOffSuppressesPotential = defineCompositeAssertion({
+    name: 'hedging off suppresses potential',
+    assert(check) {
+        const unit = hedgeSafeUnit();
+        const plan = twoLanePlan(unit);
+        const runtime = fakeWorkerRuntime(plan);
+        const entry = readyHedgeLease(runtime, plan);
+        const state = hedgeDispatchState(runtime, plan, [ entry ], new Set());
+        return check.group([
+            check.equal(laneHasPotentialHedge(state, secondLane(plan)), false),
+            check.equal(hedgeWakeDelay(state, secondLane(plan)), null),
+            check.equal(selectHedgeCandidate(state, secondLane(plan)), null)
+        ]);
+    }
+});
 
-function assertIdleHedgeCheckClears(scope: TestScope): void {
-    const unit = hedgeSafeUnit();
-    const plan = splitCandidatePlan(unit);
-    const dispatcher = createWorkDispatcher(runtimeWithSampledHedging(plan, unit), plan);
-    const filler = pullRequiredLease(dispatcher, secondLane(plan));
+const assertDisposableIsolatedHedge = defineCompositeAssertion({
+    name: 'disposable isolated hedge',
+    assert(check) {
+        const unit = disposableIsolatedUnit();
+        const plan = twoLanePlan(unit);
+        const runtime = runtimeWithHedging(plan);
+        const entry = readyHedgeLease(runtime, plan);
+        const state = hedgeDispatchState(runtime, plan, [ entry ], new Set());
+        return check.group([
+            check.equal(laneHasPotentialHedge(state, secondLane(plan)), true),
+            check.equal(selectHedgeCandidate(state, secondLane(plan)), entry)
+        ]);
+    }
+});
 
-    pullRequiredLease(dispatcher, firstLane(plan));
-    dispatcher.finish(filler, {
-        learnWarmth: true,
-        retainReservation: true,
-        workerCrashed: false
-    });
-    scope.assert.equal(dispatcher.blocked(secondLane(plan)), false);
-    dispatcher.clear();
-    scope.assert.equal(dispatcher.pull(secondLane(plan)), null);
-}
-
-function assertHedgingOffSuppressesPotential(scope: TestScope): void {
-    const unit = hedgeSafeUnit();
-    const plan = twoLanePlan(unit);
-    const runtime = fakeWorkerRuntime(plan);
-    const entry = readyHedgeLease(runtime, plan);
-    const state = hedgeDispatchState(runtime, plan, [ entry ], new Set());
-
-    scope.assert.equal(laneHasPotentialHedge(state, secondLane(plan)), false);
-    scope.assert.equal(hedgeWakeDelay(state, secondLane(plan)), null);
-    scope.assert.equal(selectHedgeCandidate(state, secondLane(plan)), null);
-}
-
-function assertDisposableIsolatedHedge(scope: TestScope): void {
-    const unit = disposableIsolatedUnit();
-    const plan = twoLanePlan(unit);
-    const runtime = runtimeWithHedging(plan);
-    const entry = readyHedgeLease(runtime, plan);
-    const state = hedgeDispatchState(runtime, plan, [ entry ], new Set());
-
-    scope.assert.equal(laneHasPotentialHedge(state, secondLane(plan)), true);
-    scope.assert.equal(selectHedgeCandidate(state, secondLane(plan)), entry);
-}
-
-export const testNode: TestNode = suite({
+export const testNode = suite({
     ...testCaseMetadata,
     title: 'Worker pool hedge dispatch',
     children: [
@@ -363,7 +393,7 @@ export const testNode: TestNode = suite({
             ...testCaseMetadata,
             title: 'worker-pool hedge dispatch waits for sampled duration thresholds',
             body(scope) {
-                assertSampledHedgeDelay(scope);
+                scope.assert(assertSampledHedgeDelay);
 
                 return scope.assert.collect();
             }
@@ -372,7 +402,7 @@ export const testNode: TestNode = suite({
             ...testCaseMetadata,
             title: 'worker-pool hedge dispatch suppresses repeated duplicates',
             body(scope) {
-                assertDuplicateHedgeSuppression(scope);
+                scope.assert(assertDuplicateHedgeSuppression);
 
                 return scope.assert.collect();
             }
@@ -381,7 +411,7 @@ export const testNode: TestNode = suite({
             ...testCaseMetadata,
             title: 'clears after idle hedge checks',
             body(scope) {
-                assertIdleHedgeCheckClears(scope);
+                scope.assert(assertIdleHedgeCheckClears);
 
                 return scope.assert.collect();
             }
@@ -390,7 +420,7 @@ export const testNode: TestNode = suite({
             ...testCaseMetadata,
             title: 'worker-pool hedge dispatch ignores disabled hedging',
             body(scope) {
-                assertHedgingOffSuppressesPotential(scope);
+                scope.assert(assertHedgingOffSuppressesPotential);
 
                 return scope.assert.collect();
             }
@@ -399,7 +429,7 @@ export const testNode: TestNode = suite({
             ...testCaseMetadata,
             title: 'worker-pool hedge dispatch accepts disposable isolated fresh workers',
             body(scope) {
-                assertDisposableIsolatedHedge(scope);
+                scope.assert(assertDisposableIsolatedHedge);
 
                 return scope.assert.collect();
             }
@@ -408,7 +438,7 @@ export const testNode: TestNode = suite({
             ...testCaseMetadata,
             title: 'worker-pool hedge dispatch rejects incompatible lanes',
             body(scope) {
-                assertIncompatibleLaneSuppressesHedge(scope);
+                scope.assert(assertIncompatibleLaneSuppressesHedge);
 
                 return scope.assert.collect();
             }

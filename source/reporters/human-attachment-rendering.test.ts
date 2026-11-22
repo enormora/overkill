@@ -1,4 +1,4 @@
-import { table, type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
+import { table, suite, test } from '@overkill-dev/test';
 
 import type { WorkId } from '../engine/identity.ts';
 import { defaultFailureArtifactPolicy } from '../packages/engine/engine.entry-point.ts';
@@ -78,49 +78,8 @@ function variantWork(name: string): WorkId {
         workload: null
     };
 }
-function assertVariantEvidence(scope: TestScope): void {
-    const first = variantWork('first');
-    const second = variantWork('second');
-    const base = attachment({ kind: 'text', text: 'second', byteLength: 6, completion: { kind: 'complete' } });
-    const artifact: RuntimeAttachmentArtifact = {
-        ...base,
-        id: {
-            ...base.id,
-            attempt: { index: 0 },
-            runtimes: second.runtimes,
-            scope: { kind: 'case', case: second.case, activeCases: [ second.case ], confidence: 'active-case' }
-        }
-    };
-    const result = runResultFactory.build({
-        artifacts: [ artifact ],
-        perTest: [
-            { id: first.case, workId: first, outcome: { kind: 'fail', checks: [ { summary: 'first failure' } ] } },
-            { id: second.case, workId: second, outcome: { kind: 'fail', checks: [ { summary: 'second failure' } ] } }
-        ]
-    });
-    const lines = problemLines(result, {
-        failureArtifacts: defaultFailureArtifactPolicy,
-        relativizeLocationPath(location) {
-            return location.file;
-        }
-    }, { verbose: false });
-    scope.assert.equal(
-        lines
-            .filter(function evidence(line) {
-                return line.includes('attachment "evidence"');
-            })
-            .length,
-        1
-    );
-    scope.assert.true(
-        lines.findIndex(function secondFailure(line) {
-            return line.includes('second failure');
-        }) < lines.findIndex(function evidence(line) {
-            return line.includes('attachment "evidence"');
-        })
-    );
-}
-export const testNode: TestNode = suite('Human attachment rendering', [
+
+export const testNode = suite('Human attachment rendering', [
     table({
         title: 'identifies automatic resource attachment producers',
         cases: [ false, true ],
@@ -255,7 +214,51 @@ export const testNode: TestNode = suite('Human attachment rendering', [
         }
     }),
     test('groups runtime variants by their full work identity', function (scope) {
-        assertVariantEvidence(scope);
+        const first = variantWork('first');
+        const second = variantWork('second');
+        const base = attachment({ kind: 'text', text: 'second', byteLength: 6, completion: { kind: 'complete' } });
+        const artifact: RuntimeAttachmentArtifact = {
+            ...base,
+            id: {
+                ...base.id,
+                attempt: { index: 0 },
+                runtimes: second.runtimes,
+                scope: { kind: 'case', case: second.case, activeCases: [ second.case ], confidence: 'active-case' }
+            }
+        };
+        const result = runResultFactory.build({
+            artifacts: [ artifact ],
+            perTest: [
+                { id: first.case, workId: first, outcome: { kind: 'fail', checks: [ { summary: 'first failure' } ] } },
+                {
+                    id: second.case,
+                    workId: second,
+                    outcome: { kind: 'fail', checks: [ { summary: 'second failure' } ] }
+                }
+            ]
+        });
+        const lines = problemLines(result, {
+            failureArtifacts: defaultFailureArtifactPolicy,
+            relativizeLocationPath(location) {
+                return location.file;
+            }
+        }, { verbose: false });
+        scope.assert.equal(
+            lines
+                .filter(function evidence(line) {
+                    return line.includes('attachment "evidence"');
+                })
+                .length,
+            1
+        );
+        scope.assert.true(
+            lines.findIndex(function secondFailure(line) {
+                return line.includes('second failure');
+            }) < lines.findIndex(function evidence(line) {
+                return line.includes('attachment "evidence"');
+            })
+        );
+
         return scope.assert.collect();
     }),
     table({

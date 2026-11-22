@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import figures from 'figures';
 import colors from 'yoctocolors';
@@ -27,7 +27,7 @@ function createLogRecorder(): LogRecorder {
     };
 }
 
-export const testNode: TestNode = suite('Tree reporter', [
+export const testNode = suite('Tree reporter', [
     test('shows table parameters only in the multiline failure details', async function (scope) {
         const recorder = createLogRecorder();
         const reporter = createTreeReporter({

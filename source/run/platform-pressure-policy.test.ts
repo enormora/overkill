@@ -1,11 +1,11 @@
-import { type TestNode, table, suite, test } from '@overkill-dev/test';
+import { table, suite, test } from '@overkill-dev/test';
 
 import { darwinProbe, platformPressure, linuxPressureText } from '../test-support/platform-pressure.ts';
 import { collectDarwinHostPressure } from './benchmark-host-darwin.ts';
 import { collectHostPlatformPressure } from './benchmark-host-platform.ts';
 
 const thermal = 'CPU_Speed_Limit = 80\nCPU_Scheduler_Limit = 90';
-export const testNode: TestNode = suite('platform pressure collection policy', [
+export const testNode = suite('platform pressure collection policy', [
     table({
         title: 'parses Darwin memory pressure codes',
         cases: [ '1', '2', '4' ] as const,

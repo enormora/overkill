@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import type { DurationHistoryIndex, DurationHistoryPlacement, DurationHistoryStore } from './duration-history-types.ts';
 import { readDurationHistoryIndex, selectDurationHistoryPlacement } from './duration-history.ts';
@@ -191,7 +191,7 @@ function fallbackPlacements(): FallbackPlacements {
     };
 }
 
-export const testNode: TestNode = suite('Duration history', [
+export const testNode = suite('Duration history', [
     test(
         'reads missing files as cold start and rejects invalid JSON',
         async function (scope) {

@@ -1,4 +1,5 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import { suite, test } from '@overkill-dev/test';
 
 import type { RunnerError } from '../packages/engine/engine.entry-point.ts';
 import type { ResourceScope } from '../resources/resources.ts';
@@ -109,75 +110,85 @@ function runnerError(message: string): RunnerError {
     };
 }
 
-async function assertNoResourcesSkipWorkerTasks(scope: TestScope): Promise<void> {
-    const runtime = runtimeWithPoolRun(collectedPlanWithResources([]), async function rejectUnexpectedTask() {
-        throw new Error('Worker resource task should not run.');
-    });
-    const lifecycle = await acquireWorkerPoolResourceLifecycle(runtime, placementPlan(runtime));
+const assertNoResourcesSkipWorkerTasks = defineCompositeAssertion({
+    name: 'no resources skip worker tasks',
+    async assert(check) {
+        const runtime = runtimeWithPoolRun(collectedPlanWithResources([]), async function rejectUnexpectedTask() {
+            throw new Error('Worker resource task should not run.');
+        });
+        const lifecycle = await acquireWorkerPoolResourceLifecycle(runtime, placementPlan(runtime));
+        runtime.terminalFailure.write(true);
+        await disposeWorkerPoolResourceLifecycles(runtime, placementPlan(runtime), lifecycle);
+        return check.group([
+            check.equal(lifecycle.resourceOwner, false),
+            check.deepEqual(lifecycle.projectedResources, { resources: [] }),
+            check.equal(collectedPlanNeedsLaneResourceLifecycle(runtime), false)
+        ]);
+    }
+});
 
-    runtime.terminalFailure.write(true);
-    await disposeWorkerPoolResourceLifecycles(runtime, placementPlan(runtime), lifecycle);
+const assertInvalidLaneDisposalRecordsRunnerError = defineCompositeAssertion({
+    name: 'invalid lane disposal records runner error',
+    async assert(check) {
+        const runtime = runtimeWithPoolRun(
+            collectedPlanWithResources([ resource('scratch', 'per-case') ]),
+            async function runInvalidDisposalTask() {
+                return { invalid: true };
+            }
+        );
+        const lifecycle = await acquireWorkerPoolResourceLifecycle(runtime, placementPlan(runtime));
+        await disposeWorkerPoolResourceLifecycles(runtime, placementPlan(runtime), lifecycle);
+        return check.group([
+            check.equal(collectedPlanNeedsLaneResourceLifecycle(runtime), true),
+            check.equal(
+                runtime.runState.runnerErrors()[0]?.message,
+                'Worker-pool lane resource disposal failed.'
+            )
+        ]);
+    }
+});
 
-    scope.assert.equal(lifecycle.resourceOwner, false);
-    scope.assert.deepEqual(lifecycle.projectedResources, { resources: [] });
-    scope.assert.equal(collectedPlanNeedsLaneResourceLifecycle(runtime), false);
-}
+const assertRunResourceErrorsStopTheRun = defineCompositeAssertion({
+    name: 'run resource errors stop the run',
+    async assert(check) {
+        const runtime = runtimeWithPoolRun(
+            collectedPlanWithResources([ resource('database', 'per-run') ]),
+            async function runResourceTask() {
+                return {
+                    projectedResources: { resources: [] },
+                    runnerErrors: [ runnerError('database failed') ]
+                };
+            }
+        );
+        await acquireWorkerPoolResourceLifecycle(runtime, placementPlan(runtime));
+        return check.group([
+            check.equal(runtime.terminalFailure.read(), true),
+            check.equal(runtime.runState.runnerErrors()[0]?.message, 'database failed')
+        ]);
+    }
+});
 
-async function assertInvalidLaneDisposalRecordsRunnerError(scope: TestScope): Promise<void> {
-    const runtime = runtimeWithPoolRun(
-        collectedPlanWithResources([ resource('scratch', 'per-case') ]),
-        async function runInvalidDisposalTask() {
-            return { invalid: true };
-        }
-    );
-    const lifecycle = await acquireWorkerPoolResourceLifecycle(runtime, placementPlan(runtime));
+const assertTerminalFailureSuppressesDisposalFailures = defineCompositeAssertion({
+    name: 'terminal failure suppresses disposal failures',
+    async assert(check) {
+        const runtime = runtimeWithPoolRun(collectedPlanWithResources([]), async function runFailingDisposalTask() {
+            throw new Error('dispose failed');
+        });
+        runtime.terminalFailure.write(true);
+        await disposeWorkerPoolResourceLifecycles(runtime, placementPlan(runtime), {
+            completedWork: new Set(),
+            ownerBoundaryKeysByWork: new Map(),
+            ownerLane: 'run-resource-owner',
+            projectionBoundaryKeysByWork: new Map(),
+            projectedResources: { resources: [] },
+            resourceOwner: true,
+            runWork: []
+        });
+        return check.group([ check.deepEqual(runtime.runState.runnerErrors(), []) ]);
+    }
+});
 
-    await disposeWorkerPoolResourceLifecycles(runtime, placementPlan(runtime), lifecycle);
-
-    scope.assert.equal(collectedPlanNeedsLaneResourceLifecycle(runtime), true);
-    scope.assert.equal(
-        runtime.runState.runnerErrors()[0]?.message,
-        'Worker-pool lane resource disposal failed.'
-    );
-}
-
-async function assertRunResourceErrorsStopTheRun(scope: TestScope): Promise<void> {
-    const runtime = runtimeWithPoolRun(
-        collectedPlanWithResources([ resource('database', 'per-run') ]),
-        async function runResourceTask() {
-            return {
-                projectedResources: { resources: [] },
-                runnerErrors: [ runnerError('database failed') ]
-            };
-        }
-    );
-
-    await acquireWorkerPoolResourceLifecycle(runtime, placementPlan(runtime));
-
-    scope.assert.equal(runtime.terminalFailure.read(), true);
-    scope.assert.equal(runtime.runState.runnerErrors()[0]?.message, 'database failed');
-}
-
-async function assertTerminalFailureSuppressesDisposalFailures(scope: TestScope): Promise<void> {
-    const runtime = runtimeWithPoolRun(collectedPlanWithResources([]), async function runFailingDisposalTask() {
-        throw new Error('dispose failed');
-    });
-
-    runtime.terminalFailure.write(true);
-    await disposeWorkerPoolResourceLifecycles(runtime, placementPlan(runtime), {
-        completedWork: new Set(),
-        ownerBoundaryKeysByWork: new Map(),
-        ownerLane: 'run-resource-owner',
-        projectionBoundaryKeysByWork: new Map(),
-        projectedResources: { resources: [] },
-        resourceOwner: true,
-        runWork: []
-    });
-
-    scope.assert.deepEqual(runtime.runState.runnerErrors(), []);
-}
-
-export const testNode: TestNode = suite({
+export const testNode = suite({
     ...testCaseMetadata,
     title: 'Worker pool resource lifecycle disposal',
     children: [
@@ -185,7 +196,7 @@ export const testNode: TestNode = suite({
             ...testCaseMetadata,
             title: 'skips worker tasks without resources',
             async body(scope) {
-                await assertNoResourcesSkipWorkerTasks(scope);
+                await scope.assert(assertNoResourcesSkipWorkerTasks);
 
                 return scope.assert.collect();
             }
@@ -194,7 +205,7 @@ export const testNode: TestNode = suite({
             ...testCaseMetadata,
             title: 'records invalid lane disposal output',
             async body(scope) {
-                await assertInvalidLaneDisposalRecordsRunnerError(scope);
+                await scope.assert(assertInvalidLaneDisposalRecordsRunnerError);
 
                 return scope.assert.collect();
             }
@@ -203,7 +214,7 @@ export const testNode: TestNode = suite({
             ...testCaseMetadata,
             title: 'records run resource runner errors',
             async body(scope) {
-                await assertRunResourceErrorsStopTheRun(scope);
+                await scope.assert(assertRunResourceErrorsStopTheRun);
 
                 return scope.assert.collect();
             }
@@ -212,7 +223,7 @@ export const testNode: TestNode = suite({
             ...testCaseMetadata,
             title: 'suppresses disposal failures after terminal failure',
             async body(scope) {
-                await assertTerminalFailureSuppressesDisposalFailures(scope);
+                await scope.assert(assertTerminalFailureSuppressesDisposalFailures);
 
                 return scope.assert.collect();
             }

@@ -15,7 +15,7 @@ const frameworkScopeNames = [
 ]
     .join('|');
 
-const publishedAuthors = [ '@overkill-dev/test', '#tests' ].flatMap(function authorModule(moduleName) {
+const publishedAuthors = [ '@overkill-dev/test' ].flatMap(function authorModule(moduleName) {
     return [ 'suite', 'test' ].map(function authorName(name) {
         return {
             selector: [
@@ -30,7 +30,7 @@ const publishedAuthors = [ '@overkill-dev/test', '#tests' ].flatMap(function aut
 
 export default [
     {
-        ignores: [ 'source/integration-tests/integration/fixtures/**/*.test.ts', 'target/**/*' ]
+        ignores: [ 'source/integration-tests/runtime/fixtures/**/*.test.ts', 'target/**/*' ]
     },
     ...baseConfig,
     {
@@ -60,7 +60,7 @@ export default [
     },
     {
         ...testSupportConfig,
-        files: [ '**/*.test.ts', 'source/integration-tests/*/support/**/*.ts' ]
+        files: [ '**/*.test.ts', 'source/test-support/**/*.ts', 'source/integration-tests/*/support/**/*.ts' ]
     },
     {
         files: [ 'source/**/*.test.ts', 'source/test-support/**/*.ts', 'source/integration-tests/*/support/**/*.ts' ],
@@ -76,6 +76,9 @@ export default [
             }, {
                 selector: `TSQualifiedName[right.name=/^(${frameworkScopeNames})$/]`,
                 message: 'Use named test framework type imports from @overkill-dev/test.'
+            }, {
+                selector: 'FunctionDeclaration > Identifier[typeAnnotation.typeAnnotation.typeName.name="TestScope"]',
+                message: 'Use native assertions, macros, or tables instead of passing a full test scope to a helper.'
             }, ...publishedAuthors ]
         }
     },

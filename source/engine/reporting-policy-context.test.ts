@@ -1,10 +1,10 @@
-import { table, type TestNode, suite, test } from '@overkill-dev/test';
+import { table, suite, test } from '@overkill-dev/test';
 
 import { createReportingContext, createRunReportingContext } from './reporting-context.ts';
 import { currentFailureArtifactPolicy, withFailureArtifactContext } from './execution-observation.ts';
 
 const location = { kind: 'known', file: '/project/case.ts', line: 1, column: 1 } as const;
-export const testNode: TestNode = suite('reporting context policy ownership', [
+export const testNode = suite('reporting context policy ownership', [
     test(
         'reads the current failure policy when the context has no explicit profile policy',
         function (scope) {

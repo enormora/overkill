@@ -1,107 +1,49 @@
-import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
-
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import { suite, test, type TestScope } from '@overkill-dev/test';
 import { defaultMicrotestProfile } from '../test-support/run-command-factory.ts';
-import { defaultFailureArtifactPolicy } from '../packages/engine/engine.entry-point.ts';
-
-import { createDefaultWorkId, workIdentityKey } from '../engine/identity.ts';
+import { defaultFailureArtifactPolicy, workIdentityKey } from '../packages/engine/engine.entry-point.ts';
+import { parseRunArtifacts } from '../packages/run/run.entry-point.ts';
 import { createBoundaryFailureArtifact, type BoundaryFailure, type BoundaryMetadata } from '../engine/run-artifact.ts';
+import {
+    work,
+    peer,
+    crashedAttempt,
+    sample,
+    jsonWireValue,
+    crashedState,
+    sharedExhaustion,
+    capturedRetryOutput
+} from '../test-support/boundary-failure-fixture.ts';
 import { recordedReplayProfile } from './run-record-input.ts';
 import { restoreReplayProfile } from './replay-profile.ts';
-import { createSupervisedRunState, type SupervisedRunState } from './supervised-run-state.ts';
-import { captureCrashEvidence, captureProcessExhaustionEvidence } from './supervised-run-process-policy.ts';
-import { parseRunArtifacts } from './run-artifact-schema.ts';
+import { createSupervisedRunState } from './supervised-run-state.ts';
 
-const work = createDefaultWorkId({ file: 'example.test.ts', suite: [], title: 'example', params: null });
-const peer = { ...work, case: { ...work.case, title: 'peer' } };
-const crashedAttempt = { index: 2 };
-const sample = {
-    activeResourceCount: 10,
-    activeResourceTypes: [ 'Timeout' ],
-    capturedAtMicroseconds: 1,
-    javaScriptEngineHeapBytes: 100,
-    residentSetBytes: 200
-};
+const assertNativeEvidenceRetention = defineCompositeAssertion({
+    name: 'native evidence retention',
+    assert(check, failure: BoundaryFailure, nativeMetadata: BoundaryMetadata) {
+        const native = createBoundaryFailureArtifact(
+            failure,
+            nativeMetadata,
+            [ { work, attempt: crashedAttempt } ],
+            0
+        );
+        const state = createSupervisedRunState('all');
+        state.recordArtifact(native);
+        state.recordArtifact(native);
+        state.recordBoundaryFailure(failure);
+        state.recordBoundaryFailure({
+            kind: 'worker-crash',
+            reason: 'parent-exit',
+            exitCode: 9,
+            signal: 'SIGKILL',
+            coreDumpPath: 'artifacts/parent-core',
+            nativeAddons: [ 'parent.node' ]
+        });
+        return check.group([ check.deepEqual(state.artifacts(), [ native ]) ]);
+    }
+});
 
-function jsonWireValue(value: unknown): unknown {
-    const encoded = JSON.stringify(value);
-    return JSON.parse(encoded);
-}
-
-function crashedState(): SupervisedRunState {
-    const state = createSupervisedRunState('all');
-    state.addActiveCase(workIdentityKey(work), { capture: null, id: work.case, workId: work }, 0, crashedAttempt);
-    state.recordRunnerError(captureCrashEvidence(state, 'worker exited'));
-    state.recordTerminalActiveCases('crashed', 10);
-    state.recordBoundaryFailure({
-        kind: 'worker-crash',
-        reason: 'process-exit',
-        signal: 'SIGSEGV',
-        exitCode: null,
-        coreDumpPath: null,
-        nativeAddons: null
-    });
-    return state;
-}
-
-function sharedExhaustion(): SupervisedRunState {
-    const state = createSupervisedRunState('all');
-    state.addActiveCase(workIdentityKey(work), { capture: null, id: work.case, workId: work }, 0, { index: 1 });
-    state.addActiveCase(workIdentityKey(peer), { capture: null, id: peer.case, workId: peer }, 0, { index: 3 });
-    const error = captureProcessExhaustionEvidence(
-        { metric: 'activeResourceCount', budget: 5, observed: 10, sample },
-        state,
-        null
-    );
-    state.recordRunnerError(error);
-    state.recordRunnerError(captureCrashEvidence(state, 'process killed after exhaustion'));
-    return state;
-}
-
-function recordSplitUnicode(state: SupervisedRunState): void {
-    const bytes = Buffer.from('🌍');
-    state.recordCapturedOutput('stdout', bytes.subarray(0, 2), 1);
-    state.recordCapturedOutput('stdout', bytes.subarray(2), 2);
-    state.recordCapturedOutput('stderr', Buffer.from('xy'), 3);
-}
-
-function capturedRetryOutput(): SupervisedRunState {
-    const state = createSupervisedRunState('all', 5);
-    state.addActiveCase(workIdentityKey(work), { capture: null, id: work.case, workId: work }, 0, { index: 0 });
-    recordSplitUnicode(state);
-    state.removeActiveCase(workIdentityKey(work));
-    state.addActiveCase(workIdentityKey(work), { capture: null, id: work.case, workId: work }, 4, { index: 1 });
-    state.recordCapturedOutput('stdout', Buffer.from('discarded'), 5);
-    state.recordCapturedOutput('stderr', Buffer.from('discarded again'), 6);
-    return state;
-}
-
-function assertNativeEvidenceRetention(
-    scope: TestScope,
-    failure: BoundaryFailure,
-    nativeMetadata: BoundaryMetadata
-): void {
-    const native = createBoundaryFailureArtifact(
-        failure,
-        nativeMetadata,
-        [ { work, attempt: crashedAttempt } ],
-        0
-    );
-    const state = createSupervisedRunState('all');
-    state.recordArtifact(native);
-    state.recordArtifact(native);
-    state.recordBoundaryFailure(failure);
-    state.recordBoundaryFailure({
-        kind: 'worker-crash',
-        reason: 'parent-exit',
-        exitCode: 9,
-        signal: 'SIGKILL',
-        coreDumpPath: 'artifacts/parent-core',
-        nativeAddons: [ 'parent.node' ]
-    });
-    scope.assert.deepEqual(state.artifacts(), [ native ]);
-}
-
-export const testNode: TestNode = suite('boundary failure artifacts', [
+export const testNode = suite('boundary failure artifacts', [
     test('native completion evidence survives repeated delivery and parent exits', function (scope) {
         const failures: readonly BoundaryFailure[] = [
             {
@@ -129,7 +71,7 @@ export const testNode: TestNode = suite('boundary failure artifacts', [
             timestamp: '1970-01-01T00:00:00.000Z'
         };
         for (const failure of failures) {
-            assertNativeEvidenceRetention(scope, failure, nativeMetadata);
+            scope.assert(assertNativeEvidenceRetention, failure, nativeMetadata);
         }
         return scope.assert.collect();
     }),

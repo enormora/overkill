@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { defaultFailureArtifactPolicy } from '../packages/engine/engine.entry-point.ts';
 import type { TerminalOutput } from './terminal.ts';
@@ -33,7 +33,7 @@ function createFakeTerminal(columns: number): FakeTerminal {
     };
 }
 
-export const testNode: TestNode = suite('Dot reporter terminal', [
+export const testNode = suite('Dot reporter terminal', [
     test('dot reporter disposes its resize listener', async function (scope) {
         const terminal = createFakeTerminal(80);
         const reporter = createDotReporter({

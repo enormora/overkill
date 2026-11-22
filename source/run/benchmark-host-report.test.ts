@@ -1,4 +1,4 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 
 import type { RunResult } from '../engine/run-result.ts';
 
@@ -22,10 +22,12 @@ function benchmarkCommand(): RunCommand {
     };
 }
 
-function preparedBenchmark(scope: TestScope): RunResult {
+function preparedBenchmark(): RunResult {
     const command = benchmarkCommand();
     const profile = command.config.profiles.startup;
-    scope.require.defined(profile);
+    if (profile === undefined) {
+        throw new Error('Expected profile to satisfy defined.');
+    }
     if (profile.testFamily !== 'benchmark') {
         throw new Error('Expected benchmark profile.');
     }
@@ -35,9 +37,9 @@ function preparedBenchmark(scope: TestScope): RunResult {
         checks: []
     });
 }
-export const testNode: TestNode = suite('benchmark host reporting', [
+export const testNode = suite('benchmark host reporting', [
     test('preserves host evidence through fallback preparation', function (scope: TestScope) {
-        const result = preparedBenchmark(scope);
+        const result = preparedBenchmark();
         const fallback = withBenchmarkErrorMetadata(result, benchmarkCommand(), null);
         scope.assert.equal(fallback, result);
         scope.assert.equal(fallback.artifacts.length, 0);
@@ -47,7 +49,7 @@ export const testNode: TestNode = suite('benchmark host reporting', [
         return scope.assert.collect();
     }),
     test('HTML reporting reads host evidence from the report context', function (scope) {
-        const result = preparedBenchmark(scope);
+        const result = preparedBenchmark();
         scope.assert.includes(
             createBenchmarkHtmlReport({
                 result,

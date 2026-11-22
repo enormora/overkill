@@ -1,4 +1,5 @@
-import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import { suite, test, type TestScope } from '@overkill-dev/test';
 
 import { createDeterministicClock } from '@enormora/clock';
 
@@ -61,19 +62,26 @@ async function executeShrinkDeadline(timeoutPolicy: NonNullable<ExecuteOptions['
     });
 }
 
-function assertDeadlineEvidence(scope: TestScope, result: RunResult): void {
-    const evidence = result.perTest[0]?.property?.invocations[0];
-    scope.require.defined(evidence);
-    scope.assert.equal(evidence.shrinkStatus, 'interrupted');
-    scope.assert.equal(JSON.stringify(evidence.original?.input), JSON.stringify(serializeValue(100)));
-    scope.assert.includes(JSON.stringify(evidence.retained?.failure), 'original failure before deadline');
-}
+const assertDeadlineEvidence = defineCompositeAssertion({
+    name: 'deadline evidence',
+    assert(check, result: RunResult) {
+        const evidence = result.perTest[0]?.property?.invocations[0];
+        if (evidence === undefined) {
+            return check.defined(evidence);
+        }
+        return check.group([
+            check.equal(evidence.shrinkStatus, 'interrupted'),
+            check.equal(JSON.stringify(evidence.original?.input), JSON.stringify(serializeValue(100))),
+            check.includes(JSON.stringify(evidence.retained?.failure), 'original failure before deadline')
+        ]);
+    }
+});
 
-export const testNode: TestNode = suite('shrink lifecycle', [
+export const testNode = suite('shrink lifecycle', [
     test('retains confirmed evidence when an engine deadline interrupts shrinking', async function (scope) {
         const result = await executeShrinkDeadline({ timeoutMilliseconds: 100, hardTimeoutMilliseconds: 10 });
         scope.assert.equal(result.summary.crashed, 1);
-        assertDeadlineEvidence(scope, result);
+        scope.assert(assertDeadlineEvidence, result);
         scope.assert.equal(
             JSON.stringify(result.perTest[0]?.property?.invocations[0]?.retained?.input),
             JSON.stringify(serializeValue(100))
@@ -84,7 +92,7 @@ export const testNode: TestNode = suite('shrink lifecycle', [
     test('retains matching evidence alongside the native soft timeout', async function (scope) {
         const result = await executeShrinkDeadline({ timeoutMilliseconds: 10, hardTimeoutMilliseconds: 100 });
         scope.assert.equal(result.summary.failed, 1);
-        assertDeadlineEvidence(scope, result);
+        scope.assert(assertDeadlineEvidence, result);
         scope.assert.includes(JSON.stringify(result.perTest[0]?.outcome), 'timeout');
         return scope.assert.collect();
     }),

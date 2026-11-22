@@ -1,4 +1,4 @@
-import { type TestNode, table, suite, test } from '@overkill-dev/test';
+import { table, suite, test } from '@overkill-dev/test';
 
 import { defineResource, type AnyResourceDefinition } from './resources.ts';
 import {
@@ -36,7 +36,7 @@ function installationSession(install: ResourceCheckInstaller<AnyResourceDefiniti
 function finish(): void {
     return undefined;
 }
-export const testNode: TestNode = suite('resource observation installation admission', [
+export const testNode = suite('resource observation installation admission', [
     test('rejects observation errors recorded during installation', async function (scope) {
         const session = installationSession(function (context) {
             context.ledger.error({ kind: 'lifetime' }, null, new Error('installation evidence failed'));

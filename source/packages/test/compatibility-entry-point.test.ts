@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import { suite, test } from '@overkill-dev/test';
 
 import {
     type TestCase,
@@ -41,31 +42,39 @@ function firstFailedOutcome(result: Awaited<ReturnType<typeof execute>>): FailOu
     return testResult.outcome;
 }
 
-function assertThrowingTestCase(scope: TestScope, testCase: TestCase): void {
-    scope.assert.equal(ownsTestNode(testCase), true);
-    scope.assert.equal(testCase.execution.kind, 'body');
-
-    if (testCase.execution.kind === 'body') {
-        scope.assert.equal(testCase.execution.bodyMode, 'throwing');
+const assertPlannedCompatibilityCase = defineCompositeAssertion({
+    name: 'planned compatibility case',
+    assert(check, plannedCase: PlannedCase | undefined) {
+        if (plannedCase === undefined) {
+            return check.defined(plannedCase);
+        }
+        return check.group([
+            check.equal(plannedCase.testFamily, null),
+            check.deepEqual(plannedCase.annotations.tags, [ 'compatibility' ]),
+            check.equal(plannedCase.controls.timeoutMilliseconds, 50)
+        ]);
     }
-}
+});
 
-function assertPlannedCompatibilityCase(scope: TestScope, plannedCase: PlannedCase): void {
-    scope.assert.equal(plannedCase.testFamily, null);
-    scope.assert.deepEqual(plannedCase.annotations.tags, [ 'compatibility' ]);
-    scope.assert.equal(plannedCase.controls.timeoutMilliseconds, 50);
-}
-
-export const testNode: TestNode = suite('Compatibility entry point', [
+export const testNode = suite('Compatibility entry point', [
     test('@overkill-dev/test/compatibility exposes throwingTest only', function (scope) {
-        scope.assert.deepEqual(Object.keys(compatibilitySubpath), [ 'throwingTest' ]);
-        scope.assert.equal(Object.hasOwn(rootSubpath, 'throwingTest'), false);
+        scope.assert(
+            defineCompositeAssertion({
+                name: '@overkill-dev/test/compatibility exposes throwingTest only',
+                assert(check) {
+                    return check.group([
+                        check.deepEqual(Object.keys(compatibilitySubpath), [ 'throwingTest' ]),
+                        check.equal(Object.hasOwn(rootSubpath, 'throwingTest'), false)
+                    ]);
+                }
+            })
+        );
 
         return scope.assert.collect();
     }),
     test(
         '@overkill-dev/test/compatibility throwingTest() creates neutral tests',
-        async function (scope: TestScope) {
+        async function (scope) {
             const testCase = throwingTest({
                 annotations: { tags: [ 'compatibility' ] },
                 body(testScope) {
@@ -83,9 +92,10 @@ export const testNode: TestNode = suite('Compatibility entry point', [
             const result = await execute(plan);
             const plannedCase = plan.discoveredCases[0];
 
-            scope.require.defined(plannedCase);
-            assertThrowingTestCase(scope, testCase);
-            assertPlannedCompatibilityCase(scope, plannedCase);
+            scope.assert.equal(ownsTestNode(testCase), true);
+            scope.assert.partialDeepEqual(testCase.execution, { kind: 'body', bodyMode: 'throwing' });
+
+            scope.assert(assertPlannedCompatibilityCase, plannedCase);
             scope.assert.equal(result.summary.passed, 1);
 
             return scope.assert.collect();
@@ -96,8 +106,17 @@ export const testNode: TestNode = suite('Compatibility entry point', [
             return undefined;
         }));
 
-        scope.assert.equal(result.summary.passed, 1);
-        scope.assert.equal(result.summary.failed, 0);
+        scope.assert(
+            defineCompositeAssertion({
+                name: '@overkill-dev/test/compatibility treats normal completion as success',
+                assert(check) {
+                    return check.group([
+                        check.equal(result.summary.passed, 1),
+                        check.equal(result.summary.failed, 0)
+                    ]);
+                }
+            })
+        );
 
         return scope.assert.collect();
     }),
@@ -116,14 +135,24 @@ export const testNode: TestNode = suite('Compatibility entry point', [
         }
     ),
     test('@overkill-dev/test/compatibility validates unsupported authoring forms', function (scope) {
-        scope.assert.throws(function createThrowingTestWithWrongArity() {
-            invokeThrowingTest();
-        }, {
-            message: 'throwingTest() requires (title, body) or ({ title, annotations?, controls?, body }).'
-        });
-        scope.assert.throws(function createThrowingTestWithInvalidBody() {
-            invokeThrowingTest('passes', null);
-        }, { message: 'Test case body must be a function.' });
+        scope.assert(
+            defineCompositeAssertion({
+                name: '@overkill-dev/test/compatibility validates unsupported authoring forms',
+                assert(check) {
+                    return check.group([
+                        check.throws(function createThrowingTestWithWrongArity() {
+                            invokeThrowingTest();
+                        }, {
+                            message:
+                                'throwingTest() requires (title, body) or ({ title, annotations?, controls?, body }).'
+                        }),
+                        check.throws(function createThrowingTestWithInvalidBody() {
+                            invokeThrowingTest('passes', null);
+                        }, { message: 'Test case body must be a function.' })
+                    ]);
+                }
+            })
+        );
         const captureCase = throwingTest({
             body() {
                 return undefined;

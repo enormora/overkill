@@ -1,5 +1,7 @@
 import { isDeepStrictEqual } from 'node:util';
-import { type TestNode, test, type TestScope } from '@overkill-dev/test';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import { test } from '@overkill-dev/test';
+import type { ReporterEvent } from '../packages/engine/engine.entry-point.ts';
 
 import {
     createChildRun,
@@ -7,7 +9,7 @@ import {
     supervisedChildCommand
 } from '../test-support/supervised-child-fixture.ts';
 import { createVirtualRunDiscovery } from '../test-support/virtual-run-discovery.ts';
-import type { SupervisedChildMessage } from './supervised-protocol.ts';
+
 import { runSupervisedChild, type SupervisedChildHost } from './supervised-child.ts';
 import { supervisedChildMessageSchema } from './supervised-child-message-schema.ts';
 
@@ -41,27 +43,38 @@ const loadAuthoredTestModule: SupervisedChildHost['loadRunTestModules'] = async 
     } ];
 };
 
-function assertTransportedLocations(scope: TestScope, messages: readonly SupervisedChildMessage[]): void {
-    const events = messages.filter(function (message) {
-        return message.kind === 'event';
-    });
-    scope.assert.true(events.some(function (message) {
-        return message.event.kind === 'suite-start';
-    }));
-    scope.assert.true(events.some(function (message) {
-        return message.event.kind === 'test-start';
-    }));
-    for (const message of events) {
-        const { event } = message;
-        scope.assert.true(isDeepStrictEqual(supervisedChildMessageSchema.parse(structuredClone(message)), message));
-        if (event.kind === 'test-start') {
-            scope.assert.true(isDeepStrictEqual(event.definitionLocations, [ location ]));
-            scope.assert.true(isDeepStrictEqual(event.suitePath[0]?.definitionLocations, [ location ]));
-        }
+const resolvedTransportLocations = defineCompositeAssertion({
+    name: 'resolved transport locations',
+    assert(
+        check,
+        transportedLocationsEvents: readonly { readonly event: ReporterEvent; readonly kind: 'event'; }[]
+    ) {
+        const transported = transportedLocationsEvents.map(function (message) {
+            const { event } = message;
+            const roundtrip = check.true(
+                isDeepStrictEqual(supervisedChildMessageSchema.parse(structuredClone(message)), message)
+            );
+            return event.kind === 'test-start'
+                ? check.group([
+                    roundtrip,
+                    check.true(isDeepStrictEqual(event.definitionLocations, [ location ])),
+                    check.true(isDeepStrictEqual(event.suitePath[0]?.definitionLocations, [ location ]))
+                ])
+                : roundtrip;
+        });
+        return check.group([
+            check.true(transportedLocationsEvents.some(function (transportedLocationsMessage) {
+                return transportedLocationsMessage.event.kind === 'suite-start';
+            })),
+            check.true(transportedLocationsEvents.some(function (transportedLocationsMessage) {
+                return transportedLocationsMessage.event.kind === 'test-start';
+            })),
+            ...transported
+        ]);
     }
-}
+});
 
-export const testNode: TestNode = test(
+export const testNode = test(
     'supervised execution resolves lazy case and suite locations before IPC',
     async function (scope) {
         const child = createChildRun({
@@ -87,7 +100,11 @@ export const testNode: TestNode = test(
         });
         await runSupervisedChild(child.host, nativeChildDependencies());
         scope.assert.equal(child.exitCode(), 0);
-        assertTransportedLocations(scope, child.messages());
+        const events = child.messages().filter(function (message) {
+            return message.kind === 'event';
+        });
+        scope.assert(resolvedTransportLocations, events);
+
         return scope.assert.collect();
     }
 );

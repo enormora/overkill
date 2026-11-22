@@ -1,4 +1,4 @@
-import { type TestNode, table, suite, test } from '@overkill-dev/test';
+import { table, suite, test } from '@overkill-dev/test';
 
 import * as ast from 'typescript-beta/ast';
 
@@ -40,7 +40,7 @@ function selectedEvidence(message: string | null): NativeCheckEvidence & { reado
     const site = ownedSite(input, message);
     return { ...input, site, assertionPlan: { ...input.assertionPlan, sites: [ site ] } };
 }
-export const testNode: TestNode = suite('native checker completion policy', [
+export const testNode = suite('native checker completion policy', [
     test('rejects executable cases without native assertions', function (scope) {
         const result = nativeCheckResult(evidence());
         scope.assert.equal(result.status, 'failed');

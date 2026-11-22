@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { defaultFailureArtifactPolicy } from '../packages/engine/engine.entry-point.ts';
 import { createDefaultWorkId, type CaseId } from '../engine/identity.ts';
@@ -150,7 +150,7 @@ function resultWithTimingSpans(spans: readonly RunTimingSpan[]): RunResult {
     });
 }
 
-export const testNode: TestNode = suite('Human reporter rendering', [
+export const testNode = suite('Human reporter rendering', [
     test('human context prefixes retain nested suites when color is requested', function (scope) {
         const prefix = contextPrefix([], null, [ 'root', 'child' ], { color: true, wrap: false });
         scope.assert.includes(prefix, 'root');

@@ -2,7 +2,7 @@ import { Random, type Arbitrary, type Value } from 'fast-check';
 import { xoroshiro128plus } from 'pure-rand/generator/xoroshiro128plus';
 import type { Generator as PropertyGenerator } from '../property/generator.ts';
 import type { GeneratorContext } from '../property/generator-backend.ts';
-import { generateInput } from '../property/generator-input.ts';
+import { generateInput, type GeneratedInput } from '../property/generator-input.ts';
 
 const defaultGeneratorSeed = 42;
 
@@ -64,4 +64,12 @@ export function shrinkCandidates<Input>(domain: Arbitrary<Input>, root: Value<In
     return shrinkDescendants(root, count, function children(parent) {
         return domain.shrink(parent.value, parent.context);
     });
+}
+
+export function retainedGeneratorInput<Input>(
+    generator: PropertyGenerator<Input>,
+    seed: number,
+    context: GeneratorContext
+): GeneratedInput<Input> {
+    return generateInput(generator, new Random(xoroshiro128plus(seed)), undefined, context);
 }

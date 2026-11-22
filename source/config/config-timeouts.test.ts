@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { configFixtureCwd, createSingleConfigModuleLoader } from '../test-support/run-config-module-loader.ts';
 
@@ -8,7 +8,7 @@ async function loadConfigValue(config: unknown): Promise<unknown> {
     return await loadConfig({ configPath: null, cwd: configFixtureCwd });
 }
 
-export const testNode: TestNode = suite('Configuration timeouts', [
+export const testNode = suite('Configuration timeouts', [
     test(
         'loadConfig() rejects profile soft timeouts greater than hard timeouts',
         async function (scope) {

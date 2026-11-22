@@ -1,4 +1,4 @@
-import { table, type TestNode, suite } from '@overkill-dev/test';
+import { table, suite } from '@overkill-dev/test';
 
 import { memorySupervisedChild } from '../test-support/memory-supervised-child.ts';
 import type { SupervisedChildMessage } from './supervised-protocol.ts';
@@ -11,7 +11,7 @@ function isResult(
 ): message is Extract<SupervisedChildMessage, { readonly kind: 'result'; }> {
     return message.kind === 'result';
 }
-export const testNode: TestNode = suite(
+export const testNode = suite(
     'supervised child command policy',
     [ table({
         title: 'handles with selection and restrictions',

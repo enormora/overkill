@@ -1,4 +1,5 @@
-import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import { suite, test, type TestScope } from '@overkill-dev/test';
 import { type EngineCaseBody, createTestEngine } from '../test-support/create-test-engine.ts';
 
 import {
@@ -49,11 +50,14 @@ function debugArtifacts(artifacts: readonly RunArtifact[]): readonly TestDebugAr
         return artifact.payload.kind === 'debug';
     });
 }
-function assertDebugRoundTrip(scope: TestScope, artifacts: readonly RunArtifact[]): void {
-    const encoded = JSON.stringify(artifacts);
-    const decoded: unknown = JSON.parse(encoded);
-    scope.assert.deepEqual(parseRunArtifacts(decoded), decoded);
-}
+const assertDebugRoundTrip = defineCompositeAssertion({
+    name: 'debug round trip',
+    assert(check, artifacts: readonly RunArtifact[]) {
+        const encoded = JSON.stringify(artifacts);
+        const decoded: unknown = JSON.parse(encoded);
+        return check.group([ check.deepEqual(parseRunArtifacts(decoded), decoded) ]);
+    }
+});
 
 const failingDebugReporter = defineReporter(function () {
     return {
@@ -70,7 +74,7 @@ const failingDebugReporter = defineReporter(function () {
     };
 });
 
-export const testNode: TestNode = suite('debug diagnostics', [
+export const testNode = suite('debug diagnostics', [
     test('a busy timeline keeps one checkpoint in flight', async function (scope) {
         const checkpoints: number[] = [];
         const reporter = defineReporter(function () {
@@ -154,7 +158,7 @@ export const testNode: TestNode = suite('debug diagnostics', [
         scope.require.notNull(artifact.payload.plan);
         scope.assert.deepEqual(artifact.payload.plan, { declared: 2, recorded: 2 });
         scope.assert.equal(artifact.payload.stats.handleCallCount, 1);
-        assertDebugRoundTrip(scope, result.artifacts);
+        scope.assert(assertDebugRoundTrip, result.artifacts);
         return scope.assert.collect();
     }),
     test('oversized evidence is dropped without losing a body rejection', async function (scope: TestScope) {

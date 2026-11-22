@@ -1,9 +1,12 @@
 import { execFile } from 'node:child_process';
-import { rm, writeFile } from 'node:fs/promises';
+import { writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { type TestNode, suite, test } from '#tests';
+import { suite } from '@overkill-dev/test';
+import { createProgram, ModuleKind, ScriptTarget } from 'typescript';
+import { packageConsumer } from './support/package-consumer.ts';
 
-import { createProgram, getPreEmitDiagnostics, ModuleKind, ScriptTarget } from 'typescript';
+import { consumerEnvironment } from './support/consumer-environment.ts';
+import { consumerCompilerTypes, consumerTypeDiagnostics } from './support/consumer-types.ts';
 
 const lifecycleScript = `
 import assert from 'node:assert/strict';
@@ -154,29 +157,38 @@ try {
 }
 `;
 
-async function executeLifecycleScript(): Promise<string> {
-    return new Promise(function launchConsumer(resolve, reject) {
-        execFile(process.execPath, [ '--input-type=module', '--eval', lifecycleScript ], {
-            cwd: import.meta.dirname,
-            timeout: 30_000
-        }, function collectOutput(error, stdout) {
-            if (error instanceof Error) {
-                reject(error);
-            } else {
-                resolve(stdout);
-            }
+const consumerFacade = packageConsumer('packaged public runner lifecycle', function consumerFixture(consumerDirectory) {
+    async function executeLifecycleScript(): Promise<string> {
+        return new Promise(function launchConsumer(resolve, reject) {
+            execFile(process.execPath, [
+                '--disable-warning=PERM0004',
+                '--input-type=module',
+                '--eval',
+                lifecycleScript
+            ], {
+                env: consumerEnvironment(consumerDirectory),
+                cwd: consumerDirectory,
+                timeout: 30_000
+            }, function collectOutput(error, stdout) {
+                if (error instanceof Error) {
+                    reject(error);
+                } else {
+                    resolve(stdout);
+                }
+            });
         });
-    });
-}
+    }
+    return { consumerDirectory, executeLifecycleScript };
+});
+const { test } = consumerFacade;
 
-export const testNode: TestNode = suite('packaged public runner lifecycle', [
+export const testNode = suite('packaged public runner lifecycle', [
     test(
         'published runner accepts engine nodes, reporters, and renderers without type aliases',
         async function (scope) {
-            const sourcePath = path.join(import.meta.dirname, 'run-consumer.mts');
-            scope.cleanup(async function removeConsumer() {
-                await rm(sourcePath, { force: true });
-            });
+            const { consumerDirectory } = scope.resources.consumer;
+
+            const sourcePath = path.join(consumerDirectory, 'run-consumer.mts');
             await writeFile(
                 sourcePath,
                 `
@@ -195,6 +207,7 @@ export const testNode: TestNode = suite('packaged public runner lifecycle', [
             `
             );
             const program = createProgram([ sourcePath ], {
+                ...consumerCompilerTypes,
                 module: ModuleKind.NodeNext,
                 target: ScriptTarget.ESNext,
                 strict: true,
@@ -202,15 +215,15 @@ export const testNode: TestNode = suite('packaged public runner lifecycle', [
                 types: [ 'node' ]
             });
             scope.assert.deepEqual(
-                getPreEmitDiagnostics(program).map(function diagnosticText(diagnostic) {
-                    return diagnostic.messageText;
-                }),
+                await consumerTypeDiagnostics(program, consumerDirectory),
                 []
             );
             return scope.assert.collect();
         }
     ),
     test('consumer bootstraps before imports and reruns the public collected handle', async function (scope) {
+        const { executeLifecycleScript } = scope.resources.consumer;
+
         scope.assert.equal(await executeLifecycleScript(), 'packaged collected lifecycle passed\n');
         return scope.assert.collect();
     })

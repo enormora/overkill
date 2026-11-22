@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { createDefaultWorkId } from '../engine/identity.ts';
 import { createBoundaryFailureArtifact } from '../engine/run-artifact.ts';
@@ -82,7 +82,7 @@ function crashArtifact(attempt: number): RunArtifact {
     );
 }
 
-export const testNode: TestNode = suite('terminal failure reporting', [
+export const testNode = suite('terminal failure reporting', [
     test('reports pending crashes absent from the final result and collected plan', async function (scope) {
         const events: ReporterEvent[] = [];
         const result = runResultFactory.build();

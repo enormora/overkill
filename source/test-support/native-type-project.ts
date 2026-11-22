@@ -155,7 +155,7 @@ async function executeProject(path: string): Promise<string> {
     return new Promise(function execute(resolve, reject) {
         execFile(
             process.execPath,
-            [ '--enable-source-maps', path ],
+            [ '--disable-warning=PERM0004', '--enable-source-maps', path ],
             { timeout: 90_000 },
             function completed(error, stdout, stderr) {
                 if (error !== null) {
@@ -218,10 +218,10 @@ async function writeProject(directory: string, request: ProjectRequest): Promise
     return await writeCompiledProject(directory, sourceName, source);
 }
 
-async function runProject(scope: TestScope, request: ProjectRequest): Promise<NativeProjectResult> {
+async function runProject(cleanup: TestScope['cleanup'], request: ProjectRequest): Promise<NativeProjectResult> {
     await mkdir(join(process.cwd(), 'target'), { recursive: true });
     const directory = await mkdtemp(join(process.cwd(), 'target/native-type-'));
-    scope.cleanup(async function removeProject() {
+    cleanup(async function removeProject() {
         await chmod(directory, writableProjectMode);
         await rm(directory, { recursive: true, force: true });
     });
@@ -233,11 +233,11 @@ async function runProject(scope: TestScope, request: ProjectRequest): Promise<Na
 }
 
 export async function runNativeProject(
-    scope: TestScope,
+    cleanup: TestScope['cleanup'],
     definitions: string,
     titles: readonly string[] | null
 ): Promise<NativeProjectResult> {
-    return await runProject(scope, {
+    return await runProject(cleanup, {
         compiler: { kind: 'package', specifier: 'typescript-beta', version: '7.1.0-beta' },
         definitions,
         titles,
@@ -248,11 +248,11 @@ export async function runNativeProject(
 }
 
 export async function runCompiledTypeProject(
-    scope: TestScope,
+    cleanup: TestScope['cleanup'],
     definitions: string,
     titles: readonly string[] | null
 ): Promise<NativeProjectResult> {
-    return await runProject(scope, {
+    return await runProject(cleanup, {
         compiler: { kind: 'package', specifier: 'typescript-beta', version: '7.1.0-beta' },
         definitions,
         titles,
@@ -263,11 +263,11 @@ export async function runCompiledTypeProject(
 }
 
 export async function runChangedTypeProject(
-    scope: TestScope,
+    cleanup: TestScope['cleanup'],
     definitions: string,
     change: ProjectChange
 ): Promise<NativeProjectResult> {
-    return await runProject(scope, {
+    return await runProject(cleanup, {
         compiler: { kind: 'package', specifier: 'typescript-beta', version: '7.1.0-beta' },
         definitions,
         titles: null,
@@ -278,11 +278,11 @@ export async function runChangedTypeProject(
 }
 
 export async function runPrefixedTypeProject(
-    scope: TestScope,
+    cleanup: TestScope['cleanup'],
     definitions: string,
     prefix: string
 ): Promise<NativeProjectResult> {
-    return await runProject(scope, {
+    return await runProject(cleanup, {
         compiler: { kind: 'package', specifier: 'typescript-beta', version: '7.1.0-beta' },
         definitions,
         titles: null,
@@ -292,8 +292,11 @@ export async function runPrefixedTypeProject(
     });
 }
 
-export async function runMatrixTypeProject(scope: TestScope, definitions: string): Promise<NativeProjectResult> {
-    return await runProject(scope, {
+export async function runMatrixTypeProject(
+    cleanup: TestScope['cleanup'],
+    definitions: string
+): Promise<NativeProjectResult> {
+    return await runProject(cleanup, {
         definitions,
         titles: null,
         compiled: false,

@@ -1,8 +1,8 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { historyStorage, historyStorageScenario } from '../test-support/history-storage.ts';
 
-export const testNode: TestNode = suite('history storage ownership', [
+export const testNode = suite('history storage ownership', [
     test(
         'reads and writes records and lists JSON files within the selected directory',
         async function (scope) {

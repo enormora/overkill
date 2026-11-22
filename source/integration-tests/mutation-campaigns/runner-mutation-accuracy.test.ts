@@ -1,22 +1,22 @@
 import { defineResource } from '@overkill-dev/test/resources';
-import { createTestFacade, table, type TestNode, suite, test } from '@overkill-dev/test';
+import { createTestFacade, table, suite, test } from '@overkill-dev/test';
 
 import { z } from 'zod/v4';
 import {
     mutationModes,
     sourceMutationModules
-} from '../integration/fixtures/mutation-evidence/mutation-project.test.ts';
+} from '../runtime/fixtures/mutation-evidence/mutation-project.test.ts';
 import {
     compareMutationCampaigns,
     mutationCoverageModes,
     type CampaignEvidence
-} from '../integration/fixtures/mutation-evidence/mutation-accuracy.test.ts';
-import { mutationCacheScript } from '../integration/fixtures/mutation-evidence/mutation-cache.test.ts';
-import { executeMutationScript } from '../integration/support/stryker-script.ts';
+} from '../runtime/fixtures/mutation-evidence/mutation-accuracy.test.ts';
+import { mutationCacheScript } from '../runtime/fixtures/mutation-evidence/mutation-cache.test.ts';
+import { executeMutationScript } from '../runtime/support/stryker-script.ts';
 import { captureMutationCampaign, verifyMutationAccuracy } from './support/mutation-accuracy-driver.ts';
 
 const projectUrl = new URL(
-    '../integration/fixtures/mutation-evidence/mutation-project.test.ts',
+    '../runtime/fixtures/mutation-evidence/mutation-project.test.ts',
     import.meta.url
 );
 const mutations: readonly { readonly title: string; readonly corrupt: (evidence: CampaignEvidence) => void; }[] = [
@@ -89,7 +89,7 @@ const evidenceCases = createTestFacade({
     resources: {
         baseline: defineResource({
             name: 'mutation campaign baseline',
-            scope: 'per-suite',
+            scope: 'shared-per-worker',
             requirements: [],
             dispose: null,
             async acquire() {
@@ -104,7 +104,7 @@ const evidenceCases = createTestFacade({
     }
 });
 
-export const testNode: TestNode = suite('mutation campaign accuracy', [
+export const testNode = suite('mutation campaign accuracy', [
     table({
         title: 'preserves mutation accuracy across execution modes, seeds, and repetitions',
         cases: campaignRequests,

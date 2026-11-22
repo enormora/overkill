@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { createDeterministicClock } from '@enormora/clock';
 
@@ -43,7 +43,7 @@ function attachmentFixture(): AttachmentFixture {
     return { task, work, attachment, runtime };
 }
 
-export const testNode: TestNode = suite('worker event evidence ownership', [
+export const testNode = suite('worker event evidence ownership', [
     test('records local worker timing observations', function (scope) {
         const source = fakeWorkerRuntime(createCollectedPlan());
         const timing = createRunTimingMeasurement(createDeterministicClock({ initialUnixEpochMicroseconds: 0n }));

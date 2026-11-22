@@ -1,4 +1,10 @@
-import { table, type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import {
+    type CompositeAssertionReturn,
+    type CompositeCheckBuilder,
+    defineCompositeAssertion
+} from '@overkill-dev/test/assert';
+
+import { table, type TestScope, suite, test } from '@overkill-dev/test';
 
 import type { WorkId } from '../packages/engine/engine.entry-point.ts';
 import type { ResourceScope } from '../resources/resources.ts';
@@ -123,79 +129,44 @@ function readTaskLane(task: unknown): string {
     return lane;
 }
 
-async function assertPerRunResourcesUseOwner(scope: TestScope): Promise<void> {
-    const runtime = runtimeWithPoolRun(
-        collectedPlanWithResources([ resource('database', 'per-run') ]),
-        async function runResourceTask(task) {
-            scope.assert.equal(readTaskKind(task), 'acquire-run-resources');
-
-            return {
-                projectedResources: {
-                    resources: [ { boundaryKey: 'run:database', payload: 'database-handle' } ]
-                },
-                runnerErrors: []
-            };
-        }
-    );
-    const lifecycle = await acquireWorkerPoolResourceLifecycle(runtime, placementPlan(runtime));
-
-    scope.assert.equal(lifecycle.resourceOwner, true);
-    scope.assert.deepEqual(lifecycle.projectedResources, {
-        resources: [ { boundaryKey: 'run:database', payload: 'database-handle' } ]
-    });
-}
-
-async function assertInvalidRunResourceOutputIsRejected(scope: TestScope): Promise<void> {
-    const runtime = runtimeWithPoolRun(
-        collectedPlanWithResources([ resource('database', 'per-run') ]),
-        async function runInvalidResourceTask() {
-            return { invalid: true };
-        }
-    );
-
-    await scope.assert.rejects(async function acquireInvalidRunResources() {
-        await acquireWorkerPoolResourceLifecycle(runtime, placementPlan(runtime));
-    }, { message: 'Worker-pool run resource task returned an invalid result.' });
-}
-
-async function assertLaneResourceDisposalRunsOnEachLane(scope: TestScope): Promise<void> {
-    const disposedLanes: string[] = [];
-    const runtime = runtimeWithPoolRun(
-        collectedPlanWithResources([ resource('scratch', 'per-case') ]),
-        async function runDisposeTask(task) {
-            scope.assert.equal(readTaskKind(task), 'dispose-lane-lifecycle');
-            disposedLanes.push(readTaskLane(task));
-
-            return { runnerErrors: [] };
-        }
-    );
-    const lifecycle = await acquireWorkerPoolResourceLifecycle(runtime, placementPlan(runtime));
-
-    await disposeWorkerPoolResourceLifecycles(runtime, placementPlan(runtime), lifecycle);
-
-    scope.assert.deepEqual(disposedLanes, [ 'worker-1' ]);
-}
-
-async function assertRunResourceDisposalFailureRecordsRunnerError(scope: TestScope): Promise<void> {
-    const runtime = runtimeWithPoolRun(
-        collectedPlanWithResources([ resource('database', 'per-run') ]),
-        async function runResourceTask(task) {
-            if (readTaskKind(task) === 'acquire-run-resources') {
-                return { projectedResources: { resources: [] }, runnerErrors: [] };
+const assertInvalidRunResourceOutputIsRejected = defineCompositeAssertion({
+    name: 'invalid run resource output is rejected',
+    async assert(check) {
+        const runtime = runtimeWithPoolRun(
+            collectedPlanWithResources([ resource('database', 'per-run') ]),
+            async function runInvalidResourceTask() {
+                return { invalid: true };
             }
+        );
+        return check.group([
+            await check.rejects(async function acquireInvalidRunResources() {
+                await acquireWorkerPoolResourceLifecycle(runtime, placementPlan(runtime));
+            }, { message: 'Worker-pool run resource task returned an invalid result.' })
+        ]);
+    }
+});
 
-            throw new Error('dispose failed');
-        }
-    );
-    const lifecycle = await acquireWorkerPoolResourceLifecycle(runtime, placementPlan(runtime));
+const assertRunResourceDisposalFailureRecordsRunnerError = defineCompositeAssertion({
+    name: 'run resource disposal failure records runner error',
+    async assert(check) {
+        const runtime = runtimeWithPoolRun(
+            collectedPlanWithResources([ resource('database', 'per-run') ]),
+            async function runResourceTask(task) {
+                if (readTaskKind(task) === 'acquire-run-resources') {
+                    return { projectedResources: { resources: [] }, runnerErrors: [] };
+                }
 
-    await disposeWorkerPoolResourceLifecycles(runtime, placementPlan(runtime), lifecycle);
-
-    scope.assert.equal(
-        runtime.runState.runnerErrors()[0]?.message,
-        'Worker-pool run resource disposal failed.'
-    );
-}
+                throw new Error('dispose failed');
+            }
+        );
+        const lifecycle = await acquireWorkerPoolResourceLifecycle(runtime, placementPlan(runtime));
+        await disposeWorkerPoolResourceLifecycles(runtime, placementPlan(runtime), lifecycle);
+        return check.group([ check.equal(
+            runtime.runState.runnerErrors()[0]?.message,
+            'Worker-pool run resource disposal failed.'
+        ) ]);
+    }
+});
 
 function preparationRuntime(
     output: unknown,
@@ -223,23 +194,34 @@ function preparationRuntime(
         }
     };
 }
-function assertPreparationResponse(scope: TestScope, reply: WorkerPoolPreparationReply, failed: boolean): void {
-    scope.assert.equal(reply.kind, 'resource-artifacts-prepared');
-    scope.assert.equal(reply.request, 'request-2');
-    if (failed) {
-        scope.assert.equal(reply.runnerErrors.length, 1);
-        scope.assert.equal(reply.runnerErrors[0]?.subtype, 'artifact');
-        scope.assert.equal(reply.runnerErrors[0]?.attributedToAttempt?.index, 2);
-    } else {
-        scope.assert.deepEqual(reply.runnerErrors, []);
-    }
-}
+const preparationResponseChecks = function (
+    check: CompositeCheckBuilder<'assert'>,
+    reply: WorkerPoolPreparationReply,
+    failed: boolean
+): CompositeAssertionReturn<'assert'> {
+    const initialChecks = check.group([
+        check.equal(reply.kind, 'resource-artifacts-prepared'),
+        check.equal(reply.request, 'request-2')
+    ]);
+    return failed
+        ? check.group([
+            initialChecks,
+            check.equal(reply.runnerErrors.length, 1),
+            check.equal(reply.runnerErrors[0]?.subtype, 'artifact'),
+            check.equal(reply.runnerErrors[0]?.attributedToAttempt?.index, 2)
+        ])
+        : check.group([ initialChecks, check.deepEqual(reply.runnerErrors, []) ]);
+};
+
+type PreparationExchange = {
+    readonly reply: WorkerPoolPreparationReply;
+    readonly received: readonly WorkerPoolMessage[];
+};
 async function exchangePreparationMessages(
-    scope: TestScope,
     channel: WorkerPoolMessageChannel,
     work: WorkId,
     received: readonly WorkerPoolMessage[]
-): Promise<WorkerPoolPreparationReply> {
+): Promise<PreparationExchange> {
     const response = new Promise<WorkerPoolPreparationReply>(function receiveReply(resolve) {
         channel.port.once('message', resolve);
     });
@@ -250,34 +232,42 @@ async function exchangePreparationMessages(
     const reply = await response;
     channel.port.postMessage({ kind: 'task-messages-completed' }, []);
     await channel.messagesCompleted;
-    scope.assert.deepEqual(received, [ { kind: 'task-messages-completed' } ]);
-    return reply;
+    return { reply, received };
 }
 async function collectPreparationReply(
-    scope: TestScope,
+    cleanup: TestScope['cleanup'],
     runtime: WorkerPoolRunRuntime
-): Promise<WorkerPoolPreparationReply> {
+): Promise<PreparationExchange> {
     const received: WorkerPoolMessage[] = [];
     const taskRun = createTaskRun(createSupervisedRunState('all'));
     const channel = createResourcePreparationChannel(taskRun, runtime, function receive(message) {
         received.push(message);
     });
-    scope.cleanup(channel.close);
+    cleanup(channel.close);
     const work = taskRun.members[0].unit.work[0];
-    scope.require.defined(work);
-    return await exchangePreparationMessages(scope, channel, work, received);
+    return await exchangePreparationMessages(channel, work, received);
 }
-async function assertPreparationReply(scope: TestScope, output: unknown, ownsResources: boolean): Promise<void> {
-    const calls: string[] = [];
-    const runtime = preparationRuntime(output, ownsResources, function recordTask(kind) {
-        calls.push(kind);
-    });
-    const reply = await collectPreparationReply(scope, runtime);
-    assertPreparationResponse(scope, reply, ownsResources && (output === null || output instanceof Error));
-    scope.assert.deepEqual(calls, ownsResources ? [ 'prepare-resource-artifacts' ] : []);
-}
+const assertPreparationReply = defineCompositeAssertion({
+    name: 'preparation reply',
+    async assert(check, registerCleanup: TestScope['cleanup'], output: unknown, ownsResources: boolean) {
+        const calls: string[] = [];
+        const runtime = preparationRuntime(output, ownsResources, function recordTask(kind) {
+            calls.push(kind);
+        });
+        const { reply, received } = await collectPreparationReply(registerCleanup, runtime);
+        return check.group([
+            check.deepEqual(received, [ { kind: 'task-messages-completed' } ]),
+            preparationResponseChecks(
+                check.annotated('preparation response'),
+                reply,
+                ownsResources && (output === null || output instanceof Error)
+            ),
+            check.deepEqual(calls, ownsResources ? [ 'prepare-resource-artifacts' ] : [])
+        ]);
+    }
+});
 
-export const testNode: TestNode = suite({
+export const testNode = suite({
     ...testCaseMetadata,
     title: 'Worker pool resource lifecycle execution',
     children: [
@@ -294,7 +284,7 @@ export const testNode: TestNode = suite({
             async test(scope) {
                 const output = scope.parameters.input;
 
-                await assertPreparationReply(scope, output, true);
+                await scope.assert(assertPreparationReply, scope.cleanup, output, true);
                 return scope.assert.collect();
             }
         }),
@@ -302,7 +292,7 @@ export const testNode: TestNode = suite({
             ...testCaseMetadata,
             title: 'preparation without an external owner replies without scheduling a task',
             async body(scope) {
-                await assertPreparationReply(scope, null, false);
+                await scope.assert(assertPreparationReply, scope.cleanup, null, false);
                 return scope.assert.collect();
             }
         }),
@@ -310,7 +300,28 @@ export const testNode: TestNode = suite({
             ...testCaseMetadata,
             title: 'worker-pool per-run resources acquire through the owner lane',
             async body(scope) {
-                await assertPerRunResourcesUseOwner(scope);
+                const perRunResourcesUseOwnerRuntime = runtimeWithPoolRun(
+                    collectedPlanWithResources([ resource('database', 'per-run') ]),
+                    async function runResourceTask(task) {
+                        scope.assert.equal(readTaskKind(task), 'acquire-run-resources');
+
+                        return {
+                            projectedResources: {
+                                resources: [ { boundaryKey: 'run:database', payload: 'database-handle' } ]
+                            },
+                            runnerErrors: []
+                        };
+                    }
+                );
+                const perRunResourcesUseOwnerLifecycle = await acquireWorkerPoolResourceLifecycle(
+                    perRunResourcesUseOwnerRuntime,
+                    placementPlan(perRunResourcesUseOwnerRuntime)
+                );
+
+                scope.assert.equal(perRunResourcesUseOwnerLifecycle.resourceOwner, true);
+                scope.assert.deepEqual(perRunResourcesUseOwnerLifecycle.projectedResources, {
+                    resources: [ { boundaryKey: 'run:database', payload: 'database-handle' } ]
+                });
 
                 return scope.assert.collect();
             }
@@ -319,7 +330,7 @@ export const testNode: TestNode = suite({
             ...testCaseMetadata,
             title: 'worker-pool per-run resource acquisition rejects invalid worker output',
             async body(scope) {
-                await assertInvalidRunResourceOutputIsRejected(scope);
+                await scope.assert(assertInvalidRunResourceOutputIsRejected);
 
                 return scope.assert.collect();
             }
@@ -328,7 +339,28 @@ export const testNode: TestNode = suite({
             ...testCaseMetadata,
             title: 'worker-pool lane resources dispose each lane lifecycle',
             async body(scope) {
-                await assertLaneResourceDisposalRunsOnEachLane(scope);
+                const laneResourceDisposalRunsOnEachLaneDisposedLanes: string[] = [];
+                const laneResourceDisposalRunsOnEachLaneRuntime = runtimeWithPoolRun(
+                    collectedPlanWithResources([ resource('scratch', 'per-case') ]),
+                    async function runDisposeTask(task) {
+                        scope.assert.equal(readTaskKind(task), 'dispose-lane-lifecycle');
+                        laneResourceDisposalRunsOnEachLaneDisposedLanes.push(readTaskLane(task));
+
+                        return { runnerErrors: [] };
+                    }
+                );
+                const laneResourceDisposalRunsOnEachLaneLifecycle = await acquireWorkerPoolResourceLifecycle(
+                    laneResourceDisposalRunsOnEachLaneRuntime,
+                    placementPlan(laneResourceDisposalRunsOnEachLaneRuntime)
+                );
+
+                await disposeWorkerPoolResourceLifecycles(
+                    laneResourceDisposalRunsOnEachLaneRuntime,
+                    placementPlan(laneResourceDisposalRunsOnEachLaneRuntime),
+                    laneResourceDisposalRunsOnEachLaneLifecycle
+                );
+
+                scope.assert.deepEqual(laneResourceDisposalRunsOnEachLaneDisposedLanes, [ 'worker-1' ]);
 
                 return scope.assert.collect();
             }
@@ -337,7 +369,7 @@ export const testNode: TestNode = suite({
             ...testCaseMetadata,
             title: 'worker-pool run resource disposal records runner errors',
             async body(scope) {
-                await assertRunResourceDisposalFailureRecordsRunnerError(scope);
+                await scope.assert(assertRunResourceDisposalFailureRecordsRunnerError);
 
                 return scope.assert.collect();
             }

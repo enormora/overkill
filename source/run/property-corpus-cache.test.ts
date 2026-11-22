@@ -1,4 +1,4 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 
 import { propertyCorpusEntry } from '../test-support/property-corpus.ts';
 import { propertyCorpusPolicySchema } from '../config/property-corpus.ts';
@@ -10,7 +10,7 @@ const now = '2026-11-02T00:00:00.000Z';
 const previous = '2026-11-01T00:00:00.000Z';
 const recent = { id: 'recent', entry: propertyCorpusEntry, savedAt: now };
 
-export const testNode: TestNode = suite('property corpus cache policy', [
+export const testNode = suite('property corpus cache policy', [
     test('input identity ignores JSON key order and preserves distinct strings', function (scope) {
         const entry = propertyCorpusEntry;
         const reordered = {

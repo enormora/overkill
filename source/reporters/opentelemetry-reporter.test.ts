@@ -1,4 +1,10 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import {
+    type CompositeAssertionReturn,
+    type CompositeCheckBuilder,
+    defineCompositeAssertion
+} from '@overkill-dev/test/assert';
+
+import { suite, test } from '@overkill-dev/test';
 
 import { createReportingContext } from '../engine/reporting-context.ts';
 import type { RunResult } from '../engine/run-result.ts';
@@ -134,31 +140,41 @@ function exportedSpans(content: string): readonly Readonly<Record<string, unknow
     });
 }
 
-function assertRootSpan(scope: TestScope, span: Readonly<Record<string, unknown>>): void {
-    scope.assert.equal(span.name, 'overkill.run');
-    scope.assert.equal(span.traceId, '00000000000000000000000000000001');
-    scope.assert.equal(span.spanId, '0000000000000001');
-    scope.assert.equal(span.parentSpanId, '');
-    scope.assert.equal(span.startTimeUnixNano, '1700000000000000000');
-    scope.assert.equal(span.endTimeUnixNano, '1700000000000050000');
-    scope.assert.deepEqual(span.status, { code: 2 });
-    scope.assert.deepEqual(attributeValue(span, 'overkill.run.summary.failed'), { intValue: '1' });
-    scope.assert.deepEqual(attributeValue(span, 'overkill.run.summary.process_exhausted'), { intValue: '1' });
-    scope.assert.deepEqual(attributeValue(span, 'overkill.timing.aggregate.resource.acquire.count'), {
-        intValue: '1'
-    });
-}
+const rootSpanChecks = function (
+    check: CompositeCheckBuilder<'assert'>,
+    span: Readonly<Record<string, unknown>>
+): CompositeAssertionReturn<'assert'> {
+    return check.group([
+        check.equal(span.name, 'overkill.run'),
+        check.equal(span.traceId, '00000000000000000000000000000001'),
+        check.equal(span.spanId, '0000000000000001'),
+        check.equal(span.parentSpanId, ''),
+        check.equal(span.startTimeUnixNano, '1700000000000000000'),
+        check.equal(span.endTimeUnixNano, '1700000000000050000'),
+        check.deepEqual(span.status, { code: 2 }),
+        check.deepEqual(attributeValue(span, 'overkill.run.summary.failed'), { intValue: '1' }),
+        check.deepEqual(attributeValue(span, 'overkill.run.summary.process_exhausted'), { intValue: '1' }),
+        check.deepEqual(attributeValue(span, 'overkill.timing.aggregate.resource.acquire.count'), {
+            intValue: '1'
+        })
+    ]);
+};
 
-function assertChildSpan(scope: TestScope, span: Readonly<Record<string, unknown>>): void {
-    scope.assert.equal(span.name, 'overkill.timing.resource.acquire');
-    scope.assert.equal(span.traceId, '00000000000000000000000000000001');
-    scope.assert.equal(span.spanId, '0000000000000002');
-    scope.assert.equal(span.parentSpanId, '0000000000000001');
-    scope.assert.equal(span.startTimeUnixNano, '1700000000000010000');
-    scope.assert.equal(span.endTimeUnixNano, '1700000000000030000');
-    scope.assert.deepEqual(span.status, { code: 2 });
-    scope.assert.deepEqual(attributeValue(span, 'overkill.resource.name'), { stringValue: 'database' });
-}
+const childSpanChecks = function (
+    check: CompositeCheckBuilder<'assert'>,
+    span: Readonly<Record<string, unknown>>
+): CompositeAssertionReturn<'assert'> {
+    return check.group([
+        check.equal(span.name, 'overkill.timing.resource.acquire'),
+        check.equal(span.traceId, '00000000000000000000000000000001'),
+        check.equal(span.spanId, '0000000000000002'),
+        check.equal(span.parentSpanId, '0000000000000001'),
+        check.equal(span.startTimeUnixNano, '1700000000000010000'),
+        check.equal(span.endTimeUnixNano, '1700000000000030000'),
+        check.deepEqual(span.status, { code: 2 }),
+        check.deepEqual(attributeValue(span, 'overkill.resource.name'), { stringValue: 'database' })
+    ]);
+};
 
 const reportingContext = createReportingContext({ projectRoot: null });
 
@@ -189,22 +205,30 @@ async function writePreciseResult(recording: RecordingDependencies): Promise<{
     return { reporterSinks: reporter.sinks, write };
 }
 
-function assertWrittenTrace(scope: TestScope, recording: RecordingDependencies, write: FileWrite): void {
-    scope.assert.equal(recording.writes.length, 1);
-    scope.assert.equal(write.path, 'reports/traces.jsonl');
-    scope.assert.equal(write.content.endsWith('\n'), true);
-    const spans = exportedSpans(write.content);
-    scope.assert.equal(spans.length, 2);
-    assertRootSpan(scope, entry(spans, 0, 'root span'));
-    assertChildSpan(scope, entry(spans, 1, 'child span'));
-}
+const assertWrittenTrace = defineCompositeAssertion({
+    name: 'written trace',
+    assert(check, recording: RecordingDependencies, write: FileWrite) {
+        const initialChecks = check.group([
+            check.equal(recording.writes.length, 1),
+            check.equal(write.path, 'reports/traces.jsonl'),
+            check.equal(write.content.endsWith('\n'), true)
+        ]);
+        const spans = exportedSpans(write.content);
+        return check.group([
+            initialChecks,
+            check.equal(spans.length, 2),
+            rootSpanChecks(check.annotated('root span'), entry(spans, 0, 'root span')),
+            childSpanChecks(check.annotated('child span'), entry(spans, 1, 'child span'))
+        ]);
+    }
+});
 
-export const testNode: TestNode = suite('OpenTelemetry reporter', [
+export const testNode = suite('OpenTelemetry reporter', [
     test('writes an OTLP JSON trace with absolute timestamps', async function (scope) {
         const recording = createRecordingDependencies();
         const { reporterSinks, write } = await writePreciseResult(recording);
         scope.assert.deepEqual(reporterSinks, [ { kind: 'file', path: 'reports/traces.jsonl' } ]);
-        assertWrittenTrace(scope, recording, write);
+        scope.assert(assertWrittenTrace, recording, write);
 
         return scope.assert.collect();
     }),

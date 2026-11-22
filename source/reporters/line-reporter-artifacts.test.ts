@@ -1,4 +1,4 @@
-import { type TestNode, suite, test, doubleUsage, testDouble, type TestDouble } from '@overkill-dev/test';
+import { suite, test, doubleUsage, testDouble, type TestDouble } from '@overkill-dev/test';
 
 import figures from 'figures';
 import colors from 'yoctocolors';
@@ -145,7 +145,7 @@ const coverageArtifact: RunArtifact = {
     source: 'v8-native'
 };
 
-export const testNode: TestNode = suite('Line reporter artifacts', [
+export const testNode = suite('Line reporter artifacts', [
     test('points to completed coverage output', async function (scope) {
         const log = testDouble<LogFunction>();
         const reporter = lineReporterWithLog(log);

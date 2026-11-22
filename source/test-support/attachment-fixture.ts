@@ -47,13 +47,13 @@ function createAttachmentFixture(
 }
 
 export async function attachmentFixtureForWork(
-    scope: TestScope,
+    cleanup: TestScope['cleanup'],
     limits: AttachmentLimits,
     work: readonly WorkId[]
 ): Promise<AttachmentFixture> {
     await mkdir('target/attachment-tests', { recursive: true });
     const directory = await mkdtemp('target/attachment-tests/run-');
-    scope.cleanup(async function removeAttachmentRun() {
+    cleanup(async function removeAttachmentRun() {
         await rm(directory, { recursive: true, force: true });
     });
     return createAttachmentFixture(directory, limits, work);
@@ -63,6 +63,9 @@ export function inlineAttachmentFixture(limits: AttachmentLimits, work: readonly
     return createAttachmentFixture('/project/attachments', limits, work);
 }
 
-export async function attachmentFixture(scope: TestScope, limits: AttachmentLimits): Promise<AttachmentFixture> {
-    return attachmentFixtureForWork(scope, limits, [ attachmentWork, attachmentPeerWork ]);
+export async function attachmentFixture(
+    cleanup: TestScope['cleanup'],
+    limits: AttachmentLimits
+): Promise<AttachmentFixture> {
+    return attachmentFixtureForWork(cleanup, limits, [ attachmentWork, attachmentPeerWork ]);
 }

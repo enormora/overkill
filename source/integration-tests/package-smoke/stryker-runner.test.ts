@@ -1,8 +1,9 @@
 import { execFile } from 'node:child_process';
-import { mkdtemp, realpath, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { mkdtemp, realpath, writeFile } from 'node:fs/promises';
+
 import { join } from 'node:path';
-import { type TestNode, test } from '#tests';
+import { consumerEnvironment } from './support/consumer-environment.ts';
+import { packageConsumer } from './support/package-consumer.ts';
 
 import { resolvePackagedExport } from './support/packaged-module.ts';
 
@@ -42,30 +43,40 @@ assert.equal(results[0].status, 'Killed');
 process.stdout.write('packaged Stryker campaign passed\\n');
 `;
 
-async function runPackagedCampaign(cwd: string): Promise<string> {
-    return await new Promise(function collectCampaign(resolve, reject) {
-        execFile(
-            process.execPath,
-            [ '--input-type=module', '--eval', campaign, cwd ],
-            { cwd: import.meta.dirname, timeout: 60_000 },
-            function completed(error, stdout, stderr) {
-                if (error === null) {
-                    resolve(stdout);
-                } else {
-                    reject(new Error(`${stdout}\n${stderr}`, { cause: error }));
-                }
-            }
-        );
-    });
-}
+const consumerFacade = packageConsumer(
+    'installed Stryker plugin kills one mutant in a one-line module',
+    function consumerFixture(consumerDirectory) {
+        async function runPackagedCampaign(cwd: string): Promise<string> {
+            return await new Promise(function collectCampaign(resolve, reject) {
+                execFile(
+                    process.execPath,
+                    [ '--disable-warning=PERM0004', '--input-type=module', '--eval', campaign, cwd ],
+                    {
+                        env: consumerEnvironment(consumerDirectory),
+                        cwd: consumerDirectory,
+                        timeout: 60_000
+                    },
+                    function completed(error, stdout, stderr) {
+                        if (error === null) {
+                            resolve(stdout);
+                        } else {
+                            reject(new Error(`${stdout}\n${stderr}`, { cause: error }));
+                        }
+                    }
+                );
+            });
+        }
+        return { consumerDirectory, runPackagedCampaign };
+    }
+);
+const { test } = consumerFacade;
 
-export const testNode: TestNode = test(
+export const testNode = test(
     'installed Stryker plugin kills one mutant in a one-line module',
     async function (scope) {
-        const cwd = await realpath(await mkdtemp(join(tmpdir(), 'overkill-package-stryker-')));
-        scope.cleanup(async function removeConsumer() {
-            await rm(cwd, { recursive: true, force: true });
-        });
+        const { consumerDirectory, runPackagedCampaign } = scope.resources.consumer;
+
+        const cwd = await realpath(await mkdtemp(join(consumerDirectory, 'overkill-package-stryker-')));
         await writeFile(join(cwd, 'package.json'), '{"type":"module"}');
         await writeFile(join(cwd, 'subject.mjs'), 'export const value = true;\n');
         await writeFile(

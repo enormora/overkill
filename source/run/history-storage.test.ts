@@ -1,4 +1,5 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 
 import { defaultHistoryPolicy } from '../config/history-policy.ts';
 import { completedHistoryRecord, historyTimestamp } from '../test-support/history-record-fixture.ts';
@@ -11,13 +12,20 @@ const directory = '/project/state';
 const context = { directory, policy: defaultHistoryPolicy, now: historyTimestamp, testFamily: 'microtest' };
 const repair = { ...context, mode: 'explicit' as const };
 
-async function assertOneCommittedSample(scope: TestScope, store: HistoryStorage): Promise<void> {
-    const index = await readCompactHistory(store, directory);
-    scope.require.defined(index);
-    scope.assert.equal(index.cases[0]?.counters.passed, 1);
-    scope.assert.equal(index.cases[0]?.observations.length, 1);
-    scope.assert.equal(index.durations.entries[0]?.count, 1);
-}
+const assertOneCommittedSample = defineCompositeAssertion({
+    name: 'one committed sample',
+    async assert(check, store: HistoryStorage) {
+        const index = await readCompactHistory(store, directory);
+        if (index === null) {
+            return check.defined(index);
+        }
+        return check.group([
+            check.equal(index.cases[0]?.counters.passed, 1),
+            check.equal(index.cases[0]?.observations.length, 1),
+            check.equal(index.durations.entries[0]?.count, 1)
+        ]);
+    }
+});
 
 function failFirstHistoryWrite(memory: HistoryStorage): HistoryStorage {
     let failed = false;
@@ -33,7 +41,7 @@ function failFirstHistoryWrite(memory: HistoryStorage): HistoryStorage {
     };
 }
 
-export const testNode: TestNode = suite('history persistence', [
+export const testNode = suite('history persistence', [
     test('checkpoints stay provisional and completion is idempotent', async function (scope) {
         const store = createMemoryHistoryStorage();
         const record = completedHistoryRecord('run');
@@ -42,7 +50,7 @@ export const testNode: TestNode = suite('history persistence', [
         scope.assert.equal(provisional?.cases.length, 0);
         await updateCompactHistory(store, record, context);
         await updateCompactHistory(store, record, context);
-        await assertOneCommittedSample(scope, store);
+        await scope.assert(assertOneCommittedSample, store);
         return scope.assert.collect();
     }),
     test('interrupted checkpoints never create case or duration observations', async function (scope: TestScope) {
@@ -67,7 +75,7 @@ export const testNode: TestNode = suite('history persistence', [
         scope.assert.equal(await readCompactHistory(store, directory), null);
         await repairHistory(store, repair);
         await repairHistory(store, repair);
-        await assertOneCommittedSample(scope, store);
+        await scope.assert(assertOneCommittedSample, store);
         return scope.assert.collect();
     }),
     test('explicit repair reports corrupt-state loss and restores retained records', async function (scope) {

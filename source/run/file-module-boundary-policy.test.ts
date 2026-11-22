@@ -1,10 +1,10 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { fileModuleBoundary } from '../test-support/file-module-boundary.ts';
 import { withModuleBoundary } from './file-module-boundary.ts';
 
 const boundary = { projectRoot: '/project', sharedRoots: [ '/shared' ] };
-export const testNode: TestNode = suite('file module boundary policy', [
+export const testNode = suite('file module boundary policy', [
     test('leaves unrestricted operations untouched', async function (scope) {
         const fixture = fileModuleBoundary({});
         scope.assert.equal(

@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { defaultFailureArtifactPolicy } from '../packages/engine/engine.entry-point.ts';
 import {
@@ -28,7 +28,7 @@ type RecordedPoolDependencies = {
     readonly measuredSamplingInterval: () => number;
 };
 
-const integrationPath = 'source/integration-tests/integration/fixtures/passing.test.ts';
+const integrationPath = 'source/integration-tests/runtime/fixtures/passing.test.ts';
 const annotations = { ownership: [], tags: [] };
 const controls = { capture: null, duplicateExecution: null, timeoutMilliseconds: null };
 
@@ -411,7 +411,7 @@ async function workerPoolRuntimeCreation(): Promise<{
     };
 }
 
-export const testNode: TestNode = suite('Worker pool runtime', [
+export const testNode = suite('Worker pool runtime', [
     test(
         'worker-pool runtime creation sizes pools and installs process usage tracking',
         async function (scope) {

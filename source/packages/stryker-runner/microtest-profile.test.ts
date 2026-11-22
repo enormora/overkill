@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { defaultFailureArtifactPolicy } from '../../engine/failure-artifact-policy.ts';
 
@@ -29,7 +29,7 @@ const rejectedSelections: readonly RejectedSelection[] = [
     }
 ];
 
-export const testNode: TestNode = suite('mutation microtest profile selection', [
+export const testNode = suite('mutation microtest profile selection', [
     test('reports imported family identity without loading its backend', function (scope) {
         const events: string[] = [];
         const config = normalizeConfig({

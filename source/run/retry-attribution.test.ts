@@ -1,4 +1,5 @@
-import { table, type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import { table, suite, test, type TestScope } from '@overkill-dev/test';
 
 import { createDefaultWorkId, workIdentityKey, type WorkId } from '../engine/identity.ts';
 import { singleAttemptResult, type TestVerdict } from '../engine/run-result.ts';
@@ -56,35 +57,52 @@ function captureAttempts(state: SupervisedRunState): void {
     }
 }
 
-function assertCaptureSizes(scope: TestScope, state: SupervisedRunState): void {
-    const sizes = state.artifacts().map(function byteCount(artifact) {
-        return artifact.payload.kind === 'captured-output'
-            ? [ artifact.id.attempt?.index, artifact.payload.byteLength, artifact.payload.truncated ]
-            : [];
-    });
-    scope.assert.deepEqual(sizes, [ [ 0, capturedOutputLimitBytes - 3, false ], [ 1, 3, true ], [ 2, 0, true ] ]);
-}
+const assertCaptureSizes = defineCompositeAssertion({
+    name: 'capture sizes',
+    assert(check, state: SupervisedRunState) {
+        const sizes = state.artifacts().map(function byteCount(artifact) {
+            return artifact.payload.kind === 'captured-output'
+                ? [ artifact.id.attempt?.index, artifact.payload.byteLength, artifact.payload.truncated ]
+                : [];
+        });
+        return check.group([
+            check.deepEqual(sizes, [ [ 0, capturedOutputLimitBytes - 3, false ], [ 1, 3, true ], [ 2, 0, true ] ])
+        ]);
+    }
+});
 
-function assertActiveAttempt(scope: TestScope, state: SupervisedRunState): void {
-    const attempt = crashError(state, 'killed').attributedToAttempt;
-    scope.require.defined(attempt);
-    scope.assert.deepEqual(attempt, { index: 1 });
-}
+const assertActiveAttempt = defineCompositeAssertion({
+    name: 'active attempt',
+    assert(check, state: SupervisedRunState) {
+        const attempt = crashError(state, 'killed').attributedToAttempt;
+        if (attempt === null) {
+            return check.defined(attempt);
+        }
+        return check.group([ check.deepEqual(attempt, { index: 1 }) ]);
+    }
+});
 
-function assertTerminalHistory(scope: TestScope, state: SupervisedRunState): void {
-    const result = state.perTestResults()[0];
-    scope.require.defined(result);
-    scope.assert.deepEqual(
-        result.attempts.map(function verdict(attempt) {
-            return [ attempt.attempt.index, attempt.verdict ];
-        }),
-        [ [ 0, 'fail' ], [ 1, 'crashed' ] ]
-    );
-    scope.assert.equal(result.durationMicroseconds, 25);
-    scope.assert.equal(result.retried?.finalVerdict, 'crashed');
-}
+const assertTerminalHistory = defineCompositeAssertion({
+    name: 'terminal history',
+    assert(check, state: SupervisedRunState) {
+        const result = state.perTestResults()[0];
+        if (result === undefined) {
+            return check.defined(result);
+        }
+        return check.group([
+            check.deepEqual(
+                result.attempts.map(function verdict(attempt) {
+                    return [ attempt.attempt.index, attempt.verdict ];
+                }),
+                [ [ 0, 'fail' ], [ 1, 'crashed' ] ]
+            ),
+            check.equal(result.durationMicroseconds, 25),
+            check.equal(result.retried?.finalVerdict, 'crashed')
+        ]);
+    }
+});
 
-export const testNode: TestNode = suite('Retry attribution', [
+export const testNode = suite('Retry attribution', [
     test('runtime violations between attempts stay unattributed to completed attempts', function (scope: TestScope) {
         const state = createSupervisedRunState('all');
         startAttempt(state, work, 0);
@@ -154,7 +172,7 @@ export const testNode: TestNode = suite('Retry attribution', [
             state.recordCapturedOutput('stderr', Buffer.alloc(0), index * 10);
             finishAttempt(state, index, index === 2 ? 'pass' : 'fail');
         }
-        assertCaptureSizes(scope, state);
+        scope.assert(assertCaptureSizes, state);
         return scope.assert.collect();
     }),
     test('concurrent output lookup distinguishes runtime variants and attempts', function (scope) {
@@ -180,9 +198,9 @@ export const testNode: TestNode = suite('Retry attribution', [
         startAttempt(state, work, 0);
         finishAttempt(state, 0, 'fail');
         startAttempt(state, work, 1);
-        assertActiveAttempt(scope, state);
+        scope.assert(assertActiveAttempt, state);
         state.recordTerminalActiveCases('crashed', 25);
-        assertTerminalHistory(scope, state);
+        scope.assert(assertTerminalHistory, state);
         return scope.assert.collect();
     }),
     test('interruption between attempts preserves the completed retry evidence', function (scope) {

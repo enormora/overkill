@@ -1,4 +1,5 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import { suite, test } from '@overkill-dev/test';
 
 import type { PlacementPlan } from './run-types.ts';
 import { fakeWorkerRuntime, placementPlan, testCaseMetadata } from './worker-pool-placement-validation.test.ts';
@@ -172,16 +173,20 @@ function runtimeWithSingleDurationHistorySample(plan: PlacementPlan, unit: WorkU
     };
 }
 
-function assertDurationHistoryLoadUsesMedianFallback(scope: TestScope): void {
-    const unit = multiWorkUnit();
-    const plan = twoLanePlan(unit);
-    const runtime = runtimeWithDurationHistorySamples(plan, unit);
+const assertDurationHistoryLoadUsesMedianFallback = defineCompositeAssertion({
+    name: 'duration history load uses median fallback',
+    assert(check) {
+        const unit = multiWorkUnit();
+        const plan = twoLanePlan(unit);
+        const runtime = runtimeWithDurationHistorySamples(plan, unit);
+        return check.group([
+            check.equal(runtimeUnitLoad(runtime)(unit), 300_000),
+            check.equal(runtimeUnitLoad(runtimeWithSingleDurationHistorySample(plan, unit))(unit), 200_000)
+        ]);
+    }
+});
 
-    scope.assert.equal(runtimeUnitLoad(runtime)(unit), 300_000);
-    scope.assert.equal(runtimeUnitLoad(runtimeWithSingleDurationHistorySample(plan, unit))(unit), 200_000);
-}
-
-export const testNode: TestNode = suite({
+export const testNode = suite({
     ...testCaseMetadata,
     title: 'Worker pool work load',
     children: [
@@ -189,7 +194,7 @@ export const testNode: TestNode = suite({
             ...testCaseMetadata,
             title: 'worker-pool duration-history load uses median fallback samples',
             body(scope) {
-                assertDurationHistoryLoadUsesMedianFallback(scope);
+                scope.assert(assertDurationHistoryLoadUsesMedianFallback);
 
                 return scope.assert.collect();
             }

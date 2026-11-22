@@ -1,0 +1,94 @@
+import path from 'node:path';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import { suite, test, type TestScope } from '@overkill-dev/test';
+
+import { defaultAttachmentLimits } from '../../../engine/runtime-attachment.ts';
+import { resourceAttachments, type attachmentsForProducer } from '../../../attachments/attachment-context.ts';
+import { attachmentFixture } from '../../../test-support/attachment-fixture.ts';
+import { createAttachmentServer } from '../../../run/attachment-server.ts';
+import { runWithWorkerAttachments } from '../../../run/attachment-worker-context.ts';
+import { runWithAttachmentExecution } from '../../../run/resource-lifecycle-state.ts';
+
+type AttachmentCapabilityModule = { readonly attachmentsForProducer: typeof attachmentsForProducer; };
+function isAttachmentCapabilityModule(value: unknown): value is AttachmentCapabilityModule {
+    return typeof value === 'object' && value !== null &&
+        typeof Reflect.get(value, 'attachmentsForProducer') === 'function';
+}
+
+export const testNode = suite('Runtime attachment worker', [
+    test(
+        'workers without a shared lifecycle use their execution token for attachments',
+        async function (scope: TestScope) {
+            const { store } = await attachmentFixture(scope.cleanup, defaultAttachmentLimits);
+            const server = await createAttachmentServer(store, defaultAttachmentLimits);
+            await runWithWorkerAttachments(server.endpoint, null, async function attachWithoutSharedLifecycle() {
+                await resourceAttachments('service').json({ name: 'setup', mediaType: 'application/json' }, true);
+            });
+            await server.finish();
+            scope.assert.equal(store.artifacts().length, 1);
+            const artifact = store.artifacts()[0];
+            scope.require.defined(artifact);
+            scope.assert.deepEqual(artifact.payload.producer, { kind: 'resource', name: 'service' });
+
+            return scope.assert.collect();
+        }
+    ),
+    test('separate package module instances share the active attachment context', async function (scope) {
+        const { execution, store } = await attachmentFixture(scope.cleanup, defaultAttachmentLimits);
+        const moduleURL = new URL(
+            `../../../attachments/attachment-context${path.extname(import.meta.url)}?package-copy`,
+            import.meta.url
+        );
+        const namespace: unknown = await import(moduleURL.href);
+        if (!isAttachmentCapabilityModule(namespace)) {
+            throw new Error('Expected an attachment capability module.');
+        }
+        await runWithAttachmentExecution(execution, async function captureFromSeparatePackage() {
+            await namespace.attachmentsForProducer({ kind: 'case' }).json(
+                { name: 'setup', mediaType: 'application/json' },
+                { ready: true }
+            );
+        });
+        scope.assert.equal(store.artifacts().length, 1);
+
+        return scope.assert.collect();
+    }),
+    test('shared resource teardown keeps its attachment channel across worker tasks', async function (scope) {
+        const { store } = await attachmentFixture(scope.cleanup, defaultAttachmentLimits);
+        const server = await createAttachmentServer(store, defaultAttachmentLimits);
+        scope.cleanup(async function finishAttachmentServer() {
+            await server.finish();
+        });
+        await runWithWorkerAttachments(server.endpoint, 'shared-lifecycle', async function acquireSharedResource() {
+            await resourceAttachments('shared-service').json({ name: 'setup', mediaType: 'application/json' }, {
+                phase: 'setup'
+            });
+        });
+        await runWithWorkerAttachments(null, 'shared-lifecycle', async function disposeSharedResource() {
+            await resourceAttachments('shared-service').json({ name: 'teardown', mediaType: 'application/json' }, {
+                phase: 'teardown'
+            });
+        });
+        scope.assert.equal(store.artifacts().length, 2);
+        for (const artifact of store.artifacts()) {
+            scope.assert(
+                defineCompositeAssertion({
+                    name: 'shared resource teardown keeps its attachment channel across worker tasks',
+                    assert(check) {
+                        return check.group([
+                            check.equal(artifact.id.scope.kind, 'run'),
+                            check.deepEqual(artifact.payload.producer, { kind: 'resource', name: 'shared-service' }),
+                            check.deepEqual(artifact.payload.content, {
+                                byteLength: artifact.payload.name === 'setup' ? 17 : 20,
+                                kind: 'json',
+                                value: { phase: artifact.payload.name }
+                            })
+                        ]);
+                    }
+                })
+            );
+        }
+
+        return scope.assert.collect();
+    })
+]);

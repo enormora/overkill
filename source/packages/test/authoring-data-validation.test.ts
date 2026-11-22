@@ -1,4 +1,4 @@
-import { type TestNode, table, suite } from '@overkill-dev/test';
+import { table, suite } from '@overkill-dev/test';
 
 import {
     readAuthoringAnnotations,
@@ -7,7 +7,7 @@ import {
     createAuthoringControls
 } from './authoring-test-data.ts';
 
-export const testNode: TestNode = suite('authoring data validation', [
+export const testNode = suite('authoring data validation', [
     table({
         title: 'rejects invalid annotation input',
         cases: [

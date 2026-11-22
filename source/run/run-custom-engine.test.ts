@@ -1,5 +1,5 @@
 import { pathToFileURL } from 'node:url';
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 
 import { defaultMicrotestProfile, defaultRunConfig, defaultRunRequest } from '../test-support/run-command-factory.ts';
 import { createUnitRunOrchestrator } from '../test-support/create-deterministic-run-orchestrator.ts';
@@ -15,11 +15,11 @@ type RunCommandParts = {
     readonly request: RunRequest;
 };
 
-const customEngineFixturePath = 'source/integration-tests/integration/fixtures/custom-engine.ts';
-const customEnginePassingFixturePath = 'source/integration-tests/integration/fixtures/custom-engine-passing.test.ts';
-const passingFixturePath = 'source/integration-tests/integration/fixtures/passing.test.ts';
+const customEngineFixturePath = 'source/integration-tests/runtime/fixtures/custom-engine.ts';
+const customEnginePassingFixturePath = 'source/integration-tests/runtime/fixtures/custom-engine-passing.test.ts';
+const passingFixturePath = 'source/integration-tests/runtime/fixtures/passing.test.ts';
 const customEngineModuleUrl = pathToFileURL(`${process.cwd()}/${customEngineFixturePath}`).href;
-const supervisedCollectionConfig: NormalizedConfig = defaultRunConfig({
+const supervisedCollectionConfig = defaultRunConfig({
     profiles: {
         microtest: defaultMicrotestProfile({
             timeouts: { collectionMilliseconds: 5000 }
@@ -89,7 +89,7 @@ function invalidCustomEngineCommand(engine: RunCommand['engine']): RunCommand {
     });
 }
 
-export const testNode: TestNode = suite('Custom runner engines', [
+export const testNode = suite('Custom runner engines', [
     test('rejects instance engines for supervised execution', async function (scope) {
         const orchestrator = createUnitRunOrchestrator();
 

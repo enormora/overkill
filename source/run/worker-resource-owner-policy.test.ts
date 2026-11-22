@@ -1,4 +1,4 @@
-import { table, type TestNode, suite, test } from '@overkill-dev/test';
+import { table, suite, test } from '@overkill-dev/test';
 
 import { workerResourceOwner } from '../test-support/worker-resource-owner.ts';
 import {
@@ -7,7 +7,7 @@ import {
     workerPoolProjectedResourcesForWork
 } from './worker-pool-resource-lifecycle-execution.ts';
 
-export const testNode: TestNode = suite('worker resource owner acknowledgements', [
+export const testNode = suite('worker resource owner acknowledgements', [
     table({
         title: 'settles owner completion response exactly once',
         cases: [ { runnerErrors: [] }, null, new Error('owner disconnected') ].map(function (output, index) {

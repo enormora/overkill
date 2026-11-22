@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import type { CalibrationSnapshot } from '../engine/benchmark-result.ts';
 
@@ -13,7 +13,7 @@ function constantCalibration(value: number): CalibrationSnapshot {
         return value;
     }));
 }
-export const testNode: TestNode = suite('benchmark normalization intervals', [
+export const testNode = suite('benchmark normalization intervals', [
     test('scales duration and throughput in opposite directions', function (scope) {
         const actual = constantCalibration(200);
         const reference = constantCalibration(100);

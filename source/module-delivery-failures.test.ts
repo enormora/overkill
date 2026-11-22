@@ -1,4 +1,4 @@
-import { type TestNode, table, type TestScope, suite, test } from '@overkill-dev/test';
+import { table, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { moduleLoadingRuntime } from './test-support/module-loading-runtime.ts';
 import { createModuleLoading, type DeliveredModule } from './module-delivery.ts';
@@ -14,7 +14,7 @@ const modules: readonly DeliveredModule[] = [ {
     dependencies: {}
 }, { url: dependency, format: 'module', source: 'export const dependency = true;', dependencies: {} } ];
 const delivery = { build: 'build', modules, builtins: [] };
-export const testNode: TestNode = suite('frozen module delivery failure boundaries', [
+export const testNode = suite('frozen module delivery failure boundaries', [
     test('retains a rejected graph edge even when the operation catches it', async function (scope) {
         const fixture = moduleLoadingRuntime();
         await scope.assert.rejects(async function () {

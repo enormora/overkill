@@ -1,4 +1,4 @@
-import { table, type TestNode, suite } from '@overkill-dev/test';
+import { table, suite } from '@overkill-dev/test';
 
 import { ConfigError } from '../../config/config-error.ts';
 import { RunResolutionError } from '../../run/run-errors.ts';
@@ -10,7 +10,7 @@ const configuration = {
     kind: 'configuration-loading',
     failure: { kind: 'config-error', name: 'ConfigError', cause: guard }
 };
-export const testNode: TestNode = suite('mutation hit limit guard recognition', [
+export const testNode = suite('mutation hit limit guard recognition', [
     table({
         title: 'recognizes supported guard envelope',
         cases: [

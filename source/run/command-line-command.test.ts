@@ -1,10 +1,10 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { createCommandLineErrorResultFromUnknown, readExitCodeFromRunResult } from './command-line-command.ts';
 import { RunCollectionError, RunResolutionError } from './run-errors.ts';
 
-export const testNode: TestNode = suite('CLI error results', [
+export const testNode = suite('CLI error results', [
     test('maps no tests collected errors', function (scope) {
         const result = createCommandLineErrorResultFromUnknown(
             new RunResolutionError('No explicit run paths were provided.', undefined, 'no-tests-collected')

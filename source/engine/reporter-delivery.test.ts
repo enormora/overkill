@@ -1,4 +1,10 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import {
+    type CompositeAssertionReturn,
+    type CompositeCheckBuilder,
+    defineCompositeAssertion
+} from '@overkill-dev/test/assert';
+
+import { suite, test } from '@overkill-dev/test';
 
 import { createDeterministicClock, type DeterministicClock } from '@enormora/clock';
 
@@ -106,10 +112,15 @@ function resultRunnerErrorMessages(result: RunResult): readonly string[] {
     });
 }
 
-function assertEmptyRunnerErrors(scope: TestScope, result: RunResult | null): void {
-    scope.require.defined(result);
-    scope.assert.deepEqual(result.runnerErrors, []);
-}
+const emptyRunnerErrorsChecks = function (
+    check: CompositeCheckBuilder<'assert'>,
+    result: RunResult | null
+): CompositeAssertionReturn<'assert'> {
+    if (result === null) {
+        return check.defined(result);
+    }
+    return check.group([ check.deepEqual(result.runnerErrors, []) ]);
+};
 
 function createFinalPhaseReporterFixture(): FinalPhaseReporterFixture {
     const finalObserver = createInMemoryFinalResultReporter();
@@ -158,29 +169,34 @@ function createFinalPhaseReporterFixture(): FinalPhaseReporterFixture {
     };
 }
 
-function assertFinalPhaseCallbackInputsUnchanged(
-    scope: TestScope,
-    fixture: FinalPhaseReporterFixture
-): void {
-    assertEmptyRunnerErrors(scope, firstRecordedResult(fixture.finalObserver));
-    assertEmptyRunnerErrors(scope, recordedFinishResult(fixture.finishObserver));
-    assertEmptyRunnerErrors(scope, fixture.readFailingFinalInput());
-    assertEmptyRunnerErrors(scope, fixture.readFailingFinishInput());
-}
+const assertFinalPhaseCallbackInputsUnchanged = defineCompositeAssertion({
+    name: 'final phase callback inputs unchanged',
+    assert(check, fixture: FinalPhaseReporterFixture) {
+        return check.group([
+            emptyRunnerErrorsChecks(check.annotated('empty runner errors'), firstRecordedResult(fixture.finalObserver)),
+            emptyRunnerErrorsChecks(
+                check.annotated('empty runner errors'),
+                recordedFinishResult(fixture.finishObserver)
+            ),
+            emptyRunnerErrorsChecks(check.annotated('empty runner errors'), fixture.readFailingFinalInput()),
+            emptyRunnerErrorsChecks(check.annotated('empty runner errors'), fixture.readFailingFinishInput())
+        ]);
+    }
+});
 
-function assertFinalPhaseErrorsReturnedAndNotified(
-    scope: TestScope,
-    fixture: FinalPhaseReporterFixture,
-    result: RunResult
-): void {
-    const expectedMessages = [
-        'final-broken: cannot write final output',
-        'finish-broken: cannot write finish output'
-    ];
-
-    scope.assert.deepEqual(resultRunnerErrorMessages(result), expectedMessages);
-    scope.assert.deepEqual(runnerErrorMessages(fixture.finishObserver), expectedMessages);
-}
+const assertFinalPhaseErrorsReturnedAndNotified = defineCompositeAssertion({
+    name: 'final phase errors returned and notified',
+    assert(check, fixture: FinalPhaseReporterFixture, result: RunResult) {
+        const expectedMessages = [
+            'final-broken: cannot write final output',
+            'finish-broken: cannot write finish output'
+        ];
+        return check.group([
+            check.deepEqual(resultRunnerErrorMessages(result), expectedMessages),
+            check.deepEqual(runnerErrorMessages(fixture.finishObserver), expectedMessages)
+        ]);
+    }
+});
 
 function ignoreOutputLine(): void {
     return undefined;
@@ -211,7 +227,7 @@ function createDefaultReporterDeliveryEngine(): Engine {
     return createReporterDeliveryEngine(createDeterministicClock({ initialUnixEpochMicroseconds: 0n }));
 }
 
-export const testNode: TestNode = suite('Reporter delivery', [
+export const testNode = suite('Reporter delivery', [
     test(
         'records reporter callback failures and notifies other real-time reporters',
         async function body(scope) {
@@ -396,8 +412,8 @@ export const testNode: TestNode = suite('Reporter delivery', [
                 runFacts: {},
                 startedAt: '2026-07-15T00:00:00.000Z'
             });
-            assertFinalPhaseCallbackInputsUnchanged(scope, fixture);
-            assertFinalPhaseErrorsReturnedAndNotified(scope, fixture, result);
+            scope.assert(assertFinalPhaseCallbackInputsUnchanged, fixture);
+            scope.assert(assertFinalPhaseErrorsReturnedAndNotified, fixture, result);
 
             return scope.assert.collect();
         }

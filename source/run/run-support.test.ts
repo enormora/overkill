@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { defineReporter } from '../packages/engine/engine.entry-point.ts';
 import {
@@ -26,7 +26,7 @@ const reporter = defineReporter(function createRunSupportReporter() {
     };
 });
 
-export const testNode: TestNode = suite('Run support', [
+export const testNode = suite('Run support', [
     test('copyConfig() preserves profile behavior while copying mutable containers', function (scope) {
         const config = defaultRunConfig({
             profiles: {

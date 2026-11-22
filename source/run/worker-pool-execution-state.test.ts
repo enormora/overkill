@@ -1,4 +1,5 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import { suite, test } from '@overkill-dev/test';
 
 import {
     crashLimitMessage,
@@ -113,25 +114,40 @@ function hedgedBudgetRuntime(): HedgedBudgetRun {
     return { activeTask, hedge, runtime };
 }
 
-function assertSharedExhaustion(scope: TestScope, runtime: WorkerPoolRunRuntime): void {
-    const artifacts = runtime.runState.artifacts();
-    scope.assert.equal(artifacts.length, 1);
-    const artifact = artifacts[0];
-    scope.require.defined(artifact);
-    scope.assert.equal(artifact.id.scope.kind, 'run');
-    scope.assert.equal(artifact.id.attempt, null);
-    if (artifact.payload.kind !== 'process-exhaustion') {
-        throw new Error('Expected pool exhaustion evidence.');
+const assertSharedExhaustion = defineCompositeAssertion({
+    name: 'shared exhaustion',
+    assert(check, runtime: WorkerPoolRunRuntime) {
+        const artifacts = runtime.runState.artifacts();
+        const initialChecks = check.equal(artifacts.length, 1);
+        const artifact = artifacts[0];
+        if (artifact === undefined) {
+            return check.group([ initialChecks, check.defined(artifact) ]);
+        }
+        const intermediateChecks = check.group([
+            check.defined(artifact),
+            check.equal(artifact.id.scope.kind, 'run'),
+            check.equal(artifact.id.attempt, null)
+        ]);
+        if (artifact.payload.kind !== 'process-exhaustion') {
+            throw new Error('Expected pool exhaustion evidence.');
+        }
+        return check.group([
+            initialChecks,
+            intermediateChecks,
+            check.deepEqual(
+                artifact
+                    .payload
+                    .activeWork
+                    .map(function capturedAttempt(active) {
+                        return active.attempt.index;
+                    }),
+                [ 0, 1 ]
+            )
+        ]);
     }
-    scope.assert.deepEqual(
-        artifact.payload.activeWork.map(function capturedAttempt(active) {
-            return active.attempt.index;
-        }),
-        [ 0, 1 ]
-    );
-}
+});
 
-export const testNode: TestNode = suite({
+export const testNode = suite({
     ...testCaseMetadata,
     title: 'Worker pool execution state',
     children: [
@@ -165,7 +181,7 @@ export const testNode: TestNode = suite({
                 scope.assert.equal(activeTask.controller.signal.aborted, true);
                 scope.assert.equal(activeTask.state.perTestResults()[0]?.verdict, 'process-exhausted');
                 scope.assert.equal(hedge.controller.signal.aborted, true);
-                assertSharedExhaustion(scope, runtime);
+                scope.assert(assertSharedExhaustion, runtime);
 
                 return scope.assert.collect();
             }

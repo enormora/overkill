@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { createDeterministicClock, type DeterministicClock } from '@enormora/clock';
 
@@ -56,7 +56,7 @@ function createChangingProcessUsageTracker(
     });
 }
 
-export const testNode: TestNode = suite('Process usage', [
+export const testNode = suite('Process usage', [
     test(
         'tracker summarizes sampled memory and start/end active resources',
         function (scope) {

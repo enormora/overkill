@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { observationPlan } from '../test-support/observation-lifetime.ts';
 import { supervisedChildCommand } from '../test-support/supervised-child-fixture.ts';
@@ -20,7 +20,7 @@ function assignment(): SupervisedAssignmentCommand {
         corpus: { checkedIn: [], localCache: [], diagnostics: [] }
     };
 }
-export const testNode: TestNode = suite('supervised assignment admission', [
+export const testNode = suite('supervised assignment admission', [
     test('preserves the assigned property corpus', function (scope) {
         const input = assignment();
         scope.assert.deepEqual(assignedPropertyCorpus(input), { checkedIn: [], localCache: [], diagnostics: [] });

@@ -1,7 +1,6 @@
-import type { TestScope } from '@overkill-dev/test';
 import { attachComposedResourceActions } from '../packages/test/resource-wrapper-composition.ts';
 
-export async function mappedResourceScope(value: unknown, scope: TestScope): Promise<unknown> {
+export async function mappedResourceScope(value: unknown): Promise<unknown> {
     const body: unknown = Reflect.apply(attachComposedResourceActions, undefined, [ [ {
         kind: 'scope',
         name: 'withMapped',
@@ -16,6 +15,14 @@ export async function mappedResourceScope(value: unknown, scope: TestScope): Pro
     if (typeof body !== 'function') {
         throw new TypeError('Expected a composed body.');
     }
-    const result: unknown = Reflect.apply(body, undefined, [ scope ]);
+    const controller = new AbortController();
+    const input = {
+        tag: 'original',
+        signal: controller.signal,
+        cleanup() {
+            return undefined;
+        }
+    };
+    const result: unknown = Reflect.apply(body, undefined, [ input ]);
     return await result;
 }

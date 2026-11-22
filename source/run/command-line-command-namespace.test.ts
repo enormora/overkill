@@ -1,4 +1,4 @@
-import { type TestNode, suite, test, doubleUsage, testDouble } from '@overkill-dev/test';
+import { suite, test, doubleUsage, testDouble } from '@overkill-dev/test';
 
 import { createFactory } from '@enormora/objectory';
 import { defaultRunRequest } from '../test-support/run-command-factory.ts';
@@ -80,7 +80,7 @@ const benchmarkCommandsFactory = createFactory<CommandLineBenchmarkCommands>(fun
     };
 });
 
-export const testNode: TestNode = suite('Command namespace', [
+export const testNode = suite('Command namespace', [
     test('loads only selected command families', async function (scope) {
         const loaders = {
             async loadConfig() {

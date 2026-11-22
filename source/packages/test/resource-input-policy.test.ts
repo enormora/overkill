@@ -1,8 +1,8 @@
-import { table, type TestNode, suite, test } from '@overkill-dev/test';
+import { table, suite, test } from '@overkill-dev/test';
 
 import { ensureResourceDescriptor, ensureRuntimeGraph, readResourceMap } from './resource-wrapper-data.ts';
 
-export const testNode: TestNode = suite('resource wrapper input admission', [
+export const testNode = suite('resource wrapper input admission', [
     table({
         title: 'rejects incomplete resource descriptor',
         cases: [ { description: 'null', input: null }, { description: 'number', input: 42 }, {

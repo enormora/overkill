@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 import { test as subjectTest } from '../packages/test/test.entry-point.ts';
 
 import { executePropertyNode, propertyExecutionDefaults } from '../test-support/property-execution.ts';
@@ -30,7 +30,7 @@ async function witness(): Promise<PropertyWitnessFile> {
     return saved;
 }
 
-export const testNode: TestNode = suite('stored property regressions', [
+export const testNode = suite('stored property regressions', [
     test('replays a witness once without exploring or confirming it', async function (scope) {
         const saved = await witness();
         const inputs: number[] = [];

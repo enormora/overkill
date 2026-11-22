@@ -1,4 +1,3 @@
-import type { TestNode } from '../engine/test-node.ts';
 import type { RunTestPlanInput } from '../run/run-test-plan.ts';
 import type { DirectEntrypointRunCollectionSource, DiscoveredRunFile } from '../run/run-types.ts';
 import { createTestEngine } from './create-test-engine.ts';
@@ -20,7 +19,7 @@ export function runPlanCollection(invalid: boolean): PlanCollectionFixture {
             throw new Error('Collection must not execute bodies.');
         }
     });
-    const testNode: TestNode = invalid
+    const testNode = invalid
         ? engine.createSuite({
             title: 'duplicates',
             annotations: {},

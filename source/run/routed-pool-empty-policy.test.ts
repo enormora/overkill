@@ -1,8 +1,8 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 
 import { createRoutedPool } from './worker-pool-routing.ts';
 
-export const testNode: TestNode = suite('empty routed pool observations', [
+export const testNode = suite('empty routed pool observations', [
     test('rejects a usage summary without any routed process samples', async function (scope: TestScope) {
         const pool = createRoutedPool([]);
         const createTracker = pool.createProcessUsageTracker;

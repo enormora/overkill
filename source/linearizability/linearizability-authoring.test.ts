@@ -1,4 +1,4 @@
-import { type TestNode, table, suite, test } from '@overkill-dev/test';
+import { table, suite, test } from '@overkill-dev/test';
 
 import { property, gen } from '../packages/property/property.entry-point.ts';
 import { linearizability } from '../packages/linearizability/linearizability.entry-point.ts';
@@ -9,7 +9,7 @@ type DrainingSystem = {
     readonly drain: () => void;
 };
 
-export const testNode: TestNode = suite('concurrent linearizability authoring', [
+export const testNode = suite('concurrent linearizability authoring', [
     table({
         title: 'checks increment histories across overlap patterns',
         cases: [ false, true ],

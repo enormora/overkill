@@ -1,10 +1,10 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { CalibrationPublicationError } from '../baselines/calibration-store.ts';
 import { readCalibrationReferenceReport } from '../bench/calibration-report.ts';
 import { calibrationCapture } from '../test-support/calibration-capture.ts';
 
-export const testNode: TestNode = suite('calibration capture publication', [
+export const testNode = suite('calibration capture publication', [
     test('deduplicates references and records their consuming work', async function (scope) {
         const fixture = calibrationCapture(null, 4096);
         const result = await fixture.session.finalize(fixture.result);

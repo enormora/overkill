@@ -1,4 +1,4 @@
-import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import {
     defineResource,
@@ -43,41 +43,37 @@ function scenarioRuntime(name: string, variant: string, resource: ScenarioResour
     });
 }
 
-function assertRuntimeMatrixScenarios(scope: TestScope): void {
-    const firstResource = scenarioResource('first-scenario', [ 'default', 'alternate' ]);
-    const secondResource = scenarioResource('second-scenario', [ 'default', 'other' ]);
+export const testNode = suite('Runtime scenario matrix', [
+    test('runtime matrices bind scenarios and require matching slots', function (scope) {
+        const firstResource = scenarioResource('first-scenario', [ 'default', 'alternate' ]);
+        const secondResource = scenarioResource('second-scenario', [ 'default', 'other' ]);
 
-    scope.assert.throws(function rejectDifferentScenarioSlots() {
-        defineRuntimeMatrix({
+        scope.assert.throws(function rejectDifferentScenarioSlots() {
+            defineRuntimeMatrix({
+                name: 'scenario',
+                variants: {
+                    first: scenarioRuntime('first', 'first', firstResource),
+                    second: scenarioRuntime('second', 'second', secondResource)
+                }
+            });
+        }, { message: 'Runtime matrix "scenario" variant "second" has different scenario slots.' });
+
+        const defaultMatrix = defineRuntimeMatrix({
             name: 'scenario',
             variants: {
                 first: scenarioRuntime('first', 'first', firstResource),
-                second: scenarioRuntime('second', 'second', secondResource)
+                second: scenarioRuntime('second', 'second', firstResource)
             }
         });
-    }, { message: 'Runtime matrix "scenario" variant "second" has different scenario slots.' });
+        const matrix = defaultMatrix.scenario({ mode: 'alternate' });
 
-    const defaultMatrix = defineRuntimeMatrix({
-        name: 'scenario',
-        variants: {
-            first: scenarioRuntime('first', 'first', firstResource),
-            second: scenarioRuntime('second', 'second', firstResource)
-        }
-    });
-    const matrix = defaultMatrix.scenario({ mode: 'alternate' });
+        scope.assert.deepEqual(defaultMatrix.variants.first.runtime.id.scenarios, { mode: 'default' });
+        scope.assert.deepEqual(matrix.variants.first.runtime.id.scenarios, { mode: 'alternate' });
 
-    scope.assert.deepEqual(defaultMatrix.variants.first.runtime.id.scenarios, { mode: 'default' });
-    scope.assert.deepEqual(matrix.variants.first.runtime.id.scenarios, { mode: 'alternate' });
-
-    scope.assert.equal(
-        resolvedRuntimeScenarioOwners(matrix.variants.first.runtime).get('mode')?.value,
-        'alternate'
-    );
-}
-
-export const testNode: TestNode = suite('Runtime scenario matrix', [
-    test('runtime matrices bind scenarios and require matching slots', function (scope) {
-        assertRuntimeMatrixScenarios(scope);
+        scope.assert.equal(
+            resolvedRuntimeScenarioOwners(matrix.variants.first.runtime).get('mode')?.value,
+            'alternate'
+        );
 
         return scope.assert.collect();
     })

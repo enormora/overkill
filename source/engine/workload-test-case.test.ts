@@ -1,4 +1,4 @@
-import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
+import { suite, test, type TestScope } from '@overkill-dev/test';
 import { type EngineCaseBody, createTestEngine } from '../test-support/create-test-engine.ts';
 
 import { workload, type Workload } from '../packages/bench/bench.entry-point.ts';
@@ -73,7 +73,7 @@ function createWorkloadFixture(): WorkloadFixture {
     return { engine, observed, plan };
 }
 
-export const testNode: TestNode = suite('workload test cases', [
+export const testNode = suite('workload test cases', [
     test('lowers one logical node into distinct work identities without running bodies', function (scope) {
         const { observed, plan } = createWorkloadFixture();
         scope.assert.equal(observed.length, 0);

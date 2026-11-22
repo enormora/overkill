@@ -1,4 +1,4 @@
-import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { defineResource } from './resources.ts';
 import { resourceScenarioOwners } from './resource-scenario-binding.ts';
@@ -16,102 +16,98 @@ function defineResourceWithScenarios(scenarios: unknown): void {
     } ]);
 }
 
-function assertResourceScenarioValidation(scope: TestScope): void {
-    const invalidScenarios = [
-        { message: 'Resource scenarios must be an object.', scenarios: null },
-        { message: 'Scenario slot "mode" is invalid.', scenarios: { mode: null } },
-        { message: 'Scenario slot "mode" is invalid.', scenarios: { mode: 'default' } },
-        {
-            message: 'Scenario slot "mode" is invalid.',
-            scenarios: { mode: { default: 1, timing: 'acquire', values: [ 'default' ] } }
-        },
-        {
-            message: 'Scenario slot "mode" is invalid.',
-            scenarios: { mode: { default: 'default', timing: 'invalid', values: [ 'default' ] } }
-        },
-        {
-            message: 'Scenario slot "mode" is invalid.',
-            scenarios: { mode: { default: 'default', timing: 'acquire', values: null } }
-        },
-        {
-            message: 'Scenario slot "mode" is invalid.',
-            scenarios: { mode: { default: 'default', timing: 'acquire', values: [] } }
-        },
-        {
-            message: 'Scenario slot "mode" is invalid.',
-            scenarios: { mode: { default: 'default', timing: 'acquire', values: [ 'default', 1 ] } }
-        },
-        {
-            message: 'Scenario slot "invalid slot" must match ^[A-Za-z0-9._-]+$.',
-            scenarios: {
-                'invalid slot': { default: 'default', timing: 'acquire', values: [ 'default' ] }
-            }
-        },
-        {
-            message: 'Scenario slot "mode" contains duplicate values.',
-            scenarios: {
-                mode: { default: 'default', timing: 'acquire', values: [ 'default', 'default' ] }
-            }
-        },
-        {
-            message: 'Scenario slot "mode" default "missing" is not declared.',
-            scenarios: { mode: { default: 'missing', timing: 'acquire', values: [ 'default' ] } }
-        }
-    ];
-
-    for (const invalid of invalidScenarios) {
-        scope.assert.throws(function rejectInvalidScenarios() {
-            defineResourceWithScenarios(invalid.scenarios);
-        }, { message: invalid.message });
-    }
-
-    scope.assert.throws(function rejectMissingHandleExposure() {
-        defineResourceWithScenarios({
-            mode: { default: 'default', timing: 'request-routed', values: [ 'default' ] }
-        });
-    }, { message: 'Resource "invalid-scenarios" requires exposeHandle().' });
-    scope.assert.throws(function rejectUnexpectedHandleExposure() {
-        Reflect.apply(defineResource, undefined, [ {
-            acquire() {
-                return 'handle';
-            },
-            dispose: null,
-            exposeHandle(handle: unknown) {
-                return handle;
-            },
-            name: 'invalid-exposure',
-            requirements: [],
-            scenarios: {
-                mode: { default: 'default', timing: 'acquire', values: [ 'default' ] }
-            },
-            scope: 'per-case'
-        } ]);
-    }, { message: 'Resource exposeHandle() requires a request-routed scenario.' });
-
-    scope.assert.equal(
-        resourceScenarioOwners(
-            ({
-                invalid: {
-                    acquire() {
-                        return 'handle';
-                    },
-                    dependencies: {},
-                    dispose: null,
-                    name: 'invalid',
-                    requirements: [],
-                    scenarios: { mode: null },
-                    scope: 'per-case'
-                }
-            }) as never
-        )
-            .size,
-        0
-    );
-}
-
-export const testNode: TestNode = suite('Resource scenario validation', [
+export const testNode = suite('Resource scenario validation', [
     test('defineResource rejects malformed scenario slots', function (scope) {
-        assertResourceScenarioValidation(scope);
+        const invalidScenarios = [
+            { message: 'Resource scenarios must be an object.', scenarios: null },
+            { message: 'Scenario slot "mode" is invalid.', scenarios: { mode: null } },
+            { message: 'Scenario slot "mode" is invalid.', scenarios: { mode: 'default' } },
+            {
+                message: 'Scenario slot "mode" is invalid.',
+                scenarios: { mode: { default: 1, timing: 'acquire', values: [ 'default' ] } }
+            },
+            {
+                message: 'Scenario slot "mode" is invalid.',
+                scenarios: { mode: { default: 'default', timing: 'invalid', values: [ 'default' ] } }
+            },
+            {
+                message: 'Scenario slot "mode" is invalid.',
+                scenarios: { mode: { default: 'default', timing: 'acquire', values: null } }
+            },
+            {
+                message: 'Scenario slot "mode" is invalid.',
+                scenarios: { mode: { default: 'default', timing: 'acquire', values: [] } }
+            },
+            {
+                message: 'Scenario slot "mode" is invalid.',
+                scenarios: { mode: { default: 'default', timing: 'acquire', values: [ 'default', 1 ] } }
+            },
+            {
+                message: 'Scenario slot "invalid slot" must match ^[A-Za-z0-9._-]+$.',
+                scenarios: {
+                    'invalid slot': { default: 'default', timing: 'acquire', values: [ 'default' ] }
+                }
+            },
+            {
+                message: 'Scenario slot "mode" contains duplicate values.',
+                scenarios: {
+                    mode: { default: 'default', timing: 'acquire', values: [ 'default', 'default' ] }
+                }
+            },
+            {
+                message: 'Scenario slot "mode" default "missing" is not declared.',
+                scenarios: { mode: { default: 'missing', timing: 'acquire', values: [ 'default' ] } }
+            }
+        ];
+
+        for (const invalid of invalidScenarios) {
+            scope.assert.throws(function rejectInvalidScenarios() {
+                defineResourceWithScenarios(invalid.scenarios);
+            }, { message: invalid.message });
+        }
+
+        scope.assert.throws(function rejectMissingHandleExposure() {
+            defineResourceWithScenarios({
+                mode: { default: 'default', timing: 'request-routed', values: [ 'default' ] }
+            });
+        }, { message: 'Resource "invalid-scenarios" requires exposeHandle().' });
+        scope.assert.throws(function rejectUnexpectedHandleExposure() {
+            Reflect.apply(defineResource, undefined, [ {
+                acquire() {
+                    return 'handle';
+                },
+                dispose: null,
+                exposeHandle(handle: unknown) {
+                    return handle;
+                },
+                name: 'invalid-exposure',
+                requirements: [],
+                scenarios: {
+                    mode: { default: 'default', timing: 'acquire', values: [ 'default' ] }
+                },
+                scope: 'per-case'
+            } ]);
+        }, { message: 'Resource exposeHandle() requires a request-routed scenario.' });
+
+        scope.assert.equal(
+            resourceScenarioOwners(
+                ({
+                    invalid: {
+                        acquire() {
+                            return 'handle';
+                        },
+                        dependencies: {},
+                        dispose: null,
+                        name: 'invalid',
+                        requirements: [],
+                        scenarios: { mode: null },
+                        scope: 'per-case'
+                    }
+                }) as never
+            )
+                .size,
+            0
+        );
 
         return scope.assert.collect();
     })

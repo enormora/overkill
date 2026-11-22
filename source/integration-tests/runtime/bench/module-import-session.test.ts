@@ -1,0 +1,160 @@
+import { once } from 'node:events';
+import { connect, type Socket } from 'node:net';
+import { table, type TestScope, suite, test } from '@overkill-dev/test';
+
+import { createTestEngine } from '../../../test-support/create-test-engine.ts';
+import { createModuleImportSession, type ModuleImportSession } from '../../../bench/module-import-session.ts';
+import { withinProcessDeadline } from '../../../bench/process-deadline.ts';
+
+type ModulePeer = { readonly session: ModuleImportSession; readonly socket: Socket; readonly token: string; };
+type InvalidFrame = {
+    readonly title: string;
+    readonly frame: (token: string) => string;
+    readonly message: string;
+};
+
+async function modulePeer(cleanup: TestScope['cleanup']): Promise<ModulePeer> {
+    const session = await createModuleImportSession();
+    cleanup(session.close);
+    session.start();
+    const socket = connect({ host: '127.0.0.1', port: Number(session.arguments[0]) });
+    cleanup(function closePeer() {
+        socket.destroy();
+    });
+    socket.on('error', function closeRejectedPeer() {
+        socket.destroy();
+    });
+    await once(socket, 'connect');
+    return { session, socket, token: String(session.arguments[1]) };
+}
+function importedMessage(token: string): Readonly<Record<string, unknown>> {
+    return {
+        kind: 'imported',
+        token,
+        url: 'file:///fixture.mjs',
+        durationMicroseconds: 7,
+        failure: null,
+        nodeVersion: process.versions.node,
+        nodeArguments: []
+    };
+}
+const invalidFrames: readonly InvalidFrame[] = [
+    {
+        title: 'rejects replies from a different import owner',
+        frame() {
+            return JSON.stringify({ kind: 'ready', token: 'wrong-owner' });
+        },
+        message: 'Invalid module import identity or duplicate reply.'
+    },
+    {
+        title: 'rejects completion before the import command',
+        frame(token) {
+            return JSON.stringify(importedMessage(token));
+        },
+        message: 'Module import completed before readiness.'
+    }
+];
+
+export const testNode = suite('module import control protocol', [
+    test('closing a session releases its frame-reader promises', async function (scope) {
+        const engine = createTestEngine();
+        const nested = engine.createTestCase({
+            annotations: {},
+            controls: {},
+            definitionLocations: [ { kind: 'unknown' } ],
+            title: 'open and close frame readers',
+            async body(innerScope) {
+                const peer = await modulePeer(innerScope.cleanup);
+                peer.socket.end(`${JSON.stringify(importedMessage(peer.token))}\n`);
+                await innerScope.assert.rejects(async function reportInterruptedSession() {
+                    return await peer.session.report();
+                }, { message: 'Module import completed before readiness.' });
+                return innerScope.assert.collect();
+            }
+        });
+        const result = await engine.execute(engine.createTestPlan(engine.createRoot({
+            annotations: {},
+            controls: {},
+            title: 'module session',
+            children: [ nested ]
+        })));
+        scope.assert.equal(result.summary.passed, 1);
+        scope.assert.deepEqual(result.runnerErrors, []);
+        return scope.assert.collect();
+    }),
+    test('releases a pending report when its owner closes', async function (scope) {
+        const session = await createModuleImportSession();
+        await using disposal = new AsyncDisposableStack();
+        disposal.defer(session.close);
+        const pending = withinProcessDeadline(session.report(), 1000, 'Report remained pending after closing.');
+        const checked = scope.assert.rejects(async function closedReport() {
+            return await pending;
+        }, { message: 'Module import session closed before reporting.' });
+        await disposal.disposeAsync();
+        await checked;
+        return scope.assert.collect();
+    }),
+    test(
+        'starts import only after readiness and returns authenticated metadata',
+        async function (scope) {
+            const peer = await modulePeer(scope.cleanup);
+            peer.socket.write(`${JSON.stringify({ kind: 'ready', token: peer.token })}\n`);
+            const commandEvent = await once(peer.socket, 'data');
+            const command: unknown = commandEvent[0];
+            scope.assert.equal(String(command), 'import\n');
+            peer.socket.end(`${JSON.stringify(importedMessage(peer.token))}\n`);
+            const report = await peer.session.report();
+            scope.assert.partialDeepEqual(report, {
+                url: 'file:///fixture.mjs',
+                durationMicroseconds: 7,
+                failure: null
+            });
+            scope.assert.true(peer.session.startupMilliseconds() >= 0);
+            return scope.assert.collect();
+        }
+    ),
+    table({
+        title: 'rejects invalid import control frames',
+        cases: invalidFrames,
+        caseTitle(frame) {
+            return frame.title;
+        },
+        async test(scope) {
+            const frame = scope.parameters;
+
+            const peer = await modulePeer(scope.cleanup);
+            peer.socket.end(`${frame.frame(peer.token)}\n`);
+            await scope.assert.rejects(async function rejectedReport() {
+                return await peer.session.report();
+            }, { message: frame.message });
+            return scope.assert.collect();
+        }
+    }),
+    test('rejects a second readiness command', async function (scope) {
+        const peer = await modulePeer(scope.cleanup);
+        const message = `${JSON.stringify({ kind: 'ready', token: peer.token })}\n`;
+        peer.socket.write(message);
+        await once(peer.socket, 'data');
+        peer.socket.end(message);
+        await scope.assert.rejects(async function rejectedReport() {
+            return await peer.session.report();
+        }, { message: 'Module import became ready more than once.' });
+        return scope.assert.collect();
+    }),
+    test('rejects malformed JSON without an unhandled owner rejection', async function (scope) {
+        const peer = await modulePeer(scope.cleanup);
+        peer.socket.end('not-json\n');
+        await scope.assert.rejects(async function rejectedReport() {
+            return await peer.session.report();
+        }, { type: SyntaxError });
+        return scope.assert.collect();
+    }),
+    test('bounds a frame before JSON parsing', async function (scope) {
+        const peer = await modulePeer(scope.cleanup);
+        peer.socket.end('x'.repeat(65_537));
+        await scope.assert.rejects(async function rejectedReport() {
+            return await peer.session.report();
+        }, { message: 'Module import message exceeded its frame limit.' });
+        return scope.assert.collect();
+    })
+]);

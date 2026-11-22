@@ -1,5 +1,5 @@
 import { runInNewContext } from 'node:vm';
-import { type TestNode, table, suite, test } from '@overkill-dev/test';
+import { table, suite, test } from '@overkill-dev/test';
 
 import { InvocationDeadlineExceededError } from '../invocation-budget.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
@@ -73,7 +73,7 @@ function failedDeliveryReply(delivery: FailedDelivery): FailureReply {
     return reply;
 }
 
-export const testNode: TestNode = suite(
+export const testNode = suite(
     'interrupted execution evidence',
     [
         table({

@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import ansiEscapes from 'ansi-escapes';
 import figures from 'figures';
@@ -137,7 +137,7 @@ async function reportProgressRun(terminal: FakeTerminal): Promise<void> {
     });
 }
 
-export const testNode: TestNode = suite('Progress reporter', [
+export const testNode = suite('Progress reporter', [
     test('redraws a live bar and prints final tree output', async function (scope) {
         const terminal = createFakeTerminal();
 

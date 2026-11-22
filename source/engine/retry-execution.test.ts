@@ -1,4 +1,5 @@
-import { table, type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import { table, suite, test, type TestScope } from '@overkill-dev/test';
 import { createDeterministicClock } from '@enormora/clock';
 import { type EngineCaseBody, createTestEngine } from '../test-support/create-test-engine.ts';
 
@@ -120,43 +121,62 @@ function createRetryProbe(): RetryProbe {
     };
 }
 
-function assertRecoveredCase(scope: TestScope, result: RunResult): void {
-    scope.assert.equal(result.summary.passed, 1);
-    scope.assert.equal(result.summary.failed, 0);
-    scope.assert.equal(result.perTest.length, 1);
-    const first = result.perTest[0];
-    scope.require.defined(first);
-    scope.require.defined(first.retried);
-    scope.assert.deepEqual(first.retried, { attempts: 2, finalVerdict: 'pass' });
-    scope.assert.deepEqual(
-        first.attempts.map(function attemptResult(attempt) {
-            return [ attempt.attempt.index, attempt.verdict ];
-        }),
-        [ [ 0, 'fail' ], [ 1, 'pass' ] ]
-    );
-}
+const assertRecoveredCase = defineCompositeAssertion({
+    name: 'recovered case',
+    assert(check, result: RunResult) {
+        const initialChecks = check.group([
+            check.equal(result.summary.passed, 1),
+            check.equal(result.summary.failed, 0),
+            check.equal(result.perTest.length, 1)
+        ]);
+        const first = result.perTest[0];
+        if (first === undefined) {
+            return check.group([ initialChecks, check.defined(first) ]);
+        }
 
-function assertRetryProbe(scope: TestScope, probe: RetryProbe): void {
-    scope.assert.equal(probe.runs(), 2);
-    scope.assert.deepEqual(probe.cleanup(), [ 1, 2 ]);
-    scope.assert.notEqual(probe.signals()[0], probe.signals()[1]);
-    scope.assert.true(
-        probe.signals().every(function aborted(signal) {
-            return signal.aborted;
-        })
-    );
-    scope.assert.deepEqual(
-        probe
-            .events()
-            .filter(function ended(event) {
-                return event.kind === 'test-end';
-            })
-            .map(function completion(event) {
-                return [ event.attempt, event.completion ];
-            }),
-        [ [ 0, 'retry' ], [ 1, 'final' ] ]
-    );
-}
+        if (first.retried === null) {
+            return check.group([ initialChecks, check.defined(first.retried) ]);
+        }
+        return check.group([
+            initialChecks,
+            check.defined(first.retried),
+            check.deepEqual(first.retried, { attempts: 2, finalVerdict: 'pass' }),
+            check.deepEqual(
+                first.attempts.map(function attemptResult(attempt) {
+                    return [ attempt.attempt.index, attempt.verdict ];
+                }),
+                [ [ 0, 'fail' ], [ 1, 'pass' ] ]
+            )
+        ]);
+    }
+});
+
+const assertRetryProbe = defineCompositeAssertion({
+    name: 'retry probe',
+    assert(check, probe: RetryProbe) {
+        return check.group([
+            check.equal(probe.runs(), 2),
+            check.deepEqual(probe.cleanup(), [ 1, 2 ]),
+            check.notEqual(probe.signals()[0], probe.signals()[1]),
+            check.true(
+                probe.signals().every(function aborted(signal) {
+                    return signal.aborted;
+                })
+            ),
+            check.deepEqual(
+                probe
+                    .events()
+                    .filter(function ended(event) {
+                        return event.kind === 'test-end';
+                    })
+                    .map(function completion(event) {
+                        return [ event.attempt, event.completion ];
+                    }),
+                [ [ 0, 'retry' ], [ 1, 'final' ] ]
+            )
+        ]);
+    }
+});
 
 function deterministicEngine(clock: ReturnType<typeof createDeterministicClock>): Engine {
     return createEngine({
@@ -215,19 +235,27 @@ function failingCompletionPolicy(completed: () => void): NonNullable<ExecuteOpti
     };
 }
 
-function assertCompletionFailure(scope: TestScope, result: RunResult): void {
-    const first = result.perTest[0];
-    scope.require.defined(first);
-    const error = result.runnerErrors[0];
-    scope.require.defined(error);
-    scope.assert.equal(result.summary.runtimePolicy, 1);
-    scope.assert.equal(first.outcome, null);
-    scope.assert.equal(first.attempts.at(-1)?.outcome?.kind, 'pass');
-    scope.assert.equal(first.retried?.finalVerdict, 'runtime-policy');
-    scope.assert.equal(error.attributedToAttempt?.index, 1);
-}
+const assertCompletionFailure = defineCompositeAssertion({
+    name: 'completion failure',
+    assert(check, result: RunResult) {
+        const first = result.perTest[0];
+        if (first === undefined) {
+            return check.defined(first);
+        }
+        const error = result.runnerErrors[0];
+        if (error === undefined) {
+            return check.defined(error);
+        }
+        return check.group([
+            check.equal(result.summary.runtimePolicy, 1),
+            check.partialDeepEqual(first, { outcome: null, retried: { finalVerdict: 'runtime-policy' } }),
+            check.partialDeepEqual(first.attempts.at(-1) ?? {}, { outcome: { kind: 'pass' } }),
+            check.partialDeepEqual(error, { attributedToAttempt: { index: 1 } })
+        ]);
+    }
+});
 
-export const testNode: TestNode = suite('Retry execution', [
+export const testNode = suite('Retry execution', [
     table({
         title: 'preserves attempts across retry scheduling modes',
         cases: schedulingCases,
@@ -243,8 +271,8 @@ export const testNode: TestNode = suite('Retry execution', [
                 execution,
                 reporters: [ probe.reporter ]
             });
-            assertRecoveredCase(scope, result);
-            assertRetryProbe(scope, probe);
+            scope.assert(assertRecoveredCase, result);
+            scope.assert(assertRetryProbe, probe);
             return scope.assert.collect();
         }
     }),
@@ -447,7 +475,7 @@ export const testNode: TestNode = suite('Retry execution', [
                 })
             });
             scope.assert.deepEqual([ runs, completed ], [ 2, 1 ]);
-            assertCompletionFailure(scope, result);
+            scope.assert(assertCompletionFailure, result);
             return scope.assert.collect();
         }
     )

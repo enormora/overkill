@@ -1,4 +1,4 @@
-import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
+import { suite, test, type TestScope } from '@overkill-dev/test';
 
 import { runWithTranscriptScope } from '../transcript/transcript-store.ts';
 
@@ -25,83 +25,78 @@ function invalidInteraction(): HttpInteraction<null> {
         }
     };
 }
-async function assertSerializationFailure(scope: TestScope): Promise<void> {
-    const fixture = inlineAttachmentFixture(defaultAttachmentLimits, [ work ]);
-    await runWithAttachmentExecution(fixture.execution, async function ownedRun() {
-        await fixture.execution.runAttempt(work, { index: 0 }, async function failingTranscript() {
-            await runWithResourceFailureContext(context, async function captureHttp() {
-                const recorder = createHttpTranscriptRecorder<null>();
-                const capture = observeHttpFailureArtifacts('service', recorder.transcript);
-                scope.require.defined(capture);
-                recorder.record(invalidInteraction(), null);
-                await scope.assert.rejects(capture.close, { message: 'HTTP transcript capture failed.' });
-                recorder.recordCaptureError('custom', 'after disposal', null);
-            });
-        });
-    });
-    scope.assert.deepEqual(fixture.store.artifacts(), []);
-}
-async function assertCaptureErrors(scope: TestScope): Promise<void> {
-    const fixture = inlineAttachmentFixture(defaultAttachmentLimits, [ work ]);
-    await runWithAttachmentExecution(fixture.execution, async function ownedRun() {
-        await fixture.execution.runAttempt(work, { index: 0 }, async function captureTranscript() {
-            await runWithResourceFailureContext(context, async function captureHttp() {
-                const recorder = createHttpTranscriptRecorder<null>();
-                const capture = observeHttpFailureArtifacts('service', recorder.transcript);
-                scope.require.defined(capture);
-                recorder.recordCaptureError('custom', 'first', null);
-                recorder.recordCaptureError('custom', 'second', null);
-                await capture.close();
-            });
-        });
-    });
-    const artifact = fixture.store.artifacts()[0];
-    scope.require.defined(artifact);
-    if (artifact.payload.content.kind !== 'text') {
-        throw new Error('Expected HTTP transcript text.');
-    }
-    scope.assert.equal(
-        artifact.payload.content.text,
-        '["capture-error",{"message":"first","source":"custom"}]\n["capture-error",{"message":"second","source":"custom"}]\n'
-    );
-}
-async function assertUnknownTranscriptScope(scope: TestScope): Promise<void> {
-    const fixture = inlineAttachmentFixture(defaultAttachmentLimits, [ work ]);
-    const lifetime = {
-        name: 'service',
-        condition: { kind: 'resource', resource: 'service', boundary: 'shared' }
-    } as const;
-    await runWithAttachmentExecution(fixture.execution, async function ownedRun() {
-        await fixture.execution.runAttempt(work, { index: 0 }, async function activeAttempt() {
-            await runWithResourceFailureContext(lifetime, async function captureUncorrelatedHttp() {
-                const recorder = createHttpTranscriptRecorder<null>();
-                const capture = observeHttpFailureArtifacts('service', recorder.transcript);
-                scope.require.defined(capture);
-                recorder.recordCaptureError('custom', 'manual scope', { manual: true });
-                await capture.close();
-            });
-        });
-    });
-    scope.assert.equal(fixture.store.artifacts().length, 1);
-    scope.assert.equal(fixture.store.artifacts()[0]?.id.scope.kind, 'run');
-}
-export const testNode: TestNode = suite('Local HTTP failure capture', [
+
+export const testNode = suite('Local HTTP failure capture', [
     test(
         'unknown transcript scopes retain shared resource attribution despite an active case',
-        async function (scope) {
-            await assertUnknownTranscriptScope(scope);
+        async function (scope: TestScope) {
+            const fixture = inlineAttachmentFixture(defaultAttachmentLimits, [ work ]);
+            const lifetime = {
+                name: 'service',
+                condition: { kind: 'resource', resource: 'service', boundary: 'shared' }
+            } as const;
+            await runWithAttachmentExecution(fixture.execution, async function ownedRun() {
+                await fixture.execution.runAttempt(work, { index: 0 }, async function activeAttempt() {
+                    await runWithResourceFailureContext(lifetime, async function captureUncorrelatedHttp() {
+                        const recorder = createHttpTranscriptRecorder<null>();
+                        const capture = observeHttpFailureArtifacts('service', recorder.transcript);
+                        scope.require.defined(capture);
+                        recorder.recordCaptureError('custom', 'manual scope', { manual: true });
+                        await capture.close();
+                    });
+                });
+            });
+            scope.assert.equal(fixture.store.artifacts().length, 1);
+            scope.assert.equal(fixture.store.artifacts()[0]?.id.scope.kind, 'run');
+
             return scope.assert.collect();
         }
     ),
     test(
         'HTTP serialization errors surface when capture closes and stop observation',
-        async function (scope) {
-            await assertSerializationFailure(scope);
+        async function (scope: TestScope) {
+            const fixture = inlineAttachmentFixture(defaultAttachmentLimits, [ work ]);
+            await runWithAttachmentExecution(fixture.execution, async function ownedRun() {
+                await fixture.execution.runAttempt(work, { index: 0 }, async function failingTranscript() {
+                    await runWithResourceFailureContext(context, async function captureHttp() {
+                        const recorder = createHttpTranscriptRecorder<null>();
+                        const capture = observeHttpFailureArtifacts('service', recorder.transcript);
+                        scope.require.defined(capture);
+                        recorder.record(invalidInteraction(), null);
+                        await scope.assert.rejects(capture.close, { message: 'HTTP transcript capture failed.' });
+                        recorder.recordCaptureError('custom', 'after disposal', null);
+                    });
+                });
+            });
+            scope.assert.deepEqual(fixture.store.artifacts(), []);
+
             return scope.assert.collect();
         }
     ),
-    test('HTTP capture diagnostics append to the same bounded stream', async function (scope) {
-        await assertCaptureErrors(scope);
+    test('HTTP capture diagnostics append to the same bounded stream', async function (scope: TestScope) {
+        const fixture = inlineAttachmentFixture(defaultAttachmentLimits, [ work ]);
+        await runWithAttachmentExecution(fixture.execution, async function ownedRun() {
+            await fixture.execution.runAttempt(work, { index: 0 }, async function captureTranscript() {
+                await runWithResourceFailureContext(context, async function captureHttp() {
+                    const recorder = createHttpTranscriptRecorder<null>();
+                    const capture = observeHttpFailureArtifacts('service', recorder.transcript);
+                    scope.require.defined(capture);
+                    recorder.recordCaptureError('custom', 'first', null);
+                    recorder.recordCaptureError('custom', 'second', null);
+                    await capture.close();
+                });
+            });
+        });
+        const artifact = fixture.store.artifacts()[0];
+        scope.require.defined(artifact);
+        if (artifact.payload.content.kind !== 'text') {
+            throw new Error('Expected HTTP transcript text.');
+        }
+        scope.assert.equal(
+            artifact.payload.content.text,
+            '["capture-error",{"message":"first","source":"custom"}]\n["capture-error",{"message":"second","source":"custom"}]\n'
+        );
+
         return scope.assert.collect();
     }),
     test('unmanaged transcript observation records no failure artifacts', async function (scope: TestScope) {

@@ -1,8 +1,8 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { workerPlacementExecution } from '../test-support/worker-placement-execution.ts';
 
-export const testNode: TestNode = suite('worker placement execution policy', [
+export const testNode = suite('worker placement execution policy', [
     test('completes a placement after receiving the worker message boundary', async function (scope) {
         const fixture = workerPlacementExecution('none');
         const tasks = await fixture.run();

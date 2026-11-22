@@ -1,11 +1,11 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { rule } from './double-rule.ts';
 import { testDouble } from './test-double.ts';
 
 type Lookup = (key: string) => string;
 type Load = (key: string) => Promise<string>;
-export const testNode: TestNode = suite('call argument rule selection', [
+export const testNode = suite('call argument rule selection', [
     test('invokes the selected answer with the original arguments', function (scope) {
         const lookup = testDouble<Lookup>({
             rules: [

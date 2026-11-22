@@ -1,12 +1,14 @@
 import { execFile } from 'node:child_process';
 import { cp, mkdir, mkdtemp, rm, writeFile, readFile, readdir } from 'node:fs/promises';
-import { inspect } from 'node:util';
 import { setTimeout as delay } from 'node:timers/promises';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { type TestNode, suite, test, type TestScope } from '#tests';
+import { inspect } from 'node:util';
 
+import { suite } from '@overkill-dev/test';
 import { defaultRunRequest } from '../../test-support/run-command-factory.ts';
+import { sealConsumerDependencies } from './support/consumer-resolution-boundary.ts';
+import { consumerEnvironment } from './support/consumer-environment.ts';
+import { packageConsumer } from './support/package-consumer.ts';
 
 const engineCaseSource = `import * as engine from '@overkill-dev/engine';
 import { family, sameType } from '@overkill-dev/type-test';
@@ -42,11 +44,12 @@ async function runNode(directory: string, argumentList: readonly string[]): Prom
     return await new Promise(function execute(resolve, reject) {
         execFile(
             process.execPath,
-            Array.from(argumentList),
+            [ '--disable-warning=PERM0004', ...Array.from(argumentList) ],
             {
                 cwd: directory,
                 timeout: 120_000,
                 env: {
+                    ...consumerEnvironment(directory),
                     TSTYCHE_NPM_REGISTRY: 'http://127.0.0.1:1',
                     TSTYCHE_STORE_PATH: join(directory, 'checker-store'),
                     TS_API_TIMING_DIR: join(directory, 'compiler-timings')
@@ -76,24 +79,6 @@ async function provisionCompiler(directory: string): Promise<void> {
     await cp(join(process.cwd(), 'node_modules/@typescript'), join(directory, 'node_modules/@typescript'), {
         recursive: true
     });
-}
-
-async function isolatedConsumer(scope: TestScope, includeRunner: boolean): Promise<string> {
-    const directory = await mkdtemp(join(tmpdir(), 'overkill-type-test-consumer-'));
-    scope.cleanup(async function removeConsumer() {
-        await rm(directory, { recursive: true, force: true });
-    });
-    const destination = join(directory, 'node_modules/@overkill-dev');
-    await mkdir(destination, { recursive: true });
-    const packages = includeRunner ? [ 'engine', 'run', 'type-test' ] : [ 'engine', 'type-test' ];
-    for (const name of packages) {
-        await cp(join(import.meta.dirname, 'node_modules/@overkill-dev', name), join(destination, name), {
-            recursive: true
-        });
-    }
-    await provisionCompiler(directory);
-    await writeFile(join(directory, 'package.json'), JSON.stringify({ type: 'module' }));
-    return directory;
 }
 
 async function writeCheckingProject(directory: string): Promise<void> {
@@ -168,19 +153,6 @@ channel('child_process').subscribe(({process: child}) => {
     );
 }
 
-async function wedgedProcesses(directory: string): Promise<readonly number[]> {
-    const identities: unknown = JSON.parse(await readFile(join(directory, 'wedged-processes.json'), 'utf8'));
-    if (!Array.isArray(identities) || identities.length !== 2) {
-        throw new TypeError('Expected the analysis host and native compiler PIDs.');
-    }
-    return identities.map(function validatePid(pid: unknown) {
-        if (typeof pid !== 'number' || !Number.isSafeInteger(pid) || pid <= 1) {
-            throw new TypeError('Expected a process PID.');
-        }
-        return pid;
-    });
-}
-
 async function waitForProcessExit(pid: number): Promise<void> {
     for (let attempt = 0; attempt < 50; attempt += 1) {
         try {
@@ -196,9 +168,46 @@ async function waitForProcessExit(pid: number): Promise<void> {
     throw new Error(`Owned process ${pid} still exists after shutdown.`);
 }
 
-export const testNode: TestNode = suite('packaged native type tests', [
+async function waitForCompilerShutdown(directory: string): Promise<void> {
+    const identities: unknown = JSON.parse(await readFile(join(directory, 'wedged-processes.json'), 'utf8'));
+    if (!Array.isArray(identities) || identities.length !== 2) {
+        throw new TypeError('Expected the analysis host and native compiler PIDs.');
+    }
+    const ownedProcesses = identities.map(function validatePid(pid: unknown) {
+        if (typeof pid !== 'number' || !Number.isSafeInteger(pid) || pid <= 1) {
+            throw new TypeError('Expected a process PID.');
+        }
+        return pid;
+    });
+    await Promise.all(ownedProcesses.map(waitForProcessExit));
+}
+
+const consumerFacade = packageConsumer('packaged native type tests', function consumerFixture(consumerDirectory) {
+    async function isolatedConsumer(includeRunner: boolean): Promise<string> {
+        const directory = await mkdtemp(join(consumerDirectory, 'overkill-type-test-consumer-'));
+
+        const destination = join(directory, 'node_modules/@overkill-dev');
+        await mkdir(destination, { recursive: true });
+        const packages = includeRunner ? [ 'engine', 'run', 'type-test' ] : [ 'engine', 'type-test' ];
+        for (const name of packages) {
+            await cp(join(consumerDirectory, 'node_modules/@overkill-dev', name), join(destination, name), {
+                recursive: true
+            });
+        }
+        await provisionCompiler(directory);
+        await sealConsumerDependencies(directory);
+        await writeFile(join(directory, 'package.json'), JSON.stringify({ type: 'module' }));
+        return directory;
+    }
+    return { isolatedConsumer };
+});
+const { test } = consumerFacade;
+
+export const testNode = suite('packaged native type tests', [
     test('checks engine roots without the high-level distribution', async function (scope) {
-        const directory = await isolatedConsumer(scope, false);
+        const { isolatedConsumer } = scope.resources.consumer;
+
+        const directory = await isolatedConsumer(false);
         await writeCheckingProject(directory);
         const result = await runNode(directory, [ 'case.mts' ]);
         scope.assert.equal(result.code, 0, { message: result.stderr });
@@ -211,7 +220,9 @@ export const testNode: TestNode = suite('packaged native type tests', [
     test(
         'runs a registered profile through the public runner without the high-level distribution',
         async function (scope) {
-            const directory = await isolatedConsumer(scope, true);
+            const { isolatedConsumer } = scope.resources.consumer;
+
+            const directory = await isolatedConsumer(true);
             await writeRunnerProject(directory, 'in-process');
             const result = await runNode(directory, [ 'runner.mts' ]);
             scope.assert.equal(result.code, 0, { message: result.stderr });
@@ -220,7 +231,8 @@ export const testNode: TestNode = suite('packaged native type tests', [
         }
     ),
     test('checks only the runner selection in source order', async function (scope) {
-        const directory = await isolatedConsumer(scope, true);
+        const { isolatedConsumer } = scope.resources.consumer;
+        const directory = await isolatedConsumer(true);
         await writeRunnerProject(directory, 'in-process');
         await writeFile(
             join(directory, 'runner.mts'),
@@ -254,7 +266,9 @@ console.log(JSON.stringify(reply.runResult?.perTest.map(entry=>entry.id.title)))
         return scope.assert.collect();
     }),
     test('checks installed beta compilers in a supervised profile', async function (scope) {
-        const directory = await isolatedConsumer(scope, true);
+        const { isolatedConsumer } = scope.resources.consumer;
+
+        const directory = await isolatedConsumer(true);
         await writeRunnerProject(directory, 'supervised-process');
         const result = await runNode(directory, [ 'runner.mts' ]);
         scope.assert.equal(result.code, 0, { message: result.stderr });
@@ -262,7 +276,8 @@ console.log(JSON.stringify(reply.runResult?.perTest.map(entry=>entry.id.title)))
         return scope.assert.collect();
     }),
     test('hard timeout reaps a wedged analysis host and its native compiler', async function (scope) {
-        const directory = await isolatedConsumer(scope, true);
+        const { isolatedConsumer } = scope.resources.consumer;
+        const directory = await isolatedConsumer(true);
         await writeRunnerProject(directory, 'supervised-process');
         await wedgeCompilerOnExecution(directory);
         const result = await runNode(directory, [ 'runner.mts' ]);
@@ -271,12 +286,13 @@ console.log(JSON.stringify(reply.runResult?.perTest.map(entry=>entry.id.title)))
             message: result.stdout + result.stderr
         });
         scope.assert.includes(result.stdout, 'inconclusive');
-        const ownedProcesses = await wedgedProcesses(directory);
-        await Promise.all(ownedProcesses.map(waitForProcessExit));
+        await waitForCompilerShutdown(directory);
         return scope.assert.collect();
     }),
     test('authoring and profile imports do not load the execution backend', async function (scope) {
-        const directory = await isolatedConsumer(scope, false);
+        const { isolatedConsumer } = scope.resources.consumer;
+
+        const directory = await isolatedConsumer(false);
         const backend = join(
             directory,
             'node_modules/@overkill-dev/type-test/packages/type-test/family-backend.entry-point.js'

@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { createCaseId, createDefaultWorkId } from '../engine/identity.ts';
 import type { CollectedRunCaseEntry } from './collected-run-plan.ts';
@@ -75,7 +75,7 @@ function runCaseEntry(title: string): CollectedRunCaseEntry {
     };
 }
 
-export const testNode: TestNode = suite('Run shard policy', [
+export const testNode = suite('Run shard policy', [
     test('hashing canonicalizes work-unit identity before hashing', function (scope) {
         const recording = createRecordingHasher(1n);
         const decomposedAccent = 'Cafe\u{301}';

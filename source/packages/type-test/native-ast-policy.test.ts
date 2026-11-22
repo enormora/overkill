@@ -1,4 +1,4 @@
-import { type TestNode, table, suite, test } from '@overkill-dev/test';
+import { table, suite, test } from '@overkill-dev/test';
 
 import * as ast from 'typescript-beta/ast';
 import { SymbolFlags } from 'typescript-beta/async';
@@ -39,7 +39,7 @@ function aliasedFixture(): SourceFixture & { readonly node: ast.Identifier; } {
     return { ...fixture, node };
 }
 
-export const testNode: TestNode = suite('isolated native syntax analysis', [
+export const testNode = suite('isolated native syntax analysis', [
     test('retains declaration identity and filters unresolved handles', async function (scope) {
         const declaration = ast.factory.createVariableDeclaration(ast.factory.createIdentifier('value'));
         const symbol = makeSymbol('value', [ declaration ]);

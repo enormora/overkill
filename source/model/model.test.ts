@@ -1,4 +1,5 @@
-import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import { suite, test } from '@overkill-dev/test';
 
 import { decodePropertyInput } from '../property/property-graph.ts';
 
@@ -10,9 +11,11 @@ import { executePropertyNode, propertyExecutionDefaults } from '../test-support/
 
 import type { ModelScenarioDefinition } from './model-definition.ts';
 
-function modelWitness(scope: TestScope, result: RunResult): PropertyWitnessFile {
+function modelWitness(result: RunResult): PropertyWitnessFile {
     const witness = result.perTest[0]?.property?.invocations[0]?.confirmedWitness;
-    scope.require.defined(witness);
+    if (witness === undefined || witness === null) {
+        throw new Error('Expected witness to satisfy defined.');
+    }
     return witness;
 }
 
@@ -43,18 +46,28 @@ function counter(): ModelScenarioDefinition<number, number, { readonly value: nu
     };
 }
 
-function assertPristineOperations(scope: TestScope, value: unknown): void {
-    scope.require.array(value);
-    scope.assert.between(value.length, 1, 2);
-    for (const operation of value) {
-        scope.require.object(operation);
-        scope.require.hasProperty(operation, 'value');
-        scope.require.number(operation.value);
-        scope.assert.between(operation.value, 1, 5);
+const pristineModelOperations = defineCompositeAssertion({
+    name: 'retains pristine generated operations in the witness',
+    assert(check, operations: unknown) {
+        if (!Array.isArray(operations)) {
+            return check.array(operations);
+        }
+        return check.group([
+            check.between(operations.length, 1, 2),
+            ...operations.map(function (operation) {
+                const shape = check.group([ check.object(operation), check.hasProperty(operation, 'value') ]);
+                const value: unknown = typeof operation === 'object' && operation !== null
+                    ? Reflect.get(operation, 'value')
+                    : undefined;
+                return check.group([
+                    shape,
+                    typeof value === 'number' ? check.between(value, 1, 5) : check.number(value)
+                ]);
+            })
+        ]);
     }
-}
-
-export const testNode: TestNode = suite('model-based testing', [
+});
+export const testNode = suite('model-based testing', [
     test('reconstruction retains aliases and expires after cleanup', async function (scope) {
         let reconstruct: () => unknown = function () {
             return null;
@@ -81,12 +94,26 @@ export const testNode: TestNode = suite('model-based testing', [
             }),
             propertyExecutionDefaults
         );
-        scope.assert.equal(result.summary.passed, 1);
-        scope.assert.equal(cleanupCopies, propertyExecutionDefaults.policy.newTrials);
-        scope.assert.throws(reconstruct, {
-            type: TypeError,
-            message: 'Property input reconstruction requires an active trial.'
-        });
+        scope.assert(
+            defineCompositeAssertion({
+                name: 'reconstruction retains aliases and expires after cleanup',
+                assert(check) {
+                    return check.group([
+                        check.equal(
+                            result
+                                .summary
+                                .passed,
+                            1
+                        ),
+                        check.equal(cleanupCopies, propertyExecutionDefaults.policy.newTrials),
+                        check.throws(reconstruct, {
+                            type: TypeError,
+                            message: 'Property input reconstruction requires an active trial.'
+                        })
+                    ]);
+                }
+            })
+        );
         return scope.assert.collect();
     }),
     test('an unreachable minimum remains inconclusive', async function (scope) {
@@ -122,9 +149,23 @@ export const testNode: TestNode = suite('model-based testing', [
             }),
             propertyExecutionDefaults
         );
-        scope.assert.equal(result.summary.passed, 1);
-        scope.assert.equal(created, propertyExecutionDefaults.policy.newTrials);
-        scope.assert.equal(disposed, created);
+        scope.assert(
+            defineCompositeAssertion({
+                name: 'checks a fresh system and cleans it up for every trial',
+                assert(check) {
+                    return check.group([
+                        check.equal(
+                            result
+                                .summary
+                                .passed,
+                            1
+                        ),
+                        check.equal(created, propertyExecutionDefaults.policy.newTrials),
+                        check.equal(disposed, created)
+                    ]);
+                }
+            })
+        );
         return scope.assert.collect();
     }),
     test('confirms failures and replays without command generation', async function (scope) {
@@ -143,11 +184,17 @@ export const testNode: TestNode = suite('model-based testing', [
         });
         const result = await executePropertyNode(node, propertyExecutionDefaults);
         scope.assert.equal(result.summary.failed, 1);
-        const witness = modelWitness(scope, result);
+        const witness = modelWitness(result);
         generated = 0;
         const replay = await executePropertyNode(node, { ...propertyExecutionDefaults, replay: witness });
-        scope.assert.equal(replay.summary.failed, 1);
-        scope.assert.equal(generated, 0);
+        scope.assert(
+            defineCompositeAssertion({
+                name: 'confirms failures and replays without command generation',
+                assert(check) {
+                    return check.group([ check.equal(replay.summary.failed, 1), check.equal(generated, 0) ]);
+                }
+            })
+        );
         return scope.assert.collect();
     }),
     test('rejects invalid examples before creating the system', async function (scope) {
@@ -170,8 +217,14 @@ export const testNode: TestNode = suite('model-based testing', [
             }),
             propertyExecutionDefaults
         );
-        scope.assert.equal(result.summary.failed, 1);
-        scope.assert.equal(created, 0);
+        scope.assert(
+            defineCompositeAssertion({
+                name: 'rejects invalid examples before creating the system',
+                assert(check) {
+                    return check.group([ check.equal(result.summary.failed, 1), check.equal(created, 0) ]);
+                }
+            })
+        );
         return scope.assert.collect();
     }),
     test('isolates model expectations from payload mutation', async function (scope) {
@@ -206,12 +259,15 @@ export const testNode: TestNode = suite('model-based testing', [
             propertyExecutionDefaults
         );
         scope.assert.equal(result.summary.failed, 1);
-        assertPristineOperations(
-            scope,
-            decodePropertyInput(modelWitness(scope, result).counterexample, null, function () {
+        const pristineOperationsValue: unknown = decodePropertyInput(
+            modelWitness(result).counterexample,
+            null,
+            function () {
                 return undefined;
-            })
+            }
         );
+        scope.assert(pristineModelOperations, pristineOperationsValue);
+
         return scope.assert.collect();
     }),
     test('checks terminal empty traces and supports scenario composition', async function (scope) {

@@ -1,4 +1,10 @@
-import { type TestNode, test, type TestScope, suite } from '@overkill-dev/test';
+import {
+    type CompositeAssertionReturn,
+    type CompositeCheckBuilder,
+    defineCompositeAssertion
+} from '@overkill-dev/test/assert';
+
+import { test, type TestScope, suite } from '@overkill-dev/test';
 import type { EngineCaseBody } from '../../test-support/create-test-engine.ts';
 
 import {
@@ -97,9 +103,12 @@ function sortedKeys(value: Readonly<Record<string, unknown>>): readonly string[]
     });
 }
 
-function assertRootAuthoringBoundary(scope: TestScope): void {
-    scope.assert.deepEqual(sortedKeys(testRoot), rootAuthoringExportNames);
-}
+const assertRootAuthoringBoundary = defineCompositeAssertion({
+    name: 'root authoring boundary',
+    assert(check) {
+        return check.group([ check.deepEqual(sortedKeys(testRoot), rootAuthoringExportNames) ]);
+    }
+});
 
 function passingBody(
     scope: PassingBodyAssertions
@@ -108,23 +117,26 @@ function passingBody(
     return scope.assert.collect();
 }
 
-function assertPassingSummary(scope: TestScope, summary: unknown): void {
-    scope.assert.deepEqual({
-        ...summary as Awaited<ReturnType<typeof execute>>['summary'],
-        defined: null
-    }, {
-        crashed: 0,
-        defined: null,
-        discovered: 1,
-        failed: 0,
-        inconclusive: 0,
-        passed: 1,
-        planned: 1,
-        processExhausted: 0,
-        runtimePolicy: 0,
-        skipped: 0
-    });
-}
+const assertPassingSummary = defineCompositeAssertion({
+    name: 'passing summary',
+    assert(check, summary: unknown) {
+        return check.group([ check.deepEqual({
+            ...summary as Awaited<ReturnType<typeof execute>>['summary'],
+            defined: null
+        }, {
+            crashed: 0,
+            defined: null,
+            discovered: 1,
+            failed: 0,
+            inconclusive: 0,
+            passed: 1,
+            planned: 1,
+            processExhausted: 0,
+            runtimePolicy: 0,
+            skipped: 0
+        }) ]);
+    }
+});
 
 async function executeRootAuthoredNode(): Promise<RootAuthoringExecution> {
     const testCase = subjectTest({ annotations: { tags: [ 'case' ] }, body: passingBody, title: 'passes' });
@@ -149,40 +161,50 @@ async function executeRootAuthoredNode(): Promise<RootAuthoringExecution> {
     };
 }
 
-function assertRootAuthoredCase(scope: TestScope, plannedCase: RootAuthoringExecution['plannedCase']): void {
-    scope.require.defined(plannedCase);
-    scope.assert.deepEqual(plannedCase.id, {
-        file: null,
-        title: 'passes',
-        params: null,
-        suite: [ 'runtime' ]
-    });
-    scope.assert.deepEqual(plannedCase.annotations.tags, [ 'suite', 'case' ]);
-    scope.assert.deepEqual(plannedCase.controls, {
-        capture: null,
-        duplicateExecution: null,
-        timeoutMilliseconds: null
-    });
-    scope.assert.equal(plannedCase.testFamily, null);
-}
+const assertRootAuthoredCase = defineCompositeAssertion({
+    name: 'root authored case',
+    assert(check, plannedCase: RootAuthoringExecution['plannedCase']) {
+        if (plannedCase === undefined) {
+            return check.defined(plannedCase);
+        }
+        return check.group([
+            check.deepEqual(plannedCase.id, {
+                file: null,
+                title: 'passes',
+                params: null,
+                suite: [ 'runtime' ]
+            }),
+            check.deepEqual(plannedCase.annotations.tags, [ 'suite', 'case' ]),
+            check.deepEqual(plannedCase.controls, {
+                capture: null,
+                duplicateExecution: null,
+                timeoutMilliseconds: null
+            }),
+            check.equal(plannedCase.testFamily, null)
+        ]);
+    }
+});
 
-function assertTableSummary(scope: TestScope, summary: unknown): void {
-    scope.assert.deepEqual({
-        ...summary as Awaited<ReturnType<typeof execute>>['summary'],
-        defined: null
-    }, {
-        crashed: 0,
-        defined: null,
-        discovered: 2,
-        failed: 0,
-        inconclusive: 0,
-        passed: 2,
-        planned: 2,
-        processExhausted: 0,
-        runtimePolicy: 0,
-        skipped: 0
-    });
-}
+const assertTableSummary = defineCompositeAssertion({
+    name: 'table summary',
+    assert(check, summary: unknown) {
+        return check.group([ check.deepEqual({
+            ...summary as Awaited<ReturnType<typeof execute>>['summary'],
+            defined: null
+        }, {
+            crashed: 0,
+            defined: null,
+            discovered: 2,
+            failed: 0,
+            inconclusive: 0,
+            passed: 2,
+            planned: 2,
+            processExhausted: 0,
+            runtimePolicy: 0,
+            skipped: 0
+        }) ]);
+    }
+});
 
 function parameterIdentity(parameters: unknown): string {
     return JSON.stringify(serializeValue(parameters));
@@ -236,18 +258,23 @@ function caseIdsFor(plan: TestPlan): readonly unknown[] {
     });
 }
 
-function assertTableCases(scope: TestScope, execution: TableAuthoringExecution): void {
-    scope.assert.deepEqual(caseIdsFor(execution.plan), [
-        { file: null, params: parameterIdentity(execution.rows[0]), suite: [ 'rows' ], title: 'row 1' },
-        { file: null, params: parameterIdentity(execution.rows[1]), suite: [ 'rows' ], title: 'row 2' }
-    ]);
-    scope.assert.deepEqual(
-        execution.plan.discoveredCases.map(function toTagList(testCase) {
-            return testCase.annotations.tags.join(',');
-        }),
-        [ 'table', 'table' ]
-    );
-}
+const assertTableCases = defineCompositeAssertion({
+    name: 'table cases',
+    assert(check, execution: TableAuthoringExecution) {
+        return check.group([
+            check.deepEqual(caseIdsFor(execution.plan), [
+                { file: null, params: parameterIdentity(execution.rows[0]), suite: [ 'rows' ], title: 'row 1' },
+                { file: null, params: parameterIdentity(execution.rows[1]), suite: [ 'rows' ], title: 'row 2' }
+            ]),
+            check.deepEqual(
+                execution.plan.discoveredCases.map(function toTagList(testCase) {
+                    return testCase.annotations.tags.join(',');
+                }),
+                [ 'table', 'table' ]
+            )
+        ]);
+    }
+});
 
 type FailOutcome = Extract<TestOutcome, { readonly kind: 'fail'; }>;
 
@@ -280,51 +307,68 @@ async function executeAuthoredNode(testNode: SubjectTestNode): Promise<Awaited<R
     })));
 }
 
-function assertSourceLocationInThisFile(scope: TestScope, location: SourceLocation): void {
+const sourceLocationInThisFileChecks = function (
+    check: CompositeCheckBuilder<'assert'>,
+    location: SourceLocation
+): CompositeAssertionReturn<'assert'> {
     if (location.kind !== 'known') {
-        scope.assert.equal(location.kind, 'known');
-
-        return;
+        const initialChecks = check.equal(location.kind, 'known');
+        return initialChecks;
     }
-
-    scope.assert.match(
+    return check.match(
         location.file.replaceAll('\\', '/'),
         /source\/packages\/test\/test-entry-point\.test\.[cm]?[jt]s$/u
     );
-}
+};
 
-function assertFirstSourceLocationInThisFile(
-    scope: TestScope,
+const firstSourceLocationInThisFileChecks = function (
+    check: CompositeCheckBuilder<'assert'>,
     sourceLocations: readonly SourceLocation[]
-): void {
+): CompositeAssertionReturn<'assert'> {
     const sourceLocation = sourceLocations[0];
-    scope.require.defined(sourceLocation);
-    assertSourceLocationInThisFile(scope, sourceLocation);
-}
+    if (sourceLocation === undefined) {
+        return check.defined(sourceLocation);
+    }
+    return check.group([
+        check.defined(sourceLocation),
+        sourceLocationInThisFileChecks(check.annotated('source location in this file'), sourceLocation)
+    ]);
+};
 
-function assertMacroLocationForwarding(
-    scope: TestScope,
-    testCase: TestCase,
-    failedSourceLocations: readonly SourceLocation[]
-): void {
-    const macroDefinitionLocation = testCase.definitionLocations[0];
-    scope.require.defined(macroDefinitionLocation);
+const assertMacroLocationForwarding = defineCompositeAssertion({
+    name: 'macro location forwarding',
+    assert(check, testCase: TestCase, failedSourceLocations: readonly SourceLocation[]) {
+        const macroDefinitionLocation = testCase.definitionLocations[0];
 
-    scope.assert.equal(testCase.definitionLocations.length, 2);
-    scope.assert.equal(failedSourceLocations.length, 2);
-    assertSourceLocationInThisFile(scope, resolveSourceLocation(macroDefinitionLocation));
-    assertFirstSourceLocationInThisFile(scope, failedSourceLocations);
-}
+        return check.group([
+            check.defined(macroDefinitionLocation),
+            check.equal(testCase.definitionLocations.length, 2),
+            check.equal(failedSourceLocations.length, 2),
+            sourceLocationInThisFileChecks(
+                check.annotated('source location in this file'),
+                resolveSourceLocation(macroDefinitionLocation)
+            ),
+            firstSourceLocationInThisFileChecks(
+                check.annotated('first source location in this file'),
+                failedSourceLocations
+            )
+        ]);
+    }
+});
 
-function assertParameterizedBodyLocationForwarding(
-    scope: TestScope,
-    testCase: TestCase,
-    failedSourceLocations: readonly SourceLocation[]
-): void {
-    scope.assert.equal(testCase.definitionLocations.length, 1);
-    scope.assert.equal(failedSourceLocations.length, 2);
-    assertFirstSourceLocationInThisFile(scope, failedSourceLocations);
-}
+const assertParameterizedBodyLocationForwarding = defineCompositeAssertion({
+    name: 'parameterized body location forwarding',
+    assert(check, testCase: TestCase, failedSourceLocations: readonly SourceLocation[]) {
+        return check.group([
+            check.equal(testCase.definitionLocations.length, 1),
+            check.equal(failedSourceLocations.length, 2),
+            firstSourceLocationInThisFileChecks(
+                check.annotated('first source location in this file'),
+                failedSourceLocations
+            )
+        ]);
+    }
+});
 
 function createMissingNameTest(title: string): TestCase {
     return subjectTest(title, function checkName(testScope) {
@@ -341,18 +385,21 @@ function checkParameterizedName(
     return testScope.assert.collect();
 }
 
-function assertDefinitionLocationInThisFile(
-    scope: TestScope,
-    sourceLocations: TestCase['definitionLocations']
-): void {
-    const sourceLocation = sourceLocations[0];
-    scope.require.defined(sourceLocation);
+const assertDefinitionLocationInThisFile = defineCompositeAssertion({
+    name: 'definition location in this file',
+    assert(check, sourceLocations: TestCase['definitionLocations']) {
+        const sourceLocation = sourceLocations[0];
 
-    const resolvedLocation = resolveSourceLocation(sourceLocation);
-    assertSourceLocationInThisFile(scope, resolvedLocation);
-    scope.assert.equal(typeof resolvedLocation.line, 'number');
-    scope.assert.equal(typeof resolvedLocation.column, 'number');
-}
+        const initialChecks = check.defined(sourceLocation);
+        const resolvedLocation = resolveSourceLocation(sourceLocation);
+        return check.group([
+            initialChecks,
+            sourceLocationInThisFileChecks(check.annotated('source location in this file'), resolvedLocation),
+            check.equal(typeof resolvedLocation.line, 'number'),
+            check.equal(typeof resolvedLocation.column, 'number')
+        ]);
+    }
+});
 
 function createSequencedValue(): RootSequencedValue {
     return testDouble({
@@ -395,11 +442,11 @@ const rootDoublesBody: EngineCaseBody = function (testScope) {
     return testScope.assert.collect();
 };
 
-export const testNode: TestNode = suite({
+export const testNode = suite({
     title: 'Test entry point',
     children: [
         test('@overkill-dev/test root exposes authoring boundary only', function (scope) {
-            assertRootAuthoringBoundary(scope);
+            scope.assert(assertRootAuthoringBoundary);
 
             return scope.assert.collect();
         }),
@@ -410,8 +457,8 @@ export const testNode: TestNode = suite({
 
                 scope.assert.equal(ownsTestNode(execution.testCase), true);
                 scope.assert.equal(ownsTestNode(execution.testNode), true);
-                assertRootAuthoredCase(scope, execution.plannedCase);
-                assertPassingSummary(scope, execution.result.summary);
+                scope.assert(assertRootAuthoredCase, execution.plannedCase);
+                scope.assert(assertPassingSummary, execution.result.summary);
 
                 return scope.assert.collect();
             }
@@ -423,10 +470,10 @@ export const testNode: TestNode = suite({
 
                 scope.assert.equal(ownsTestNode(execution.testNode), true);
                 scope.assert.deepEqual(execution.caseTitleCalls, [ '0:1', '1:2' ]);
-                assertTableCases(scope, execution);
+                scope.assert(assertTableCases, execution);
                 scope.assert.equal(execution.bodyRows[0], execution.rows[0]);
                 scope.assert.equal(execution.bodyRows[1], execution.rows[1]);
-                assertTableSummary(scope, execution.result.summary);
+                scope.assert(assertTableSummary, execution.result.summary);
 
                 return scope.assert.collect();
             }
@@ -434,7 +481,7 @@ export const testNode: TestNode = suite({
         test('@overkill-dev/test root doubles pass through engine assertions', async function (scope) {
             const result = await executeAuthoredNode(subjectTest('uses root doubles', rootDoublesBody));
 
-            assertPassingSummary(scope, result.summary);
+            scope.assert(assertPassingSummary, result.summary);
 
             return scope.assert.collect();
         }),
@@ -446,7 +493,7 @@ export const testNode: TestNode = suite({
                 const result = await executeAuthoredNode(testCase);
                 const failedSourceLocations = firstFailedCheckSourceLocations(result);
 
-                assertMacroLocationForwarding(scope, testCase, failedSourceLocations);
+                scope.assert(assertMacroLocationForwarding, testCase, failedSourceLocations);
 
                 return scope.assert.collect();
             }
@@ -459,7 +506,7 @@ export const testNode: TestNode = suite({
                 const result = await executeAuthoredNode(testCase);
                 const failedSourceLocations = firstFailedCheckSourceLocations(result);
 
-                assertParameterizedBodyLocationForwarding(scope, testCase, failedSourceLocations);
+                scope.assert(assertParameterizedBodyLocationForwarding, testCase, failedSourceLocations);
 
                 return scope.assert.collect();
             }
@@ -470,8 +517,8 @@ export const testNode: TestNode = suite({
                 const testCase = subjectTest('located test', passingBody);
                 const locatedSuite = subjectSuite('located suite', [ testCase ]);
 
-                assertDefinitionLocationInThisFile(scope, testCase.definitionLocations);
-                assertDefinitionLocationInThisFile(scope, locatedSuite.definitionLocations);
+                scope.assert(assertDefinitionLocationInThisFile, testCase.definitionLocations);
+                scope.assert(assertDefinitionLocationInThisFile, locatedSuite.definitionLocations);
 
                 return scope.assert.collect();
             }

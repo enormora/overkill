@@ -1,4 +1,4 @@
-import { table, type TestNode, suite } from '@overkill-dev/test';
+import { table, suite } from '@overkill-dev/test';
 
 import { passingIsolatedWorkerRun } from '../test-support/isolated-worker-run.ts';
 import { attachmentRecording } from '../test-support/attachment-recording.ts';
@@ -8,7 +8,7 @@ import { runLocalCommand } from './run-local-command.ts';
 import { RunCollectionError } from './run-errors.ts';
 import type { RunCommand } from './run-types.ts';
 
-export const testNode: TestNode = suite(
+export const testNode = suite(
     'local collection failure finalization',
     [ table({
         title: 'reports loader failures with recording and restrictions',

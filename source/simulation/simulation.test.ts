@@ -1,4 +1,5 @@
-import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import { suite, test } from '@overkill-dev/test';
 
 import {
     defineSimulatedHttpServer,
@@ -7,120 +8,133 @@ import {
     isDefinedSimulation
 } from './simulation.ts';
 
-function assertSimulationDescriptor(scope: TestScope): void {
-    const simulation = defineSimulation({
-        name: 'checkout-api',
-        scenarios: {
-            default: { status: 200, title: 'standard responses' },
-            'payments-500': { status: 500, title: 'payment service fails' }
-        }
-    });
-
-    scope.assert.equal(simulation.kind, 'simulation');
-    scope.assert.equal(simulation.name, 'checkout-api');
-    scope.assert.equal(simulation.scenarios['payments-500'].status, 500);
-    scope.assert.equal(Object.isFrozen(simulation), true);
-    scope.assert.equal(Object.isFrozen(simulation.scenarios), true);
-    scope.assert.equal(Object.isFrozen(simulation.scenarios.default), true);
-    scope.assert.equal(isDefinedSimulation(simulation), true);
-    scope.assert.equal(isDefinedSimulatedHttpServer(simulation), false);
-}
-
-function assertSimulatedHttpDescriptor(scope: TestScope): void {
-    const simulation = defineSimulatedHttpServer({
-        name: 'api',
-        scenarios: {
-            default: { status: 200, title: 'standard responses' },
-            outage: { status: 503, title: 'upstream outage' }
-        },
-        handle(_request, scenario) {
-            return Response.json({
-                key: scenario.key,
-                status: scenario.descriptor.status
-            });
-        }
-    });
-
-    scope.assert.equal(simulation.kind, 'simulated-http-server');
-    scope.assert.equal(isDefinedSimulation(simulation), true);
-    scope.assert.equal(isDefinedSimulatedHttpServer(simulation), true);
-    scope.assert.equal(
-        simulation.handle(new Request('https://example.test'), {
-            descriptor: simulation.scenarios.outage,
-            key: 'outage'
-        }) instanceof Response,
-        true
-    );
-}
-
-function assertSimulationValidation(scope: TestScope): void {
-    scope.assert.throws(function rejectInvalidName() {
-        defineSimulation({
-            name: 'bad name',
-            scenarios: { default: { title: 'standard responses' } }
-        });
-    }, { message: 'Simulation "bad name" must match ^[A-Za-z0-9._-]+$.' });
-    scope.assert.throws(function rejectEmptyCatalog() {
-        Reflect.apply(defineSimulation, undefined, [ {
-            name: 'api',
-            scenarios: {}
-        } ]);
-    }, { message: 'Simulation scenarios must not be empty.' });
-    scope.assert.throws(function rejectNonObjectCatalog() {
-        Reflect.apply(defineSimulation, undefined, [ {
-            name: 'api',
-            scenarios: null
-        } ]);
-    }, { message: 'Simulation scenarios must be an object.' });
-    scope.assert.throws(function rejectMissingDefault() {
-        Reflect.apply(defineSimulation, undefined, [ {
-            name: 'api',
-            scenarios: { outage: { title: 'upstream outage' } }
-        } ]);
-    }, { message: 'Simulation scenarios must include a "default" scenario.' });
-    scope.assert.throws(function rejectInvalidScenarioKey() {
-        defineSimulation({
-            name: 'api',
+const assertSimulationDescriptor = defineCompositeAssertion({
+    name: 'simulation descriptor',
+    assert(check) {
+        const simulation = defineSimulation({
+            name: 'checkout-api',
             scenarios: {
-                default: { title: 'standard responses' },
-                'bad key': { title: 'bad scenario' }
+                default: { status: 200, title: 'standard responses' },
+                'payments-500': { status: 500, title: 'payment service fails' }
             }
         });
-    }, { message: 'Simulation scenario "bad key" must match ^[A-Za-z0-9._-]+$.' });
-    scope.assert.throws(function rejectInvalidScenarioDescriptor() {
-        Reflect.apply(defineSimulation, undefined, [ {
-            name: 'api',
-            scenarios: { default: null }
-        } ]);
-    }, { message: 'Simulation scenario "default" must be an object.' });
-    scope.assert.throws(function rejectEmptyTitle() {
-        defineSimulation({
-            name: 'api',
-            scenarios: { default: { title: '' } }
-        });
-    }, { message: 'Simulation scenario "default" requires a non-empty title.' });
-    scope.assert.throws(function rejectInvalidHttpHandler() {
-        defineSimulatedHttpServer({
-            name: 'api',
-            scenarios: { default: { title: 'standard responses' } },
-            handle: null as unknown as () => Response
-        });
-    }, { message: 'Simulated HTTP server requires a handler function.' });
-}
+        return check.group([
+            check.equal(simulation.kind, 'simulation'),
+            check.equal(simulation.name, 'checkout-api'),
+            check.equal(simulation.scenarios['payments-500'].status, 500),
+            check.equal(Object.isFrozen(simulation), true),
+            check.equal(Object.isFrozen(simulation.scenarios), true),
+            check.equal(Object.isFrozen(simulation.scenarios.default), true),
+            check.equal(isDefinedSimulation(simulation), true),
+            check.equal(isDefinedSimulatedHttpServer(simulation), false)
+        ]);
+    }
+});
 
-export const testNode: TestNode = suite('Simulation runtimes', [
+const assertSimulatedHttpDescriptor = defineCompositeAssertion({
+    name: 'simulated http descriptor',
+    assert(check) {
+        const simulation = defineSimulatedHttpServer({
+            name: 'api',
+            scenarios: {
+                default: { status: 200, title: 'standard responses' },
+                outage: { status: 503, title: 'upstream outage' }
+            },
+            handle(_request, scenario) {
+                return Response.json({
+                    key: scenario.key,
+                    status: scenario.descriptor.status
+                });
+            }
+        });
+        return check.group([
+            check.equal(simulation.kind, 'simulated-http-server'),
+            check.equal(isDefinedSimulation(simulation), true),
+            check.equal(isDefinedSimulatedHttpServer(simulation), true),
+            check.equal(
+                simulation.handle(new Request('https://example.test'), {
+                    descriptor: simulation.scenarios.outage,
+                    key: 'outage'
+                }) instanceof Response,
+                true
+            )
+        ]);
+    }
+});
+
+const assertSimulationValidation = defineCompositeAssertion({
+    name: 'simulation validation',
+    assert(check) {
+        return check.group([
+            check.throws(function rejectInvalidName() {
+                defineSimulation({
+                    name: 'bad name',
+                    scenarios: { default: { title: 'standard responses' } }
+                });
+            }, { message: 'Simulation "bad name" must match ^[A-Za-z0-9._-]+$.' }),
+            check.throws(function rejectEmptyCatalog() {
+                Reflect.apply(defineSimulation, undefined, [ {
+                    name: 'api',
+                    scenarios: {}
+                } ]);
+            }, { message: 'Simulation scenarios must not be empty.' }),
+            check.throws(function rejectNonObjectCatalog() {
+                Reflect.apply(defineSimulation, undefined, [ {
+                    name: 'api',
+                    scenarios: null
+                } ]);
+            }, { message: 'Simulation scenarios must be an object.' }),
+            check.throws(function rejectMissingDefault() {
+                Reflect.apply(defineSimulation, undefined, [ {
+                    name: 'api',
+                    scenarios: { outage: { title: 'upstream outage' } }
+                } ]);
+            }, { message: 'Simulation scenarios must include a "default" scenario.' }),
+            check.throws(function rejectInvalidScenarioKey() {
+                defineSimulation({
+                    name: 'api',
+                    scenarios: {
+                        default: { title: 'standard responses' },
+                        'bad key': { title: 'bad scenario' }
+                    }
+                });
+            }, { message: 'Simulation scenario "bad key" must match ^[A-Za-z0-9._-]+$.' }),
+            check.throws(function rejectInvalidScenarioDescriptor() {
+                Reflect.apply(defineSimulation, undefined, [ {
+                    name: 'api',
+                    scenarios: { default: null }
+                } ]);
+            }, { message: 'Simulation scenario "default" must be an object.' }),
+            check.throws(function rejectEmptyTitle() {
+                defineSimulation({
+                    name: 'api',
+                    scenarios: { default: { title: '' } }
+                });
+            }, { message: 'Simulation scenario "default" requires a non-empty title.' }),
+            check.throws(function rejectInvalidHttpHandler() {
+                defineSimulatedHttpServer({
+                    name: 'api',
+                    scenarios: { default: { title: 'standard responses' } },
+                    handle: null as unknown as () => Response
+                });
+            }, { message: 'Simulated HTTP server requires a handler function.' })
+        ]);
+    }
+});
+
+export const testNode = suite('Simulation runtimes', [
     test('simulation descriptors preserve finite typed scenario catalogs', function (scope) {
-        assertSimulationDescriptor(scope);
+        scope.assert(assertSimulationDescriptor);
 
         return scope.assert.collect();
     }),
     test('simulated HTTP server descriptors expose typed handlers', function (scope) {
-        assertSimulatedHttpDescriptor(scope);
+        scope.assert(assertSimulatedHttpDescriptor);
 
         return scope.assert.collect();
     }),
     test('simulation descriptors reject invalid catalogs', function (scope) {
-        assertSimulationValidation(scope);
+        scope.assert(assertSimulationValidation);
 
         return scope.assert.collect();
     })

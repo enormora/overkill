@@ -1,4 +1,4 @@
-import { type TestNode, table, type TestScope, suite, test } from '@overkill-dev/test';
+import { table, type TestScope, suite, test } from '@overkill-dev/test';
 
 import type { BenchmarkExecutionResult } from '../engine/benchmark-result.ts';
 
@@ -66,7 +66,7 @@ function incompleteDisplay(missing: 'factor' | 'summary'): BenchmarkExecutionRes
         }
     };
 }
-export const testNode: TestNode = suite('normalization summaries', [
+export const testNode = suite('normalization summaries', [
     test('reads historical normalized results without inventing a budget scale', function (scope: TestScope) {
         const result = normalizedResult();
         const metric = result.normalization?.metrics.latency;

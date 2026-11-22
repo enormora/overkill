@@ -65,11 +65,11 @@ function publishDiagnostics(): void {
     permissionChannel.publish({ permission: 'FileSystemWrite', resource: 'guard-probe' });
 }
 
-function createGuardTimer(owner: TestScope): void {
+function createGuardTimer(cleanup: TestScope['cleanup']): void {
     const timer = scheduleTimer(function unusedGuardTimer() {
         return undefined;
     }, timerLifetimeMilliseconds);
-    owner.cleanup(function closeGuardTimer() {
+    cleanup(function closeGuardTimer() {
         cancelTimer(timer);
     });
 }
@@ -82,9 +82,9 @@ export const guardOwnershipTestNode = suite('native guard ownership', [
         });
         const testCase = guardCase();
         await observed.runAttempt(testCase, { index: 0 }, async function allocateObservedTimers() {
-            createGuardTimer(scope);
+            createGuardTimer(scope.cleanup);
             withRunnerInfrastructure(function allocateWatchdog() {
-                createGuardTimer(scope);
+                createGuardTimer(scope.cleanup);
             });
         });
         const errors = observed.takeAttemptErrors(testCase, { index: 0 });

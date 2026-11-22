@@ -1,4 +1,4 @@
-import { type TestNode, suite, test, doubleUsage, testDouble, type TestDouble } from '@overkill-dev/test';
+import { suite, test, doubleUsage, testDouble, type TestDouble } from '@overkill-dev/test';
 
 import figures from 'figures';
 import colors from 'yoctocolors';
@@ -43,7 +43,7 @@ function requireFinish(reporter: RealTimeReporter): NonNullable<RealTimeReporter
     return onFinish;
 }
 
-export const testNode: TestNode = suite('Line reporter summary', [
+export const testNode = suite('Line reporter summary', [
     test('retains lifetime findings from current runners', async function (scope) {
         const log = testDouble<LogFunction>();
         const reporter = lineReporterWithLog(log);
@@ -144,7 +144,7 @@ export const testNode: TestNode = suite('Line reporter summary', [
     test('prints the run count summary once the run finishes', async function (scope) {
         const log = testDouble<LogFunction>();
         const reporter = lineReporterWithLog(log);
-        const runResult: RunResult = runResultFactory.build({
+        const runResult = runResultFactory.build({
             summary: {
                 defined: 3,
                 discovered: 4219,
@@ -182,7 +182,7 @@ export const testNode: TestNode = suite('Line reporter summary', [
         async function (scope) {
             const log = testDouble<LogFunction>();
             const reporter = lineReporterWithLog(log);
-            const runResult: RunResult = runResultFactory.build({
+            const runResult = runResultFactory.build({
                 summary: {
                     crashed: 1,
                     discovered: 4,

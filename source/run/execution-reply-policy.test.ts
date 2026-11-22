@@ -1,4 +1,4 @@
-import { type TestNode, table, suite, test } from '@overkill-dev/test';
+import { table, suite, test } from '@overkill-dev/test';
 
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import type { RunnerError } from '../engine/run-result.ts';
@@ -32,7 +32,7 @@ function crash(termination: 'cancelled' | 'hard-timeout' | null): RunnerError {
         subtype: 'crash'
     };
 }
-export const testNode: TestNode = suite('execution reply policy', [
+export const testNode = suite('execution reply policy', [
     test('keeps the last checkpoint until final lifecycle data arrives', function (scope) {
         const observation = createExecutionDataObservation();
         observeExecutionMessage(

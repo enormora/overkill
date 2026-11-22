@@ -1,10 +1,10 @@
-import { type TestNode, table, suite, test } from '@overkill-dev/test';
+import { table, suite, test } from '@overkill-dev/test';
 
 import { benchmarkCommandRouting } from '../test-support/benchmark-command-routing.ts';
 import { commandLineExitCodes } from './command-line-command.ts';
 import { runBenchmarkBaselineCommand, listBenchmarkBaselineCommand } from './benchmark-baseline-commands.ts';
 
-export const testNode: TestNode = suite('benchmark command routing', [
+export const testNode = suite('benchmark command routing', [
     test('routes benchmark execution with the selected profile', async function (scope) {
         const fixture = benchmarkCommandRouting(null);
         const result = await fixture.commands.runBenchmarks(fixture.request);

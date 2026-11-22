@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import type { WorkerLifecycle } from '../config/types.ts';
 import { emptyWorkUnitResourceConstraints, type WorkUnit, type WorkUnitResourceConstraints } from './run-types.ts';
@@ -42,7 +42,7 @@ function assignedLanes(units: readonly WorkUnit[], availableParallelism: number)
     });
 }
 
-export const testNode: TestNode = suite('Worker pool lane affinity', [
+export const testNode = suite('Worker pool lane affinity', [
     test('breaks ties after load', function (scope) {
         scope.assert.deepEqual(
             assignedLanes([

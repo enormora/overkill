@@ -1,9 +1,9 @@
-import { type TestNode, suite, table, test, transcriptUsage, type TestScope } from '@overkill-dev/test';
+import { suite, table, test, transcriptUsage, type TestScope } from '@overkill-dev/test';
 
 import { atomicFileStore, reliableFileStore } from './test-support/atomic-file-store.ts';
 
 const target = '/project/state/result.json';
-export const testNode: TestNode = suite('atomic runtime-state file storage', [
+export const testNode = suite('atomic runtime-state file storage', [
     test('reads UTF-8 content and represents missing files as null', async function (scope) {
         const fixture = atomicFileStore.create({ initial: [ [ target, 'stored' ] ] });
         scope.assert.equal(await fixture.store.read(target), 'stored');

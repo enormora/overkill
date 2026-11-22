@@ -1,4 +1,5 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 
 import { createDeterministicClock, type DeterministicClock } from '@enormora/clock';
 import type { RunResult, ProcessUsageSnapshot, RunProcessUsageTracker } from '../packages/engine/engine.entry-point.ts';
@@ -197,28 +198,42 @@ async function executeSampledProcessExhaustion(): Promise<SampledProcessExhausti
     return { reporter, result };
 }
 
-function assertNativeExhaustionArtifacts(scope: TestScope, fixture: SampledProcessExhaustionFixture): void {
-    const artifact = fixture.result.artifacts[0];
-    scope.require.defined(artifact);
-    scope.assert.partialDeepEqual(artifact, {
-        id: { subtype: 'process-exhaustion', scope: { kind: 'case' } },
-        source: 'native',
-        payload: { kind: 'process-exhaustion', metric: 'residentSetBytes', budget: 1 }
-    });
-    const completedEvent = fixture
-        .reporter
-        .getRecordedEntries()
-        .flatMap(function recordedEvent(entry) {
-            return entry.event === null ? [] : [ entry.event ];
-        })
-        .find(function caseFinished(event) {
-            return event.kind === 'test-end';
-        });
-    scope.require.defined(completedEvent);
-    scope.assert.deepEqual(completedEvent.artifacts, fixture.result.artifacts);
-}
+const assertNativeExhaustionArtifacts = defineCompositeAssertion({
+    name: 'native exhaustion artifacts',
+    assert(check, fixture: SampledProcessExhaustionFixture) {
+        const artifact = fixture.result.artifacts[0];
+        if (artifact === undefined) {
+            return check.defined(artifact);
+        }
+        const initialChecks = check.group([
+            check.defined(artifact),
+            check.partialDeepEqual(artifact, {
+                id: { subtype: 'process-exhaustion', scope: { kind: 'case' } },
+                source: 'native',
+                payload: { kind: 'process-exhaustion', metric: 'residentSetBytes', budget: 1 }
+            })
+        ]);
+        const completedEvent = fixture
+            .reporter
+            .getRecordedEntries()
+            .flatMap(function recordedEvent(entry) {
+                return entry.event === null ? [] : [ entry.event ];
+            })
+            .find(function caseFinished(event) {
+                return event.kind === 'test-end';
+            });
+        if (completedEvent === undefined) {
+            return check.group([ initialChecks, check.defined(completedEvent) ]);
+        }
+        return check.group([
+            initialChecks,
+            check.defined(completedEvent),
+            check.deepEqual(completedEvent.artifacts, fixture.result.artifacts)
+        ]);
+    }
+});
 
-export const testNode: TestNode = suite('Execution process usage', [
+export const testNode = suite('Execution process usage', [
     test(
         'execute() includes process usage in the returned result and final reporter result',
         async function (scope) {
@@ -286,7 +301,7 @@ export const testNode: TestNode = suite('Execution process usage', [
     ),
     test('execute() records sampled process exhaustion against the active case', async function (scope) {
         const { reporter, result } = await executeSampledProcessExhaustion();
-        assertNativeExhaustionArtifacts(scope, { reporter, result });
+        scope.assert(assertNativeExhaustionArtifacts, { reporter, result });
 
         scope.assert.equal(result.runnerErrors[0]?.subtype, 'process-exhaustion');
         scope.assert.deepEqual(recordedRunnerErrorMessages(reporter), [

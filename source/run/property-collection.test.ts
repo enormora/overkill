@@ -1,4 +1,4 @@
-import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
+import { suite, test, type TestScope } from '@overkill-dev/test';
 import { test as subjectTest, suite as subjectSuite } from '../packages/test/test.entry-point.ts';
 
 import {
@@ -40,7 +40,7 @@ function unexpectedBody(): never {
     throw new Error('Property bodies must not execute during collection.');
 }
 
-export const testNode: TestNode = suite('property collection', [
+export const testNode = suite('property collection', [
     test(
         'engine collection rejects unsupported property families from JavaScript callers',
         function (scope) {

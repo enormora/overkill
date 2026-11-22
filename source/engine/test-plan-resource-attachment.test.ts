@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 import { type EngineCaseBody, createTestEngine as createEngine } from '../test-support/create-test-engine.ts';
 
 import {
@@ -39,7 +39,7 @@ function attachedBody(attachments: TestBodyResourceAttachments): EngineCaseBody 
     }, attachments);
 }
 
-export const testNode: TestNode = suite('Test plan resource attachment', [
+export const testNode = suite('Test plan resource attachment', [
     test('reads resource attachments from cases and table rows', function (scope) {
         const engine = createEngine();
         const attachments = resourceAttachments();

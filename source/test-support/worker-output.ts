@@ -25,7 +25,7 @@ type WorkerOutputFixture = {
     readonly clock: DeterministicClock;
     readonly capture: WorkerOutputCapture;
 };
-export function workerOutput(scope: TestScope): WorkerOutputFixture {
+export function workerOutput(cleanup: TestScope['cleanup']): WorkerOutputFixture {
     const stdout: string[] = [];
     const stderr: string[] = [];
     const streams = {
@@ -44,7 +44,7 @@ export function workerOutput(scope: TestScope): WorkerOutputFixture {
             }
         }
     };
-    scope.cleanup(function () {
+    cleanup(function () {
         streams.stdout.destroy();
         streams.stderr.destroy();
     });

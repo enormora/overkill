@@ -1,10 +1,10 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { historyRetention, historyRetentionScenario } from '../test-support/history-retention.ts';
 import { applyHistoryRetention } from './history-pruning.ts';
 import { readCompactHistory } from './history-storage.ts';
 
-export const testNode: TestNode = suite('history retention publication', [
+export const testNode = suite('history retention publication', [
     test('previews record and artifact removals without changing storage', async function (scope) {
         const fixture = await historyRetention(historyRetentionScenario);
         const result = await applyHistoryRetention(fixture.context, { dryRun: true }, fixture.runtime);

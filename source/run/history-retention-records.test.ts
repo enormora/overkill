@@ -1,4 +1,4 @@
-import { type TestNode, table, suite, test } from '@overkill-dev/test';
+import { table, suite, test } from '@overkill-dev/test';
 
 import { propertyCorpusEntry } from '../test-support/property-corpus.ts';
 
@@ -31,7 +31,7 @@ const catalog = {
         return [ value.id, value ];
     }))
 };
-export const testNode: TestNode = suite('record and artifact retention', [
+export const testNode = suite('record and artifact retention', [
     table({
         title: 'protects retained replay sources during pruning',
         cases: [ null, 'old-pass' ] as const,

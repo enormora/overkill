@@ -1,4 +1,4 @@
-import { table, type TestNode, suite } from '@overkill-dev/test';
+import { table, suite } from '@overkill-dev/test';
 
 import { passingIsolatedWorkerRun } from '../test-support/isolated-worker-run.ts';
 import { attachmentRecording } from '../test-support/attachment-recording.ts';
@@ -21,7 +21,7 @@ function baselineSession(
         }
     };
 }
-export const testNode: TestNode = suite(
+export const testNode = suite(
     'isolated run finalization ownership',
     [ table({
         title: 'finalizes worker results with recording and baselines',

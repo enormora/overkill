@@ -1,4 +1,4 @@
-import { type TestNode, suite, test, type TestScope } from '@overkill-dev/test';
+import { suite, test, type TestScope } from '@overkill-dev/test';
 
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { createDefaultWorkId } from '../engine/identity.ts';
@@ -16,7 +16,7 @@ function decode(
 ): SupervisedChildMessage | null {
     return envelopeMessage(childProcessEnvelope('run', message), 'run', supervisedChildMessageSchema);
 }
-export const testNode: TestNode = suite('child process payload schemas', [
+export const testNode = suite('child process payload schemas', [
     test('known envelopes reject unrecognized fields before payload validation', function (scope) {
         scope.assert.throws(function invalidEnvelope() {
             envelopeMessage(

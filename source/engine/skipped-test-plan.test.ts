@@ -1,4 +1,5 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import { suite, test } from '@overkill-dev/test';
 
 import { createTestEngine as createEngine } from '../test-support/create-test-engine.ts';
 import type { Engine } from './engine.ts';
@@ -23,30 +24,34 @@ function createSkippedPlan(engine: Engine): TestPlan {
     return engine.createTestPlan(root);
 }
 
-function assertSkippedPlan(scope: TestScope, testPlan: TestPlan): void {
-    const plannedCase = testPlan.cases[0];
+const assertSkippedPlan = defineCompositeAssertion({
+    name: 'skipped plan',
+    assert(check, testPlan: TestPlan) {
+        const plannedCase = testPlan.cases[0];
 
-    scope.require.defined(plannedCase);
-    scope.assert.deepEqual(plannedCase.id, {
-        file: null,
-        params: null,
-        suite: [],
-        title: 'conditional'
-    });
-    scope.assert.deepEqual(plannedCase.execution, {
-        kind: 'skip',
-        reason: 'unsupported platform'
-    });
-    scope.assert.deepEqual(plannedCase.annotations.tags, [ 'inherited', 'conditional' ]);
-    scope.assert.equal(testPlan.defined, 1);
-    scope.assert.deepEqual(testPlan.discoveredCases, testPlan.cases);
-}
+        return check.group([
+            check.deepEqual(plannedCase.id, {
+                file: null,
+                params: null,
+                suite: [],
+                title: 'conditional'
+            }),
+            check.deepEqual(plannedCase.execution, {
+                kind: 'skip',
+                reason: 'unsupported platform'
+            }),
+            check.deepEqual(plannedCase.annotations.tags, [ 'inherited', 'conditional' ]),
+            check.equal(testPlan.defined, 1),
+            check.deepEqual(testPlan.discoveredCases, testPlan.cases)
+        ]);
+    }
+});
 
-export const testNode: TestNode = suite('Skipped test plan', [
+export const testNode = suite('Skipped test plan', [
     test('expands skipped test cases as leaf cases', function (scope) {
         const engine = createEngine();
 
-        assertSkippedPlan(scope, createSkippedPlan(engine));
+        scope.assert(assertSkippedPlan, createSkippedPlan(engine));
 
         return scope.assert.collect();
     }),

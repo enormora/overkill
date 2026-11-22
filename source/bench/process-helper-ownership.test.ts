@@ -1,9 +1,9 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { memoryProcessHelper, helperCommand, failedProcessExecution } from '../test-support/memory-process-helper.ts';
 import { reliableProcessHelper } from '../test-support/process-helper-channel.ts';
 
-export const testNode: TestNode = suite('process helper invocation ownership', [
+export const testNode = suite('process helper invocation ownership', [
     test('forwards commands and correlates completed invocation replies', async function (scope) {
         const fixture = memoryProcessHelper(true, reliableProcessHelper);
         const running = fixture.helper.run(helperCommand, scope.signal);

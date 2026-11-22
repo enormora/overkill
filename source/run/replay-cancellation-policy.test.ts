@@ -1,4 +1,4 @@
-import { type TestNode, table, suite, test } from '@overkill-dev/test';
+import { table, suite, test } from '@overkill-dev/test';
 
 import { workerReplayRecord } from '../test-support/replay-record-fixture.ts';
 import { createCollectedPlan, fakeWorkerRuntime, placementPlan } from '../test-support/worker-pool-execution-state.ts';
@@ -18,7 +18,7 @@ function cancellationFixture(): CancellationFixture {
     const dispatcher = createStaticDispatcher(plan, runtime.placementTrace);
     return { runtime, dispatcher, lane };
 }
-export const testNode: TestNode = suite('replay cancellation lifecycle', [
+export const testNode = suite('replay cancellation lifecycle', [
     table({
         title: 'stops pending placement on cancellation',
         cases: [ false, true ],

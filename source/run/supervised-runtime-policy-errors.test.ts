@@ -1,4 +1,4 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import type { CaseId } from '../engine/identity.ts';
 import type { RunnerError } from '../engine/run-result.ts';
@@ -33,7 +33,7 @@ function reporterError(): RunnerError {
     };
 }
 
-export const testNode: TestNode = suite('Supervised runtime policy diagnostics', [
+export const testNode = suite('Supervised runtime policy diagnostics', [
     test(
         'drops child process.env errors already observed by the supervisor',
         function (scope) {

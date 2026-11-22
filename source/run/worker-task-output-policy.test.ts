@@ -1,11 +1,11 @@
-import { table, type TestNode, suite, test } from '@overkill-dev/test';
+import { table, suite, test } from '@overkill-dev/test';
 
 import { workerTaskOutput } from '../test-support/worker-task-output.ts';
 
 import { createCollectedPlan, createTaskRun, fakeWorkerRuntime } from '../test-support/worker-pool-execution-state.ts';
 import { recordBatchStarted, recordBatchCompleted } from './worker-pool-task-events.ts';
 
-export const testNode: TestNode = suite('worker task output and batch boundaries', [
+export const testNode = suite('worker task output and batch boundaries', [
     table({
         title: 'delivers captured process output',
         cases: ([ 'stdout', 'stderr' ] as const).flatMap(function (stream) {

@@ -1,9 +1,9 @@
-import { type TestNode, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { parseRunnerResult, runnerResult } from './runner-result.ts';
 
-export const testNode: TestNode = suite('runner maintenance diagnostics', [
+export const testNode = suite('runner maintenance diagnostics', [
     test('preserves engine verdicts and diagnostic messages', function (scope) {
         const result = {
             context: { id: null, startedAt: null, facts: null },

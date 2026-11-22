@@ -1,10 +1,10 @@
-import { type TestNode, table, type TestScope, suite, test } from '@overkill-dev/test';
+import { table, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { globalErrorObservation } from '../test-support/global-error-observation.ts';
 
 import { createOwnedGlobalErrorObserver } from './execution-global-error-observer.ts';
 
-export const testNode: TestNode = suite('global execution error ownership', [
+export const testNode = suite('global execution error ownership', [
     test(
         'publishes current and newly active work until the subscription stops',
         async function (scope: TestScope) {

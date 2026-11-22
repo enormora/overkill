@@ -1,8 +1,7 @@
-import { type TestNode, type TestScope, suite, test } from '@overkill-dev/test';
+import { defineCompositeAssertion, defineNarrowingCompositeAssertion } from '@overkill-dev/test/assert';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 
-import { defineNarrowingCompositeAssertion } from '@overkill-dev/test/assert';
-
-import type { AssertionTestFailure, FailOutcome, RunResult, TestFailure, TestOutcome } from '../engine/run-result.ts';
+import type { AssertionTestFailure, FailOutcome, TestFailure, TestOutcome } from '../engine/run-result.ts';
 import { serializeValue } from '../compare/serialized-value.ts';
 import { runResultFactory } from './run-result-factory.ts';
 
@@ -48,28 +47,7 @@ const assertionTestFailure = defineNarrowingCompositeAssertion<TestFailure, Asse
     }
 });
 
-function assertExplicitFailureFields(scope: TestScope, runResult: RunResult): void {
-    const failedOutcome = runResult.perTest[0]?.outcome;
-    scope.require.defined(failedOutcome);
-    scope.require(failOutcome, failedOutcome);
-    const failure = failedOutcome.failures[0];
-    scope.require(assertionTestFailure, failure);
-    scope.assert.deepEqual(failure.checks[0], {
-        ...(defaultFailure() as Record<string, unknown>),
-        actual: serializeValue(1),
-        expected: serializeValue(2),
-        sourceLocations: [
-            {
-                column: null,
-                file: 'source/example.test.ts',
-                kind: 'known',
-                line: 10
-            }
-        ]
-    });
-}
-
-export const testNode: TestNode = suite('Run result factory', [
+export const testNode = suite('Run result factory', [
     test('runResultFactory builds nested result data', function (scope: TestScope) {
         const runResult = runResultFactory.build({
             orphans: [ {} ],
@@ -177,7 +155,7 @@ export const testNode: TestNode = suite('Run result factory', [
 
         return scope.assert.collect();
     }),
-    test('runResultFactory preserves explicit failure and verdict fields', function (scope) {
+    test('runResultFactory preserves explicit failure and verdict fields', function (scope: TestScope) {
         const runResult = runResultFactory.build({
             perTest: [
                 {
@@ -190,11 +168,36 @@ export const testNode: TestNode = suite('Run result factory', [
                 { outcome: null }
             ]
         });
-
-        assertExplicitFailureFields(scope, runResult);
-        scope.assert.equal(runResult.perTest[1]?.verdict, 'inconclusive');
-        scope.assert.equal(runResult.perTest[1]?.outcome?.kind, 'skip');
-        scope.assert.equal(runResult.perTest[2]?.verdict, 'crashed');
+        const explicitFailureFieldsFailedOutcome = runResult.perTest[0]?.outcome;
+        scope.require.defined(explicitFailureFieldsFailedOutcome);
+        scope.require(failOutcome, explicitFailureFieldsFailedOutcome);
+        const explicitFailureFieldsFailure = explicitFailureFieldsFailedOutcome.failures[0];
+        scope.require(assertionTestFailure, explicitFailureFieldsFailure);
+        scope.assert(
+            defineCompositeAssertion({
+                name: 'runResultFactory preserves explicit failure and verdict fields',
+                assert(check) {
+                    return check.group([
+                        check.deepEqual(explicitFailureFieldsFailure.checks[0], {
+                            ...(defaultFailure() as Record<string, unknown>),
+                            actual: serializeValue(1),
+                            expected: serializeValue(2),
+                            sourceLocations: [
+                                {
+                                    column: null,
+                                    file: 'source/example.test.ts',
+                                    kind: 'known',
+                                    line: 10
+                                }
+                            ]
+                        }),
+                        check.equal(runResult.perTest[1]?.verdict, 'inconclusive'),
+                        check.equal(runResult.perTest[1]?.outcome?.kind, 'skip'),
+                        check.equal(runResult.perTest[2]?.verdict, 'crashed')
+                    ]);
+                }
+            })
+        );
 
         return scope.assert.collect();
     })

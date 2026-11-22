@@ -1,4 +1,4 @@
-import { type TestNode, table, type TestScope, suite, test } from '@overkill-dev/test';
+import { table, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { z } from 'zod/v4';
 
@@ -76,7 +76,7 @@ const transcriptPolicies: readonly (LocalHttpTranscriptPolicy | null)[] = [
         transcript: emptyTranscriptView
     }
 ];
-export const testNode: TestNode = suite('local HTTP resource ownership', [
+export const testNode = suite('local HTTP resource ownership', [
     test('projects per-run HTTP handles with an empty consumer transcript', function (scope) {
         const fixture = httpService(null, noFaults);
         const resource = createLocalHttpServiceResource({
