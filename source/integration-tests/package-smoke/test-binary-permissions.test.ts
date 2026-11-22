@@ -93,7 +93,8 @@ export const testNode = suite('Shipped CLI permissions', [
 
         scope.assert.equal(result.code, 2);
         scope.assert.includes(result.stdout, 'Permission denied: FileSystemWrite');
-        scope.assert.false((await readdir(directory)).includes('filesystem-output.txt'));
+        const files = await readdir(directory);
+        scope.assert.false(files.includes('filesystem-output.txt'));
         assertExecuted(scope.assert, result);
         return scope.assert.collect();
     })
