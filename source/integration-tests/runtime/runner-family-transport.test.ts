@@ -3,7 +3,7 @@ import { table, suite, test } from '@overkill-dev/test';
 import { isDefinedFamilyProfile } from '../../config/types.ts';
 
 import { normalizeConfig, orchestrator, type NormalizedConfig } from '../../packages/run/run.entry-point.ts';
-import { defaultRunRequest } from '../../test-support/run-command-factory.ts';
+import { defaultRunRequest, isolatedRunStateDirectory } from '../../test-support/run-command-factory.ts';
 import { family as analysisFamily } from './fixtures/imported-analysis-family.ts';
 import { family } from './fixtures/imported-runtime-family.ts';
 import { family as stalledFamily } from './fixtures/stalled-family.ts';
@@ -13,6 +13,7 @@ const timeouts = { collectionMilliseconds: 60_000, softMilliseconds: 60_000, har
 
 function hostedRuntimeConfig(): NormalizedConfig {
     const config = normalizeConfig({
+        runtimeStateDir: isolatedRunStateDirectory(),
         profiles: {
             custom: {
                 testFamily: family,
@@ -53,6 +54,7 @@ export const testNode = suite('imported family transport', [
     }),
     test('terminates preparation blocked before case admission', async function (scope) {
         const config = normalizeConfig({
+            runtimeStateDir: isolatedRunStateDirectory(),
             profiles: {
                 custom: {
                     testFamily: stalledFamily,
@@ -91,6 +93,7 @@ export const testNode = suite('imported family transport', [
                 ? { processModel, maxWorkers: 1, scheduling: 'serial' as const }
                 : { processModel, scheduling: 'serial' as const };
             const config = normalizeConfig({
+                runtimeStateDir: isolatedRunStateDirectory(),
                 profiles: {
                     custom: {
                         testFamily: analysisFamily,
@@ -131,6 +134,7 @@ export const testNode = suite('imported family transport', [
                 }
                 : { processModel, scheduling: 'serial' as const };
             const config = normalizeConfig({
+                runtimeStateDir: isolatedRunStateDirectory(),
                 profiles: {
                     custom: {
                         testFamily: family,
