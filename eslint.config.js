@@ -60,7 +60,7 @@ export default [
     },
     {
         ...testSupportConfig,
-        files: [ '**/*.test.ts', 'source/integration-tests/*/support/**/*.ts' ]
+        files: [ '**/*.test.ts', 'source/test-support/**/*.ts', 'source/integration-tests/*/support/**/*.ts' ]
     },
     {
         files: [ 'source/**/*.test.ts', 'source/test-support/**/*.ts', 'source/integration-tests/*/support/**/*.ts' ],

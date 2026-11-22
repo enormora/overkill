@@ -50,7 +50,7 @@ const resolvedTransportLocations = defineCompositeAssertion({
         transportedLocationsEvents: readonly { readonly event: ReporterEvent; readonly kind: 'event'; }[]
     ) {
         const transported = transportedLocationsEvents.map(function (message) {
-            const event = message.event;
+            const { event } = message;
             const roundtrip = check.true(
                 isDeepStrictEqual(supervisedChildMessageSchema.parse(structuredClone(message)), message)
             );

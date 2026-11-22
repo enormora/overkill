@@ -104,7 +104,7 @@ export async function replaceSavedCalibration(
     if (baseline === undefined) {
         throw new Error('Expected a saved baseline.');
     }
-    const normalization = baseline.normalization;
+    const { normalization } = baseline;
     const metric = normalization?.metrics.value;
     if (normalization === null || metric === undefined) {
         throw new Error('Expected a saved normalization metric.');

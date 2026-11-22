@@ -80,7 +80,7 @@ const mutationCostEvidence = defineCompositeAssertion({
             check.deepEqual(result.runnerErrors, []),
             check.equal(result.summary.passed, 3),
             ...result.perTest.map(function measuredCosts(entry) {
-                const benchmark = entry.benchmark;
+                const { benchmark } = entry;
                 if (benchmark === null) {
                     return check.defined(benchmark);
                 }

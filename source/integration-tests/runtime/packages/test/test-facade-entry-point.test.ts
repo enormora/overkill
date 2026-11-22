@@ -153,7 +153,7 @@ const sourceLocationInThisFileChecks = function (
     }
     return check.match(
         location.file.replaceAll('\\', '/'),
-        /source\/integration-tests\/integration\/packages\/test\/test-facade-entry-point\.test\.[cm]?[jt]s$/u
+        /source\/integration-tests\/runtime\/packages\/test\/test-facade-entry-point\.test\.[cm]?[jt]s$/u
     );
 };
 

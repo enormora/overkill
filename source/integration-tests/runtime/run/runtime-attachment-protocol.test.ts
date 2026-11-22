@@ -299,8 +299,8 @@ const disconnectedPendingRequests = defineCompositeAssertion({
     name: 'disconnect rejects every bounded pending request',
     async assert(check, connection: AttachmentConnection, socket: Socket) {
         const settled = Promise.allSettled(
-            Array.from({ length: attachmentMaxPendingRequests }, function () {
-                return connection.exchange(open);
+            Array.from({ length: attachmentMaxPendingRequests }, async function () {
+                return await connection.exchange(open);
             })
         );
         const overflow = check.rejects(async function () {

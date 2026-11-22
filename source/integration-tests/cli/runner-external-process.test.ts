@@ -42,7 +42,7 @@ export const testNode = suite(
         title: 'runs pipe and PTY samples',
         cases: boundaries,
         caseTitle(boundary) {
-            return `runs pipe and PTY samples with ${boundary}`;
+            return boundary;
         },
         async test(scope) {
             const boundary = scope.parameters;

@@ -110,7 +110,7 @@ const assertScenarioRouting = defineMacro(function (title: string) {
         scope.assert(httpScenarioEvidence, {
             count: server.transcript.entryCount,
             entry: server.transcript.nthEntry(1)
-        }, { count: 4, scenario: 'payments-500', url: origin + '/checkout?cart=full' });
+        }, { count: 4, scenario: 'payments-500', url: `${origin}/checkout?cart=full` });
 
         return scope.assert.collect();
     });

@@ -105,10 +105,13 @@ function createBenchmarkCommand(
 ): RunCommand {
     const config = normalizeConfig({
         profiles: {
-            startup: { testFamily: 'benchmark', files: { include: [ join(directory, 'benchmark.bench.test.ts') ] } }
+            startup: {
+                testFamily: 'benchmark',
+                files: { include: [ 'benchmark.bench.test.ts' ] }
+            }
         },
         reporters: [ reporter ],
-        runtimeStateDir: directory
+        runtimeStateDir: join(directory, 'state')
     });
     const profile = config.profiles.startup;
     if (profile?.testFamily !== 'benchmark') {
@@ -116,7 +119,7 @@ function createBenchmarkCommand(
     }
     return {
         config: { ...config, profiles: { ...config.profiles, startup: { ...profile, execution } } },
-        cwd: process.cwd(),
+        cwd: directory,
         engine: { kind: 'default' },
         request: defaultRunRequest({
             profile: 'startup',
@@ -248,7 +251,7 @@ const assertBenchmarkResults = defineCompositeAssertion({
             benchmarkHostMetadataChecks(check.annotated('benchmark host metadata'), delivery.result, observer),
             check
                 .equal(
-                    await readFile(join(command.config.runtimeStateDir, 'benchmark-lifecycle.txt'), 'utf8'),
+                    await readFile(join(command.cwd, 'benchmark-lifecycle.txt'), 'utf8'),
                     'acquire\nbody\ndispose\n'
                 ),
             check.deepEqual(observer.events.flatMap(caseLifecycle), [
@@ -277,7 +280,7 @@ const assertBenchmarkEmptySelection = defineCompositeAssertion({
         return check.group([
             check.equal(empty.summary.planned, 0),
             check.equal(
-                await readFile(join(command.config.runtimeStateDir, 'benchmark-lifecycle.txt'), 'utf8'),
+                await readFile(join(command.cwd, 'benchmark-lifecycle.txt'), 'utf8'),
                 'acquire\nbody\ndispose\n'
             )
         ]);
@@ -322,6 +325,7 @@ async function benchmarkProject(
     cleanup(async function () {
         await rm(directory, { recursive: true, force: true });
     });
+    await mkdir(join(directory, 'state'));
     const original = await readFile(fixtureUrl, 'utf8');
     const source = original
         .replace("'target/benchmark-lifecycle.txt'", function () {

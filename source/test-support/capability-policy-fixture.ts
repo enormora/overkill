@@ -119,8 +119,7 @@ export function errorStringField(error: RunnerError, field: string): string | nu
     const { cause } = error;
 
     if (typeof cause === 'object' && cause !== null && Object.hasOwn(cause, field)) {
-        const causeFields = cause as Readonly<Record<string, unknown>>;
-        const value = causeFields[field];
+        const value: unknown = Reflect.get(cause, field);
 
         return typeof value === 'string' ? value : null;
     }

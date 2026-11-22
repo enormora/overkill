@@ -1,4 +1,4 @@
-import { suite, test, type TestScope } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 import { assertFinalReporter, completedAttachmentRecord } from '../../../test-support/attachment-session-assertions.ts';
 
 import { attachmentRunFixture, localAttachmentRunFixture } from '../../../test-support/attachment-run-fixture.ts';
@@ -9,7 +9,7 @@ import { executeWithRuntimeAttachments } from '../../../run/runtime-attachment-b
 import { runWithWorkerAttachments } from '../../../run/attachment-worker-context.ts';
 
 export const testNode = suite('Runtime attachment session', [
-    test('completed records contain retained lifecycle attachments', async function (scope: TestScope) {
+    test('completed records contain retained lifecycle attachments', async function (scope) {
         const { resolved, dependencies, writes } = await localAttachmentRunFixture(scope.cleanup);
         const result = await executeWithRuntimeAttachments(
             resolved,

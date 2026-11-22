@@ -69,7 +69,7 @@ const throwsOnImportSmokeFile = 'throws-on-import-smoke.test.mjs';
 const customAuthoringFolder = 'testing';
 const customAuthoringFacadeFile = path.join(customAuthoringFolder, 'custom-authoring.mjs');
 const customAuthoringSmokeFile = 'custom-authoring-smoke.test.mjs';
-async function collectStream(stream: ChildProcessWithoutNullStreams['stdout']): Promise<string> {
+async function collectStream(stream: Readonly<ChildProcessWithoutNullStreams['stdout']>): Promise<string> {
     return await new Promise(function collect(resolve, reject) {
         const chunks: Buffer[] = [];
 

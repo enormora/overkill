@@ -169,7 +169,7 @@ type BenchmarkBudgetFixture = {
 export function benchmarkBudgetFixture(title: string): BenchmarkBudgetFixture {
     const result = benchmarkHtmlFixture(title);
     const measured = fixtureTest(result);
-    const benchmark = measured.benchmark;
+    const { benchmark } = measured;
     if (benchmark === null) {
         throw new Error('Benchmark fixture requires measurements.');
     }

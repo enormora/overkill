@@ -1,4 +1,4 @@
-import type {ThrownMatcher} from '@overkill-dev/test/assert';
+import type { ThrownMatcher } from '@overkill-dev/test/assert';
 import { type TestScope, suite, test } from '@overkill-dev/test';
 
 import {
@@ -10,10 +10,13 @@ import {
     type AsyncControlState
 } from './async-control.ts';
 
-function rejectionAssertions(rejects: TestScope['assert']['rejects']): Parameters<typeof startInFlight>[1] {
+type RejectionChecks = {
+    readonly rejects: (thunk: () => PromiseLike<unknown>, matcher: ThrownMatcher) => Promise<void>;
+};
+function rejectionAssertions(rejects: TestScope['assert']['rejects']): RejectionChecks {
     return {
-        async rejects(thunk, matcher, options) {
-            await rejects<ThrownMatcher>(thunk, matcher, options);
+        async rejects(thunk, matcher) {
+            await rejects<ThrownMatcher>(thunk, matcher);
         }
     };
 }

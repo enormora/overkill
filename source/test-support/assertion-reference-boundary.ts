@@ -43,7 +43,7 @@ export function requireEngineCompositeReference<Arguments extends readonly unkno
     }
 }
 
-export function requirePublishedCompositeReference<Arguments extends readonly unknown[], Result extends EngineResult>(
+function requirePublishedCompositeReference<Arguments extends readonly unknown[], Result extends EngineResult>(
     reference: EngineCompositeReference<Arguments, Result>
 ): asserts reference is CompatibleCompositeReference<Arguments, Result, ResultForPublished<Result>> {
     if (!isAssertionReference(reference) || isNarrowingAssertionReference(reference)) {

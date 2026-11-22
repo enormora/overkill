@@ -26,7 +26,7 @@ export const testNode = suite('simulated HTTP request routing', [
         const failure = new Error('Handler failed.');
         const responseFailure = new Error('Response closed.');
         const fixture = simulatedHttpRequest(
-            scope,
+            scope.cleanup,
             defineSimulatedHttpServer({
                 name: 'failure',
                 scenarios: { default: { title: 'failure' } },
@@ -158,7 +158,7 @@ export const testNode = suite('simulated HTTP request routing', [
     test('reports handler failures and records error evidence', async function (scope) {
         const failure = new Error('Handler failed.');
         const fixture = simulatedHttpRequest(
-            scope,
+            scope.cleanup,
             defineSimulatedHttpServer({
                 name: 'failure',
                 scenarios: { default: { title: 'failure' } },

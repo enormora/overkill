@@ -11,7 +11,7 @@ type ExpectedScenario = { readonly count: number; readonly scenario: string; rea
 export const httpScenarioEvidence = defineCompositeAssertion({
     name: 'HTTP transcripts retain scenario ownership',
     assert(check, observed: ScenarioObservation, expected: ExpectedScenario) {
-        const entry = observed.entry;
+        const { entry } = observed;
         if (entry === null) {
             return check.defined(entry);
         }

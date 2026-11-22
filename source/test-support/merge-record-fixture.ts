@@ -41,25 +41,15 @@ export function mergeRecordFixture(id: string, index: number, passed: number): M
     });
 }
 
-const firstUnsupportedRecordVersion = 2;
 const recordVersionsChecks = function (
     check: CompositeCheckBuilder<'assert'>,
     current: MergedRunRecord
 ): CompositeAssertionReturn<'assert'> {
     return check.group([
         check.equal(current.version, 1),
-        ...Array
-            .from({ length: 4 }, (_value, index) => {
-                return (function (version) {
-                    return check.false(mergedRecordSchema.safeParse({ ...current, version }).success);
-                })(
-                    function (_value, index) {
-                        return firstUnsupportedRecordVersion + index;
-                    }
-                        .call(this, _value, index),
-                    index
-                );
-            })
+        ...[ 2, 3, 4, 5 ].map(function (version) {
+            return check.false(mergedRecordSchema.safeParse({ ...current, version }).success);
+        })
     ]);
 };
 
