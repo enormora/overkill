@@ -240,7 +240,7 @@ export const config = defineConfig({
         startup: {
             testFamily: 'benchmark',
             execution: {
-                processModel: 'worker-pool', maxWorkers: 1, maxConcurrency: 1, scheduling: 'concurrent'
+                processModel: 'worker-pool', maxWorkers: 1, maxConcurrency: 1, scheduling: 'serial'
             },
             files: { include: ['startup.bench.mjs'] }
         }
