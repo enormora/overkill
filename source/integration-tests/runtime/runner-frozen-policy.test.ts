@@ -1,11 +1,10 @@
-import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { mkdtemp, readFile, realpath, rm, writeFile } from 'node:fs/promises';
 import { extname, join, resolve } from 'node:path';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { createTestFacade, suite } from '@overkill-dev/test';
 import { defineResource } from '@overkill-dev/test/resources';
-import { z } from 'zod/v4';
 
-import { createPlainOutputRenderer } from '../../engine/reporter-output.ts';
+import { createPlainOutputRenderer, type RunResult } from '../../packages/engine/engine.entry-point.ts';
 import type { Config, ProjectMicrotestProfileConfig } from '../../packages/run/config.entry-point.ts';
 import { orchestrator, type FrozenMicrotestPolicy, type FrozenRunCommand } from '../../packages/run/run.entry-point.ts';
 import { initializeMutationPolicy } from '../../packages/stryker-runner/mutation-policy-process.ts';
@@ -82,28 +81,30 @@ const frozenProject = defineResource({
     name: 'frozen mutation policy project',
     scope: 'per-case',
     requirements: [],
-    workload(parameters) {
-        return z.object({ processModel: z.enum([ 'in-process', 'supervised-process' ]) }).parse(parameters);
-    },
     async acquire(context) {
         const directory = await mkdtemp(join(resolve('target'), 'frozen-policy-'));
         try {
             const cwd = await realpath(directory);
-            await createProject(cwd, context.workload.parameters.processModel);
-            const policy = await initializeMutationPolicy({
-                sandbox: null,
+            return {
                 cwd,
-                settings: {
-                    freshState: false,
-                    artifactPersistence: 'off',
-                    seed: '42',
-                    configPath: 'overkill.config.mjs',
-                    paths: [],
-                    profile: null
-                },
-                signal: context.signal
-            });
-            return { cwd, policy };
+                async initialize(processModel: ProcessModel) {
+                    await createProject(cwd, processModel);
+                    const policy = await initializeMutationPolicy({
+                        sandbox: null,
+                        cwd,
+                        settings: {
+                            freshState: false,
+                            artifactPersistence: 'off',
+                            seed: '42',
+                            configPath: 'overkill.config.mjs',
+                            paths: [],
+                            profile: null
+                        },
+                        signal: context.signal
+                    });
+                    return { cwd, policy };
+                }
+            };
         } catch (error) {
             await rm(directory, { recursive: true, force: true });
             throw error;
@@ -115,34 +116,29 @@ const frozenProject = defineResource({
 });
 const { table } = createTestFacade({ resources: { project: frozenProject } });
 
+async function runEffectivePolicy(cwd: string, policy: FrozenMicrotestPolicy): Promise<RunResult> {
+    await writePolicy(cwd, {
+        profiles: {
+            microtest: {
+                ...profile(policy.profile.execution.processModel),
+                execution: { processModel: policy.profile.execution.processModel, scheduling: 'serial' },
+                coverage: { outputs: [ 'json' ] }
+            },
+            browser: { testFamily: 'integration', files: { include: [ 'case.test.mjs' ] } }
+        }
+    });
+    await writePassingCase(cwd);
+    return await orchestrator.run(invocation(policy));
+}
 const acceptsEffectivePolicy = defineCompositeAssertion({
     name: 'accepts effective policy',
-    async assert(check, cwd: string, policy: FrozenMicrotestPolicy) {
-        await writePolicy(cwd, {
-            profiles: {
-                microtest: {
-                    ...profile(policy.profile.execution.processModel),
-                    execution: { processModel: policy.profile.execution.processModel, scheduling: 'serial' },
-                    coverage: { outputs: [ 'json' ] }
-                },
-                browser: { testFamily: 'integration', files: { include: [ 'case.test.mjs' ] } }
-            }
-        });
-        await writePassingCase(cwd);
-        const result = await orchestrator.run(invocation(policy));
+    assert(check, result: RunResult) {
         return check.group([ check.equal(result.summary.passed, 1), check.deepEqual(result.runnerErrors, []) ]);
     }
 });
-
 const rejectsDrift = defineCompositeAssertion({
     name: 'frozen policy drift',
-    async assert(check, policy: FrozenMicrotestPolicy, domain: string) {
-        if (policy.profile.execution.processModel === 'in-process') {
-            return await check.rejects(async function runChangedPolicy() {
-                await orchestrator.run(invocation(policy));
-            }, { message: new RegExp(`Frozen policy changed: .*${domain}`) });
-        }
-        const result = await orchestrator.run(invocation(policy));
+    assert(check, result: RunResult, domain: string) {
         return check.group([
             check.equal(result.summary.passed, 0),
             check.true(result.runnerErrors.some(function policyDrift(error) {
@@ -181,9 +177,9 @@ export const testNode = suite(
                 return processModel;
             },
             async test(scope) {
-                const { cwd, policy } = scope.resources.project;
+                const { cwd, policy } = await scope.resources.project.initialize(scope.parameters.processModel);
                 await scope.assert(assertResolverReaped, cwd);
-                await scope.assert(acceptsEffectivePolicy, cwd, policy);
+                scope.assert(acceptsEffectivePolicy, await runEffectivePolicy(cwd, policy));
                 return scope.assert.collect();
             }
         }),
@@ -200,13 +196,20 @@ export const testNode = suite(
             async test(scope) {
                 const { processModel, change } = scope.parameters;
 
-                const { cwd, policy } = scope.resources.project;
+                const { cwd, policy } = await scope.resources.project.initialize(scope.parameters.processModel);
                 await scope.assert(assertResolverReaped, cwd);
                 await writePolicy(cwd, {
                     loader: change.loader,
                     profiles: { microtest: { ...profile(processModel), ...change.config } }
                 });
-                await scope.assert(rejectsDrift, policy, change.domain);
+                if (processModel === 'in-process') {
+                    await scope.assert.rejects(async function runChangedPolicy() {
+                        await orchestrator.run(invocation(policy));
+                    }, { message: new RegExp(`Frozen policy changed: .*${change.domain}`) });
+                } else {
+                    const result = await orchestrator.run(invocation(policy));
+                    scope.assert(rejectsDrift, result, change.domain);
+                }
                 return scope.assert.collect();
             }
         })
