@@ -260,7 +260,7 @@ export function createDirectRunFixture(input: DirectRunFixtureInput): DirectRunF
                 ...result,
                 maintenanceDiagnostics: []
             },
-            undeliveredRunnerErrors
+            undeliveredRunnerErrors: [ ...undeliveredRunnerErrors, ...result.runnerErrors ]
         };
     };
 

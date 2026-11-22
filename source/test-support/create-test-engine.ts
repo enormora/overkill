@@ -56,6 +56,15 @@ export function createTestExecution(
     });
 }
 
+export function createDeterministicTestExecution(): ExecutionDriver {
+    const wallClock = createDeterministicClock({ initialUnixEpochMicroseconds: 0n });
+    return createTestExecution(wallClock, createReporterDispatcher({
+        stderr: { writeLine: ignoreOutputLine },
+        stdout: { writeLine: ignoreOutputLine },
+        wallClock
+    }));
+}
+
 export function createTimedTestEngine(wallClock: Clock): Engine {
     return createEngine({
         execute: createExecute({
