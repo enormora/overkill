@@ -1,7 +1,7 @@
 import { executePreparedFamilyWithDriver } from '../engine/engine.ts';
 import type { FamilyExecuteOptions } from '../engine/family-run.ts';
-import type { RunResult } from '../engine/run-result.ts';
-import type { LocalFamilyRunPlan } from './family-profile-types.ts';
+import { withAnalysisDeadline } from './analysis-deadline.ts';
+import type { LocalFamilyRunPlan } from './prepared-family-plan.ts';
 import type { ResolvedRun } from './run-types.ts';
 import { isFamilyPlan } from './family-profile-run.ts';
 import { reporterWithAttachments } from './attachment-reporter.ts';
@@ -9,6 +9,8 @@ import type { RunOrchestratorDependencies } from './run-orchestrator-dependencie
 
 import type { ResolvedRunResultFinalizer, RunRuntimePolicy } from './run-support.ts';
 import type { RunTimingMeasurement } from './run-timing-collection.ts';
+
+type RunResult = Awaited<ReturnType<RunOrchestratorDependencies['execute']>>;
 
 export type LocalResolvedRun = ResolvedRun & {
     readonly plan: Extract<ResolvedRun['plan'], { readonly kind: 'local'; }>;
@@ -52,6 +54,22 @@ export async function executeLocalFamily(
     options: FamilyExecuteOptions,
     dependencies: RunOrchestratorDependencies
 ): Promise<RunResult> {
+    if (isAnalysisFamilyRun(run)) {
+        const { preparation, collected } = run.plan.family;
+        return await withAnalysisDeadline(
+            run.facts.execution.timeoutPolicy.softMilliseconds,
+            'Analysis checking exceeded soft timeout.',
+            async function check(signal) {
+                return await executePreparedFamilyWithDriver(
+                    preparation.engine,
+                    collected,
+                    { ...options, signal },
+                    dependencies.execute
+                );
+            },
+            dependencies.wallClock
+        );
+    }
     return isFamilyPlan(run.plan)
         ? await executePreparedFamilyWithDriver(
             run.plan.family.preparation.engine,

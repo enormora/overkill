@@ -75,7 +75,7 @@ async function executePreparedRun(prepared: PreparedRun, options: PreparedExecut
         source,
         timing,
         record: options.record
-    });
+    }, options.signal);
 }
 
 function isRunResult(value: PreparedRun | RunResult): value is RunResult {

@@ -12,6 +12,8 @@ import {
     type SupervisedRunState
 } from './supervised-run-state.ts';
 
+import { analysisProcessGroupArgument } from './supervised-process-group.ts';
+
 export type SupervisedChildCoverage = {
     readonly environment: {
         readonly NODE_DISABLE_COMPILE_CACHE: '1';
@@ -41,6 +43,7 @@ type SupervisedChildProcessOutput = {
 
 export type SupervisedChildProcess = {
     readonly closeTransport: () => void;
+    readonly ownsProcessGroup?: true;
     readonly exitCode: number | null;
     readonly kill: (signal: 'SIGKILL') => unknown;
     readonly on: (...registration: SupervisedChildListenerRegistration) => unknown;
@@ -53,7 +56,10 @@ export type SupervisedChildProcess = {
 
 export function kill(child: SupervisedChildProcess): void {
     startChildShutdown(child);
-    if (child.pid !== undefined && child.exitCode === null && child.signalCode === null) {
+    if (
+        child.ownsProcessGroup === true ||
+        child.pid !== undefined && child.exitCode === null && child.signalCode === null
+    ) {
         child.kill('SIGKILL');
     }
 }
@@ -64,6 +70,7 @@ export type SupervisedChildHardTimeout = {
 };
 
 type SupervisedHardTimeoutRuntime = {
+    readonly analysis: boolean;
     readonly child: SupervisedChildProcess;
     readonly dependencies: { readonly wallClock: Clock; };
     readonly resolvedRun: ResolvedRun;
@@ -74,6 +81,12 @@ type SupervisedHardTimeoutRuntime = {
 export function replayUsesLocalProcessPolicy(run: ResolvedRun): boolean {
     return run.facts.execution.processModel === 'in-process' && currentReplay() !== null;
 }
+export function isSupervisedAnalysis(run: ResolvedRun): boolean {
+    const profile = run.config.profiles[run.facts.execution.profile];
+    return profile !== undefined && typeof profile.testFamily !== 'string' &&
+        profile.testFamily.features.execution === 'analysis';
+}
+
 function preparationHardTimeout(run: ResolvedRun): number | null {
     return run.plan.kind !== 'local' && run.plan.collectedPlan.family !== null
         ? run.facts.execution.timeoutPolicy.hardMilliseconds
@@ -83,23 +96,22 @@ export function createSupervisedHardTimeout(
     runtime: SupervisedHardTimeoutRuntime
 ): SupervisedChildHardTimeout {
     let hardTimeout: ReturnType<Clock['setTimeout']> | null = null;
+    const { analysis } = runtime;
+
+    function clear(): void {
+        if (hardTimeout !== null) {
+            runtime.dependencies.wallClock.clearTimeout(hardTimeout);
+            hardTimeout = null;
+        }
+    }
 
     return {
-        clear() {
-            if (hardTimeout !== null) {
-                runtime.dependencies.wallClock.clearTimeout(hardTimeout);
-                hardTimeout = null;
-            }
-        },
+        clear,
         start() {
-            if (replayUsesLocalProcessPolicy(runtime.resolvedRun)) {
+            if (replayUsesLocalProcessPolicy(runtime.resolvedRun) || analysis && hardTimeout !== null) {
                 return;
             }
-            if (hardTimeout !== null) {
-                runtime.dependencies.wallClock.clearTimeout(hardTimeout);
-                hardTimeout = null;
-            }
-
+            clear();
             const remainingMilliseconds = remainingHardTimeoutMilliseconds(
                 runtime.state.activeCases.values(),
                 Number(runtime.dependencies.wallClock.currentMonotonicMicroseconds),
@@ -127,6 +139,7 @@ export function createSupervisedHardTimeout(
 }
 
 type SupervisedChildStartOptions = {
+    readonly analysis?: boolean | undefined;
     readonly capabilityRestrictions: {
         readonly mode: 'disabled' | 'enabled';
     };
@@ -141,6 +154,7 @@ type SupervisedChildForkOptions = {
     readonly env: Readonly<Record<string, string>>;
     readonly execArgv: readonly string[];
     readonly stdio: readonly ['ignore', 'pipe', 'pipe', 'ipc'];
+    readonly detached?: boolean;
 };
 
 export type SupervisedChildProcessStarterDependencies = {
@@ -309,16 +323,28 @@ async function supervisedChildExecArgv(
     ];
 }
 
+function assertAnalysisProcessGroup(analysis: boolean): void {
+    if (analysis && ![ 'darwin', 'linux' ].includes(process.platform)) {
+        throw new Error('Supervised analysis requires process-group ownership on Linux or macOS.');
+    }
+}
+
 export function createSupervisedChildProcessStarter(
     dependencies: SupervisedChildProcessStarterDependencies
 ): SupervisedChildProcessStarter {
     return async function startSupervisedChild(options) {
+        const analysis = options.analysis === true;
+        assertAnalysisProcessGroup(analysis);
         const environment = sanitizedChildEnvironment(options.environmentVariables, options.testFamily);
 
         return dependencies.fork(
             dependencies.childProcessEntryPoint,
-            [ childRoleArgument(supervisedChildRole) ],
+            [
+                childRoleArgument(supervisedChildRole),
+                ...analysis ? [ analysisProcessGroupArgument ] : []
+            ],
             {
+                ...analysis ? { detached: true } : {},
                 cwd: options.cwd,
                 env: options.coverage === null
                     ? environment

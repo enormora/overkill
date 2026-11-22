@@ -34,7 +34,7 @@ function skippedPlan(): TestPlan {
     }));
 }
 
-async function preparedProject(cleanup: TestScope['cleanup'], original: TestPlan): Promise<PreparedProject> {
+async function preparedProject(cleanup: TestScope['cleanup'], signal: AbortSignal, original: TestPlan): Promise<PreparedProject> {
     const files = Array.from({ length: sourceFileCount }, function (_value, index) {
         return `value${index}.ts`;
     });
@@ -48,7 +48,11 @@ async function preparedProject(cleanup: TestScope['cleanup'], original: TestPlan
         projectConfigPath: join(directory, 'tsconfig.json'),
         compiler: { kind: 'package', specifier: 'typescript-beta', version: '7.1.0-beta' }
     };
-    const preparation = await prepare(original, settings, process.cwd());
+    const preparation = await prepare(original, settings, {
+        projectRoot: process.cwd(),
+        signal,
+        expandVariants: null
+    });
     cleanup(async function () {
         await preparation.dispose();
     });
@@ -76,8 +80,8 @@ export const testNode = suite('compiler planning', [
         return scope.assert.collect();
     }),
     test('preserves complete immutable input facts', async function (scope) {
-        const { preparation, original } = await preparedProject(scope.cleanup, skippedPlan());
-        const collected = await preparation.collect(preparation.testPlan);
+        const { preparation, original } = await preparedProject(scope.cleanup, scope.signal, skippedPlan());
+        const collected = await preparation.collect(preparation.testPlan, scope.signal);
         const json = JSON.stringify(collected.facts);
         scope.assert.includes(json, 'value299.ts');
         scope.assert.includes(json, 'value0.ts');
@@ -88,32 +92,42 @@ export const testNode = suite('compiler planning', [
         return scope.assert.collect();
     }),
     test('rejects foreign preparation', async function (scope) {
-        const { preparation, original, settings } = await preparedProject(scope.cleanup, skippedPlan());
-        const second = await prepare(original, settings, process.cwd());
+        const { preparation, original, settings } = await preparedProject(scope.cleanup, scope.signal, skippedPlan());
+        const second = await prepare(original, settings, {
+            projectRoot: process.cwd(),
+            signal: scope.signal,
+            expandVariants: null
+        });
         scope.cleanup(async function () {
             await second.dispose();
         });
         await scope.assert.rejects(async function foreignPlan() {
-            await preparation.collect(second.testPlan);
+            await preparation.collect(second.testPlan, scope.signal);
         }, { message: /does not match the frozen project/u });
         return scope.assert.collect();
     }),
     test('rejects duplicate work and foreign discovery', async function (scope) {
-        const { preparation } = await preparedProject(scope.cleanup, skippedPlan());
+        const { preparation } = await preparedProject(scope.cleanup, scope.signal, skippedPlan());
         const plan = preparation.testPlan;
         await scope.assert.rejects(async function () {
-            return preparation.collect({ ...plan, cases: [ plan.cases[0], plan.cases[0] ] });
+            return preparation.collect(
+                { ...plan, cases: [ plan.cases[0], plan.cases[0] ] },
+                scope.signal
+            );
         }, { message: /Duplicate selected/u });
         await scope.assert.rejects(async function () {
-            return preparation.collect({ ...plan, discoveredCases: [ plan.discoveredCases[0] ] });
+            return preparation.collect(
+                { ...plan, discoveredCases: [ plan.discoveredCases[0] ] },
+                scope.signal
+            );
         }, { message: /Discovery does not match/u });
         return scope.assert.collect();
     }),
     test('revalidates inputs before checking', async function (scope) {
-        const { directory, preparation } = await preparedProject(scope.cleanup, observationPlan());
-        const collected = await preparation.collect(preparation.testPlan);
+        const { directory, preparation } = await preparedProject(scope.cleanup, scope.signal, observationPlan());
+        const collected = await preparation.collect(preparation.testPlan, scope.signal);
         await writeFile(join(directory, 'value0.ts'), 'export type Value = number;');
-        const { result, facts } = await collected.execute();
+        const { result, facts } = await collected.execute(scope.signal);
         scope.assert.includes(result.runnerErrors[0]?.message ?? '', 'changed after collection');
         scope.assert.equal(result.perTest[0]?.verdict, 'inconclusive');
         scope.assert.deepEqual<unknown, unknown>(facts, collected.facts);

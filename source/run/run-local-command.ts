@@ -1,10 +1,10 @@
+import { analysisSignal, withAnalysisSignal } from './analysis-deadline.ts';
 import { isAnalysisFamilyPlan, observeResolvedFamily } from './family-profile-run.ts';
-import { finalizeRunResult } from './run-result-finalization.ts';
 import { executeWithRuntimeAttachments, preparePropertyAttachments } from './runtime-attachment-boundary.ts';
 import {
     reportCollectionErrorResult
 } from './run-collection-error-result.ts';
-import { executeInProcessResolvedRun } from './run-in-process-execution.ts';
+import { executeLocalRun } from './run-in-process-execution.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 import {
     observeRunRuntimePolicy,
@@ -14,21 +14,6 @@ import type { ResolvedRun, RunCommand } from './run-types.ts';
 import { createLocalRunResult, isRunResult, type LocalRunOptions } from './local-run-collection.ts';
 
 type RunResult = Awaited<ReturnType<RunOrchestratorDependencies['execute']>>;
-async function executeResolvedRun(
-    resolvedRun: ResolvedRun,
-    dependencies: RunOrchestratorDependencies,
-    runtimePolicy: RunRuntimePolicy | null,
-    options: LocalRunOptions
-): Promise<RunResult> {
-    return await executeInProcessResolvedRun(resolvedRun, dependencies, {
-        async finalizeResult(run, result) {
-            return await finalizeRunResult(run, result, { ...options, dependencies, coverageSession: null });
-        },
-        runtimePolicy,
-        timing: options.timing
-    });
-}
-
 async function executeCollectedRun(
     run: ResolvedRun,
     dependencies: RunOrchestratorDependencies,
@@ -36,10 +21,10 @@ async function executeCollectedRun(
     options: LocalRunOptions
 ): Promise<RunResult> {
     if (isAnalysisFamilyPlan(run.plan)) {
-        return await executeResolvedRun(run, dependencies, runtimePolicy, options);
+        return await executeLocalRun(run, dependencies, runtimePolicy, options);
     }
     return await executeWithRuntimeAttachments(run, dependencies, async function executeAttachmentRun() {
-        return await executeResolvedRun(run, dependencies, runtimePolicy, options);
+        return await executeLocalRun(run, dependencies, runtimePolicy, options);
     }, options.record);
 }
 
@@ -88,11 +73,14 @@ async function runOrdinaryLocalCommand(
 export async function runLocalCommand(
     command: RunCommand,
     dependencies: RunOrchestratorDependencies,
-    options: LocalRunOptions
+    options: LocalRunOptions,
+    signal: Readonly<AbortSignal> | null = null
 ): Promise<RunResult> {
     if (command.request.coverage) {
         const coverage = await import('./run-local-coverage.ts');
         return await coverage.createCoverageLocalRunResult({ command, dependencies, ...options });
     }
-    return await runOrdinaryLocalCommand(command, dependencies, options);
+    return await withAnalysisSignal(signal ?? analysisSignal(), async function runWithCancellation() {
+        return await runOrdinaryLocalCommand(command, dependencies, options);
+    });
 }

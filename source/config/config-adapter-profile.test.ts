@@ -216,11 +216,25 @@ export const testNode = suite('imported analysis profile configuration', [
         }
         return scope.assert.collect();
     }),
+    test('rejects an explicit hard deadline for in-process analysis', function (scope) {
+        scope.assert.throws(function configureHardTimeout() {
+            return normalizeConfig({
+                profiles: { types: { ...definition, timeouts: { hardMilliseconds: 200 } } }
+            });
+        }, { message: /In-process analysis does not support an explicit hard timeout/u });
+        return scope.assert.collect();
+    }),
     test('retains explicit common timeout and evidence policy', function (scope) {
+        const supervised = defineTestFamily({
+            ...family,
+            features: { ...family.features, processModels: [ 'supervised-process' ] }
+        });
         const config = normalizeConfig({
             profiles: {
                 types: {
                     ...definition,
+                    testFamily: supervised,
+                    execution: { processModel: 'supervised-process', scheduling: 'serial', maxConcurrency: 1 },
                     timeouts: { collectionMilliseconds: 500, softMilliseconds: 100, hardMilliseconds: 200 },
                     runRecords: { persist: 'always' },
                     timings: { collection: 'precise' }

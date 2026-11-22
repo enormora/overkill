@@ -2,7 +2,8 @@ import {
     createExecutionGlobalErrorObserver,
     type ExecutionGlobalErrorObserver
 } from '../engine/execution-global-error-observer.ts';
-import { createHostTestPlan, resolveHostEngine } from './host-test-plan.ts';
+import { withAnalysisDeadline, withAnalysisSignal } from './analysis-deadline.ts';
+import { createHostTestPlan, resolveHostEngine, type HostEngineLoading } from './host-test-plan.ts';
 import type { RunnerError, TestPlan } from './run-engine-primitives.ts';
 import { RunCollectionError } from './run-errors.ts';
 import {
@@ -11,14 +12,12 @@ import {
     type RunTestPlanInput
 } from './run-test-plan.ts';
 import { validateFrozenPolicySource } from './frozen-policy-validation.ts';
-import type { RunEngineModuleLoader } from './run-engine-selection.ts';
 import { withFileModuleBoundary } from './file-module-boundary.ts';
 import { frozenSupervisedPolicy, type SupervisedChildCommand } from './supervised-protocol.ts';
 import { runExecutionFailure } from './execution-failure.ts';
 
-export type SupervisedChildTestPlanDependencies = {
+export type SupervisedChildTestPlanDependencies = HostEngineLoading & {
     readonly discoverRunFiles: RunTestPlanInput['discoverRunFiles'];
-    readonly loadRunEngineModule: RunEngineModuleLoader;
     readonly loadRunTestModules: RunTestPlanInput['loadRunTestModules'];
 };
 
@@ -88,11 +87,11 @@ export async function runObservedSupervisedChildCommand(
     }
 }
 
-export async function createSupervisedChildTestPlan(
+async function createChildTestPlan(
     command: SupervisedChildCommand,
     dependencies: SupervisedChildTestPlanDependencies
 ): Promise<TestPlan> {
-    const engine = await resolveHostEngine(command.engine, dependencies.loadRunEngineModule);
+    const engine = await resolveHostEngine(command.engine, dependencies);
     const input = {
         replay: command.replay,
         cwd: command.cwd,
@@ -115,6 +114,24 @@ export async function createSupervisedChildTestPlan(
                 : await createRunTestPlanFromFiles({ ...input, files: policy.files }, collectionPolicy);
         }
     });
+}
+
+export async function createSupervisedChildTestPlan(
+    command: SupervisedChildCommand,
+    dependencies: SupervisedChildTestPlanDependencies
+): Promise<TestPlan> {
+    if (command.analysis === true) {
+        return await withAnalysisDeadline(
+            command.collectionTimeoutMilliseconds,
+            'Analysis preparation exceeded collection timeout.',
+            async function prepare(signal) {
+                return await withAnalysisSignal(signal, async function collectAnalysis() {
+                    return await createChildTestPlan(command, dependencies);
+                });
+            }
+        );
+    }
+    return await createChildTestPlan(command, dependencies);
 }
 
 export async function validateSupervisedPolicy(

@@ -8,7 +8,7 @@ import {
     defineSimulation,
     type SimulatedHttpServerDefinition
 } from '../../../simulation/simulation.ts';
-import { startSimulatedHttpServer } from '../../../simulation/simulated-http-server.ts';
+import { startFixedSimulatedHttpServer, startSimulatedHttpServer } from '../../../simulation/simulated-http-server.ts';
 
 type CompletionOrderScenarios = {
     readonly default: { readonly title: 'standard responses'; };
@@ -36,9 +36,27 @@ async function startInvalidSimulation(value: unknown): Promise<void> {
     } ]);
 }
 
+async function requestScenarioResponses(
+    baseUrl: string,
+    failureUrl: string
+): Promise<readonly [Response, Response, Response, Response]> {
+    return [
+        await fetch(new URL('checkout?cart=full', baseUrl)),
+        await fetch(failureUrl),
+        await fetch(new URL('/missing/checkout', baseUrl)),
+        await fetch(new URL('/checkout?__overkill_scenario=default', baseUrl))
+    ];
+}
+
 const assertScenarioResponses = defineCompositeAssertion({
     name: 'scenario responses',
-    async assert(check, defaultResponse: Response, failureResponse: Response, unknownResponse: Response) {
+    async assert(
+        check,
+        defaultResponse: Response,
+        failureResponse: Response,
+        unknownResponses: readonly [Response, Response]
+    ) {
+        const [ unknownResponse, missingResponse ] = unknownResponses;
         const initialChecks = check.group([
             check.equal(defaultResponse.status, 200),
             check.deepEqual(await defaultResponse.json(), { key: 'default', status: 200 }),
@@ -47,7 +65,11 @@ const assertScenarioResponses = defineCompositeAssertion({
             check.equal(unknownResponse.status, 400)
         ]);
         await unknownResponse.arrayBuffer();
-        return initialChecks;
+        return check.group([
+            initialChecks,
+            check.equal(missingResponse.status, 400),
+            check.equal(await missingResponse.text(), 'Missing simulation scenario.')
+        ]);
     }
 });
 
@@ -72,11 +94,15 @@ const assertScenarioRouting = defineMacro(function (title: string) {
             }
         });
         await using server = await startSimulatedHttpServer({ simulation });
-        const defaultResponse = await fetch(`${server.baseUrl}/checkout?cart=full`);
-        const failureResponse = await fetch(server.scenarioUrl('payments-500', '/checkout?cart=full'));
-        const unknownResponse = await fetch(`${server.baseUrl}/checkout?__overkill_scenario=missing`);
-
-        await scope.assert(assertScenarioResponses, defaultResponse, failureResponse, unknownResponse);
+        const [ defaultResponse, failureResponse, unknownResponse, missingResponse ] = await requestScenarioResponses(
+            server.baseUrl,
+            server.scenarioUrl('payments-500', '/checkout?cart=full')
+        );
+        await scope.assert(assertScenarioResponses, defaultResponse, failureResponse, [
+            unknownResponse,
+            missingResponse
+        ]);
+        const { origin } = new URL(server.baseUrl);
         scope.assert.deepEqual(requests, [
             'default:/checkout?cart=full',
             'payments-500:/checkout?cart=full'
@@ -84,7 +110,7 @@ const assertScenarioRouting = defineMacro(function (title: string) {
         scope.assert(httpScenarioEvidence, {
             count: server.transcript.entryCount,
             entry: server.transcript.nthEntry(1)
-        }, { count: 3, scenario: 'payments-500', url: `${server.baseUrl}/checkout?cart=full` });
+        }, { count: 4, scenario: 'payments-500', url: origin + '/checkout?cart=full' });
 
         return scope.assert.collect();
     });
@@ -141,12 +167,12 @@ async function completionOrderedEntries(
     simulation: SimulatedHttpServerDefinition<'api', CompletionOrderScenarios>,
     slowStarted: PromiseWithResolvers<undefined>,
     releaseSlowResponse: PromiseWithResolvers<undefined>
-): Promise<readonly HttpTranscriptEntry<{ readonly scenario: string; }>[]> {
+): Promise<readonly HttpTranscriptEntry<{ readonly scenario: string | null; }>[]> {
     await using server = await startSimulatedHttpServer({ simulation });
-    const slowRequest = fetch(`${server.baseUrl}/slow`);
+    const slowRequest = fetch(new URL('slow', server.baseUrl));
 
     await slowStarted.promise;
-    const fastRequest = fetch(`${server.baseUrl}/fast`);
+    const fastRequest = fetch(new URL('fast', server.baseUrl));
 
     const fastResponse = await fastRequest;
     await fastResponse.arrayBuffer();
@@ -156,7 +182,7 @@ async function completionOrderedEntries(
 
     return server.transcript.entries.filter(function isHttpEntry(
         entry
-    ): entry is HttpTranscriptEntry<{ readonly scenario: string; }> {
+    ): entry is HttpTranscriptEntry<{ readonly scenario: string | null; }> {
         return entry[0] === 'http';
     });
 }
@@ -277,6 +303,25 @@ export const testNode = suite('Simulated HTTP server', [
             [ 1, 0 ]
         );
 
+        return scope.assert.collect();
+    }),
+    test('binds a fixed scenario before listening and preserves application paths', async function (scope) {
+        const simulation = defineSimulatedHttpServer({
+            name: 'api',
+            scenarios: { default: { title: 'Default' }, outage: { title: 'Outage' } },
+            handle(request, scenario) {
+                const { pathname, search } = new URL(request.url);
+                return Response.json([ scenario.key, pathname, search ]);
+            }
+        });
+        await scope.assert.rejects(async function () {
+            await Reflect.apply(startFixedSimulatedHttpServer, undefined, [ { simulation, scenario: 'missing' } ]);
+        }, { message: 'Unknown fixed simulation scenario.' });
+        await using server = await startFixedSimulatedHttpServer({ simulation, scenario: 'outage' });
+        const response = await fetch(new URL('/default/orders?limit=5', server.baseUrl));
+        scope.assert.deepEqual(await response.json(), [ 'outage', '/default/orders', '?limit=5' ]);
+        const entry = server.transcript.firstEntry;
+        scope.assert.equal(entry?.[0] === 'http' ? entry[1].context.scenario : null, 'outage');
         return scope.assert.collect();
     }),
     assertDisposalClosesServer('disposal closes the listener'),

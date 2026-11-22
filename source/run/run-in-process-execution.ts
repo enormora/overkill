@@ -1,5 +1,8 @@
 import { validateProcessUsagePolicy } from '../config/validation.ts';
 import type { TestPlan } from '../engine/test-plan.ts';
+import { finalizeRunResult } from './run-result-finalization.ts';
+import type { LocalRunOptions } from './local-run-collection.ts';
+import type { RunRuntimePolicy } from './run-support.ts';
 import {
     executeEmptyShardRun
 } from './run-empty-shard.ts';
@@ -44,4 +47,19 @@ export async function executeInProcessResolvedRun(
     }
 
     return await executeLocalResolvedRun(resolvedRun, dependencies, options);
+}
+
+export async function executeLocalRun(
+    resolvedRun: ResolvedRun,
+    dependencies: RunOrchestratorDependencies,
+    runtimePolicy: RunRuntimePolicy | null,
+    options: LocalRunOptions
+): Promise<RunResult> {
+    return await executeInProcessResolvedRun(resolvedRun, dependencies, {
+        async finalizeResult(run, result) {
+            return await finalizeRunResult(run, result, { ...options, dependencies, coverageSession: null });
+        },
+        runtimePolicy,
+        timing: options.timing
+    });
 }

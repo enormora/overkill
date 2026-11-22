@@ -88,6 +88,7 @@ async function planSelectedInvocation(
             resolved: await recollectProfileFamily(
                 plan.family.preparation,
                 { ...testPlan, cases },
+                runInput.profile.timeouts.collectionMilliseconds,
                 function resolveInvocation(preparedPlan) {
                     return createLocalResolvedRunFromTestPlan(
                         { ...command, request },

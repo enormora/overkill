@@ -251,7 +251,7 @@ async function executeAssignment(input: SupervisedAssignmentExecution): Promise<
     }, async function observeChildAssignment(runtimePolicy) {
         const execute = await createSupervisedChildExecute(
             input.wallClock,
-            input.command,
+            { command: input.command, assignment: input.assignment },
             input.collectedPlan.familySource,
             input.dependencies.readActiveResourceTypes
         );

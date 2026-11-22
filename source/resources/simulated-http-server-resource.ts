@@ -1,6 +1,7 @@
 import {
     assertNoSimulatedHttpHandlerErrors,
-    createSimulatedHttpListeningServer
+    createSimulatedHttpListeningServer,
+    simulatedHttpScenarioUrl
 } from '../packages/simulation/http.entry-point.ts';
 import type {
     SimulatedHttpServerDefinition,
@@ -39,11 +40,11 @@ export type SimulatedHttpServerResourceHandle<
     readonly baseUrl: string;
     readonly endpoint: LocalHttpServiceHandle['endpoint'];
     readonly scenarioUrl: (scenario: string & keyof Simulation['scenarios'], path: string) => string;
-    readonly transcript: HttpTranscript<{ readonly scenario: string; }>;
+    readonly transcript: HttpTranscript<{ readonly scenario: string | null; }>;
 };
 
 type SimulatedHttpLocalService = LocalHttpServiceHandle & {
-    readonly transcript: HttpTranscript<{ readonly scenario: string; }>;
+    readonly transcript: HttpTranscript<{ readonly scenario: string | null; }>;
 };
 
 export type SimulatedHttpServerResource<
@@ -64,16 +65,6 @@ export type SimulatedHttpServerResource<
     >
 >;
 
-const scenarioQueryParameterName = '__overkill_scenario';
-
-function scenarioUrl(baseUrl: string, scenario: string, path: string): string {
-    const url = new URL(path, baseUrl);
-
-    url.searchParams.set(scenarioQueryParameterName, scenario);
-
-    return url.href;
-}
-
 function simulatedHttpServerResourceHandle<
     Simulation extends {
         readonly scenarios: SimulationScenarioCatalog;
@@ -83,11 +74,11 @@ function simulatedHttpServerResourceHandle<
     scenario: string & keyof Simulation['scenarios']
 ): SimulatedHttpServerResourceHandle<Simulation> {
     return Object.freeze({
-        baseUrl: scenario === 'default' ? service.baseUrl : scenarioUrl(service.baseUrl, scenario, '/'),
+        baseUrl: simulatedHttpScenarioUrl(service.baseUrl, scenario, '/'),
         endpoint: service.endpoint,
         transcript: service.transcript,
         scenarioUrl(requestedScenario: string & keyof Simulation['scenarios'], path: string) {
-            return scenarioUrl(service.baseUrl, requestedScenario, path);
+            return simulatedHttpScenarioUrl(service.baseUrl, requestedScenario, path);
         }
     });
 }

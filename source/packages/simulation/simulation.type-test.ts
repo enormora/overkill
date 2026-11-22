@@ -7,7 +7,9 @@ import {
     type SimulationScenarioFor
 } from './simulation.entry-point.ts';
 import {
+    startFixedSimulatedHttpServer,
     startSimulatedHttpServer,
+    type FixedSimulatedHttpServerHandle,
     type SimulatedHttpServerHandle
 } from './http.entry-point.ts';
 
@@ -56,6 +58,21 @@ describe('@overkill-dev/simulation', function () {
             descriptor: httpSimulation.scenarios.default,
             key: 'missing'
         });
+    });
+
+    test('requires a catalog key to launch a fixed server', function () {
+        expect(startFixedSimulatedHttpServer({ simulation: httpSimulation, scenario: 'outage' })).type.toBe<
+            Promise<FixedSimulatedHttpServerHandle>
+        >();
+        expect(startFixedSimulatedHttpServer<typeof httpSimulation.name, typeof httpSimulation.scenarios>)
+            .type
+            .not
+            .toBeCallableWith({ simulation: httpSimulation });
+        expect(startFixedSimulatedHttpServer<typeof httpSimulation.name, typeof httpSimulation.scenarios>)
+            .type
+            .not
+            .toBeCallableWith({ simulation: httpSimulation, scenario: 'missing' });
+        expect<FixedSimulatedHttpServerHandle>().type.not.toHaveProperty('scenarioUrl');
     });
 
     test('types launched simulated HTTP server handles from scenario catalogs', function () {

@@ -97,15 +97,21 @@ async function writeFixture(directory: string): Promise<void> {
 }
 
 async function originalProject(
-    cleanup: TestScope['cleanup']
+    cleanup: TestScope['cleanup'],
+    signal: AbortSignal
 ): Promise<{ readonly project: FrozenProject; readonly directory: string; }> {
     const directory = await fixtureDirectory(cleanup);
     await writeFixture(directory);
-    const project = await loadProject(join(directory, 'tsconfig.json'), {
-        kind: 'package',
-        specifier: 'typescript-beta',
-        version: '7.1.0-beta'
-    }, process.cwd());
+    const project = await loadProject(
+        join(directory, 'tsconfig.json'),
+        {
+            kind: 'package',
+            specifier: 'typescript-beta',
+            version: '7.1.0-beta'
+        },
+        process.cwd(),
+        signal
+    );
     cleanup(async function disposeCompiler() {
         await disposeProject(project);
     });
@@ -240,7 +246,7 @@ const nodes=[generic<'literal'>(),table({title:'static rows',cases:[1,2],test:sc
 
 export const testNode = suite('original-source relations', [
     test('implements the documented equality rules in the original project', async function (scope) {
-        const { project, directory } = await originalProject(scope.cleanup);
+        const { project, directory } = await originalProject(scope.cleanup, scope.signal);
         const analysis = typeAnalysis(project);
         const types = await originalTypes(project, directory);
         scope.assert.deepEqual(await project.program.getSemanticDiagnostics(), []);

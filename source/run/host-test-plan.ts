@@ -18,11 +18,13 @@ type HostPlanInput = {
     readonly collect: (policy: TestPlanCollectionPolicy, replay: ReplayWire | null) => Promise<TestPlan>;
 };
 
+export type HostEngineLoading = { readonly loadRunEngineModule: RunEngineModuleLoader; };
+
 export async function resolveHostEngine(
     selection: SupervisedChildCommand['engine'],
-    load: RunEngineModuleLoader
+    dependencies: HostEngineLoading
 ): Promise<Engine> {
-    return selection.kind === 'module' ? await load(selection) : defaultRunEngine;
+    return selection.kind === 'module' ? await dependencies.loadRunEngineModule(selection) : defaultRunEngine;
 }
 
 function hostCollectionPolicy(command: HostPlanCommand): TestPlanCollectionPolicy {

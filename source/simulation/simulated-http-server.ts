@@ -1,4 +1,5 @@
 import http from 'node:http';
+import { isIPv6 } from 'node:net';
 import {
     createHttpTranscriptRecorder,
     httpHeadersSnapshot,
@@ -13,13 +14,19 @@ import {
     type TranscriptScope
 } from '../transcript/transcript-store.ts';
 import {
+    assertRoutableScenarios,
+    fixedScenario,
+    requestRoutedScenario,
+    simulatedHttpScenarioUrl,
+    type ScenarioRoute,
+    type ScenarioRouting
+} from './simulated-http-routing.ts';
+import {
     isDefinedSimulatedHttpServer,
     type SimulatedHttpServerDefinition,
     type SimulationScenarioCatalog
 } from './simulation.ts';
 
-const scenarioQueryParameterName = '__overkill_scenario';
-const unknownScenarioStatus = 400;
 const handlerFailureStatus = 500;
 
 export type SimulatedHttpServerOptions<
@@ -35,11 +42,25 @@ type SimulationWithScenarios = {
     readonly scenarios: SimulationScenarioCatalog;
 };
 
-export type SimulatedHttpServerHandle<Simulation extends SimulationWithScenarios> = AsyncDisposable & {
+type ListeningHandle<Scenario extends string | null> = {
     readonly baseUrl: string;
     readonly dispose: () => Promise<void>;
+    readonly transcript: HttpTranscript<{ readonly scenario: Scenario; }>;
+};
+
+type ServerHandle<Scenario extends string | null> = AsyncDisposable & ListeningHandle<Scenario>;
+
+export type SimulatedHttpServerHandle<Simulation extends SimulationWithScenarios> = ServerHandle<string | null> & {
     readonly scenarioUrl: (scenario: string & keyof Simulation['scenarios'], path: string) => string;
-    readonly transcript: HttpTranscript<{ readonly scenario: string; }>;
+};
+
+export type FixedSimulatedHttpServerHandle = ServerHandle<string>;
+
+export type FixedSimulatedHttpServerOptions<
+    Name extends string,
+    Scenarios extends SimulationScenarioCatalog
+> = SimulatedHttpServerOptions<Name, Scenarios> & {
+    readonly scenario: NoInfer<string & keyof Scenarios>;
 };
 
 type ListenAddress = {
@@ -74,12 +95,6 @@ type ResponseWriter = {
     readonly end: (body: Uint8Array | string) => unknown;
     readonly writeHead: ResponseHead;
 };
-type SimulatedHttpServerHandleCandidate<Simulation extends SimulationWithScenarios> = {
-    readonly baseUrl: string;
-    readonly dispose: () => Promise<void>;
-    readonly scenarioUrl: (scenario: string & keyof Simulation['scenarios'], path: string) => string;
-    readonly transcript: HttpTranscript<{ readonly scenario: string; }>;
-};
 type SimulationRequest = {
     readonly method: string | undefined;
     readonly url: string | undefined;
@@ -90,43 +105,33 @@ type SimulationRequest = {
         (event: 'end', listener: () => void): unknown;
     };
 };
-type SimulationRequestContext<Scenarios extends SimulationScenarioCatalog> = {
+type SimulationRequestContext<Scenario extends string | null> = {
     readonly baseUrl: string;
     readonly recordError: (error: unknown) => void;
     readonly request: SimulationRequest;
     readonly response: ResponseWriter;
     readonly scope: TranscriptScope | null;
-    readonly simulation: SimulatedHttpServerDefinition<string, Scenarios>;
-    readonly transcript: HttpTranscriptRecorder<{ readonly scenario: string; }>;
+    readonly route: ScenarioRouting<Scenario>;
+    readonly transcript: HttpTranscriptRecorder<{ readonly scenario: Scenario; }>;
 };
 type HandlerErrors = {
     readonly errors: readonly unknown[];
     readonly record: (error: unknown) => void;
 };
-type SimulationServerOptions<Scenarios extends SimulationScenarioCatalog> = {
+type SimulationServerOptions<Scenario extends string | null> = {
     readonly host: string;
     readonly recordError: (error: unknown) => void;
     readonly scope: TranscriptScope | null;
-    readonly simulation: SimulatedHttpServerDefinition<string, Scenarios>;
-    readonly transcript: HttpTranscriptRecorder<{ readonly scenario: string; }>;
+    readonly route: ScenarioRouting<Scenario>;
+    readonly transcript: HttpTranscriptRecorder<{ readonly scenario: Scenario; }>;
 };
-export type SimulatedHttpListeningServer = {
+export type SimulatedHttpListeningServer<Scenario extends string | null = string | null> = {
     readonly errors: readonly unknown[];
     readonly server: ServerLifecycle;
-    readonly transcript: HttpTranscript<{ readonly scenario: string; }>;
+    readonly transcript: HttpTranscript<{ readonly scenario: Scenario; }>;
 };
 
-function asyncDisposeSymbol(): symbol {
-    const value = Reflect.get(Symbol, 'asyncDispose');
-
-    if (typeof value !== 'symbol') {
-        throw new TypeError('Runtime does not provide Symbol.asyncDispose.');
-    }
-
-    return value;
-}
-
-async function collectRequestBody(request: SimulationRequest): Promise<Uint8Array | null> {
+async function collectRequestBody(request: SimulationRequest): Promise<Uint8Array<ArrayBuffer> | null> {
     const method = request.method ?? 'GET';
     if (method === 'GET' || method === 'HEAD') {
         return null;
@@ -168,14 +173,6 @@ async function responseBody(response: Response): Promise<Buffer> {
     return Buffer.from(body);
 }
 
-function scenarioUrl(baseUrl: string, scenario: string, path: string): string {
-    const url = new URL(path, baseUrl);
-
-    url.searchParams.set(scenarioQueryParameterName, scenario);
-
-    return url.href;
-}
-
 function readListenAddress(server: ServerAddressReader, host: string): ListenAddress {
     const address = server.address();
 
@@ -189,10 +186,11 @@ function readListenAddress(server: ServerAddressReader, host: string): ListenAdd
     };
 }
 
-function serverBaseUrl(server: ServerAddressReader, host: string): string {
-    const listenAddress = readListenAddress(server, host);
+function httpBaseUrl(address: ListenAddress): string {
+    const { host, port } = address;
+    const hostname = isIPv6(host) ? `[${host}]` : host;
 
-    return `http://${listenAddress.host}:${listenAddress.port}`;
+    return `http://${hostname}:${port}`;
 }
 
 async function listen(server: ServerLifecycle, host: string, port: number): Promise<ListenAddress> {
@@ -250,25 +248,14 @@ function sendTextResponse(response: ResponseWriter, status: number, body: string
     response.end(body);
 }
 
-async function createWebRequest(request: SimulationRequest, baseUrl: string): Promise<{
-    readonly request: Request;
-    readonly scenario: string;
-}> {
-    const requestUrl = new URL(request.url ?? '/', baseUrl);
-    const scenario = requestUrl.searchParams.get(scenarioQueryParameterName) ?? 'default';
-
-    requestUrl.searchParams.delete(scenarioQueryParameterName);
-
+async function createWebRequest(request: SimulationRequest, url: URL): Promise<Request> {
     const body = await collectRequestBody(request);
     const init: NonNullable<ConstructorParameters<typeof Request>[1]> = {
         headers: requestHeaders(request),
         method: request.method ?? 'GET'
     };
 
-    return {
-        request: body === null ? new Request(requestUrl, init) : new Request(requestUrl, { ...init, body }),
-        scenario
-    };
+    return body === null ? new Request(url, init) : new Request(url, { ...init, body });
 }
 
 function disposalError(error: unknown): Error {
@@ -277,55 +264,34 @@ function disposalError(error: unknown): Error {
         : new Error('Simulation handler failed with a non-error value.', { cause: error });
 }
 
-function isSimulatedHttpServerHandle<Simulation extends SimulationWithScenarios>(
-    handle: SimulatedHttpServerHandleCandidate<Simulation>
-): handle is SimulatedHttpServerHandle<Simulation> {
+function asyncDisposeSymbol(): symbol {
+    const value: unknown = Reflect.get(Symbol, 'asyncDispose');
+
+    if (typeof value !== 'symbol') {
+        throw new TypeError('Runtime does not provide Symbol.asyncDispose.');
+    }
+
+    return value;
+}
+
+type ServerDisposal = {
+    readonly dispose: () => Promise<void>;
+};
+
+function isAsyncDisposable(handle: ServerDisposal): handle is AsyncDisposable & ServerDisposal {
     return Reflect.has(handle, asyncDisposeSymbol());
 }
 
-function simulatedHttpServerHandle<Simulation extends SimulationWithScenarios>(
-    baseUrl: string,
-    disposeServer: () => Promise<void>,
-    transcript: HttpTranscript<{ readonly scenario: string; }>
-): SimulatedHttpServerHandle<Simulation> {
-    const handle = {
-        baseUrl,
-        scenarioUrl(scenario: string & keyof Simulation['scenarios'], path: string) {
-            return scenarioUrl(baseUrl, scenario, path);
-        },
-        transcript,
-        dispose: disposeServer
-    };
+function disposableHandle<Handle extends ServerDisposal>(
+    handle: Handle
+): Readonly<AsyncDisposable & Handle> {
+    Object.defineProperty(handle, asyncDisposeSymbol(), { value: handle.dispose });
 
-    Object.defineProperty(handle, asyncDisposeSymbol(), { value: disposeServer });
-
-    const frozenHandle = Object.freeze(handle);
-
-    if (isSimulatedHttpServerHandle<Simulation>(frozenHandle)) {
-        return frozenHandle;
+    if (isAsyncDisposable(handle)) {
+        return Object.freeze(handle);
     }
 
     throw new TypeError('Simulated HTTP server handle is incomplete.');
-}
-
-async function respondToSimulationRequest<Scenarios extends SimulationScenarioCatalog>(
-    response: ResponseWriter,
-    simulation: SimulatedHttpServerDefinition<string, Scenarios>,
-    request: Request,
-    scenario: string
-): Promise<{ readonly body: Buffer; readonly response: Response; }> {
-    if (!Object.hasOwn(simulation.scenarios, scenario)) {
-        const webResponse = new Response('Unknown simulation scenario.', { status: unknownScenarioStatus });
-
-        return { body: await sendWebResponse(response, webResponse), response: webResponse };
-    }
-
-    const scenarioKey = scenario as string & keyof Scenarios;
-    const descriptor = simulation.scenarios[scenarioKey];
-
-    const webResponse = await simulation.handle(request, { descriptor, key: scenarioKey });
-
-    return { body: await sendWebResponse(response, webResponse), response: webResponse };
 }
 
 function requestSnapshot(request: Request, body: Uint8Array | null): HttpRequestSnapshot {
@@ -337,9 +303,9 @@ function requestSnapshot(request: Request, body: Uint8Array | null): HttpRequest
     });
 }
 
-type PreparedSimulationRequest = {
+type PreparedSimulationRequest<Scenario extends string | null> = {
     readonly request: Request;
-    readonly scenario: string;
+    readonly scenario: Scenario;
     readonly snapshot: HttpRequestSnapshot;
 };
 type SimulationResponse = {
@@ -347,26 +313,26 @@ type SimulationResponse = {
     readonly response: Response;
 };
 
-async function prepareSimulationRequest(
+async function prepareSimulationRequest<Scenario extends string | null>(
     request: SimulationRequest,
-    baseUrl: string
-): Promise<PreparedSimulationRequest> {
-    const webRequest = await createWebRequest(request, baseUrl);
-    const requestBody = await webRequest.request.clone().arrayBuffer();
+    route: ScenarioRoute<Scenario>
+): Promise<PreparedSimulationRequest<Scenario>> {
+    const webRequest = await createWebRequest(request, route.url);
+    const requestBody = await webRequest.clone().arrayBuffer();
 
     return {
-        request: webRequest.request,
-        scenario: webRequest.scenario,
+        request: webRequest,
+        scenario: route.scenario,
         snapshot: requestSnapshot(
-            webRequest.request,
+            webRequest,
             requestBody.byteLength === 0 ? null : new Uint8Array(requestBody)
         )
     };
 }
 
-function recordSimulationResponse<Scenarios extends SimulationScenarioCatalog>(
-    context: SimulationRequestContext<Scenarios>,
-    prepared: PreparedSimulationRequest,
+function recordSimulationResponse<Scenario extends string | null>(
+    context: SimulationRequestContext<Scenario>,
+    prepared: PreparedSimulationRequest<Scenario>,
     result: SimulationResponse,
     sequence: number
 ): void {
@@ -386,21 +352,19 @@ function recordSimulationResponse<Scenarios extends SimulationScenarioCatalog>(
     }, context.scope);
 }
 
-async function executeSimulationRequest<Scenarios extends SimulationScenarioCatalog>(
-    context: SimulationRequestContext<Scenarios>,
+async function executeSimulationRequest<Scenario extends string | null>(
+    context: SimulationRequestContext<Scenario>,
     sequence: number
 ): Promise<void> {
-    const prepared = await prepareSimulationRequest(context.request, context.baseUrl);
+    const target = context.request.url ?? '/';
+    const requestUrl = target.startsWith('/') ? new URL(context.baseUrl + target) : new URL(target, context.baseUrl);
+    const route = context.route(requestUrl);
+    const prepared = await prepareSimulationRequest(context.request, route);
 
     try {
-        const result = await respondToSimulationRequest(
-            context.response,
-            context.simulation,
-            prepared.request,
-            prepared.scenario
-        );
-
-        recordSimulationResponse(context, prepared, result, sequence);
+        const response = await route.respond(prepared.request);
+        const body = await sendWebResponse(context.response, response);
+        recordSimulationResponse(context, prepared, { body, response }, sequence);
     } catch (error: unknown) {
         context.transcript.record({
             context: { scenario: prepared.scenario },
@@ -412,8 +376,8 @@ async function executeSimulationRequest<Scenarios extends SimulationScenarioCata
     }
 }
 
-function reportSimulationFailure<Scenarios extends SimulationScenarioCatalog>(
-    context: SimulationRequestContext<Scenarios>,
+function reportSimulationFailure<Scenario extends string | null>(
+    context: SimulationRequestContext<Scenario>,
     error: unknown
 ): void {
     try {
@@ -424,8 +388,8 @@ function reportSimulationFailure<Scenarios extends SimulationScenarioCatalog>(
     }
 }
 
-export async function serveSimulatedHttpRequest<Scenarios extends SimulationScenarioCatalog>(
-    context: SimulationRequestContext<Scenarios>
+export async function serveSimulatedHttpRequest<Scenario extends string | null>(
+    context: SimulationRequestContext<Scenario>
 ): Promise<void> {
     const sequence = context.transcript.nextSequence();
 
@@ -440,8 +404,8 @@ function startGuardedRoute(routePromise: Promise<void>): void {
     Reflect.get(routePromise, Symbol.toStringTag);
 }
 
-function createServer<Scenarios extends SimulationScenarioCatalog>(
-    options: SimulationServerOptions<Scenarios>
+function createServer<Scenario extends string | null>(
+    options: SimulationServerOptions<Scenario>
 ): http.Server {
     const server = http.createServer(function handleRequest(request, response) {
         startGuardedRoute(
@@ -453,8 +417,8 @@ function createServer<Scenarios extends SimulationScenarioCatalog>(
                     on: request.on.bind(request)
                 },
                 response,
-                simulation: options.simulation,
-                baseUrl: serverBaseUrl(server, options.host),
+                route: options.route,
+                baseUrl: httpBaseUrl(readListenAddress(server, options.host)),
                 recordError: options.recordError,
                 scope: options.scope,
                 transcript: options.transcript
@@ -466,9 +430,7 @@ function createServer<Scenarios extends SimulationScenarioCatalog>(
 }
 
 async function listenBaseUrl(server: ServerLifecycle, host: string, port: number): Promise<string> {
-    const listenAddress = await listen(server, host, port);
-
-    return `http://${listenAddress.host}:${listenAddress.port}`;
+    return httpBaseUrl(await listen(server, host, port));
 }
 
 function createHandlerErrors(): HandlerErrors {
@@ -498,17 +460,17 @@ function createServerDisposal(server: ServerLifecycle, handlerErrors: readonly u
     };
 }
 
-export function createSimulatedHttpListeningServer<Scenarios extends SimulationScenarioCatalog>(
-    simulation: SimulatedHttpServerDefinition<string, Scenarios>,
+function createListeningServer<Scenario extends string | null>(
+    route: ScenarioRouting<Scenario>,
     host: string
-): SimulatedHttpListeningServer {
+): SimulatedHttpListeningServer<Scenario> {
     const handlerErrors = createHandlerErrors();
-    const transcript = createHttpTranscriptRecorder<{ readonly scenario: string; }>();
+    const transcript = createHttpTranscriptRecorder<{ readonly scenario: Scenario; }>();
     const server = createServer({
         host,
         recordError: handlerErrors.record,
         scope: currentTranscriptScope(),
-        simulation,
+        route,
         transcript
     });
 
@@ -519,10 +481,33 @@ export function createSimulatedHttpListeningServer<Scenarios extends SimulationS
     };
 }
 
+export function createSimulatedHttpListeningServer<Scenarios extends SimulationScenarioCatalog>(
+    simulation: SimulatedHttpServerDefinition<string, Scenarios>,
+    host: string
+): SimulatedHttpListeningServer {
+    assertRoutableScenarios(simulation.scenarios);
+
+    return createListeningServer(requestRoutedScenario(simulation), host);
+}
+
 export function assertNoSimulatedHttpHandlerErrors(handlerErrors: readonly unknown[]): void {
     if (handlerErrors[0] !== undefined) {
         throw disposalError(handlerErrors[0]);
     }
+}
+
+async function listenToServer<Scenario extends string | null>(
+    listener: SimulatedHttpListeningServer<Scenario>,
+    host: string,
+    port: number
+): Promise<ListeningHandle<Scenario>> {
+    const baseUrl = await listenBaseUrl(listener.server, host, port);
+
+    return {
+        baseUrl,
+        dispose: createServerDisposal(listener.server, listener.errors),
+        transcript: listener.transcript
+    };
 }
 
 export async function listenToSimulatedHttpServer<
@@ -530,7 +515,7 @@ export async function listenToSimulatedHttpServer<
     const Scenarios extends SimulationScenarioCatalog
 >(
     options: SimulatedHttpServerOptions<Name, Scenarios>,
-    createListeningServer: (
+    createListener: (
         simulation: SimulatedHttpServerDefinition<string, Scenarios>,
         host: string
     ) => SimulatedHttpListeningServer
@@ -540,16 +525,16 @@ export async function listenToSimulatedHttpServer<
     }
 
     const host = options.host ?? '127.0.0.1';
-    const port = options.port ?? 0;
-    const listeningServer = createListeningServer(options.simulation, host);
-    const baseUrl = await listenBaseUrl(listeningServer.server, host, port);
-    const disposeServer = createServerDisposal(listeningServer.server, listeningServer.errors);
+    const listener = createListener(options.simulation, host);
+    const handle = await listenToServer(listener, host, options.port ?? 0);
 
-    return simulatedHttpServerHandle<SimulatedHttpServerDefinition<Name, Scenarios>>(
-        baseUrl,
-        disposeServer,
-        listeningServer.transcript
-    );
+    return disposableHandle({
+        ...handle,
+        baseUrl: simulatedHttpScenarioUrl(handle.baseUrl, 'default', '/'),
+        scenarioUrl(scenario: string & keyof Scenarios, path: string) {
+            return simulatedHttpScenarioUrl(handle.baseUrl, scenario, path);
+        }
+    });
 }
 
 export async function startSimulatedHttpServer<
@@ -559,4 +544,21 @@ export async function startSimulatedHttpServer<
     options: SimulatedHttpServerOptions<Name, Scenarios>
 ): Promise<SimulatedHttpServerHandle<SimulatedHttpServerDefinition<Name, Scenarios>>> {
     return await listenToSimulatedHttpServer(options, createSimulatedHttpListeningServer);
+}
+
+export async function startFixedSimulatedHttpServer<
+    const Name extends string,
+    const Scenarios extends SimulationScenarioCatalog
+>(
+    options: FixedSimulatedHttpServerOptions<Name, Scenarios>
+): Promise<FixedSimulatedHttpServerHandle> {
+    if (!isDefinedSimulatedHttpServer(options.simulation)) {
+        throw new TypeError('startFixedSimulatedHttpServer() requires a simulated HTTP server definition.');
+    }
+
+    const route = fixedScenario(options.simulation, options.scenario);
+    const host = options.host ?? '127.0.0.1';
+    const listener = createListeningServer(route, host);
+
+    return disposableHandle(await listenToServer(listener, host, options.port ?? 0));
 }

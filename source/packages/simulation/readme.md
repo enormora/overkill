@@ -20,9 +20,26 @@ const api = defineSimulatedHttpServer({
 Every simulation has a `default` scenario. Scenario descriptors require a
 `title` and may carry additional typed data for the simulator.
 
-Use `@overkill-dev/simulation/http` to launch a simulated HTTP server manually.
-The returned handle exposes a read-only `transcript` with one normalized entry
-per HTTP exchange, including the selected scenario. Request and response bodies
+Launch either server from `@overkill-dev/simulation/http`.
+
+```ts
+import { startFixedSimulatedHttpServer, startSimulatedHttpServer } from '@overkill-dev/simulation/http';
+
+await using routed = await startSimulatedHttpServer({ simulation: api });
+await fetch(new URL('orders', routed.baseUrl));
+await fetch(routed.scenarioUrl('payments-500', '/orders'));
+
+await using fixed = await startFixedSimulatedHttpServer({ simulation: api, scenario: 'payments-500' });
+await fetch(new URL('/orders', fixed.baseUrl));
+```
+
+Routed URLs use `/<scenario-key>/<path>`, including `/default/` for the routed
+root. Replace the old query selector with `scenarioUrl(key, path)`. Use relative
+references such as `orders` with a routed `baseUrl` to preserve its prefix.
+A fixed server uses its startup scenario for every request.
+
+Both handles expose a read-only `transcript`. A missing routed key produces
+HTTP 400 and a transcript entry with `scenario: null`. Request and response bodies
 are captured up to 16 KiB independently.
 Protocol integrations can use `@overkill-dev/simulation/transcript` for the
 shared HTTP transcript recorder, snapshots, and types.

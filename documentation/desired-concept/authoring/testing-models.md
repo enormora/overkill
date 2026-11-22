@@ -553,7 +553,12 @@ reusable comparison API are recorded in
 6. Dispose compiler resources on success, failure, and cancellation. Apply deadlines
    to preparation and checking. A hard deadline requires an owned terminable
    execution boundary; an in-process cancellation request cannot preempt arbitrary
-   synchronous compiler work.
+   synchronous compiler work. Direct callers supply cooperative deadlines using
+   the existing phase signals. Runner profiles apply the collection timeout to
+   preparation and collection and the soft timeout to checking. In supervised
+   analysis, one hard deadline runs from assignment through snapshot reconstruction,
+   checking, validation, and compiler shutdown. The runner owns the entire compiler
+   process group on Linux and macOS.
 
 Coverage, runtime/resource attachment, body retries, and ordinary case execution
 controls are unsupported for the type-test family. Reject them before checking.

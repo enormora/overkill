@@ -108,7 +108,7 @@ contextual typing, and nominal declaration identity remain compiler-owned.
 Generic bodies retain their authored constraints. Table rows share their body's
 static parameter type. Unsupported evidence remains inconclusive under negation.
 Compiler diagnostics invalidate relation evidence rather than becoming assertion
-failures. Dedicated deadline and watch behavior remain separate lifecycle work.
+failures.
 
 Equality returns inconclusive evidence when recursive expansion exceeds 256
 comparison levels.
@@ -127,3 +127,22 @@ drift invalidates all selected executable work and requires fresh preparation.
 TypeScript still diagnoses the original project, including unselected code.
 `@ts-expect-error` retains its TypeScript meaning. The catalog has no dedicated
 JSX, decorator, or precise expected-diagnostic assertions.
+
+### Deadlines and reruns
+
+Direct engine callers can supply an `AbortSignal.timeout(milliseconds)` to
+`prepareFamily`, `collect`, or `execute`. Combine it with caller cancellation
+using `AbortSignal.any`. A preparation is single-use. Dispose an abandoned
+preparation with `await using`.
+
+Runner profiles use `timeouts.collectionMilliseconds` for preparation and
+collection and `timeouts.softMilliseconds` for checking. Supervised analysis
+on Linux and macOS also uses one `timeouts.hardMilliseconds` budget from
+assignment through checking and compiler shutdown. In-process deadlines are
+cooperative and cannot preempt synchronous work.
+
+Each rerun prepares the original project again. Input changes observed during
+an invocation invalidate its compiler evidence. Node watch can rerun the
+selected suite when its watched files change. Compiler analysis writes no
+outputs and consumes existing referenced declarations when the project
+requires them.

@@ -1,3 +1,4 @@
+import { createClock } from '@enormora/clock';
 import { type TestScope, suite, test } from '@overkill-dev/test';
 
 import { defineTestFamily } from '../packages/engine/engine.entry-point.ts';
@@ -5,9 +6,8 @@ import { createTestEngine } from '../test-support/create-test-engine.ts';
 import { normalizeConfig } from '../packages/run/run.entry-point.ts';
 import { bindFamilySettings } from '../engine/test-family.ts';
 import { snapshotProfileFamily } from './family-profile-transport.ts';
-import type { RunnerFamilyPreparation } from './family-profile-types.ts';
 import { collectedRunPlanSchema } from './collected-run-plan-schema.ts';
-import { preparedFamilyMetadata, selectedPreparedPlan } from './prepared-family-plan.ts';
+import { preparedFamilyMetadata, selectedPreparedPlan, type RunnerFamilyPreparation } from './prepared-family-plan.ts';
 
 const family = defineTestFamily({
     id: '@example/recorded-local',
@@ -83,7 +83,16 @@ async function preparation(): Promise<RunnerFamilyPreparation> {
         projectRoot: '/project',
         signal
     });
-    return { engine, signal, sourcePlan, definition, binding, prepared, projectRoot: '/project' };
+    return {
+        engine,
+        signal,
+        sourcePlan,
+        definition,
+        binding,
+        prepared,
+        wallClock: createClock(),
+        projectRoot: '/project'
+    };
 }
 
 export const testNode = suite('prepared family record plans', [

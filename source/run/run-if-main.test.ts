@@ -340,7 +340,7 @@ export const testNode = suite('Direct module execution', [
 
         await fixture.runIfMain(fixture.project.meta, integrationCase(), { reporters: [] });
 
-        scope.assert.equal(fixture.exitCode(), null);
+        scope.assert.equal(fixture.exitCode(), null, { message: fixture.stderr() });
 
         return scope.assert.collect();
     }),

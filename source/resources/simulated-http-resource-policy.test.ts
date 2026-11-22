@@ -10,10 +10,10 @@ export const testNode = suite('simulated HTTP resource ownership', [
             baseUrl: handle.baseUrl,
             entries: handle.transcript.entryCount,
             frozen: Object.isFrozen(handle)
-        }, { baseUrl: 'http://127.0.0.1:4321', entries: 0, frozen: true });
+        }, { baseUrl: 'http://127.0.0.1:4321/default/', entries: 0, frozen: true });
         scope.assert.equal(
             handle.scenarioUrl('offline', '/path?q=1'),
-            'http://127.0.0.1:4321/path?q=1&__overkill_scenario=offline'
+            'http://127.0.0.1:4321/offline/path?q=1'
         );
         scope.require.defined(fixture.service.dispose);
         await fixture.service.dispose(handle, fixture.context);
@@ -28,7 +28,7 @@ export const testNode = suite('simulated HTTP resource ownership', [
             attachments: fixture.context.attachments,
             scenarios: { service: 'offline' }
         });
-        scope.assert.equal(exposed.baseUrl, 'http://127.0.0.1:4321/?__overkill_scenario=offline');
+        scope.assert.equal(exposed.baseUrl, 'http://127.0.0.1:4321/offline/');
         scope.assert.equal(exposed.transcript, handle.transcript);
         scope.assert.equal(exposed.endpoint, handle.endpoint);
         scope.require.defined(fixture.service.dispose);

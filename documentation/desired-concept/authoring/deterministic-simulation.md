@@ -203,28 +203,28 @@ type SimulatedHttpHandler<Scenario extends string> = (
 ) => Response | Promise<Response>;
 ```
 
-`@overkill-dev/simulation/http` exposes a standalone launcher for manual and
-exploratory runs. It returns the same URL-building handle used by the resource
-adapter plus `dispose()` and `Symbol.asyncDispose`.
+`@overkill-dev/simulation/http` exposes two standalone launchers.
+`startSimulatedHttpServer({ simulation })` uses request routing.
+`startFixedSimulatedHttpServer({ simulation, scenario })` binds a catalog key at
+startup, including explicit `default`. Its ordinary `baseUrl` serves application
+paths directly. Both handles support `dispose()` and `Symbol.asyncDispose`.
 
-`@overkill-dev/resources` should expose
-`createSimulatedHttpServerResource(...)`. That adapter turns the simulated
-HTTP server definition into a resource descriptor. It owns `listen`, teardown,
-host, port, and the exposed `baseUrl`. The adapter receives an explicit local
-address request such as `{ kind: 'loopback', port: 0 }`; with port `0`, the
-operating system assigns an unused port atomically. The first HTTP adapter uses
-URL-based request-routed scenarios only. Request-routed test fixtures require
-explicit scenario identity, including `default`; reject missing or unknown
-identity rather than silently falling back. Generated default-view and
-`scenarioUrl(...)` request URLs carry that identity. The adapter removes its
-internal selector before invoking the handler. Generic URL path resolution
-does not preserve query selectors, so callers must use the request URL builder
-or an explicitly supported routing strategy for subsequent requests.
+`@overkill-dev/resources` exposes `createSimulatedHttpServerResource(...)`.
+It owns listening and teardown for an explicit local address request such as
+`{ kind: 'loopback', port: 0 }`. The operating system assigns an unused port
+atomically for port `0`. The adapter uses request routing.
 
-A fixed-scenario server instead binds identity at startup and needs no
-per-request selector. These are distinct routing contracts. In particular,
-a query-selected request URL is not a generic API base URL that can silently
-preserve identity through arbitrary path construction.
+Request-routed URLs use `/<scenario-key>/<application-path>`, including
+`/<scenario-key>/` for the root. The default view uses `/default/`. A missing
+or unknown key yields HTTP 400. The handler and successful transcript entries
+use the application URL with the prefix removed. Rejected requests retain the
+requested URL and record the unknown key or `null` for a missing key. The
+segments `.` and `..` cannot name routed scenarios.
+
+Use `scenarioUrl(key, path)` to construct a request URL. The routed `baseUrl`
+includes a trailing slash so relative references such as `orders` preserve
+the prefix. Root-relative paths and traversal above the scenario directory
+can discard it.
 
 ## Optional HTML Host
 
