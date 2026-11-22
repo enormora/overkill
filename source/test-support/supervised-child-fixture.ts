@@ -49,10 +49,15 @@ function createTestClock(): DeterministicClock {
     return createDeterministicClock({ initialUnixEpochMicroseconds: 0n });
 }
 
+function readNoActiveResourceTypes(): readonly string[] {
+    return [];
+}
+
 export function supervisedChildDependencies(): SupervisedChildDependencies {
     return {
         createProcessUsageTracker: createEmptyProcessUsageTracker,
-        createClock: createTestClock
+        createClock: createTestClock,
+        readActiveResourceTypes: readNoActiveResourceTypes
     };
 }
 
@@ -116,7 +121,7 @@ export function createChildRun(input: ChildHostInput): ChildRunFixture {
 }
 
 export function nativeChildDependencies(): SupervisedChildDependencies {
-    return { createClock: createTestClock, createProcessUsageTracker: createNodeProcessUsageTracker };
+    return { ...supervisedChildDependencies(), createProcessUsageTracker: createNodeProcessUsageTracker };
 }
 
 export function supervisedChildCommand(kind: 'collect' | 'run', path: string): SupervisedChildCommand {
