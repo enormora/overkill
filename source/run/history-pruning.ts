@@ -105,6 +105,7 @@ async function prepareRetention(context: RetentionContext, request: HistoryPrune
         now
     );
     const nextDurations = ingestDurationState(index.durations, [], {
+        familyVerdicts: [],
         run: null,
         policy: context.policy,
         now

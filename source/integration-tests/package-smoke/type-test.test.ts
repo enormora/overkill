@@ -2,8 +2,10 @@ import { execFile } from 'node:child_process';
 import { cp, mkdir, mkdtemp, rm, writeFile, readFile, readdir } from 'node:fs/promises';
 import { setTimeout as delay } from 'node:timers/promises';
 import { join } from 'node:path';
+import { inspect } from 'node:util';
 
 import { suite } from '@overkill-dev/test';
+import { defaultRunRequest } from '../../test-support/run-command-factory.ts';
 import { sealConsumerDependencies } from './support/consumer-resolution-boundary.ts';
 import { consumerEnvironment } from './support/consumer-environment.ts';
 import { packageConsumer } from './support/package-consumer.ts';
@@ -95,7 +97,7 @@ async function writeCheckingProject(directory: string): Promise<void> {
     );
 }
 
-async function writeRunnerProject(directory: string): Promise<void> {
+async function writeRunnerProject(directory: string, processModel: 'in-process' | 'supervised-process'): Promise<void> {
     await writeFile(
         join(directory, 'runner.mts'),
         `${engineCaseSource}
@@ -108,7 +110,7 @@ await runIfMain(import.meta,testNode);`
 import {family} from '@overkill-dev/type-test';
 import {fileURLToPath} from 'node:url';
 export const config=defineConfig({profiles:{types:{testFamily:family,
-    execution:{processModel:'supervised-process',scheduling:'serial',maxConcurrency:1},
+    execution:{processModel:'${processModel}',scheduling:'serial',maxConcurrency:1},
     files:{include:['runner.mts']},settings:{
     projectConfigPath:fileURLToPath(new URL('./tsconfig.json',import.meta.url)),
     compiler:{kind:'package',specifier:'typescript-beta',version:'7.1.0-beta'}}}}});`
@@ -199,7 +201,7 @@ const consumerFacade = packageConsumer('packaged native type tests', function co
     }
     return { isolatedConsumer };
 });
-const { test } = consumerFacade;
+const { table, test } = consumerFacade;
 
 export const testNode = suite('packaged native type tests', [
     test('checks engine roots without the high-level distribution', async function (scope) {
@@ -221,17 +223,69 @@ export const testNode = suite('packaged native type tests', [
             const { isolatedConsumer } = scope.resources.consumer;
 
             const directory = await isolatedConsumer(true);
-            await writeRunnerProject(directory);
+            await writeRunnerProject(directory, 'supervised-process');
             const result = await runNode(directory, [ 'runner.mts' ]);
             scope.assert.equal(result.code, 0, { message: result.stderr });
             scope.assert.includes(result.stdout, '1 pass');
             return scope.assert.collect();
         }
     ),
+    table({
+        title: 'reproduces recorded compiler work',
+        cases: [ 'in-process', 'supervised-process' ] as const,
+        caseTitle: String,
+        async test(scope) {
+            const { isolatedConsumer } = scope.resources.consumer;
+            const directory = await isolatedConsumer(true);
+            await writeRunnerProject(directory, scope.parameters);
+            const request = defaultRunRequest({
+                profile: 'types',
+                record: true,
+                selection: { kind: 'filter', filter: { kind: 'equals', field: 'title', value: 'native' } }
+            });
+            const program = `import {commandLineRunner} from '@overkill-dev/run/command-line';
+import {readdir,readFile,writeFile} from 'node:fs/promises';
+const cwd=process.cwd();
+const source=await readFile('runner.mts','utf8');
+await writeFile('runner.mts',source.replace('sameType<string,string>()','sameType<string,number>()'));
+const original=await commandLineRunner.runTests({cwd,configPath:null,
+    runRequest:${inspect(request, { depth: null })}});
+if(original.exitCode!==1||original.runResult?.summary.failed!==1) {
+    throw new Error(original.fallbackDiagnostics.join('\\n'));
+}
+const runs='.overkill/runs';
+const [file]=await readdir(runs);
+const record=JSON.parse(await readFile(runs+'/'+file,'utf8'));
+const facts=record.facts.family;
+const compiler=facts.preparation.compilers[0];
+if(facts.version!=='2'||compiler.version!=='7.1.0-beta'||!compiler.projectFingerprint||
+    !compiler.configuration.files.length||facts.collection.compilers[0].assertions.length!==1) {
+    throw new Error('Missing original compiler evidence');
+}
+if(record.result.perTest[0].verdict!=='fail'||record.result.perTest[0].outcome.kind!=='fail') {
+    throw new Error('Missing recorded relation failure');
+}
+const replay=()=>commandLineRunner.replayRun({cwd,configPath:null,arguments:[record.id]});
+const reproduced=await replay();
+if(reproduced.exitCode!==1||reproduced.runResult?.summary.failed!==1) {
+    throw new Error(JSON.stringify(reproduced.fallbackDiagnostics));
+}
+const config=JSON.parse(await readFile('tsconfig.json','utf8'));
+config.compilerOptions.strict=false;
+await writeFile('tsconfig.json',JSON.stringify(config));
+const drifted=await replay();
+if(drifted.exitCode===0||drifted.runResult?.perTest.length)throw new Error('Admitted drifted source');
+console.log('reproduced and rejected drift');`;
+            const result = await runNode(directory, [ '--input-type=module', '--eval', program ]);
+            scope.assert.equal(result.code, 0, { message: result.stdout + result.stderr });
+            scope.assert.includes(result.stdout, 'reproduced and rejected drift');
+            return scope.assert.collect();
+        }
+    }),
     test('hard timeout reaps a wedged analysis host and its native compiler', async function (scope) {
         const { isolatedConsumer } = scope.resources.consumer;
         const directory = await isolatedConsumer(true);
-        await writeRunnerProject(directory);
+        await writeRunnerProject(directory, 'supervised-process');
         await wedgeCompilerOnExecution(directory);
         const result = await runNode(directory, [ 'runner.mts' ]);
         scope.assert.equal(result.code, 1, { message: result.stderr });

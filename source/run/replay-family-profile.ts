@@ -6,6 +6,7 @@ import { validateFamilyDefinition } from '../config/family-profile.ts';
 import type { DefinedTestFamily } from '../engine/test-family.ts';
 import { bindFrozenFamilyDefinition, resolveModuleFamily } from './family-resolution.ts';
 import { recordedIntegrationExecutionSchema } from './replay-profile.ts';
+import type { ReplayRunRecord } from './replay-record-types.ts';
 import { familyValueSchema } from './family-transport-schema.ts';
 
 const recordedFamilyPolicySchema = normalizedMicrotestProfileSchema.omit({ coverage: true, testFamily: true }).extend({
@@ -79,4 +80,28 @@ export async function restoreFamilyReplayProfile(
     };
     validateFamilyDefinition(profile);
     return profile;
+}
+
+function validateReplayFamilyIdentity(
+    saved: ReplayRunRecord['facts']['family'],
+    testFamily: DefinedTestFamily,
+    settings: DefinedFamilyProfile['settings']
+): void {
+    if (
+        saved?.id !== testFamily.id || saved.version !== testFamily.version ||
+        !isDeepStrictEqual(saved.settings, settings)
+    ) {
+        throw new TypeError('Recorded family implementation or settings changed; collect a new run.');
+    }
+}
+
+export function validateReplayFamilyProfile(record: ReplayRunRecord, profile: ProfileConfig): void {
+    const saved = record.facts.family;
+    const metadata = record.replayPlan.family;
+    if (metadata !== null && !isDeepStrictEqual(metadata.facts, saved)) {
+        throw new TypeError('Recorded family and replay plan facts are inconsistent.');
+    }
+    if (typeof profile.testFamily !== 'string') {
+        validateReplayFamilyIdentity(saved, profile.testFamily, profile.settings);
+    }
 }

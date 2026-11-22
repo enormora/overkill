@@ -18,7 +18,7 @@ const observation = {
         }
     }
 } as const;
-const context = { now: historyTimestamp, policy: defaultHistoryPolicy };
+const context = { familyVerdicts: [], now: historyTimestamp, policy: defaultHistoryPolicy };
 
 export const testNode = suite('duration history retention', [
     test('placement excludes uncommitted runs while retaining independent observations', function (scope) {
@@ -48,6 +48,7 @@ export const testNode = suite('duration history retention', [
             entries: [ {
                 work: historyWork,
                 count: 3,
+                familyVerdicts: [],
                 totalDurationMicroseconds: 30,
                 observations: [ 'b', null, 'a' ].map(function sample(runId) {
                     return { runId, value: observation.observation };
@@ -94,6 +95,20 @@ export const testNode = suite('duration history retention', [
             run: { id: 'expired', startedAt: '2026-01-01T00:00:00.000Z' }
         });
         scope.assert.equal(state.entries.length, 0);
+        return scope.assert.collect();
+    }),
+    test('retains a family verdict without producing a duration sample', function (scope) {
+        const work = { ...historyWork, familyVariant: { family: 'fixture', key: 'variant' } };
+        const state = ingestDurationState(emptyDurationState(historyTimestamp), [], {
+            ...context,
+            familyVerdicts: [ { work, status: 'failed' } ],
+            run: { id: 'verdict-only', startedAt: historyTimestamp }
+        });
+        scope.assert.deepEqual<unknown, unknown>(state.entries[0]?.familyVerdicts, [
+            { runId: 'verdict-only', observedAt: historyTimestamp, status: 'failed' }
+        ]);
+        const [ duration ] = durationIndexProjection(state, new Set([ 'verdict-only' ])).entries;
+        scope.assert.equal(duration?.observations.length, 0);
         return scope.assert.collect();
     }),
     test('stale work entries are pruned', function (scope) {

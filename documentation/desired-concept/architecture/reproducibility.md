@@ -128,7 +128,8 @@ remain checkout-owned and are not relocated into shared mutable storage.
 Ordinary executions save one compact run record. Explicit recording, replay,
 coverage, and attachment workflows retain detailed evidence in that same lifecycle.
 `detail` distinguishes compact outcomes and measured summaries from replayable
-details. Internal worker and mutation tasks do not enter ordinary history.
+details. Compact records retain captured family facts and per-work verdicts.
+Internal worker and mutation tasks do not enter ordinary history.
 
 Aggregated history holds bounded observations and counters for scheduling and
 selection. Baselines, regression witnesses, and calibration references are reusable
@@ -289,7 +290,7 @@ not a replay source. It keeps useful data after detailed records are pruned:
 
 - run summaries for persisted runs eligible for compact history
 - case-level outcome history keyed by `CaseId`
-- work-level duration history keyed by `WorkId`
+- work history keyed by `WorkId`, with duration samples and family-variant verdicts
 
 `overkill history list` reads run summaries. A run summary records the run id,
 start time, selected profile, test family, aggregate status, duration, and
@@ -311,8 +312,12 @@ Entries that no longer receive updates are pruned after
 90 days by default. Run summaries are kept for the last 500 persisted runs or
 90 days, whichever keeps fewer.
 
-`--last-failed` selects cases whose newest completed compact observation is failed.
-A later pass, skip, or inconclusive result from the same checkout clears selection.
+`--last-failed` selects work whose newest completed compact observation is failed.
+For work without a family variant, it uses the logical case observation.
+Family variants use exact `WorkId` observations even when no duration sample
+was recorded. A later pass, skip, or inconclusive result clears selection
+for that identity only. Existing indexes acquire variant verdicts as new runs
+complete.
 `--last-failed` and history-based duration scheduling use the originating
 checkout's observations by default; another checkout cannot clear failures or
 silently supply execution history. Shared storage does not merge these scopes.
@@ -320,7 +325,7 @@ Current discovery and filters bound eligible cases. A readable history with no
 matches produces a successful recorded empty selection. Reusable collected plans
 retain their history snapshot until initialized again.
 
-`--last-failed` reads compact case history rather than the previous detailed
+`--last-failed` reads compact history rather than the previous detailed
 record. A run selected with `--last-failed` automatically persists its own
 result so the workflow stays fresh. `duration-history-balanced` placement reads
 compact work history rather than scanning retained detailed records. If a

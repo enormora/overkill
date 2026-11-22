@@ -103,6 +103,35 @@ function benchmarkEvidence(): BenchmarkExecutionResult {
 }
 
 export const testNode = suite('compact run evidence', [
+    test('retains compiler preparation and assertion ownership', function (scope) {
+        const original = completedHistoryRecord('original-source');
+        const id = '@overkill-dev/type-test';
+        const workId = { ...historyWork, familyVariant: { family: id, key: 'typescript@7.1.0-beta' } };
+        const family = {
+            id,
+            version: '2',
+            settings: { projectConfigPath: './tsconfig.json' },
+            preparation: { compilers: [ { version: '7.1.0-beta', configuration: { files: [ 'test.ts' ] } } ] },
+            collection: { assertions: [ { path: 'test.ts', line: 2, owners: [ workId ] } ] }
+        };
+        const compact = compactRunRecord({
+            ...original,
+            facts: { ...original.facts, family },
+            result: {
+                ...original.result,
+                perTest: [ {
+                    benchmark: null,
+                    workId,
+                    verdict: 'fail',
+                    durationMicroseconds: 10
+                } ]
+            }
+        });
+        scope.assert.deepEqual<unknown, unknown>(compact.facts?.family, family);
+        scope.assert.deepEqual<unknown, unknown>(compact.result?.perTest[0]?.workId, workId);
+        scope.assert.equal(compact.result?.perTest[0]?.verdict, 'fail');
+        return scope.assert.collect();
+    }),
     test('preserves lifecycle summaries when measurement evidence is absent', function (scope: TestScope) {
         const original = completedHistoryRecord('unmeasured');
         const benchmark = benchmarkEvidence();

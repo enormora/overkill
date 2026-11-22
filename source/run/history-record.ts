@@ -2,19 +2,19 @@ import type { ReadonlyDeep } from 'type-fest';
 import { z } from 'zod';
 import { benchmarkRunFactsSchema } from '../bench/benchmark-run-report.ts';
 import { workIdSchema } from '../engine/identity-schema.ts';
-import { benchmarkResultSchema } from './benchmark-result-schema.ts';
-import { runObservationFields } from './run-result-schema.ts';
+import { familyRunFactsSchema } from './family-transport-schema.ts';
+import { runObservationFields, runOutcomeObservationSchema } from './run-result-schema.ts';
 import { baselineReportSummariesSchema } from './baseline-report-schema.ts';
 import { collectedRunPlanSchema } from './collected-run-plan-schema.ts';
 import {
     currentRunRecordVersion,
     validateImplementationRecord
 } from './run-record-format.ts';
-import { verdictSchema } from './run-artifact-schema.ts';
 
 const family = z.string();
 const contextFields = benchmarkRunFactsSchema.omit({ execution: true }).extend({
     implementations: z.unknown(),
+    family: familyRunFactsSchema.nullable().default(null),
     environment: benchmarkRunFactsSchema.shape.environment.nullable().default(null),
     benchmarkHost: benchmarkRunFactsSchema.shape.benchmarkHost.default(null),
     benchmarkPlacement: benchmarkRunFactsSchema.shape.benchmarkPlacement.default(null),
@@ -41,14 +41,7 @@ const result = z.object({
     runnerErrors: runObservationFields.runnerErrors.readonly(),
     summary: runObservationFields.summary,
     timings: runObservationFields.timings.strip(),
-    perTest: z
-        .array(z.object({
-            benchmark: benchmarkResultSchema.nullable().default(null),
-            workId: workIdSchema,
-            verdict: verdictSchema,
-            durationMicroseconds: z.number().nonnegative()
-        }))
-        .readonly()
+    perTest: runOutcomeObservationSchema
 });
 const fields = {
     version: z.literal(currentRunRecordVersion),

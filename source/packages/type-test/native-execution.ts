@@ -5,6 +5,7 @@ import type { CheckerExecution } from './checker-plan.ts';
 import {
     verifyFrozenProject,
     fingerprint,
+    originalProjectFacts,
     typeAnalysis,
     type FrozenProject
 } from './frozen-project.ts';
@@ -130,18 +131,13 @@ export async function collectProject(
         project,
         collectionSignal
     );
-    const configurationJson = JSON.stringify({
-        options: project.project.options,
-        files: project.project.fileNames,
-        references: project.project.projectReferences ?? []
-    });
     const sourceFacts = {
         identities: plan.cases.map(function (testCase) {
             return testCase.workId;
         }),
         compilerVersion: project.compiler.version,
         projectConfigPath: project.projectConfigPath,
-        configuration: parseAdapterFacts(JSON.parse(configurationJson)),
+        configuration: originalProjectFacts(project),
         projectFingerprint: fingerprint(project.projectText),
         sources: assertionPlan.modules.map(function original(module) {
             return { path: module.path, fingerprint: fingerprint(module.originalText) };

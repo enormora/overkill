@@ -27,7 +27,8 @@ export function historyFacts(
         benchmarkCalibration: null,
         benchmarkNormalization: null,
         execution: { testFamily },
-        implementations: null
+        implementations: null,
+        family: null
     };
 }
 
