@@ -256,15 +256,24 @@ export const testNode = suite('Installed benchmark API', [
     table({
         title: 'standard-only installation selects bench profiles and executes the shared runner flow',
         cases: [ 'run', 'list' ].flatMap(function createPackagedBenchmarkCommandTests(verb) {
-            return { verb };
+            return [
+                { verb, selection: { title: 'default profile', arguments: [] } },
+                {
+                    verb,
+                    selection: {
+                        title: 'explicit profile',
+                        arguments: [ '--profile=startup', '--config', 'overkill.config.js' ]
+                    }
+                }
+            ];
         }),
-        caseTitle({ verb }) {
-            return [ verb ].map(String).join(', ');
+        caseTitle({ verb, selection }) {
+            return `${verb}, ${selection.title}`;
         },
         async test(scope) {
             const { createStandardBenchConsumer } = scope.resources.consumer;
 
-            const { verb } = scope.parameters;
+            const { verb, selection } = scope.parameters;
 
             const consumerFolder = await createStandardBenchConsumer();
             await writeFile(
@@ -275,28 +284,18 @@ export const testNode = suite('Installed benchmark API', [
                 path.join(consumerFolder, 'startup.bench.mjs'),
                 standardBenchConsumerScript
             );
-            for (const selection of [ [], [ '--profile=startup', '--config', 'overkill.config.js' ] ]) {
-                const result = await executeNode([
-                    path.join(
-                        consumerFolder,
-                        'node_modules/@overkill-dev/test/packages/test/overkill.entry-point.js'
-                    ),
-                    'bench',
-                    verb,
-                    ...selection,
-                    'startup.bench.mjs'
-                ], consumerFolder);
-
-                scope.assert(
-                    defineCompositeAssertion({
-                        name: 'standard-only installation selects bench profiles and executes the shared runner flow',
-                        assert(check) {
-                            return check.group([ check.equal(result.exitCode, 0), check.equal(result.stderr, '') ]);
-                        }
-                    })
-                );
-                scope.assert.includes(result.stdout, 'parameterized');
-            }
+            const result = await executeNode([
+                path.join(
+                    consumerFolder,
+                    'node_modules/@overkill-dev/test/packages/test/overkill.entry-point.js'
+                ),
+                'bench',
+                verb,
+                ...selection.arguments,
+                'startup.bench.mjs'
+            ], consumerFolder);
+            scope.assert(assertSuccessfulCommand, result);
+            scope.assert.includes(result.stdout, 'parameterized');
 
             return scope.assert.collect();
         }
