@@ -1,4 +1,4 @@
-import { type TestNode, test, type TestScope } from '#tests';
+import { type TestNode, test, type TestScope } from '@overkill-dev/test';
 
 import type * as HttpPackage from '../../packages/simulation/http.entry-point.ts';
 import type * as SimulationPackage from '../../packages/simulation/simulation.entry-point.ts';
