@@ -65,12 +65,9 @@ function createSupervisedObserver(transport: SupervisedTransport): SupervisedObs
     function failureReport(message: SupervisedChildMessage): boolean {
         return message.kind === 'event' && message.event.kind === 'runner-error';
     }
-    function terminalReport(message: SupervisedChildMessage): boolean {
-        return message.kind === 'result' || failureReport(message);
-    }
     function acceptsAfterFailure(message: SupervisedChildMessage): boolean {
         if (transport.analysis !== true) {
-            return terminalReport(message);
+            return message.kind === 'result' || failureReport(message);
         }
         return observations.analysisCancelled && failureReport(message);
     }
@@ -195,7 +192,7 @@ export async function sendAssignmentForPlan(runtime: SupervisedRunRuntime): Prom
         corpus,
         implementations: runtime.resolvedRun.facts.implementations,
         ...isSupervisedAnalysis(runtime.resolvedRun)
-            ? { analysisCollection: runtime.resolvedRun.facts.family?.collection ?? null }
+            ? { analysisCollection: runtime.resolvedRun.facts.family.collection }
             : {},
         assignedWork: runtime.resolvedRun.facts.cases.map(function toWorkId(testCase) {
             return testCase.workId;

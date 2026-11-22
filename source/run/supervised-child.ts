@@ -41,9 +41,7 @@ import {
     createSupervisedResourceLifecycleTiming,
     createSupervisedChildReporter
 } from './supervised-child-execution.ts';
-import { withAnalysisCollection } from './analysis-deadline.ts';
 import {
-    assignedAnalysisCollection,
     supervisedAssignedPlan,
     assignedPropertyCorpus,
     supervisedAssignedWork,
@@ -253,7 +251,7 @@ async function executeAssignment(input: SupervisedAssignmentExecution): Promise<
     }, async function observeChildAssignment(runtimePolicy) {
         const execute = await createSupervisedChildExecute(
             input.wallClock,
-            input.command,
+            { command: input.command, assignment: input.assignment },
             input.collectedPlan.familySource,
             input.dependencies.readActiveResourceTypes
         );
@@ -321,20 +319,15 @@ async function run(
         assignment.attachmentEndpoint,
         null,
         async function executeAttachmentAssignment() {
-            return await withAnalysisCollection(
-                assignedAnalysisCollection(assignment),
-                async function executeSelected() {
-                    return await executeAssignment({
-                        assignment,
-                        collectedPlan: selected,
-                        command,
-                        dependencies,
-                        host,
-                        startedAtMs,
-                        wallClock
-                    });
-                }
-            );
+            return await executeAssignment({
+                assignment,
+                collectedPlan: selected,
+                command,
+                dependencies,
+                host,
+                startedAtMs,
+                wallClock
+            });
         }
     );
     return result;

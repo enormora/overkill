@@ -79,7 +79,8 @@ export async function createProfileTestPlan(input: LocalTestPlanInput, signal: A
     });
     const preparation = await prepareProfileFamily(engine, collected, input.profile, {
         projectRoot: input.projectRoot,
-        signal
+        signal,
+        wallClock: input.dependencies.wallClock
     });
     return { testPlan: preparation.prepared.testPlan, preparation: { ...preparation, definition } };
 }

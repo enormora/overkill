@@ -1,4 +1,3 @@
-import type { FamilyValue } from '../engine/test-family.ts';
 import { withImplementationPlan } from '../engine/body-reference-plan.ts';
 import { createDefaultWorkId, workIdentityKey, type CaseId, type WorkId } from '../engine/identity.ts';
 import type {
@@ -37,6 +36,7 @@ import {
     type ChildProcessEnvelope
 } from './child-process-protocol.ts';
 
+type AnalysisCollection = NonNullable<RunFacts['family']>['collection'];
 type RunEngineSelection = RunCommand['engine'];
 
 type SupervisedCommandBase = {
@@ -100,7 +100,7 @@ export const supervisedChildCorrelationId = 'supervised-run';
 export const supervisedCancellationCorrelationId = 'supervised-run-cancellation';
 
 type WorkAssignmentCommand = {
-    readonly analysisCollection?: FamilyValue | undefined;
+    readonly analysisCollection?: AnalysisCollection | undefined;
     readonly implementations: RunFacts['implementations'];
     readonly corpus: PropertyCorpusSnapshot;
     readonly propertyPolicies: readonly { readonly work: WorkId; readonly policy: PropertyPolicy; }[];
@@ -123,7 +123,7 @@ function hasAssignedWork(assignment: SupervisedAssignmentCommand): assignment is
     return Object.hasOwn(assignment, 'assignedWork');
 }
 
-export function assignedAnalysisCollection(assignment: SupervisedAssignmentCommand): FamilyValue | undefined {
+export function assignedAnalysisCollection(assignment: SupervisedAssignmentCommand): AnalysisCollection | undefined {
     return hasAssignedWork(assignment) ? assignment.analysisCollection : undefined;
 }
 

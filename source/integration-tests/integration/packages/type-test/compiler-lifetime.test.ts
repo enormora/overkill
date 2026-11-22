@@ -1,7 +1,7 @@
 import { spawn } from 'node:child_process';
 import { type TestNode, suite, test } from '@overkill-dev/test';
 
-import { createCompilerLifetime, runCompilerOperation } from '../../../../packages/type-test/compiler-lifetime.ts';
+import { createCompilerLifetime, runCompilerOperation, type CompilerLifetime } from '../../../../packages/type-test/compiler-lifetime.ts';
 
 const waitsForClose = test(
     'compiler cleanup waits for the owned process to close',
@@ -33,31 +33,39 @@ const waitsForClose = test(
     }
 );
 
+async function observeUntilClose(started: PromiseWithResolvers<undefined>): Promise<void> {
+    const compiler = spawn(process.execPath, [ '--eval', 'process.stdin.resume();' ], {
+        stdio: [ 'pipe', 'ignore', 'ignore' ]
+    });
+    const closed = Promise.withResolvers<undefined>();
+    compiler.once('close', function confirmClose() {
+        closed.resolve(undefined);
+    });
+    compiler.once('spawn', function confirmSpawn() {
+        started.resolve(undefined);
+    });
+    await closed.promise;
+}
+
+async function cancelPendingCompiler(lifetime: CompilerLifetime): Promise<void> {
+    const controller = new AbortController();
+    const started = Promise.withResolvers<undefined>();
+    const operation = runCompilerOperation(lifetime, controller.signal, async function waitForCompiler() {
+        await observeUntilClose(started);
+    });
+    await started.promise;
+    controller.abort(new Error('cancel compiler request'));
+    await operation;
+}
+
 export const testNode: TestNode = suite('compiler process lifetime', [
     waitsForClose,
     test('cancellation shuts down a pending compiler operation', async function (scope) {
         const lifetime = createCompilerLifetime();
-        const controller = new AbortController();
-        const started = Promise.withResolvers<undefined>();
         {
             await using owned = lifetime;
-            const operation = runCompilerOperation(owned, controller.signal, async function waitForCompiler() {
-                const compiler = spawn(process.execPath, [ '--eval', 'process.stdin.resume();' ], {
-                    stdio: [ 'pipe', 'ignore', 'ignore' ]
-                });
-                const closed = Promise.withResolvers<undefined>();
-                compiler.once('close', function confirmClose() {
-                    closed.resolve(undefined);
-                });
-                compiler.once('spawn', function confirmSpawn() {
-                    started.resolve(undefined);
-                });
-                await closed.promise;
-            });
-            await started.promise;
-            controller.abort(new Error('cancel compiler request'));
             await scope.assert.rejects(async function cancelledRequest() {
-                await operation;
+                await cancelPendingCompiler(owned);
             }, { message: 'cancel compiler request' });
         }
         scope.assert.true(lifetime.closed.aborted);

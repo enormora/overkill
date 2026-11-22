@@ -8,9 +8,14 @@ import { familySettings, type ProfileConfig } from '../config/types.ts';
 import { builtinTestFamily } from '../engine/builtin-test-families.ts';
 import { bindFamilySettings, type BoundFamilySettings } from '../engine/test-family.ts';
 import { analysisSignal, withAnalysisDeadline } from './analysis-deadline.ts';
-import { collectedFamilyPlan, preparedFamilyMetadata, selectedPreparedPlan } from './prepared-family-plan.ts';
+import {
+    collectedFamilyPlan,
+    preparedFamilyMetadata,
+    selectedPreparedPlan,
+    type LocalFamilyRunPlan,
+    type RunnerFamilyPreparation
+} from './prepared-family-plan.ts';
 import { validateRecordedFamilyFacts } from './replay-family-validation.ts';
-import type { LocalFamilyRunPlan, RunnerFamilyPreparation } from './family-profile-types.ts';
 import type {
     ResolvedRun,
     ResolvedRunPlan
@@ -27,7 +32,11 @@ export function isAnalysisFamilyPlan(plan: ResolvedRunPlan): plan is LocalFamily
 
 type TestPlan = RunnerFamilyPreparation['sourcePlan'];
 
-type FamilyPreparationContext = { readonly projectRoot: string; readonly signal: AbortSignal; };
+type FamilyPreparationContext = {
+    readonly projectRoot: string;
+    readonly signal: AbortSignal;
+    readonly wallClock: RunnerFamilyPreparation['wallClock'];
+};
 
 async function withFamilySetupDiagnostics<Value>(operation: () => Promise<Value>): Promise<Value> {
     try {
@@ -47,7 +56,7 @@ async function prepareFamilyBinding(
     binding: BoundFamilySettings,
     context: FamilyPreparationContext
 ): Promise<RunnerFamilyPreparation> {
-    const { projectRoot, signal } = context;
+    const { projectRoot, signal, wallClock } = context;
     const prepared = await withFamilySetupDiagnostics(async function prepareBackend(): Promise<PreparedFamilyRun> {
         return await prepareDefinedFamily(engine, {
             testPlan,
@@ -57,7 +66,7 @@ async function prepareFamilyBinding(
             signal
         });
     });
-    return { engine, prepared, sourcePlan: testPlan, binding, projectRoot, signal, definition: null };
+    return { engine, prepared, sourcePlan: testPlan, binding, projectRoot, signal, wallClock, definition: null };
 }
 
 export async function prepareProfileFamily(
@@ -109,7 +118,8 @@ async function collectSelectedFamily(preparation: RunnerFamilyPreparation, run: 
                 'Analysis collection exceeded collection timeout.',
                 async function collect(signal) {
                     return await preparation.prepared.collect({ workIds, signal });
-                }
+                },
+                preparation.wallClock
             );
         }
         return await preparation.prepared.collect({ workIds, signal: preparation.signal });
@@ -177,6 +187,7 @@ export async function recollectProfileFamily(
     async function prepare(signal: AbortSignal): Promise<RunnerFamilyPreparation> {
         return await prepareFamilyBinding(previous.engine, previous.sourcePlan, previous.binding, {
             projectRoot: previous.projectRoot,
+            wallClock: previous.wallClock,
             signal
         });
     }
@@ -184,7 +195,8 @@ export async function recollectProfileFamily(
         ? await withAnalysisDeadline(
             collectionMilliseconds,
             'Analysis preparation exceeded collection timeout.',
-            prepare
+            prepare,
+            previous.wallClock
         )
         : await prepare(analysisSignal());
     return await resolveFamilyRun(

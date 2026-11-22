@@ -1,4 +1,3 @@
-import { setTimeout as yieldToTimers } from 'node:timers/promises';
 import type { JsonValue, ReadonlyDeep } from 'type-fest';
 import type { FamilyPreparationInput } from '../../engine/test-family.ts';
 import {
@@ -11,7 +10,13 @@ import {
 } from '../engine/engine.entry-point.ts';
 import { parseAdapterFacts } from '../../config/adapter-facts.ts';
 import { packageVersion, type PackageVersion } from '../../package-version.ts';
-import { loadProject, disposeProject, verifyFrozenProject, type FrozenProject } from './frozen-project.ts';
+import {
+    checkCompilerCancellation,
+    loadProject,
+    disposeProject,
+    verifyFrozenProject,
+    type FrozenProject
+} from './frozen-project.ts';
 import { collectProject, type CompilerCheck } from './native-execution.ts';
 import { nativeCheckResult } from './native-results.ts';
 import {
@@ -128,7 +133,7 @@ async function checkCompilerGroups(
     for (const group of groups) {
         results.push(await group.check(signal));
     }
-    await yieldToTimers(0);
+    await checkCompilerCancellation(signal);
     await verify();
     signal.throwIfAborted();
     return results;
@@ -253,8 +258,7 @@ async function collectCompilerPlan(
 ): Promise<CollectedCheckerRun> {
     assertFrozenSelection(input, selected);
     const { groups, verifyUnselected } = await collectCompilerGroups(input, selected, signal);
-    await yieldToTimers(0);
-    signal.throwIfAborted();
+    await checkCompilerCancellation(signal);
     const planning = {
         version: 3,
         versions: input.versions,
@@ -398,22 +402,12 @@ type CompilerPreparationContext = {
     readonly expandVariants: FamilyVariantExpander | null;
 };
 
-export async function prepare(
-    plan: TestPlan,
-    settings: unknown,
-    context: CompilerPreparationContext
-): Promise<CheckerPreparation> {
-    const { projectRoot, signal, expandVariants } = context;
-    const options = typeTestSettingsSchema.parse(settings);
-    const adapter = await packageVersion(import.meta.url);
-    const group = await resolveCompilerProjects(options, projectRoot, signal);
-    await using ownership = group.ownership;
-    const { projects } = group;
-    const testPlan = expandCompilerWork(plan, projects, expandVariants);
-    await yieldToTimers(0);
-    signal.throwIfAborted();
-    const input = freezeCompilerPlan(testPlan, projects, options.compiler, adapter);
-    const facts = compilerPreparationFacts(projects, options.compiler);
+function retainCompilerPreparation(
+    testPlan: TestPlan,
+    input: CompilerPlan,
+    ownership: AsyncDisposableStack
+): CheckerPreparation {
+    const facts = compilerPreparationFacts(input.projects, input.requestedCompilers);
     const retained = ownership.move();
     return {
         testPlan,
@@ -425,4 +419,20 @@ export async function prepare(
             return await collectCompilerPlan(input, selected, collectionSignal);
         }
     };
+}
+
+export async function prepare(
+    plan: TestPlan,
+    settings: unknown,
+    context: CompilerPreparationContext
+): Promise<CheckerPreparation> {
+    const { projectRoot, signal, expandVariants } = context;
+    const options = typeTestSettingsSchema.parse(settings);
+    const adapter = await packageVersion(import.meta.url);
+    const group = await resolveCompilerProjects(options, projectRoot, signal);
+    await using ownership = group.ownership;
+    const testPlan = expandCompilerWork(plan, group.projects, expandVariants);
+    await checkCompilerCancellation(signal);
+    const input = freezeCompilerPlan(testPlan, group.projects, options.compiler, adapter);
+    return retainCompilerPreparation(testPlan, input, ownership);
 }

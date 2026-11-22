@@ -54,7 +54,16 @@ function forkSupervisedChildProcess(
     child.once('exit', function releaseOwnerPipe() {
         child.stdio[analysisOwnerPipe]?.destroy();
     });
+    function terminateOwnedGroup(): boolean {
+        if (groupClosed || groupTerminated || child.pid === undefined) {
+            return false;
+        }
+        groupTerminated = signalAnalysisGroup(child.pid);
+        return groupTerminated;
+    }
+
     return {
+        ...ownsGroup ? { ownsProcessGroup: true } as const : {},
         closeTransport() {
             child.stdio[analysisOwnerPipe]?.destroy();
             child.stdout?.destroy();
@@ -69,11 +78,7 @@ function forkSupervisedChildProcess(
         },
         kill(signal) {
             if (ownsGroup) {
-                if (groupClosed || groupTerminated || child.pid === undefined) {
-                    return false;
-                }
-                groupTerminated = signalAnalysisGroup(child.pid);
-                return groupTerminated;
+                return terminateOwnedGroup();
             }
             return child.exitCode === null && child.signalCode === null && child.kill(signal);
         },

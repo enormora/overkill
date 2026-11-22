@@ -46,7 +46,8 @@ export async function createLocalTestPlan(input: LocalTestPlanInput): Promise<Lo
                             'Analysis preparation exceeded collection timeout.',
                             async function prepare(signal) {
                                 return await createProfileTestPlan(input, signal);
-                            }
+                            },
+                            input.dependencies.wallClock
                         );
                     });
                 } catch (error: unknown) {

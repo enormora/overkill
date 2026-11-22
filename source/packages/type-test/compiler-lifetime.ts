@@ -19,20 +19,11 @@ export type CompilerLifetime = AsyncDisposable & {
 export function createCompilerLifetime(): CompilerLifetime {
     const identity = Symbol('CompilerLifetime');
     const children = new Map<ChildProcess, Promise<void>>();
-    let terminated = false;
     const closed = new AbortController();
+    let terminated = false;
     let failure: Error | null = null;
-    let disposed = false;
-    function observe(message: unknown): void {
-        if (compilerContext.getStore() !== identity) {
-            return;
-        }
-        const result = processEvent.safeParse(message);
-        if (!result.success) {
-            failure = result.error;
-            return;
-        }
-        const child = result.data.process;
+
+    function retainChild(child: ChildProcess): void {
         children.set(
             child,
             new Promise(function waitForClose(resolve) {
@@ -52,6 +43,17 @@ export function createCompilerLifetime(): CompilerLifetime {
         terminateCancelledSpawn();
     }
 
+    function observe(message: unknown): void {
+        if (compilerContext.getStore() !== identity) {
+            return;
+        }
+        const result = processEvent.safeParse(message);
+        if (!result.success) {
+            failure = result.error;
+            return;
+        }
+        retainChild(result.data.process);
+    }
     function terminate(): void {
         terminated = true;
         for (const child of children.keys()) {
@@ -63,13 +65,11 @@ export function createCompilerLifetime(): CompilerLifetime {
         closed: closed.signal,
         terminate,
         run(operation) {
-            if (disposed) {
-                throw new Error('Compiler lifetime is disposed.');
-            }
+            closed.signal.throwIfAborted();
             return compilerContext.run(identity, operation);
         },
         async [asyncDispose]() {
-            disposed = true;
+            closed.abort(new Error('Compiler lifetime is disposed.'));
             try {
                 const timer = timers.setTimeout(terminate, compilerShutdownMilliseconds);
                 try {

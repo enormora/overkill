@@ -1,10 +1,16 @@
 import { createClock } from '@enormora/clock';
-import { withAnalysisSignal } from './analysis-deadline.ts';
-import { supervisedCancellationSchema, supervisedParentMessageSchema } from './supervised-parent-message-schema.ts';
-import { createChildProcessOutbox } from './child-process-outbox.ts';
+import type { SupervisedChildCommand, SupervisedRunCommand } from './supervised-protocol.ts';
 import {
-    envelopeMessage
-} from './child-process-protocol.ts';
+    cancellationSignal,
+    disconnect,
+    flushSupervisedMessages,
+    observeAnalysisCancellation,
+    ownedMessageListeners,
+    receiveAssignment,
+    receiveCommand,
+    send
+} from './supervised-child-ipc.ts';
+import { withAnalysisSignal } from './analysis-deadline.ts';
 import { readProcessEnvironment, readWebStorage } from './node-host-readers.ts';
 import {
     loadRunEngineModule,
@@ -15,77 +21,7 @@ import {
     observeProcessIpcListeners
 } from './node-process-policy-observation.ts';
 import { createNodeProcessUsageTracker } from './process-usage.ts';
-import { runSupervisedChild, type SupervisedChildHost } from './supervised-child.ts';
-import {
-    supervisedChildCorrelationId,
-    supervisedCancellationCorrelationId,
-    type SupervisedAssignmentCommand,
-    type SupervisedChildCommand,
-    type SupervisedRunCommand
-} from './supervised-protocol.ts';
-
-const cancellation = new AbortController();
-function cancelAnalysis(message: unknown): void {
-    if (envelopeMessage(message, supervisedCancellationCorrelationId, supervisedCancellationSchema) !== null) {
-        cancellation.abort(new DOMException('Supervised analysis cancelled.', 'AbortError'));
-    }
-}
-const ownedMessageListeners = new WeakSet<(message: unknown) => void>();
-
-const outbox = createChildProcessOutbox(supervisedChildCorrelationId, {
-    disconnect: process.disconnect?.bind(process) ?? null,
-    send: process.send?.bind(process) ?? null
-});
-
-function send(message: Parameters<SupervisedChildHost['send']>[0]): void {
-    outbox.send(message);
-}
-
-async function disconnect(): Promise<void> {
-    await outbox.disconnect();
-}
-
-function supervisedParentMessage(message: unknown): SupervisedAssignmentCommand | SupervisedChildCommand | null {
-    return envelopeMessage(message, supervisedChildCorrelationId, supervisedParentMessageSchema);
-}
-
-function readCommand(message: unknown): SupervisedChildCommand {
-    const decoded = supervisedParentMessage(message);
-    if (decoded !== null && decoded.kind !== 'assign') {
-        return decoded;
-    }
-    throw new Error('Expected a supervised child command.');
-}
-function readAssignment(message: unknown): SupervisedAssignmentCommand {
-    const decoded = supervisedParentMessage(message);
-    if (decoded?.kind === 'assign') {
-        return decoded;
-    }
-    throw new Error('Expected a supervised child assignment.');
-}
-async function receiveParentMessage<Message>(read: (message: unknown) => Message): Promise<Message> {
-    return new Promise(function waitForParentMessage(resolve, reject) {
-        const listener = function receiveMessage(message: unknown): void {
-            if (envelopeMessage(message, supervisedCancellationCorrelationId, supervisedCancellationSchema) !== null) {
-                return;
-            }
-            process.off('message', listener);
-            try {
-                resolve(read(message));
-            } catch (error: unknown) {
-                reject(error instanceof Error ? error : new Error('Invalid parent IPC payload.'));
-            }
-        };
-        ownedMessageListeners.add(listener);
-        process.on('message', listener);
-    });
-}
-async function receiveCommand(): Promise<SupervisedChildCommand> {
-    return receiveParentMessage(readCommand);
-}
-async function receiveAssignment(): Promise<SupervisedAssignmentCommand> {
-    return receiveParentMessage(readAssignment);
-}
+import { runSupervisedChild } from './supervised-child.ts';
 
 function validatePermissionHost(command: SupervisedChildCommand): void {
     if (command.capabilityRestrictions.mode === 'disabled') {
@@ -111,14 +47,13 @@ function dropBodyReadPermission(command: SupervisedRunCommand): void {
     }
 }
 
-ownedMessageListeners.add(cancelAnalysis);
-process.on('message', cancelAnalysis);
+const stopObservingCancellation = observeAnalysisCancellation();
 try {
-    await withAnalysisSignal(cancellation.signal, async function runChild() {
+    await withAnalysisSignal(cancellationSignal, async function runChild() {
         await runSupervisedChild(
             {
                 disconnect,
-                flush: outbox.flush,
+                flush: flushSupervisedMessages,
                 discoverRunFiles: runDiscovery.discoverRunFiles,
                 dropBodyReadPermission,
                 observeIpcListeners(record) {
@@ -153,5 +88,5 @@ try {
         );
     });
 } finally {
-    process.off('message', cancelAnalysis);
+    stopObservingCancellation();
 }

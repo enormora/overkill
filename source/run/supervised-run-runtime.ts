@@ -1,6 +1,6 @@
 import { finalizedResourceCheckResult } from '../engine/resource-check-result.ts';
-import { completeAnalysisResults, reportInterruptedAnalysis } from './supervised-analysis-result.ts';
 import { workIdentityKey } from '../engine/identity.ts';
+import { completeAnalysisResults, reportInterruptedAnalysis } from './supervised-analysis-result.ts';
 import type {
     ReporterEvent,
     ProcessUsageSnapshot,
@@ -255,7 +255,8 @@ export function supervisedWorkloadInputs(resolvedRun: ResolvedRun): ReturnType<t
     return collectedWorkloadInputs(supervisedCollectedPlan(resolvedRun));
 }
 
-export const createHardTimeout: (runtime: SupervisedRunRuntimeSeed) => SupervisedHardTimeout =
+type HardTimeoutRuntimeSeed = SupervisedRunRuntimeSeed & { readonly analysis: boolean; };
+export const createHardTimeout: (runtime: HardTimeoutRuntimeSeed) => SupervisedHardTimeout =
     createSupervisedHardTimeout;
 
 function childEventWithAttachments(event: ReporterEvent, runtime: SupervisedRunRuntime): ReporterEvent {

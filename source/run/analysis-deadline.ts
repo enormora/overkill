@@ -1,6 +1,6 @@
-import { createClock } from '@enormora/clock';
-import { createInvocationBudget, InvocationDeadlineExceededError } from '../invocation-budget.ts';
 import { AsyncLocalStorage } from 'node:async_hooks';
+import { createClock, type Clock } from '@enormora/clock';
+import { createInvocationBudget, InvocationDeadlineExceededError } from '../invocation-budget.ts';
 import type { FamilyValue } from '../engine/test-family.ts';
 
 const invocation = new AsyncLocalStorage<AbortSignal>();
@@ -26,9 +26,10 @@ export function withAnalysisCollection<Value>(facts: FamilyValue | undefined, op
 export async function withAnalysisDeadline<Value>(
     milliseconds: number,
     message: string,
-    operation: (signal: AbortSignal) => Promise<Value>
+    operation: (signal: AbortSignal) => Promise<Value>,
+    clock: Clock | null = null
 ): Promise<Value> {
-    const budget = createInvocationBudget(milliseconds, analysisSignal(), createClock());
+    const budget = createInvocationBudget(milliseconds, analysisSignal(), clock ?? createClock());
     const controller = new AbortController();
     function abort(): void {
         const reason: unknown = budget.signal.reason;

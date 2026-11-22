@@ -35,11 +35,13 @@ function familySource(family: CollectedFamilyMetadata, cwd: string): RunCollecti
         : { kind: 'configured-files' };
 }
 
+type FamilyCollectionRequest = FamilyCollectionInput & { readonly signal: Readonly<AbortSignal> | null; };
+
 async function collectSelectedFamily(
     run: ResolvedRun,
     metadata: CollectedFamilyMetadata,
     selection: readonly ResolvedRun['facts']['cases'][number]['workId'][],
-    input: FamilyCollectionInput
+    input: FamilyCollectionRequest
 ): Promise<CollectedFamilyMetadata> {
     const source = familySource(metadata, input.command.cwd);
     const family = { ...metadata.definition, selection };
@@ -71,7 +73,8 @@ async function collectSelectedFamily(
                 family
             },
             input.dependencies,
-            null
+            null,
+            input.signal
         );
     const actual = validateFrozenFamilyCollection(metadata, collection.collectedPlan.family, collection.runnerErrors);
     validateRecordedFamilyFacts(actual.facts);
@@ -80,7 +83,8 @@ async function collectSelectedFamily(
 
 export async function resolveSelectedFamilyFacts(
     run: ResolvedRun,
-    input: FamilyCollectionInput
+    input: FamilyCollectionInput,
+    signal: Readonly<AbortSignal> | null = null
 ): Promise<ResolvedRun> {
     if (run.plan.kind === 'local' || run.plan.collectedPlan.family === null) {
         return run;
@@ -92,7 +96,7 @@ export async function resolveSelectedFamilyFacts(
     if (selection.length === 0) {
         return run;
     }
-    const actual = await collectSelectedFamily(run, metadata, selection, input);
+    const actual = await collectSelectedFamily(run, metadata, selection, { ...input, signal });
     return {
         ...run,
         facts: { ...run.facts, family: actual.facts },

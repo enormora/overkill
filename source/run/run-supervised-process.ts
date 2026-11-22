@@ -68,7 +68,10 @@ const emptyCollectionTimingMetadata = Object.freeze({
     workerId: null
 });
 
-async function resolvedSupervisedExecution(resolution: SupervisedResolution): Promise<ResolvedRun> {
+async function resolvedSupervisedExecution(
+    resolution: SupervisedResolution,
+    signal: Readonly<AbortSignal> | null
+): Promise<ResolvedRun> {
     const { allowEmptySelection, collection, command, dependencies, expectedDirectPlan, input } = resolution;
 
     assertExpectedDirectEntrypointCollection(expectedDirectPlan, collection.collectedPlan);
@@ -90,7 +93,7 @@ async function resolvedSupervisedExecution(resolution: SupervisedResolution): Pr
         profile: input.profile,
         projectRoot: input.projectRoot,
         request: input.request
-    });
+    }, signal);
 }
 
 export async function createSupervisedResolvedRun(
@@ -129,7 +132,7 @@ export async function createSupervisedResolvedRun(
         dependencies,
         expectedDirectPlan,
         input
-    });
+    }, null);
 }
 
 async function runSupervisedExecution(execution: SupervisedExecution): Promise<RunResult> {
@@ -151,7 +154,7 @@ async function runSupervisedExecution(execution: SupervisedExecution): Promise<R
                 dependencies,
                 expectedDirectPlan,
                 input
-            });
+            }, execution.signal);
             await record?.recordResolvedRun(run);
 
             return run;

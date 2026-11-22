@@ -106,9 +106,10 @@ async function observeResolution(
     manifest: string
 ): Promise<readonly CompilerResolution[]> {
     const resolutions: CompilerResolution[] = [];
-    const lookupPaths = require.resolve.paths(specifier) ?? [];
-    for (const directory of lookupPaths) {
-        const path = join(directory, specifier, 'package.json');
+    const candidates = (require.resolve.paths(specifier) ?? []).map(function packageManifest(directory) {
+        return join(directory, specifier, 'package.json');
+    });
+    for (const path of candidates) {
         const target = await resolutionTarget(path);
         resolutions.push({ path, target });
         if (target === manifest) {
@@ -121,6 +122,16 @@ async function observeResolution(
     throw new Error('Cannot verify the resolved compiler package from the project.');
 }
 
+async function verifyCompilerVersion(manifestPath: string, selection: CompilerSelection): Promise<void> {
+    const manifest = manifestSchema.parse(JSON.parse(await readFile(manifestPath, 'utf8')));
+    if (selection.kind === 'package' && selection.version !== manifest.version) {
+        throw new Error('Installed compiler does not match the requested exact version.');
+    }
+    if (manifest.version !== '7.1.0-beta') {
+        throw new Error(`Unsupported TypeScript compiler: ${manifest.version}; expected 7.1.0-beta.`);
+    }
+}
+
 async function installation(
     projectRoot: string,
     selection: CompilerSelection,
@@ -129,13 +140,7 @@ async function installation(
     const require = createRequire(pathToFileURL(resolve(projectRoot, 'package.json')));
     const specifier = selection.kind === 'local' ? 'typescript' : selection.specifier;
     const manifestPath = await realpath(require.resolve(`${specifier}/package.json`));
-    const manifest = manifestSchema.parse(JSON.parse(await readFile(manifestPath, 'utf8')));
-    if (selection.kind === 'package' && selection.version !== manifest.version) {
-        throw new Error('Installed compiler does not match the requested exact version.');
-    }
-    if (manifest.version !== '7.1.0-beta') {
-        throw new Error(`Unsupported TypeScript compiler: ${manifest.version}; expected 7.1.0-beta.`);
-    }
+    await verifyCompilerVersion(manifestPath, selection);
     const root = dirname(manifestPath);
     const nativeSpecifier = `@typescript/typescript-${process.platform}-${process.arch}`;
     const compilerRequire = createRequire(manifestPath);

@@ -5,9 +5,8 @@ import { builtinTestFamily, isBuiltinFamilyId } from '../engine/builtin-test-fam
 import type { ExecuteOptions, ExecutionDriver } from '../engine/execution.ts';
 import { bindFamilySettings, type BoundFamilySettings, type FamilyValue } from '../engine/test-family.ts';
 import { analysisSignal, expectedAnalysisCollection, withAnalysisDeadline } from './analysis-deadline.ts';
-import { familyWorkCatalog } from './family-work-catalog.ts';
+import { familyCatalogSnapshot } from './family-work-catalog.ts';
 import { familyCatalog, setFamilyCatalog, type FrozenFamilyDefinition } from './family-catalog.ts';
-import { collectedRunPlanFromTestPlan } from './collected-run-plan.ts';
 import { assertFrozenFamilyPreparation } from './family-resolution.ts';
 
 type TestPlan = ReturnType<Engine['createTestPlan']>;
@@ -23,10 +22,6 @@ const families = new WeakMap<TestPlan, {
     readonly catalog: TestPlan;
     readonly projectRoot: string;
 }>();
-
-function familyCatalogSnapshot(plan: TestPlan): FamilyValue {
-    return familyWorkCatalog(collectedRunPlanFromTestPlan(plan));
-}
 
 function analysisHostOptions(options: ExecuteOptions): ExecuteOptions {
     const selected = { ...options };
@@ -104,13 +99,9 @@ export async function executeHostFamily(
     const analysis = family.binding.testFamily.features.execution === 'analysis';
     const timeout = analysis ? options.timeoutPolicy?.timeoutMilliseconds ?? null : null;
     async function execute(signal: AbortSignal): Promise<RunResult> {
+        const implementations = implementationPlan(selected);
         await using prepared = await preparePlacedFamily(family.engine, {
-            testPlan: implementationPlan(selected) === null
-                ? family.source
-                : setImplementationPlan(
-                    family.source,
-                    implementationPlan(selected) ?? { catalog: null, admission: 'all' }
-                ),
+            testPlan: implementations === null ? family.source : setImplementationPlan(family.source, implementations),
             testFamily: family.binding.testFamily,
             binding: family.binding,
             projectRoot: family.projectRoot,

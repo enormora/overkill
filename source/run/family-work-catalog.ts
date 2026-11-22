@@ -1,4 +1,6 @@
+import type { TestPlan } from '../engine/test-plan.ts';
 import type { FamilyValue } from '../engine/test-family.ts';
+import { collectedRunPlanFromTestPlan } from './collected-run-plan.ts';
 import type { CollectedRunPlan } from './run-types.ts';
 import { familyValueSchema } from './family-transport-schema.ts';
 
@@ -21,4 +23,8 @@ export function familyWorkCatalog(plan: CollectedRunPlan): FamilyValue {
         files: files(plan.files),
         discoveredFiles: files(plan.discoveredFiles)
     });
+}
+
+export function familyCatalogSnapshot(plan: TestPlan): FamilyValue {
+    return familyWorkCatalog(collectedRunPlanFromTestPlan(plan));
 }

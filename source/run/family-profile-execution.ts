@@ -1,8 +1,7 @@
 import { executePreparedFamilyWithDriver } from '../engine/engine.ts';
 import type { FamilyExecuteOptions } from '../engine/family-run.ts';
-import type { RunResult } from '../engine/run-result.ts';
 import { withAnalysisDeadline } from './analysis-deadline.ts';
-import type { LocalFamilyRunPlan } from './family-profile-types.ts';
+import type { LocalFamilyRunPlan } from './prepared-family-plan.ts';
 import type { ResolvedRun } from './run-types.ts';
 import { isFamilyPlan } from './family-profile-run.ts';
 import { reporterWithAttachments } from './attachment-reporter.ts';
@@ -10,6 +9,8 @@ import type { RunOrchestratorDependencies } from './run-orchestrator-dependencie
 
 import type { ResolvedRunResultFinalizer, RunRuntimePolicy } from './run-support.ts';
 import type { RunTimingMeasurement } from './run-timing-collection.ts';
+
+type RunResult = Awaited<ReturnType<RunOrchestratorDependencies['execute']>>;
 
 export type LocalResolvedRun = ResolvedRun & {
     readonly plan: Extract<ResolvedRun['plan'], { readonly kind: 'local'; }>;
@@ -65,7 +66,8 @@ export async function executeLocalFamily(
                     { ...options, signal },
                     dependencies.execute
                 );
-            }
+            },
+            dependencies.wallClock
         );
     }
     return isFamilyPlan(run.plan)

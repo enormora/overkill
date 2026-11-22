@@ -14,7 +14,6 @@ import { evaluateSite } from './original-evidence.ts';
 
 import { createSourceAnalysis, type SourceAnalysis } from './source-analysis-port.ts';
 import { compilerFileSystem } from './compiler-file-system.ts';
-import { runCompilerOperation } from './compiler-lifetime.ts';
 
 export function projectSourceAnalysis(project: FrozenProject): SourceAnalysis {
     const { checker } = project.configured;
@@ -97,27 +96,40 @@ export type CompilerCheck = {
     readonly check: (signal: AbortSignal) => Promise<CheckerExecution>;
 };
 
+type AssertionCollection = {
+    readonly plan: OriginalAssertionPlan;
+    readonly failure: Error | null;
+};
+
+async function readAssertionCollection(
+    plan: TestPlan,
+    project: FrozenProject,
+    signal: AbortSignal
+): Promise<AssertionCollection> {
+    try {
+        const assertions = await project.execute(signal, async function collectAssertions() {
+            return await collectOriginalAssertions(projectSourceAnalysis(project), plan);
+        });
+        return { plan: assertions, failure: null };
+    } catch (error: unknown) {
+        signal.throwIfAborted();
+        return {
+            plan: { modules: [], sites: [], issues: [] },
+            failure: error instanceof Error ? error : new Error('Type-test source analysis failed.', { cause: error })
+        };
+    }
+}
+
 export async function collectProject(
     plan: TestPlan,
     project: FrozenProject,
     collectionSignal: AbortSignal
 ): Promise<CompilerCheck> {
-    let assertionPlan: OriginalAssertionPlan = { modules: [], sites: [], issues: [] };
-    let collectionError: Error | null = null;
-    try {
-        assertionPlan = await runCompilerOperation(
-            project.lifetime,
-            collectionSignal,
-            async function collectAssertions() {
-                return await collectOriginalAssertions(projectSourceAnalysis(project), plan);
-            }
-        );
-    } catch (error: unknown) {
-        collectionSignal.throwIfAborted();
-        collectionError = error instanceof Error
-            ? error
-            : new Error('Type-test source analysis failed.', { cause: error });
-    }
+    const { plan: assertionPlan, failure: collectionError } = await readAssertionCollection(
+        plan,
+        project,
+        collectionSignal
+    );
     const configurationJson = JSON.stringify({
         options: project.project.options,
         files: project.project.fileNames,
@@ -154,7 +166,7 @@ export async function collectProject(
         async check(signal) {
             const started = performance.now();
             try {
-                const checked = await runCompilerOperation(project.lifetime, signal, async function checkAssertions() {
+                const checked = await project.execute(signal, async function checkAssertions() {
                     return await checkProject(signal);
                 });
                 return {

@@ -1,4 +1,3 @@
-import { analysisSignal, withAnalysisSignal } from './analysis-deadline.ts';
 import {
     type RunAttachmentRecord,
     activeRuntimeAttachments,
@@ -21,6 +20,7 @@ import type {
 } from './supervised-protocol.ts';
 import {
     kill,
+    isSupervisedAnalysis,
     observeSupervisedChildOutput,
     type SupervisedChildCoverage,
     type SupervisedChildProcess
@@ -146,27 +146,22 @@ async function createLiveRun(
     dependencies: RunOrchestratorDependencies,
     options: SupervisedExecutionOptions
 ): Promise<SupervisedLiveRun> {
-    const child = await (options.timing?.measureAsync(
-        'supervised-process.spawn',
-        emptyTimingSpanMetadata(),
-        async function startTimedLiveSupervisedChild() {
-            return await dependencies.startSupervisedChild({
-                ...command.analysis === true ? { analysis: true } : {},
-                capabilityRestrictions: command.capabilityRestrictions,
-                coverage: options.coverage,
-                cwd: command.cwd,
-                environmentVariables: dependencies.runtimeCapabilityPolicy.readEnvironment(),
-                testFamily: command.testFamily
-            });
-        }
-    ) ?? dependencies.startSupervisedChild({
-        ...command.analysis === true ? { analysis: true } : {},
+    const startOptions = {
+        analysis: command.analysis,
         capabilityRestrictions: command.capabilityRestrictions,
         coverage: options.coverage,
         cwd: command.cwd,
         environmentVariables: dependencies.runtimeCapabilityPolicy.readEnvironment(),
         testFamily: command.testFamily
-    }));
+    };
+    async function startChild(): Promise<SupervisedChildProcess> {
+        return await dependencies.startSupervisedChild(startOptions);
+    }
+    const child = await (options.timing?.measureAsync(
+        'supervised-process.spawn',
+        emptyTimingSpanMetadata(),
+        startChild
+    ) ?? startChild());
     const collectedSignal = createSignal();
     const state = createSupervisedRunState(
         command.retryPolicy?.artifacts ?? 'first-failure-and-final',
@@ -404,7 +399,7 @@ async function createLiveRunRuntime(
 
     return {
         ...runtimeWithoutTimeout,
-        timeout: createHardTimeout(runtimeWithoutTimeout)
+        timeout: createHardTimeout({ ...runtimeWithoutTimeout, analysis: isSupervisedAnalysis(resolvedRun) })
     };
 }
 
@@ -483,9 +478,7 @@ export async function runSupervisedCommand(
     const liveRun = await createLiveRun(command, dependencies, options);
     observeLiveRun(command, liveRun, options.signal);
     try {
-        return await withAnalysisSignal(options.signal ?? analysisSignal(), async function runLiveCommand() {
-            return await executeLiveCommand(command, liveRun, createResolvedRun);
-        });
+        return await executeLiveCommand(command, liveRun, createResolvedRun);
     } catch (error: unknown) {
         kill(liveRun.child);
         await liveRun.finishedSignal.promise;

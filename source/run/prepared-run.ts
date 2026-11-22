@@ -1,4 +1,3 @@
-import { analysisSignal, withAnalysisSignal } from './analysis-deadline.ts';
 import { replayEmptySelection } from './replay-empty-selection.ts';
 import type { PreparedRun, RunPreparationInput } from './prepared-run-types.ts';
 import type { ResolvedRunInput, RunInvocation } from './run-input-resolution.ts';
@@ -70,15 +69,13 @@ async function executePreparedRun(prepared: PreparedRun, options: PreparedExecut
         return await isolatedResult;
     }
 
-    return await withAnalysisSignal(options.signal ?? analysisSignal(), async function runLocal() {
-        return await runLocalCommand(resolvedCommand, executionDependencies, {
-            baseline,
-            input,
-            source,
-            timing,
-            record: options.record
-        });
-    });
+    return await runLocalCommand(resolvedCommand, executionDependencies, {
+        baseline,
+        input,
+        source,
+        timing,
+        record: options.record
+    }, options.signal);
 }
 
 function isRunResult(value: PreparedRun | RunResult): value is RunResult {

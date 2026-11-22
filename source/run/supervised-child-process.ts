@@ -43,6 +43,7 @@ type SupervisedChildProcessOutput = {
 
 export type SupervisedChildProcess = {
     readonly closeTransport: () => void;
+    readonly ownsProcessGroup?: true;
     readonly exitCode: number | null;
     readonly kill: (signal: 'SIGKILL') => unknown;
     readonly on: (...registration: SupervisedChildListenerRegistration) => unknown;
@@ -55,7 +56,10 @@ export type SupervisedChildProcess = {
 
 export function kill(child: SupervisedChildProcess): void {
     startChildShutdown(child);
-    if (child.pid !== undefined) {
+    if (
+        child.ownsProcessGroup === true ||
+        child.pid !== undefined && child.exitCode === null && child.signalCode === null
+    ) {
         child.kill('SIGKILL');
     }
 }
@@ -66,6 +70,7 @@ export type SupervisedChildHardTimeout = {
 };
 
 type SupervisedHardTimeoutRuntime = {
+    readonly analysis: boolean;
     readonly child: SupervisedChildProcess;
     readonly dependencies: { readonly wallClock: Clock; };
     readonly resolvedRun: ResolvedRun;
@@ -91,24 +96,22 @@ export function createSupervisedHardTimeout(
     runtime: SupervisedHardTimeoutRuntime
 ): SupervisedChildHardTimeout {
     let hardTimeout: ReturnType<Clock['setTimeout']> | null = null;
-    const analysis = isSupervisedAnalysis(runtime.resolvedRun);
+    const { analysis } = runtime;
+
+    function clear(): void {
+        if (hardTimeout !== null) {
+            runtime.dependencies.wallClock.clearTimeout(hardTimeout);
+            hardTimeout = null;
+        }
+    }
 
     return {
-        clear() {
-            if (hardTimeout !== null) {
-                runtime.dependencies.wallClock.clearTimeout(hardTimeout);
-                hardTimeout = null;
-            }
-        },
+        clear,
         start() {
             if (replayUsesLocalProcessPolicy(runtime.resolvedRun) || analysis && hardTimeout !== null) {
                 return;
             }
-            if (hardTimeout !== null) {
-                runtime.dependencies.wallClock.clearTimeout(hardTimeout);
-                hardTimeout = null;
-            }
-
+            clear();
             const remainingMilliseconds = remainingHardTimeoutMilliseconds(
                 runtime.state.activeCases.values(),
                 Number(runtime.dependencies.wallClock.currentMonotonicMicroseconds),
@@ -136,7 +139,7 @@ export function createSupervisedHardTimeout(
 }
 
 type SupervisedChildStartOptions = {
-    readonly analysis?: boolean;
+    readonly analysis?: boolean | undefined;
     readonly capabilityRestrictions: {
         readonly mode: 'disabled' | 'enabled';
     };
@@ -320,23 +323,28 @@ async function supervisedChildExecArgv(
     ];
 }
 
+function assertAnalysisProcessGroup(analysis: boolean): void {
+    if (analysis && ![ 'darwin', 'linux' ].includes(process.platform)) {
+        throw new Error('Supervised analysis requires process-group ownership on Linux or macOS.');
+    }
+}
+
 export function createSupervisedChildProcessStarter(
     dependencies: SupervisedChildProcessStarterDependencies
 ): SupervisedChildProcessStarter {
     return async function startSupervisedChild(options) {
-        if (options.analysis === true && process.platform !== 'darwin' && process.platform !== 'linux') {
-            throw new Error('Supervised analysis requires process-group ownership on Linux or macOS.');
-        }
+        const analysis = options.analysis === true;
+        assertAnalysisProcessGroup(analysis);
         const environment = sanitizedChildEnvironment(options.environmentVariables, options.testFamily);
 
         return dependencies.fork(
             dependencies.childProcessEntryPoint,
             [
                 childRoleArgument(supervisedChildRole),
-                ...options.analysis === true ? [ analysisProcessGroupArgument ] : []
+                ...analysis ? [ analysisProcessGroupArgument ] : []
             ],
             {
-                ...options.analysis === true ? { detached: true } : {},
+                ...analysis ? { detached: true } : {},
                 cwd: options.cwd,
                 env: options.coverage === null
                     ? environment

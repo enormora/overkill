@@ -57,10 +57,10 @@ export const testNode: TestNode = suite('host collection policy forwarding', [
             exportKind: 'value'
         } as const;
         const observed: unknown[] = [];
-        const result = await resolveHostEngine(selection, async function (input) {
+        const result = await resolveHostEngine(selection, { async loadRunEngineModule(input) {
             observed.push(input);
             return engine;
-        });
+        } });
         scope.assert.equal(result, engine);
         scope.assert.deepEqual(observed, [ selection ]);
         return scope.assert.collect();

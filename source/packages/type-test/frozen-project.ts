@@ -1,14 +1,13 @@
+import { setTimeout as yieldToTimers } from 'node:timers/promises';
 import { resolve } from 'node:path';
 import { readFile } from 'node:fs/promises';
-import { env } from 'node:process';
-import type { Except } from 'type-fest';
 import type { API, Snapshot, Project, ParsedCommandLine } from 'typescript-beta/async';
 import {
     closeCompilerConnection,
     createCompilerLifetime,
-    runCompilerOperation,
-    type CompilerLifetime
+    runCompilerOperation
 } from './compiler-lifetime.ts';
+import { openCompiler } from './compiler-process.entry-point.ts';
 import type { CompilerSelection } from './profile-settings.ts';
 import { resolveInstalledCompiler, verifyInstalledCompiler, type InstalledCompiler } from './installed-compiler.ts';
 import {
@@ -18,10 +17,9 @@ import {
     type FrozenInputs,
     type ProjectInputObservation
 } from './frozen-inputs.ts';
-import type { OriginalAssertionPlan } from './original-assertions.ts';
 import type { TypeAnalysis } from './source-analysis-port.ts';
 
-export type FrozenProject = {
+type CapturedProject = {
     readonly compiler: InstalledCompiler;
     readonly api: API;
     readonly snapshot: Snapshot;
@@ -31,8 +29,11 @@ export type FrozenProject = {
     readonly program: Project['program'];
     readonly inputs: FrozenInputs;
     readonly observation: ProjectInputObservation;
-    readonly lifetime: CompilerLifetime;
     readonly projectText: string;
+};
+
+export type FrozenProject = CapturedProject & {
+    readonly execute: <Value>(signal: AbortSignal, operation: () => Promise<Value>) => Promise<Value>;
     readonly ownership: AsyncDisposableStack;
 };
 type ProjectSession = {
@@ -42,6 +43,10 @@ type ProjectSession = {
     readonly observation: ProjectInputObservation;
     readonly signal: AbortSignal;
 };
+export async function checkCompilerCancellation(signal: AbortSignal): Promise<void> {
+    await yieldToTimers(0);
+    signal.throwIfAborted();
+}
 export const fingerprint = sourceFingerprint;
 function configuredProject(snapshot: Snapshot, path: string): Project {
     const project = snapshot.getConfiguredProject(path);
@@ -51,12 +56,19 @@ function configuredProject(snapshot: Snapshot, path: string): Project {
     return project;
 }
 
-async function captureProject(input: ProjectSession): Promise<Except<FrozenProject, 'lifetime' | 'ownership'>> {
+async function parseProject(input: ProjectSession): Promise<ParsedCommandLine> {
     const project = await input.api.parseConfigFile(input.projectConfigPath);
     if (project.errors.length > 0) {
         throw new Error(`Cannot parse original project: ${input.projectConfigPath}`, { cause: project.errors });
     }
     input.signal.throwIfAborted();
+    return project;
+}
+
+async function captureProject(
+    input: ProjectSession
+): Promise<CapturedProject> {
+    const project = await parseProject(input);
     const snapshot = await input.api.createSnapshot({ openProjects: [ input.projectConfigPath ] });
     input.signal.throwIfAborted();
     const configured = configuredProject(snapshot, input.projectConfigPath);
@@ -77,18 +89,6 @@ async function captureProject(input: ProjectSession): Promise<Except<FrozenProje
         inputs: input.observation.snapshot(),
         projectText: await readFile(input.projectConfigPath, 'utf8')
     };
-}
-
-function openCompiler(compiler: InstalledCompiler, cwd: string, observation: ProjectInputObservation): API {
-    const timingDirectory = env.TS_API_TIMING_DIR;
-    delete env.TS_API_TIMING_DIR;
-    try {
-        return new compiler.native.API({ cwd, fs: observation.fs, runExternalCode: false });
-    } finally {
-        if (timingDirectory !== undefined) {
-            env.TS_API_TIMING_DIR = timingDirectory;
-        }
-    }
 }
 
 export async function loadProject(
@@ -116,7 +116,13 @@ export async function loadProject(
         });
     });
     verifyProjectInputs(project.inputs, signal);
-    return { ...project, lifetime, ownership: ownership.move() };
+    return {
+        ...project,
+        ownership: ownership.move(),
+        async execute(operationSignal, operation) {
+            return await runCompilerOperation(lifetime, operationSignal, operation);
+        }
+    };
 }
 
 export function typeAnalysis(project: FrozenProject): TypeAnalysis {
@@ -127,9 +133,11 @@ export async function disposeProject(project: FrozenProject): Promise<void> {
     await project.ownership.disposeAsync();
 }
 
+type AssertionSourceInput = { readonly path: string; readonly originalText: string; };
+
 export async function verifyFrozenProject(
     project: FrozenProject,
-    modules: OriginalAssertionPlan['modules'],
+    modules: readonly AssertionSourceInput[],
     signal: AbortSignal
 ): Promise<void> {
     signal.throwIfAborted();
