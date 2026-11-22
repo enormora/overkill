@@ -13,13 +13,12 @@ import {
 } from '../runtime/support/stryker-lifecycle-fixture.ts';
 import { executeMutationScript } from '../runtime/support/stryker-script.ts';
 
-const processModels = [ 'in-process', 'supervised-process' ] as const;
 const representativeModes = [
     { processModel: 'in-process', freshState: false },
     { processModel: 'supervised-process', freshState: true }
 ] as const;
 type CampaignMode = {
-    readonly processModel: typeof processModels[number];
+    readonly processModel: (typeof representativeModes)[number]['processModel'];
     readonly freshState: boolean;
     readonly looping: boolean;
     readonly coverageAnalysis: 'all' | 'off' | 'perTest';

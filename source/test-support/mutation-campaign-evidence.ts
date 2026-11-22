@@ -18,11 +18,11 @@ export const campaignEvidenceSchema = z.strictObject({
         testsCompleted: z.number().int().nonnegative()
     }))
 });
-export type CampaignEvidence = z.infer<typeof campaignEvidenceSchema>;
+export type CampaignEvidence = Readonly<z.infer<typeof campaignEvidenceSchema>>;
 type ExpectedMutant = {
     readonly file: string;
     readonly line: number;
-    readonly status: 'Killed' | 'Survived' | 'NoCoverage';
+    readonly status: 'Killed' | 'NoCoverage' | 'Survived';
     readonly killers: readonly string[];
     readonly optimizedCases: number;
 };
@@ -37,57 +37,112 @@ export const expectedMutationManifest: readonly ExpectedMutant[] = [
     { file: 'parameter.mjs', line: 1, status: 'Killed', killers: [ 'parameter 1', 'parameter 2' ], optimizedCases: 2 }
 ];
 
-function mutantKey(mutant: CampaignEvidence['mutants'][number]): string {
+type Mutant = Readonly<CampaignEvidence['mutants'][number]>;
+type CampaignTest = Readonly<CampaignEvidence['tests'][number]>;
+
+function mutantKey(mutant: Mutant): string {
     return JSON.stringify([ mutant.file, mutant.location, mutant.mutator, mutant.replacement ]);
 }
 
-function validateCampaign(evidence: CampaignEvidence): void {
-    const tests = new Map(evidence.tests.map((test) => [ test.id, test ]));
-    assert.equal(tests.size, evidence.tests.length, 'Duplicate test identity');
-    assert.equal(evidence.tests.length, 10, 'Incomplete dry-run catalog');
-    assert.equal(evidence.tests.filter((test) => test.status === 'skipped').length, 1);
-    assert.equal(evidence.mutants.length, expectedMutationManifest.length, 'Mutant inventory changed');
-    assert.equal(new Set(evidence.mutants.map(mutantKey)).size, evidence.mutants.length, 'Duplicate mutant');
-    for (const expected of expectedMutationManifest) {
-        const matches = evidence.mutants.filter((mutant) =>
-            mutant.file === expected.file && mutant.location.start.line === expected.line
-        );
-        assert.equal(matches.length, 1, `Missing or repeated mutant: ${expected.file}:${expected.line}`);
-        const [ mutant ] = matches;
-        assert.ok(mutant);
-        assert.equal(mutant.mutator, 'BooleanLiteral');
-        assert.equal(mutant.replacement, 'false');
-        const status = expected.status === 'NoCoverage' && evidence.coverage === 'off' ? 'Survived' : expected.status;
-        assert.equal(mutant.status, status, mutantKey(mutant));
-        const executed = evidence.coverage === 'perTest' ?
-            expected.optimizedCases
-            : status === 'NoCoverage'
-            ? 0
-            : evidence.tests.filter((test) => test.status === 'success').length;
-        assert.equal(mutant.testsCompleted, executed, `Incorrect selection: ${mutantKey(mutant)}`);
-        for (const killer of mutant.killers) {
-            assert.ok(tests.has(killer), `Killer outside dry-run catalog: ${killer}`);
-        }
-        const expectedKillers = expected.killers.map((title) => {
-            const matching = evidence.tests.filter((test) => test.name.split(' > ').includes(title));
-            assert.equal(matching.length, 1, `Ambiguous expected killer: ${title}`);
-            const [ test ] = matching;
-            assert.ok(test);
-            return test.id;
+function testIdentity(test: CampaignTest): string {
+    return test.id;
+}
+
+function compareText(left: string, right: string): number {
+    return left.localeCompare(right);
+}
+
+function compareTestIds(left: CampaignTest, right: CampaignTest): number {
+    return compareText(left.id, right.id);
+}
+
+function expectedKillerIds(tests: readonly CampaignTest[], titles: readonly string[]): readonly string[] {
+    return titles.map(function killerId(title) {
+        const matching = tests.filter(function matchesTitle(test) {
+            return test.name.split(' > ').includes(title);
         });
-        assert.deepEqual(mutant.killers.toSorted(), expectedKillers.toSorted(), mutantKey(mutant));
+        assert.equal(matching.length, 1, `Ambiguous expected killer: ${title}`);
+        const [ test ] = matching;
+        return test.id;
+    });
+}
+
+function expectedStatus(expected: ExpectedMutant, coverage: MutationCoverageMode): Mutant['status'] {
+    return expected.status === 'NoCoverage' && coverage === 'off' ? 'Survived' : expected.status;
+}
+
+function expectedCompletedCases(
+    expected: ExpectedMutant,
+    coverage: MutationCoverageMode,
+    successfulTests: number
+): number {
+    if (coverage === 'perTest') {
+        return expected.optimizedCases;
+    }
+    return expectedStatus(expected, coverage) === 'NoCoverage' ? 0 : successfulTests;
+}
+
+function validateMutant(
+    evidence: CampaignEvidence,
+    expected: ExpectedMutant,
+    successfulTests: number,
+    testIds: ReadonlySet<string>
+): void {
+    const matches = evidence.mutants.filter(function matchesExpected(mutant) {
+        return mutant.file === expected.file && mutant.location.start.line === expected.line;
+    });
+    assert.equal(matches.length, 1, `Missing or repeated mutant: ${expected.file}:${expected.line}`);
+    const [ mutant ] = matches;
+    const key = mutantKey(mutant);
+    assert.equal(mutant.mutator, 'BooleanLiteral');
+    assert.equal(mutant.replacement, 'false');
+    assert.equal(mutant.status, expectedStatus(expected, evidence.coverage), key);
+    assert.equal(
+        mutant.testsCompleted,
+        expectedCompletedCases(expected, evidence.coverage, successfulTests),
+        `Incorrect selection: ${key}`
+    );
+    assert.ok(
+        mutant.killers.every(function knownKiller(id) {
+            return testIds.has(id);
+        }),
+        'Killer outside dry-run catalog'
+    );
+    assert.deepEqual(
+        mutant.killers.toSorted(compareText),
+        expectedKillerIds(evidence.tests, expected.killers).toSorted(compareText),
+        key
+    );
+}
+
+function validateCampaign(evidence: CampaignEvidence): void {
+    const testIds = new Set(evidence.tests.map(testIdentity));
+    const mutantIds = new Set(evidence.mutants.map(mutantKey));
+    const successfulTests = evidence
+        .tests
+        .filter(function successful(test) {
+            return test.status === 'success';
+        })
+        .length;
+    assert.equal(testIds.size, evidence.tests.length, 'Duplicate test identity');
+    assert.equal(evidence.tests.length, 10, 'Incomplete dry-run catalog');
+    assert.equal(evidence.tests.length - successfulTests, 1);
+    assert.equal(evidence.mutants.length, expectedMutationManifest.length, 'Mutant inventory changed');
+    assert.equal(mutantIds.size, evidence.mutants.length, 'Duplicate mutant');
+    for (const expected of expectedMutationManifest) {
+        validateMutant(evidence, expected, successfulTests, testIds);
     }
 }
 
 export function compareMutationCampaigns(evidence: readonly CampaignEvidence[]): void {
     const [ baseline ] = evidence;
-    assert.ok(baseline, 'Campaign evidence is empty');
+    assert.ok(baseline !== undefined, 'Campaign evidence is empty');
     for (const campaign of evidence) {
         validateCampaign(campaign);
+        assert.deepEqual(campaign.tests.toSorted(compareTestIds), baseline.tests.toSorted(compareTestIds));
         assert.deepEqual(
-            campaign.tests.toSorted((left, right) => left.id.localeCompare(right.id)),
-            baseline.tests.toSorted((left, right) => left.id.localeCompare(right.id))
+            campaign.mutants.map(mutantKey).toSorted(compareText),
+            baseline.mutants.map(mutantKey).toSorted(compareText)
         );
-        assert.deepEqual(campaign.mutants.map(mutantKey).toSorted(), baseline.mutants.map(mutantKey).toSorted());
     }
 }

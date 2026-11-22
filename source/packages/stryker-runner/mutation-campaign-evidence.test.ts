@@ -6,8 +6,15 @@ import {
 } from '../../test-support/mutation-campaign-evidence.ts';
 
 const successfulTests = [
-    'disjoint first', 'disjoint second', 'shared first', 'shared second', 'covered survivor',
-    'static', 'hybrid', 'parameter 1', 'parameter 2'
+    'disjoint first',
+    'disjoint second',
+    'shared first',
+    'shared second',
+    'covered survivor',
+    'static',
+    'hybrid',
+    'parameter 1',
+    'parameter 2'
 ];
 const column = 26;
 
@@ -28,7 +35,7 @@ function campaignEvidence(): CampaignEvidence {
                 mutator: 'BooleanLiteral',
                 replacement: 'false',
                 status,
-                killers: [ ...killers ],
+                killers: Array.from(killers),
                 testsCompleted: optimizedCases
             };
         })

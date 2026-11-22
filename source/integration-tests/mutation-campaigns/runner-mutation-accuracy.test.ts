@@ -36,7 +36,14 @@ export const testNode = suite('mutation campaign accuracy', [
 
         compareMutationCampaigns([ reused, fresh ]);
         scope.assert.deepEqual(
-            [ reused, fresh ].map(evidence => evidence.mutants.filter(mutant => mutant.status === 'Killed').length),
+            [ reused, fresh ].map(function killedCount(evidence) {
+                return evidence
+                    .mutants
+                    .filter(function killed(mutant) {
+                        return mutant.status === 'Killed';
+                    })
+                    .length;
+            }),
             [ 6, 6 ]
         );
         return scope.assert.collect();
