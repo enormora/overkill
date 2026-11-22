@@ -123,8 +123,7 @@ async function runThrowingCaseBody(
         if (completion.kind === 'threw') {
             return failedBody({ context, error: completion.error, testCase });
         }
-        const body = completion.kind === 'returned' ? completedThrowingBody(recorder) : interruptedBody(context);
-        return { ...body, cleanupErrors: context.cleanupErrors, runnerErrors: context.runnerErrors };
+        return completion.kind === 'returned' ? completedThrowingBody(context) : interruptedBody(context);
     };
     return options.runtimePolicy === null
         ? await runAndPrepare()

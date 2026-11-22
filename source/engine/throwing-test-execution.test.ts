@@ -211,7 +211,11 @@ export const testNode = suite('Throwing test execution', [
             function failedRequirement(testScope) {
                 const testScopeRequire: typeof testScope.require = testScope.require;
 
-                testScopeRequire.string(1, { message: 'required string' });
+                try {
+                    testScopeRequire.string(1, { message: 'required string' });
+                } catch {
+                    testScope.assert.fail({ message: 'ignored after requirement' });
+                }
             },
             null
         );

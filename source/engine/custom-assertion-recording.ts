@@ -21,17 +21,15 @@ import type {
     ResolvableSourceLocations
 } from '../assertion-protocol/assertion-node-shape.ts';
 import type { TestContractFailure } from './run-result.ts';
+import type { PendingRecordedAssert } from './assertion-recorder.ts';
+import { isTestControlError } from './test-control-error.ts';
 
 const expectedArgumentSlot = 1;
-
-type PendingAssertAssertionSink = {
-    readonly resolve: (assertion: AssertAssertionNode) => void;
-};
 
 export type AssertAssertionSink = {
     readonly failContract: (failure: TestContractFailure) => never;
     readonly recordAssert: (assertion: AssertAssertionNode) => void;
-    readonly recordPendingAssert: () => PendingAssertAssertionSink;
+    readonly recordPendingAssert: () => PendingRecordedAssert;
 };
 
 export type RequireAssertionSink = {
@@ -51,7 +49,7 @@ type CompositeAssertionNodeInput<Source extends AssertionSource> = {
 type PendingCompositeAssertionInput = {
     readonly annotation: string | null;
     readonly parameters: readonly unknown[];
-    readonly pending: PendingAssertAssertionSink;
+    readonly pending: PendingRecordedAssert;
     readonly record: CompositeAssertionReferenceRecord;
     readonly result: Promise<CompositeAssertionReturn<'assert'>>;
     readonly sink: AssertAssertionSink;
@@ -220,16 +218,22 @@ function createNarrowingCompositeAssertionNode<Source extends AssertionSource>(
 }
 
 async function recordResolvedCompositeAssertion(input: PendingCompositeAssertionInput): Promise<void> {
-    const resolved = await input.result;
-
-    input.pending.resolve(createCompositeAssertionNode({
-        annotation: input.annotation,
-        children: normalizeCompositeChildren(resolved, input.sink.failContract),
-        parameters: input.parameters,
-        record: input.record,
-        source: 'assert',
-        sourceLocations: input.sourceLocations
-    }));
+    try {
+        const resolved = await input.result;
+        input.pending.resolve(createCompositeAssertionNode({
+            annotation: input.annotation,
+            children: normalizeCompositeChildren(resolved, input.sink.failContract),
+            parameters: input.parameters,
+            record: input.record,
+            source: 'assert',
+            sourceLocations: input.sourceLocations
+        }));
+    } catch (error: unknown) {
+        if (isTestControlError(error)) {
+            input.pending.discard();
+        }
+        throw error;
+    }
 }
 
 function recordCompositeAssertion(input: CompositeAssertionRecordingInput): Promise<void> | void {

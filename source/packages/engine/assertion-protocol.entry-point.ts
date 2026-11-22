@@ -68,3 +68,4 @@ export {
     ensureValidSourceLocation,
     unknownSourceLocation
 } from '../../assertion-protocol/source-location.ts';
+export { isTestControlError } from '../../engine/test-control-error.ts';

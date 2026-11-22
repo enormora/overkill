@@ -20,6 +20,8 @@ import {
     type SynchronousCallback,
     type ThrownMatcher,
     createThrownErrorRecord,
+    isTestControlError,
+    type ThrownAssertionObservation,
     thrownMatcherChildren
 } from '../packages/engine/assertion-protocol.entry-point.ts';
 
@@ -222,53 +224,31 @@ export function createCompositeCheckBuilder<Source extends AssertionSource>(
         },
 
         async fromRejectable(label, body) {
+            let result: ForeignAssertionNode<Source>['result'] = { passed: true };
             try {
                 await body();
-
-                return createForeignAssertionNode({
-                    label,
-                    message,
-                    result: { passed: true },
-                    source,
-                    sourceLocations
-                });
             } catch (error: unknown) {
-                return createForeignAssertionNode({
-                    label,
-                    message,
-                    result: {
-                        error: createThrownErrorRecord(error),
-                        passed: false
-                    },
-                    source,
-                    sourceLocations
-                });
+                if (isTestControlError(error)) {
+                    throw error;
+                }
+                result = { error: createThrownErrorRecord(error), passed: false };
             }
+
+            return createForeignAssertionNode({ label, message, result, source, sourceLocations });
         },
 
         fromThrowable(label, body) {
+            let result: ForeignAssertionNode<Source>['result'] = { passed: true };
             try {
                 body();
-
-                return createForeignAssertionNode({
-                    label,
-                    message,
-                    result: { passed: true },
-                    source,
-                    sourceLocations
-                });
             } catch (error: unknown) {
-                return createForeignAssertionNode({
-                    label,
-                    message,
-                    result: {
-                        error: createThrownErrorRecord(error),
-                        passed: false
-                    },
-                    source,
-                    sourceLocations
-                });
+                if (isTestControlError(error)) {
+                    throw error;
+                }
+                result = { error: createThrownErrorRecord(error), passed: false };
             }
+
+            return createForeignAssertionNode({ label, message, result, source, sourceLocations });
         },
 
         function(actual) {
@@ -358,27 +338,19 @@ export function createCompositeCheckBuilder<Source extends AssertionSource>(
         async rejects(thunk, matcher) {
             const promise = thunk();
 
+            let observation: ThrownAssertionObservation;
             try {
-                const value = await promise;
-
-                return createCompositeAssertionGroup(thrownMatcherChildren({
-                    kind: 'rejects',
-                    matcher,
-                    message,
-                    observation: { status: 'resolved', value },
-                    source,
-                    sourceLocations
-                }));
+                observation = { status: 'resolved', value: await promise };
             } catch (error: unknown) {
-                return createCompositeAssertionGroup(thrownMatcherChildren({
-                    kind: 'rejects',
-                    matcher,
-                    message,
-                    observation: { status: 'rejected', value: error },
-                    source,
-                    sourceLocations
-                }));
+                if (isTestControlError(error)) {
+                    throw error;
+                }
+                observation = { status: 'rejected', value: error };
             }
+
+            return createCompositeAssertionGroup(thrownMatcherChildren({
+                kind: 'rejects', matcher, message, observation, source, sourceLocations
+            }));
         },
 
         startsWith(actual, expected) {
@@ -390,27 +362,19 @@ export function createCompositeCheckBuilder<Source extends AssertionSource>(
         },
 
         throws(body, matcher) {
+            let observation: ThrownAssertionObservation;
             try {
-                const value = body();
-
-                return createCompositeAssertionGroup(thrownMatcherChildren({
-                    kind: 'throws',
-                    matcher,
-                    message,
-                    observation: { status: 'returned', value },
-                    source,
-                    sourceLocations
-                }));
+                observation = { status: 'returned', value: body() };
             } catch (error: unknown) {
-                return createCompositeAssertionGroup(thrownMatcherChildren({
-                    kind: 'throws',
-                    matcher,
-                    message,
-                    observation: { status: 'threw', value: error },
-                    source,
-                    sourceLocations
-                }));
+                if (isTestControlError(error)) {
+                    throw error;
+                }
+                observation = { status: 'threw', value: error };
             }
+
+            return createCompositeAssertionGroup(thrownMatcherChildren({
+                kind: 'throws', matcher, message, observation, source, sourceLocations
+            }));
         },
 
         true(actual) {

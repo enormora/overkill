@@ -1,9 +1,11 @@
 import type { AssertionResult, AssertAssertionNode } from '../assertion-protocol/assertion-node.ts';
 import type { ExecutedBody } from './body-result.ts';
 import { classifyPropertyTrial, propertyTrialWithPolicyErrors } from './property-trial-outcome.ts';
-import { createAssertionRecorder, TestContractSignalError, type AssertionRecorder } from './assertion-recorder.ts';
+import { createAssertionRecorder, type AssertionRecorder } from './assertion-recorder.ts';
+import { TestContractSignalError } from './assertion-control-error.ts';
 import { bodyResultContext, completedBody, failedBody } from './case-body-execution.ts';
 import {
+    isPropertyTermination,
     propertyReplayWitness,
     propertyScope,
     type PropertyTrialResult,
@@ -63,7 +65,8 @@ async function evaluatePropertyTrial(
         : failedBody({ context, error: completion.error, testCase });
     const countFailure = recorder.validateAssertionCount(result.returnedAssertions.length);
     const checked: ExecutedBody =
-        countFailure === null || result.inconclusiveReason !== null || result.bodyError !== null || result.requireFailed
+        countFailure === null || result.contractFailures.length > 0 ||
+            result.inconclusiveReason !== null || result.bodyError !== null || result.requireFailed
             ? result
             : { ...result, contractFailures: [ ...result.contractFailures, countFailure ] };
     return classifyPropertyTrial(checked);
@@ -147,13 +150,21 @@ export async function runPropertyCaseBody(testCase: TestPlanCase, context: Prope
         },
         async recordBoundary(evaluate, signal) {
             const pending = recorder.recordPendingAssert();
-            const assertion = await resolvePropertyBoundary(evaluate, {
-                signal,
-                caseSignal: scope.signal,
-                locations: testCase.definitionLocations
-            });
-            pending.resolve(assertion);
-            return assertion;
+            try {
+                const assertion = await resolvePropertyBoundary(evaluate, {
+                    signal,
+                    caseSignal: scope.signal,
+                    locations: testCase.definitionLocations
+                });
+                pending.resolve(assertion);
+                return assertion;
+            } catch (error: unknown) {
+                if (isPropertyTermination(error) && error.result.contractFailures.length > 0) {
+                    recorder.retainContractFailures(error.result.contractFailures);
+                    pending.discard();
+                }
+                throw error;
+            }
         }
     }));
 }

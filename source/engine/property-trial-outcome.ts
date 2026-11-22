@@ -1,4 +1,4 @@
-import { assertionPasses, evaluateAssertion } from '../assertion-protocol/evaluation.ts';
+import { assertionPasses, evaluateAssertion, retainRequirementFailure } from '../assertion-protocol/evaluation.ts';
 import type { AssertAssertionNode, AssertionNode } from '../assertion-protocol/assertion-node.ts';
 import { assertionFailure } from './recorded-assertion-failure.ts';
 import type { ExecutedBody } from './body-result.ts';
@@ -7,7 +7,9 @@ import type { PropertyTrialResult } from './property-execution-host.ts';
 
 export function propertyBoundary(assertion: AssertionNode): AssertAssertionNode {
     if (assertion.check !== 'composite') {
-        return { ...assertion, source: 'assert' };
+        const boundary: AssertAssertionNode = { ...assertion, source: 'assert' };
+        retainRequirementFailure(assertion, boundary);
+        return boundary;
     }
     const primary = assertion.children.find(function failedChild(child) {
         return evaluateAssertion(child, 1) !== null;
@@ -15,7 +17,13 @@ export function propertyBoundary(assertion: AssertionNode): AssertAssertionNode 
     if (primary === undefined) {
         throw new Error('Failed property composite requires a failed child.');
     }
-    return { ...assertion, source: 'assert', children: [ { ...primary, source: 'assert' } ] };
+    const boundary: AssertAssertionNode = {
+        ...assertion,
+        children: [ { ...primary, source: 'assert' } ],
+        source: 'assert'
+    };
+    retainRequirementFailure(assertion, boundary);
+    return boundary;
 }
 
 function hasNativeFailure(result: ExecutedBody): boolean {

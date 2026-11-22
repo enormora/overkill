@@ -91,6 +91,9 @@ function createAssertRecording(): AssertRecording {
             },
             recordPendingAssert() {
                 return {
+                    discard() {
+                        return undefined;
+                    },
                     resolve(assertion) {
                         records.push(assertion);
                     }

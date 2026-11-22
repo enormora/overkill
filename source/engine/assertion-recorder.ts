@@ -1,4 +1,5 @@
-import { assertionPasses } from '../assertion-protocol/evaluation.ts';
+import { RequireFailedSignalError, TestContractSignalError } from './assertion-control-error.ts';
+import { requirementPasses } from '../assertion-protocol/evaluation.ts';
 import type {
     AssertAssertionNode,
     AssertionNode,
@@ -21,7 +22,10 @@ type RecordedRequireMergeStep = {
     readonly recordIndex: number;
 };
 
-type PendingRecordedAssert = {
+const discardedAssertion = Symbol('discarded assertion');
+
+export type PendingRecordedAssert = {
+    readonly discard: () => void;
     readonly resolve: (assertion: AssertAssertionNode) => void;
 };
 
@@ -29,6 +33,9 @@ export type AssertionRecorder = {
     readonly recordPropertyEvidence: (evidence: PropertyInvocationEvidence) => void;
     readonly propertyEvidence: () => readonly PropertyInvocationEvidence[];
     readonly activeRecordedAssertions: () => readonly AssertionNode[];
+    readonly hasContractFailures: () => boolean;
+    readonly contractFailures: () => readonly TestContractFailure[];
+    readonly retainContractFailures: (failures: readonly TestContractFailure[]) => void;
     readonly collect: () => NonEmptyReadonlyArray<AssertAssertionNode>;
     readonly completedThrowingAssertions: () => TestContractFailure | readonly AssertionNode[];
     readonly failContract: (failure: TestContractFailure) => never;
@@ -40,41 +47,6 @@ export type AssertionRecorder = {
     readonly returnedAssertions: (assertionResult: AssertionResult) => TestContractFailure | readonly AssertionNode[];
     readonly validateAssertionCount: (assertionCount: number) => TestContractFailure | null;
 };
-
-const requireFailedSignal = Symbol.for('@overkill-dev/engine/RequireFailedSignal/v1');
-const testContractSignal = Symbol.for('@overkill-dev/engine/TestContractSignal/v1');
-
-export function isRequireFailedSignalError(value: unknown): value is RequireFailedSignalError {
-    return typeof value === 'object' && value !== null && Reflect.get(value, requireFailedSignal) === true;
-}
-
-export function isTestContractSignalError(value: unknown): value is TestContractSignalError {
-    return typeof value === 'object' && value !== null && Reflect.get(value, testContractSignal) === true &&
-        typeof Reflect.get(value, 'failure') === 'function';
-}
-
-export class RequireFailedSignalError extends Error {
-    public constructor() {
-        super('Requirement failed.');
-        this.name = 'RequireFailedSignalError';
-        Object.defineProperty(this, requireFailedSignal, { value: true });
-    }
-}
-
-export class TestContractSignalError extends Error {
-    private readonly contractFailure: TestContractFailure;
-
-    public constructor(failure: TestContractFailure, options: Readonly<ErrorOptions> | undefined) {
-        super(failure.summary, options);
-        this.name = 'TestContractSignalError';
-        Object.defineProperty(this, testContractSignal, { value: true });
-        this.contractFailure = failure;
-    }
-
-    public failure(): TestContractFailure {
-        return this.contractFailure;
-    }
-}
 
 export function assertNonEmptyItems<Item>(
     items: readonly Item[],
@@ -265,7 +237,8 @@ function recordedAssertionNodes(records: readonly RecordedAssertion[]): readonly
 }
 
 export function createAssertionRecorder(): AssertionRecorder {
-    const builderAssertions: (AssertAssertionNode | null)[] = [];
+    const builderAssertions: (AssertAssertionNode | typeof discardedAssertion | null)[] = [];
+    const failures = new Set<TestContractFailure>();
     const recordedAssertions: RecordedAssertion[] = [];
     let failedRequireIndex: number | null = null;
     let plannedCount: number | null = null;
@@ -282,25 +255,31 @@ export function createAssertionRecorder(): AssertionRecorder {
         return builderAssertions.includes(null);
     }
 
+    function failContract(failure: TestContractFailure): never {
+        const recorded = Object.freeze({ ...failure });
+        failures.add(recorded);
+        throw new TestContractSignalError(recorded, undefined);
+    }
+
     function ensurePlanAllowed(count: number): void {
         if (!Number.isSafeInteger(count) || count <= 0 || plannedCount !== null || recordedAssertions.length > 0) {
-            throw new TestContractSignalError(createInvalidPlanFailure(count), undefined);
+            failContract(createInvalidPlanFailure(count));
         }
     }
 
     function collect(): NonEmptyReadonlyArray<AssertAssertionNode> {
-        if (builderAssertions.length === 0) {
-            throw new TestContractSignalError(createNoAssertionsFailure(), undefined);
+        if (builderAssertions.every(assertion => assertion === discardedAssertion)) {
+            failContract(createNoAssertionsFailure());
         }
 
         if (pendingAssertionExists()) {
-            throw new TestContractSignalError(createPendingAsyncAssertionFailure(), undefined);
+            failContract(createPendingAsyncAssertionFailure());
         }
 
         const resolvedAssertions = builderAssertions.filter(function resolvedAssertion(
             assertion
         ): assertion is AssertAssertionNode {
-            return assertion !== null;
+            return assertion !== null && assertion !== discardedAssertion;
         });
 
         assertNonEmptyItems(resolvedAssertions, 'Expected builder assertions to be non-empty.');
@@ -316,7 +295,7 @@ export function createAssertionRecorder(): AssertionRecorder {
         const resolvedAssertions = builderAssertions.filter(function resolvedAssertion(
             assertion
         ): assertion is AssertAssertionNode {
-            return assertion !== null;
+            return assertion !== null && assertion !== discardedAssertion;
         });
 
         if (!builderAssertionsInReturnedOrder(resolvedAssertions, assertions)) {
@@ -342,9 +321,21 @@ export function createAssertionRecorder(): AssertionRecorder {
             return recordedAssertionNodes(activeRecords());
         },
 
-        failContract(failure) {
-            throw new TestContractSignalError(failure, undefined);
+        hasContractFailures() {
+            return failures.size > 0;
         },
+
+        contractFailures() {
+            return Array.from(failures);
+        },
+
+        retainContractFailures(retained) {
+            for (const failure of retained) {
+                failures.add(failure);
+            }
+        },
+
+        failContract,
 
         plan(count) {
             ensurePlanAllowed(count);
@@ -367,6 +358,9 @@ export function createAssertionRecorder(): AssertionRecorder {
             recordedAssertions.push({ assertion: null, builderAssertion: null });
 
             return {
+                discard() {
+                    builderAssertions[builderIndex] = discardedAssertion;
+                },
                 resolve(assertion) {
                     builderAssertions[builderIndex] = assertion;
                     recordedAssertions[recordIndex] = { assertion, builderAssertion: assertion };
@@ -378,8 +372,8 @@ export function createAssertionRecorder(): AssertionRecorder {
             recordDebugAssertion(assertion);
             recordedAssertions.push({ assertion, builderAssertion: null });
 
-            if (!assertionPasses(assertion)) {
-                failedRequireIndex = recordedAssertions.length - 1;
+            if (!requirementPasses(assertion)) {
+                failedRequireIndex ??= recordedAssertions.length - 1;
                 throw new RequireFailedSignalError();
             }
         },
