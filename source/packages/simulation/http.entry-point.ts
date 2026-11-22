@@ -12,3 +12,4 @@ export type {
     SimulatedHttpServerOptions
 } from '../../simulation/simulated-http-server.ts';
 export { simulatedHttpScenarioUrl } from '../../simulation/simulated-http-routing.ts';
+export { simulationHtmlResponse, type SimulationHtmlPage } from '../../simulation/simulation-html-response.ts';

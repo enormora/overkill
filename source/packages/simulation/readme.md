@@ -49,3 +49,41 @@ Use `createSimulatedHttpServerResource(...)` from `@overkill-dev/resources`
 when a test runtime should own the server lifecycle. The resource adapter
 requires an explicit local address request, for example
 `{ kind: 'loopback', port: 0 }`.
+
+## Serve a simulated app page
+
+Return `simulationHtmlResponse(page)` from the HTTP handler on the route that
+serves the app shell.
+
+```ts
+import { defineSimulatedHttpServer } from '@overkill-dev/simulation';
+import { simulationHtmlResponse } from '@overkill-dev/simulation/http';
+
+const page = {
+    language: 'en',
+    headMarkup: '<title>Checkout</title>',
+    bodyMarkup: '<main id="app"></main>',
+    stylesheets: [ 'app.css' ],
+    startupModule: 'start.js'
+};
+
+const simulation = defineSimulatedHttpServer({
+    name: 'checkout',
+    scenarios: { default: { title: 'Normal checkout' } },
+    handle(request, scenario) {
+        if (request.method === 'GET' && new URL(request.url).pathname === '/') {
+            return simulationHtmlResponse(page);
+        }
+        return serveApiAndAssets(request, scenario);
+    }
+});
+```
+
+Supply trusted head and body markup and asset destinations. The helper returns a
+UTF-8 HTML response with links to the given assets. The consumer implements
+`serveApiAndAssets` and serves the output of its own build. Relative asset
+references such as `start.js` stay under the scenario prefix when the page is
+served at `/default/` or another routed scenario root. The startup module owns
+app initialization and any startup config. You can set a Content Security
+Policy on the returned response or return a response from your own template
+or SSR system.

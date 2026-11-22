@@ -40,17 +40,11 @@ release commitment.
 | Cross-environment execution    | Browser/device/preference matrices, exact selection, remote lifecycle, merged evidence                   | Browser controllers, grids, cloud sessions, provider tunnels                                          |
 | Debugging and failure evidence | Capture/retention policy, console/network transcripts, artifact attribution and reporter links           | Screenshots, recordings, traces, existing viewers                                                     |
 
-The simulation layer should help applications following a runtime startup
-pattern such as `window.startApp(config)`. An optional HTML-host helper should
-assemble a document from explicit consumer-owned markup, asset references, and
-scenario-derived startup data, with correct escaping and configuration
-embedding. It should allow existing SSR/template systems to supply the whole
-document instead. Overkill should not prescribe an app entry-point name, root
-element, framework, rendering strategy, or template language.
-
-In this server-rendered startup pattern, the server resolves the scenario
-before constructing startup configuration. Static documents and configuration
-endpoints remain valid alternatives.
+The optional simulation HTTP response helper assembles consumer markup and
+asset references with an external startup module. Existing SSR/template
+systems can supply the whole document. When an app uses scenario-derived
+startup configuration, consumer code resolves the scenario and delivers that
+configuration through its chosen page or endpoint.
 The application consumes ordinary configuration, such as API base URLs and
 feature settings, without depending on Overkill. Scenario changes usually reuse
 the same application artifact. App-specific configuration mapping remains with
