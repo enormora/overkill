@@ -9,12 +9,12 @@ export type CheckerExecution = {
 
 export type CollectedCheckerRun = {
     readonly facts: ReadonlyDeep<JsonValue>;
-    readonly execute: () => Promise<CheckerExecution>;
+    readonly execute: (signal: AbortSignal) => Promise<CheckerExecution>;
 };
 
 export type CheckerPreparation = {
     readonly dispose: () => Promise<void>;
     readonly facts: ReadonlyDeep<JsonValue>;
     readonly testPlan: TestPlan;
-    readonly collect: (plan: TestPlan) => Promise<CollectedCheckerRun>;
+    readonly collect: (plan: TestPlan, signal: AbortSignal) => Promise<CollectedCheckerRun>;
 };

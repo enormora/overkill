@@ -79,9 +79,9 @@ export const testNode: TestNode = suite('compiler matrix evidence', [
     test('delivers validated evidence from a compiler whose project succeeded', async function (scope) {
         const plan = matrixPlan();
         const [ failedRun, passedRun ] = compilerResults(plan);
-        const execution = await executeCompilerMatrix(
+        const execution = await executeCompilerMatrix({
             plan,
-            [
+            groups: [
                 {
                     facts: null,
                     verify: verifyInputs,
@@ -98,8 +98,9 @@ export const testNode: TestNode = suite('compiler matrix evidence', [
                 }
             ],
             verifyInputs,
-            { version: 3 }
-        );
+            planning: { version: 3 },
+            signal: scope.signal
+        });
         scope.assert.deepEqual(
             execution.result.perTest.map(function (result) {
                 return result.verdict;

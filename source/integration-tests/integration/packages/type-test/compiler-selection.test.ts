@@ -27,23 +27,27 @@ async function project(scope: TestScope): Promise<string> {
 export const testNode: TestNode = suite('installed compiler selection', [
     test('resolves local and package aliases from the explicit root', async function (scope) {
         const root = await project(scope);
-        const local = await resolveInstalledCompiler(root, { kind: 'local' });
+        const local = await resolveInstalledCompiler(root, { kind: 'local' }, scope.signal);
         const alias = await resolveInstalledCompiler(root, {
             kind: 'package',
             specifier: 'compiler-alias',
             version: '7.1.0-beta'
-        });
+        }, scope.signal);
         scope.assert.equal(local.packageUrl, alias.packageUrl);
         scope.assert.deepEqual(local.files, alias.files);
         scope.assert.equal(local.version, '7.1.0-beta');
-        await verifyInstalledCompiler(local);
+        await verifyInstalledCompiler(local, scope.signal);
         return scope.assert.collect();
     }),
     test('rejects missing, mismatched, and unsupported installed compilers', async function (scope) {
         const root = await project(scope);
         await scope.assert.rejects(
             async function () {
-                return resolveInstalledCompiler(root, { kind: 'package', specifier: 'missing', version: '7.1.0-beta' });
+                return resolveInstalledCompiler(
+                    root,
+                    { kind: 'package', specifier: 'missing', version: '7.1.0-beta' },
+                    scope.signal
+                );
             },
             { message: /Cannot find module/u }
         );
@@ -53,7 +57,7 @@ export const testNode: TestNode = suite('installed compiler selection', [
                     kind: 'package',
                     specifier: 'compiler-alias',
                     version: '7.1.0'
-                });
+                }, scope.signal);
             },
             { message: /exact version/u }
         );
@@ -64,7 +68,11 @@ export const testNode: TestNode = suite('installed compiler selection', [
         );
         await scope.assert.rejects(
             async function () {
-                return resolveInstalledCompiler(root, { kind: 'package', specifier: 'unsupported', version: '6.0.3' });
+                return resolveInstalledCompiler(
+                    root,
+                    { kind: 'package', specifier: 'unsupported', version: '6.0.3' },
+                    scope.signal
+                );
             },
             { message: /Unsupported TypeScript/u }
         );
@@ -106,7 +114,7 @@ export const testNode: TestNode = suite('installed compiler selection', [
                         version: '7.1.0-beta'
                     } ]
                 }
-            }, root);
+            }, { projectRoot: root, signal: scope.signal, expandVariants: null });
             scope.cleanup(async function () {
                 await prepared.dispose();
             });
@@ -125,7 +133,7 @@ export const testNode: TestNode = suite('installed compiler selection', [
                                 version: '7.1.0-beta'
                             } ]
                         }
-                    }, root);
+                    }, { projectRoot: root, signal: scope.signal, expandVariants: null });
                 },
                 { message: /Conflicting compiler/u }
             );

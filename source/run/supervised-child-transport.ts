@@ -4,9 +4,10 @@ import { supervisedWorkloadInputs, type SupervisedRunRuntime } from './supervise
 import { childProcessEnvelope, envelopeMessage } from './child-process-protocol.ts';
 import { observeChildShutdown, startChildShutdown } from './child-process-shutdown.ts';
 import { recordChildProtocolFailure, recordPrematureChildExit } from './supervised-child-failure.ts';
-import { kill, type SupervisedChildProcess } from './supervised-child-process.ts';
+import { isSupervisedAnalysis, kill, type SupervisedChildProcess } from './supervised-child-process.ts';
 import {
     supervisedChildCorrelationId,
+    supervisedCancellationCorrelationId,
     type SupervisedChildMessage,
     type SupervisedChildCommand,
     type SupervisedAssignmentCommand
@@ -15,6 +16,7 @@ import { supervisedChildMessageSchema } from './supervised-child-message-schema.
 import type { StoredRunValue, SupervisedRunState } from './supervised-run-state.ts';
 
 type SupervisedTransport = {
+    readonly analysis?: boolean;
     readonly accept: (message: SupervisedChildMessage) => boolean;
     readonly child: SupervisedChildProcess;
     readonly completed: () => boolean;
@@ -39,7 +41,7 @@ function successfulChildExit(child: SupervisedChildProcess): boolean {
     return (child.exitCode === null || child.exitCode === 0) && child.signalCode === null;
 }
 function createSupervisedObserver(transport: SupervisedTransport): SupervisedObserver {
-    const observations = { reportedFailure: false, boundaryFailure: false };
+    const observations = { reportedFailure: false, boundaryFailure: false, analysisCancelled: false };
     function recordFailure(reason: string, restricted: boolean, termination: 'cancelled' | 'transport'): void {
         if (!observations.boundaryFailure) {
             transport.terminalFailure.write(true);
@@ -63,11 +65,15 @@ function createSupervisedObserver(transport: SupervisedTransport): SupervisedObs
     function failureReport(message: SupervisedChildMessage): boolean {
         return message.kind === 'event' && message.event.kind === 'runner-error';
     }
-    function terminalReport(message: SupervisedChildMessage): boolean {
-        return message.kind === 'result' || failureReport(message);
+    function acceptsAfterFailure(message: SupervisedChildMessage): boolean {
+        if (transport.analysis !== true) {
+            return message.kind === 'result' || failureReport(message);
+        }
+        return observations.analysisCancelled && failureReport(message);
     }
+
     function deliver(message: SupervisedChildMessage): void {
-        if (transport.terminalFailure.read() && !terminalReport(message)) {
+        if (transport.terminalFailure.read() && !acceptsAfterFailure(message)) {
             return;
         }
         if (!transport.accept(message)) {
@@ -115,7 +121,17 @@ function createSupervisedObserver(transport: SupervisedTransport): SupervisedObs
         fail,
         cancel(reason) {
             recordFailure(reason, false, 'cancelled');
-            kill(transport.child);
+            if (transport.analysis === true) {
+                observations.analysisCancelled = true;
+                try {
+                    transport.child.send(childProcessEnvelope(supervisedCancellationCorrelationId, { kind: 'cancel' }));
+                } catch {
+                    kill(transport.child);
+                }
+                startChildShutdown(transport.child);
+            } else {
+                kill(transport.child);
+            }
             transport.interrupted();
         },
         timeout(): void {
@@ -123,7 +139,7 @@ function createSupervisedObserver(transport: SupervisedTransport): SupervisedObs
             transport.interrupted();
         },
         receive(message): void {
-            if (observations.boundaryFailure) {
+            if (observations.boundaryFailure && !observations.analysisCancelled) {
                 return;
             }
             try {
@@ -175,6 +191,9 @@ export async function sendAssignmentForPlan(runtime: SupervisedRunRuntime): Prom
     sendSupervisedCommand(runtime.child, {
         corpus,
         implementations: runtime.resolvedRun.facts.implementations,
+        ...isSupervisedAnalysis(runtime.resolvedRun)
+            ? { analysisCollection: runtime.resolvedRun.facts.family.collection }
+            : {},
         assignedWork: runtime.resolvedRun.facts.cases.map(function toWorkId(testCase) {
             return testCase.workId;
         }),

@@ -47,14 +47,20 @@ function projectDiagnostic(diagnostic: Diagnostic): string {
     return `${diagnostic.fileName}:${line}:${column}: TS${diagnostic.code}: ${diagnostic.text}`;
 }
 
-async function validateProject(project: FrozenProject): Promise<void> {
-    const diagnostics = [
-        ...await project.program.getConfigFileParsingDiagnostics(),
-        ...await project.program.getGlobalDiagnostics(),
-        ...await project.program.getProgramDiagnostics(),
-        ...await project.program.getSyntacticDiagnostics(),
-        ...await project.program.getSemanticDiagnostics()
-    ];
+async function validateProject(project: FrozenProject, signal: AbortSignal): Promise<void> {
+    const diagnostics: Diagnostic[] = [];
+    for (
+        const read of [
+            project.program.getConfigFileParsingDiagnostics,
+            project.program.getGlobalDiagnostics,
+            project.program.getProgramDiagnostics,
+            project.program.getSyntacticDiagnostics,
+            project.program.getSemanticDiagnostics
+        ]
+    ) {
+        signal.throwIfAborted();
+        diagnostics.push(...await read.call(project.program));
+    }
     if (diagnostics.length > 0) {
         throw new Error(diagnostics.map(projectDiagnostic).join('\n'), { cause: diagnostics });
     }
@@ -62,11 +68,13 @@ async function validateProject(project: FrozenProject): Promise<void> {
 
 async function checkOriginalAssertions(
     project: FrozenProject,
-    assertionPlan: OriginalAssertionPlan
+    assertionPlan: OriginalAssertionPlan,
+    signal: AbortSignal
 ): Promise<readonly SiteEvidence[]> {
     const checked: SiteEvidence[] = [];
     const analysis = typeAnalysis(project);
     for (const site of assertionPlan.sites) {
+        signal.throwIfAborted();
         checked.push(await evaluateSite(analysis, site, project.compiler.version));
     }
     return checked;
@@ -84,20 +92,44 @@ function assertionFacts(
 
 export type CompilerCheck = {
     readonly facts: CheckerExecution['facts'];
-    readonly verify: () => Promise<void>;
-    readonly check: () => Promise<CheckerExecution>;
+    readonly verify: (signal: AbortSignal) => Promise<void>;
+    readonly check: (signal: AbortSignal) => Promise<CheckerExecution>;
 };
 
-export async function collectProject(plan: TestPlan, project: FrozenProject): Promise<CompilerCheck> {
-    let assertionPlan: OriginalAssertionPlan = { modules: [], sites: [], issues: [] };
-    let collectionError: Error | null = null;
+type AssertionCollection = {
+    readonly plan: OriginalAssertionPlan;
+    readonly failure: Error | null;
+};
+
+async function readAssertionCollection(
+    plan: TestPlan,
+    project: FrozenProject,
+    signal: AbortSignal
+): Promise<AssertionCollection> {
     try {
-        assertionPlan = await collectOriginalAssertions(projectSourceAnalysis(project), plan);
+        const assertions = await project.execute(signal, async function collectAssertions() {
+            return await collectOriginalAssertions(projectSourceAnalysis(project), plan);
+        });
+        return { plan: assertions, failure: null };
     } catch (error: unknown) {
-        collectionError = error instanceof Error
-            ? error
-            : new Error('Type-test source analysis failed.', { cause: error });
+        signal.throwIfAborted();
+        return {
+            plan: { modules: [], sites: [], issues: [] },
+            failure: error instanceof Error ? error : new Error('Type-test source analysis failed.', { cause: error })
+        };
     }
+}
+
+export async function collectProject(
+    plan: TestPlan,
+    project: FrozenProject,
+    collectionSignal: AbortSignal
+): Promise<CompilerCheck> {
+    const { plan: assertionPlan, failure: collectionError } = await readAssertionCollection(
+        plan,
+        project,
+        collectionSignal
+    );
     const configurationJson = JSON.stringify({
         options: project.project.options,
         files: project.project.fileNames,
@@ -114,31 +146,34 @@ export async function collectProject(plan: TestPlan, project: FrozenProject): Pr
         sources: assertionPlan.modules.map(function original(module) {
             return { path: module.path, fingerprint: fingerprint(module.originalText) };
         }),
-        inputs: project.inputs,
+        inputs: project.observation.snapshot(),
         issues: assertionPlan.issues,
         assertions: assertionPlan.sites.map(assertionFacts)
     };
-    async function checkProject(): Promise<readonly SiteEvidence[]> {
-        await validateProject(project);
+    async function checkProject(signal: AbortSignal): Promise<readonly SiteEvidence[]> {
+        await validateProject(project, signal);
         if (collectionError !== null) {
             throw collectionError;
         }
-        return await checkOriginalAssertions(project, assertionPlan);
+        return await checkOriginalAssertions(project, assertionPlan, signal);
     }
     const facts = parseAdapterFacts(sourceFacts);
     return {
         facts,
-        async verify() {
-            await verifyFrozenProject(project, assertionPlan.modules);
+        async verify(signal) {
+            await verifyFrozenProject(project, assertionPlan.modules, signal);
         },
-        async check() {
+        async check(signal) {
             const started = performance.now();
             try {
-                const checked = await checkProject();
+                const checked = await project.execute(signal, async function checkAssertions() {
+                    return await checkProject(signal);
+                });
                 return {
                     result: nativeCheckResult({ plan, assertionPlan, checked, error: null, started }),
                     facts: parseAdapterFacts({
                         ...sourceFacts,
+                        inputs: project.observation.snapshot(),
                         evidence: checked.map(function (entry) {
                             return {
                                 ...assertionFacts(entry.site),
@@ -151,6 +186,7 @@ export async function collectProject(plan: TestPlan, project: FrozenProject): Pr
                     })
                 };
             } catch (error: unknown) {
+                signal.throwIfAborted();
                 const failure = error instanceof Error
                     ? error
                     : new Error('Type-test checker failed.', { cause: error });

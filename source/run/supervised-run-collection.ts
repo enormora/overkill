@@ -56,7 +56,8 @@ function handleCollectionMessage(
 }
 
 async function observeCollection(
-    runtime: SupervisedCollectionRuntime<SupervisedCollectionResult | null>
+    runtime: SupervisedCollectionRuntime<SupervisedCollectionResult | null>,
+    signal: Readonly<AbortSignal> | null
 ): Promise<void> {
     observeSupervisedChildOutput({
         capabilityRestrictions: runtime.command.capabilityRestrictions,
@@ -82,7 +83,9 @@ async function observeCollection(
             kill(runtime.child);
         }, runtime.command.collectionTimeoutMilliseconds);
 
-        observeSupervisedTransport({
+        const observation = new AbortController();
+        const interrupt = observeSupervisedTransport({
+            analysis: runtime.command.analysis === true,
             accept(message) {
                 if (runtime.collected.read() !== null || message.kind === 'result') {
                     return false;
@@ -95,10 +98,13 @@ async function observeCollection(
             },
             finished() {
                 runtime.dependencies.wallClock.clearTimeout(collectionTimeout);
+                observation.abort();
                 resolve();
             },
             interrupted() {
-                runtime.dependencies.wallClock.clearTimeout(collectionTimeout);
+                if (!runtime.command.analysis) {
+                    runtime.dependencies.wallClock.clearTimeout(collectionTimeout);
+                }
             },
             receive(message) {
                 handleCollectionMessage(message, runtime);
@@ -108,6 +114,15 @@ async function observeCollection(
             terminalFailure: runtime.terminalFailure,
             wallClock: runtime.dependencies.wallClock
         });
+        if (runtime.command.analysis && signal !== null) {
+            function cancel(): void {
+                interrupt('Supervised analysis collection cancelled.');
+            }
+            signal.addEventListener('abort', cancel, { once: true, signal: observation.signal });
+            if (signal.aborted) {
+                cancel();
+            }
+        }
     });
 }
 
@@ -121,6 +136,7 @@ async function startCollectionChild(
         emptyTimingSpanMetadata(),
         async function startTimedSupervisedCollectionChild() {
             return await dependencies.startSupervisedChild({
+                ...command.analysis === true ? { analysis: true } : {},
                 capabilityRestrictions: command.capabilityRestrictions,
                 coverage: null,
                 cwd: command.cwd,
@@ -129,6 +145,7 @@ async function startCollectionChild(
             });
         }
     ) ?? dependencies.startSupervisedChild({
+        ...command.analysis === true ? { analysis: true } : {},
         capabilityRestrictions: command.capabilityRestrictions,
         coverage: null,
         cwd: command.cwd,
@@ -180,10 +197,14 @@ function readCollectedResult(
 export async function collectSupervisedRun(
     command: SupervisedCollectCommand,
     dependencies: RunOrchestratorDependencies,
-    timing: RunTimingMeasurement | null = null
+    timing: RunTimingMeasurement | null = null,
+    signal: Readonly<AbortSignal> | null = null
 ): Promise<SupervisedCollectionResult> {
+    if (command.analysis) {
+        signal?.throwIfAborted();
+    }
     const runtime = await createCollectionRuntime(command, dependencies, timing);
-    const childFinished = observeCollection(runtime);
+    const childFinished = observeCollection(runtime, signal);
     const readyStartedAtMicroseconds = Number(dependencies.wallClock.currentMonotonicMicroseconds);
     sendSupervisedCommand(runtime.child, command);
     await childFinished;

@@ -1,13 +1,30 @@
+import type { Clock } from '@enormora/clock';
+import type { Engine, TestPlan } from '../packages/engine/engine.entry-point.ts';
 import { implementationPlan, withImplementationPlan } from '../engine/body-reference-plan.ts';
 import type { ImplementationCatalog } from '../implementation-catalog.ts';
-import type { FamilyRunFacts, PreparedFamilyRun } from '../engine/family-run.ts';
+import type { CollectedFamilyRun, FamilyRunFacts, PreparedFamilyRun } from '../engine/family-run.ts';
 import { workIdentityKey } from '../engine/identity.ts';
-import type { LocalFamilyRunPlan, RunnerFamilyPreparation } from './family-profile-types.ts';
+import type { BoundFamilySettings } from '../engine/test-family.ts';
 import { familyWorkCatalog } from './family-work-catalog.ts';
-import type { CollectedFamilyMetadata } from './family-catalog.ts';
+import type { CollectedFamilyMetadata, FrozenFamilyDefinition } from './family-catalog.ts';
 import { collectedRunPlanFromTestPlan } from './collected-run-plan.ts';
 
-type TestPlan = RunnerFamilyPreparation['sourcePlan'];
+export type RunnerFamilyPreparation = {
+    readonly definition: FrozenFamilyDefinition | null;
+    readonly engine: Engine;
+    readonly prepared: PreparedFamilyRun;
+    readonly sourcePlan: TestPlan;
+    readonly binding: BoundFamilySettings;
+    readonly projectRoot: string;
+    readonly signal: AbortSignal;
+    readonly wallClock: Clock;
+};
+
+export type LocalFamilyRunPlan = {
+    readonly kind: 'local';
+    readonly testPlan: TestPlan;
+    readonly family: { readonly preparation: RunnerFamilyPreparation; readonly collected: CollectedFamilyRun; };
+};
 
 export function preparedFamilyMetadata(
     preparation: RunnerFamilyPreparation,

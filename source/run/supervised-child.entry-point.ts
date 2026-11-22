@@ -1,9 +1,16 @@
 import { createClock } from '@enormora/clock';
-import { createChildProcessOutbox } from './child-process-outbox.ts';
-import { supervisedParentMessageSchema } from './supervised-parent-message-schema.ts';
+import type { SupervisedChildCommand, SupervisedRunCommand } from './supervised-protocol.ts';
 import {
-    envelopeMessage
-} from './child-process-protocol.ts';
+    cancellationSignal,
+    disconnect,
+    flushSupervisedMessages,
+    observeAnalysisCancellation,
+    ownedMessageListeners,
+    receiveAssignment,
+    receiveCommand,
+    send
+} from './supervised-child-ipc.ts';
+import { withAnalysisSignal } from './analysis-deadline.ts';
 import { readProcessEnvironment, readWebStorage } from './node-host-readers.ts';
 import {
     loadRunEngineModule,
@@ -14,66 +21,7 @@ import {
     observeProcessIpcListeners
 } from './node-process-policy-observation.ts';
 import { createNodeProcessUsageTracker } from './process-usage.ts';
-import { runSupervisedChild, type SupervisedChildHost } from './supervised-child.ts';
-import {
-    supervisedChildCorrelationId,
-    type SupervisedAssignmentCommand,
-    type SupervisedChildCommand,
-    type SupervisedRunCommand
-} from './supervised-protocol.ts';
-
-const ownedMessageListeners = new WeakSet<(message: unknown) => void>();
-
-const outbox = createChildProcessOutbox(supervisedChildCorrelationId, {
-    disconnect: process.disconnect?.bind(process) ?? null,
-    send: process.send?.bind(process) ?? null
-});
-
-function send(message: Parameters<SupervisedChildHost['send']>[0]): void {
-    outbox.send(message);
-}
-
-async function disconnect(): Promise<void> {
-    await outbox.disconnect();
-}
-
-function supervisedParentMessage(message: unknown): SupervisedAssignmentCommand | SupervisedChildCommand | null {
-    return envelopeMessage(message, supervisedChildCorrelationId, supervisedParentMessageSchema);
-}
-
-function readCommand(message: unknown): SupervisedChildCommand {
-    const decoded = supervisedParentMessage(message);
-    if (decoded !== null && decoded.kind !== 'assign') {
-        return decoded;
-    }
-    throw new Error('Expected a supervised child command.');
-}
-function readAssignment(message: unknown): SupervisedAssignmentCommand {
-    const decoded = supervisedParentMessage(message);
-    if (decoded?.kind === 'assign') {
-        return decoded;
-    }
-    throw new Error('Expected a supervised child assignment.');
-}
-async function receiveParentMessage<Message>(read: (message: unknown) => Message): Promise<Message> {
-    return new Promise(function waitForParentMessage(resolve, reject) {
-        const listener = function receiveMessage(message: unknown): void {
-            try {
-                resolve(read(message));
-            } catch (error: unknown) {
-                reject(error instanceof Error ? error : new Error('Invalid parent IPC payload.'));
-            }
-        };
-        ownedMessageListeners.add(listener);
-        process.once('message', listener);
-    });
-}
-async function receiveCommand(): Promise<SupervisedChildCommand> {
-    return receiveParentMessage(readCommand);
-}
-async function receiveAssignment(): Promise<SupervisedAssignmentCommand> {
-    return receiveParentMessage(readAssignment);
-}
+import { runSupervisedChild } from './supervised-child.ts';
 
 function validatePermissionHost(command: SupervisedChildCommand): void {
     if (command.capabilityRestrictions.mode === 'disabled') {
@@ -99,39 +47,46 @@ function dropBodyReadPermission(command: SupervisedRunCommand): void {
     }
 }
 
-await runSupervisedChild(
-    {
-        disconnect,
-        flush: outbox.flush,
-        discoverRunFiles: runDiscovery.discoverRunFiles,
-        dropBodyReadPermission,
-        observeIpcListeners(record) {
-            return observeProcessIpcListeners(process, record, ownedMessageListeners);
-        },
-        observeProcessExit() {
-            return function stopObservingChildExit() {
-                return undefined;
-            };
-        },
-        readEnvironment() {
-            return readProcessEnvironment(process);
-        },
-        readStorage(name) {
-            return readWebStorage(globalThis, name);
-        },
-        loadRunEngineModule,
-        loadRunTestModules,
-        receiveAssignment,
-        receiveCommand,
-        send,
-        setExitCode(code) {
-            process.exitCode = code;
-        },
-        validatePermissionHost
-    },
-    {
-        createProcessUsageTracker: createNodeProcessUsageTracker,
-        createClock,
-        readActiveResourceTypes: process.getActiveResourcesInfo
-    }
-);
+const stopObservingCancellation = observeAnalysisCancellation();
+try {
+    await withAnalysisSignal(cancellationSignal, async function runChild() {
+        await runSupervisedChild(
+            {
+                disconnect,
+                flush: flushSupervisedMessages,
+                discoverRunFiles: runDiscovery.discoverRunFiles,
+                dropBodyReadPermission,
+                observeIpcListeners(record) {
+                    return observeProcessIpcListeners(process, record, ownedMessageListeners);
+                },
+                observeProcessExit() {
+                    return function stopObservingChildExit() {
+                        return undefined;
+                    };
+                },
+                readEnvironment() {
+                    return readProcessEnvironment(process);
+                },
+                readStorage(name) {
+                    return readWebStorage(globalThis, name);
+                },
+                loadRunEngineModule,
+                loadRunTestModules,
+                receiveAssignment,
+                receiveCommand,
+                send,
+                setExitCode(code) {
+                    process.exitCode = code;
+                },
+                validatePermissionHost
+            },
+            {
+                createProcessUsageTracker: createNodeProcessUsageTracker,
+                createClock,
+                readActiveResourceTypes: process.getActiveResourcesInfo
+            }
+        );
+    });
+} finally {
+    stopObservingCancellation();
+}

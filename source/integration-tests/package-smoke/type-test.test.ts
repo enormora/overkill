@@ -1,6 +1,7 @@
 import { execFile } from 'node:child_process';
 import { cp, mkdir, mkdtemp, rm, writeFile, readFile, readdir } from 'node:fs/promises';
 import { inspect } from 'node:util';
+import { setTimeout as delay } from 'node:timers/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { type TestNode, suite, test, type TestScope } from '#tests';
@@ -44,9 +45,11 @@ async function runNode(directory: string, argumentList: readonly string[]): Prom
             Array.from(argumentList),
             {
                 cwd: directory,
+                timeout: 120_000,
                 env: {
                     TSTYCHE_NPM_REGISTRY: 'http://127.0.0.1:1',
-                    TSTYCHE_STORE_PATH: join(directory, 'checker-store')
+                    TSTYCHE_STORE_PATH: join(directory, 'checker-store'),
+                    TS_API_TIMING_DIR: join(directory, 'compiler-timings')
                 }
             },
             function completed(error, stdout, stderr) {
@@ -136,6 +139,63 @@ export const config=defineConfig({profiles:{types:{testFamily:family,
     );
 }
 
+async function wedgeCompilerOnExecution(directory: string): Promise<void> {
+    const runner = join(directory, 'runner.mts');
+    const config = join(directory, 'overkill.config.js');
+    await writeFile(runner, `await import('./wedge-compiler.mjs' + '');\n${await readFile(runner, 'utf8')}`);
+    const configText = await readFile(config, 'utf8');
+    await writeFile(
+        config,
+        configText.replace(
+            'testFamily:family,',
+            'testFamily:family,timeouts:{collectionMilliseconds:30000,softMilliseconds:8000,hardMilliseconds:8000},'
+        )
+    );
+    await writeFile(
+        join(directory, 'wedge-compiler.mjs'),
+        `
+import { channel } from 'node:diagnostics_channel';
+import { writeFileSync } from 'node:fs';
+let compilers = 0;
+channel('child_process').subscribe(({process: child}) => {
+    child.once('spawn', () => {
+        if (!child.spawnargs.includes('--api') || ++compilers !== 2) return;
+        writeFileSync('wedged-processes.json', JSON.stringify([process.pid, child.pid]));
+        child.kill('SIGSTOP');
+        Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0);
+    });
+});`
+    );
+}
+
+async function wedgedProcesses(directory: string): Promise<readonly number[]> {
+    const identities: unknown = JSON.parse(await readFile(join(directory, 'wedged-processes.json'), 'utf8'));
+    if (!Array.isArray(identities) || identities.length !== 2) {
+        throw new TypeError('Expected the analysis host and native compiler PIDs.');
+    }
+    return identities.map(function validatePid(pid: unknown) {
+        if (typeof pid !== 'number' || !Number.isSafeInteger(pid) || pid <= 1) {
+            throw new TypeError('Expected a process PID.');
+        }
+        return pid;
+    });
+}
+
+async function waitForProcessExit(pid: number): Promise<void> {
+    for (let attempt = 0; attempt < 50; attempt += 1) {
+        try {
+            process.kill(pid, 0);
+        } catch (error: unknown) {
+            if (error instanceof Error && Reflect.get(error, 'code') === 'ESRCH') {
+                return;
+            }
+            throw error;
+        }
+        await delay(20);
+    }
+    throw new Error(`Owned process ${pid} still exists after shutdown.`);
+}
+
 export const testNode: TestNode = suite('packaged native type tests', [
     test('checks engine roots without the high-level distribution', async function (scope) {
         const directory = await isolatedConsumer(scope, false);
@@ -144,7 +204,7 @@ export const testNode: TestNode = suite('packaged native type tests', [
         scope.assert.equal(result.code, 0, { message: result.stderr });
         scope.assert.equal(result.stdout, 'native check passed\n');
         await scope.assert.rejects(async function () {
-            return readdir(join(directory, 'checker-store'));
+            return readdir(join(directory, 'compiler-timings'));
         }, { message: /ENOENT/u });
         return scope.assert.collect();
     }),
@@ -199,6 +259,20 @@ console.log(JSON.stringify(reply.runResult?.perTest.map(entry=>entry.id.title)))
         const result = await runNode(directory, [ 'runner.mts' ]);
         scope.assert.equal(result.code, 0, { message: result.stderr });
         scope.assert.includes(result.stdout, '1 pass');
+        return scope.assert.collect();
+    }),
+    test('hard timeout reaps a wedged analysis host and its native compiler', async function (scope) {
+        const directory = await isolatedConsumer(scope, true);
+        await writeRunnerProject(directory, 'supervised-process');
+        await wedgeCompilerOnExecution(directory);
+        const result = await runNode(directory, [ 'runner.mts' ]);
+        scope.assert.equal(result.code, 1, { message: result.stderr });
+        scope.assert.true(/hard timeout/iu.test(result.stdout + result.stderr), {
+            message: result.stdout + result.stderr
+        });
+        scope.assert.includes(result.stdout, 'inconclusive');
+        const ownedProcesses = await wedgedProcesses(directory);
+        await Promise.all(ownedProcesses.map(waitForProcessExit));
         return scope.assert.collect();
     }),
     test('authoring and profile imports do not load the execution backend', async function (scope) {

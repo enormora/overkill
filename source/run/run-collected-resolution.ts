@@ -151,7 +151,10 @@ async function createResolvedRunFromCollectedPlan(input: CollectedResolvedRunInp
     }));
 }
 
-export async function createResolvedRunFromCollection(input: CollectionResolvedRunInput): Promise<ResolvedRun> {
+export async function createResolvedRunFromCollection(
+    input: CollectionResolvedRunInput,
+    signal: Readonly<AbortSignal> | null = null
+): Promise<ResolvedRun> {
     if (
         input.profile.testFamily === 'property' ||
         input.profile.testFamily === 'integration' && input.profile.property !== null
@@ -165,5 +168,5 @@ export async function createResolvedRunFromCollection(input: CollectionResolvedR
         collectionRunnerErrors: freezeValue(Array.from(input.collection.runnerErrors)),
         collectedPlan: freezeValue(collectedPlan)
     });
-    return freezeValue(await resolveSelectedFamilyFacts(run, input));
+    return freezeValue(await resolveSelectedFamilyFacts(run, input, signal));
 }

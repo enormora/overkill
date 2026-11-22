@@ -13,6 +13,7 @@ type CompilerFile = {
     readonly path: string;
     readonly fingerprint: string;
 };
+type CompilerResolution = { readonly path: string; readonly target: string | null; };
 type NativeModule = Pick<typeof NativeApi, 'API' | 'ModuleKind' | 'ModuleResolutionKind' | 'SymbolFlags' | 'TypeFlags'>;
 type NativeSyntax = Pick<NativeModule, 'ModuleKind' | 'ModuleResolutionKind' | 'SymbolFlags' | 'TypeFlags'>;
 type SyntaxAliases = {
@@ -27,11 +28,13 @@ export type InstalledCompiler = {
     readonly version: string;
     readonly packageUrl: string;
     readonly files: readonly CompilerFile[];
+    readonly resolutions: readonly CompilerResolution[];
 };
 type Installation = {
     readonly root: string;
     readonly packageUrl: string;
     readonly files: readonly CompilerFile[];
+    readonly resolutions: readonly CompilerResolution[];
     readonly require: ReturnType<typeof createRequire>;
     readonly specifier: string;
 };
@@ -59,11 +62,11 @@ async function fingerprint(path: string): Promise<string> {
 async function compilerFile(path: string): Promise<CompilerFile> {
     return { path: await realpath(path), fingerprint: await fingerprint(path) };
 }
-async function compilerFiles(root: string): Promise<readonly CompilerFile[]> {
-    const require = createRequire(pathToFileURL(join(root, 'package.json')));
-    const binaryManifestPath = require.resolve(
-        `@typescript/typescript-${process.platform}-${process.arch}/package.json`
-    );
+async function compilerFiles(
+    root: string,
+    binaryManifestPath: string,
+    signal: AbortSignal
+): Promise<readonly CompilerFile[]> {
     z.object({ version: z.literal('7.1.0-beta') }).parse(JSON.parse(await readFile(binaryManifestPath, 'utf8')));
     const executable = join(dirname(binaryManifestPath), 'lib', process.platform === 'win32' ? 'tsc.exe' : 'tsc');
     const entries = await readdir(root, { recursive: true, withFileTypes: true });
@@ -81,14 +84,45 @@ async function compilerFiles(root: string): Promise<readonly CompilerFile[]> {
     );
     return await Promise.all(unique.map(async function readImplementation(path) {
         return readCompilerFile(async function () {
+            signal.throwIfAborted();
             return compilerFile(path);
         });
     }));
 }
-async function installation(projectRoot: string, selection: CompilerSelection): Promise<Installation> {
-    const require = createRequire(pathToFileURL(resolve(projectRoot, 'package.json')));
-    const specifier = selection.kind === 'local' ? 'typescript' : selection.specifier;
-    const manifestPath = await realpath(require.resolve(`${specifier}/package.json`));
+async function resolutionTarget(path: string): Promise<string | null> {
+    try {
+        return await realpath(path);
+    } catch (error: unknown) {
+        if (error instanceof Error && [ 'ENOENT', 'ENOTDIR' ].includes(String(Reflect.get(error, 'code')))) {
+            return null;
+        }
+        throw error;
+    }
+}
+
+async function observeResolution(
+    require: Readonly<Installation['require']>,
+    specifier: string,
+    manifest: string
+): Promise<readonly CompilerResolution[]> {
+    const resolutions: CompilerResolution[] = [];
+    const candidates = (require.resolve.paths(specifier) ?? []).map(function packageManifest(directory) {
+        return join(directory, specifier, 'package.json');
+    });
+    for (const path of candidates) {
+        const target = await resolutionTarget(path);
+        resolutions.push({ path, target });
+        if (target === manifest) {
+            return resolutions;
+        }
+        if (target !== null) {
+            throw new Error('Compiler resolution changed after loading; restart the execution host.');
+        }
+    }
+    throw new Error('Cannot verify the resolved compiler package from the project.');
+}
+
+async function verifyCompilerVersion(manifestPath: string, selection: CompilerSelection): Promise<void> {
     const manifest = manifestSchema.parse(JSON.parse(await readFile(manifestPath, 'utf8')));
     if (selection.kind === 'package' && selection.version !== manifest.version) {
         throw new Error('Installed compiler does not match the requested exact version.');
@@ -96,8 +130,33 @@ async function installation(projectRoot: string, selection: CompilerSelection): 
     if (manifest.version !== '7.1.0-beta') {
         throw new Error(`Unsupported TypeScript compiler: ${manifest.version}; expected 7.1.0-beta.`);
     }
+}
+
+async function installation(
+    projectRoot: string,
+    selection: CompilerSelection,
+    signal: AbortSignal
+): Promise<Installation> {
+    const require = createRequire(pathToFileURL(resolve(projectRoot, 'package.json')));
+    const specifier = selection.kind === 'local' ? 'typescript' : selection.specifier;
+    const manifestPath = await realpath(require.resolve(`${specifier}/package.json`));
+    await verifyCompilerVersion(manifestPath, selection);
     const root = dirname(manifestPath);
-    return { root, packageUrl: pathToFileURL(`${root}/`).href, files: await compilerFiles(root), require, specifier };
+    const nativeSpecifier = `@typescript/typescript-${process.platform}-${process.arch}`;
+    const compilerRequire = createRequire(manifestPath);
+    const nativeManifest = await realpath(compilerRequire.resolve(`${nativeSpecifier}/package.json`));
+    const resolutions = [
+        ...await observeResolution(require, specifier, manifestPath),
+        ...await observeResolution(compilerRequire, nativeSpecifier, nativeManifest)
+    ];
+    return {
+        root,
+        resolutions,
+        packageUrl: pathToFileURL(`${root}/`).href,
+        files: await compilerFiles(root, nativeManifest, signal),
+        require,
+        specifier
+    };
 }
 function verifyLoadedImplementation(input: Installation): void {
     const loaded = loadedImplementations.get(input.packageUrl);
@@ -105,8 +164,15 @@ function verifyLoadedImplementation(input: Installation): void {
         throw new Error('Compiler implementation changed after loading; restart the execution host.');
     }
 }
-export async function verifyInstalledCompiler(compiler: InstalledCompiler): Promise<void> {
+export async function verifyInstalledCompiler(compiler: InstalledCompiler, signal: AbortSignal): Promise<void> {
+    for (const entry of compiler.resolutions) {
+        signal.throwIfAborted();
+        if (await resolutionTarget(entry.path) !== entry.target) {
+            throw new Error('Compiler resolution changed after preparation.');
+        }
+    }
     for (const file of compiler.files) {
+        signal.throwIfAborted();
         if (await fingerprint(file.path) !== file.fingerprint) {
             throw new Error('Compiler implementation changed after preparation.');
         }
@@ -129,16 +195,24 @@ async function loadCompiler(input: Installation): Promise<InstalledCompiler> {
         isStringLiteralLike: ast.isStringLiteralLikeNode,
         isFunctionLike: ast.isFunctionLikeDeclaration
     };
-    return { syntax, native, version: '7.1.0-beta', packageUrl: input.packageUrl, files: input.files };
+    return {
+        syntax,
+        native,
+        version: '7.1.0-beta',
+        packageUrl: input.packageUrl,
+        files: input.files,
+        resolutions: input.resolutions
+    };
 }
 export async function resolveInstalledCompiler(
     projectRoot: string,
-    selection: CompilerSelection
+    selection: CompilerSelection,
+    signal: AbortSignal
 ): Promise<InstalledCompiler> {
-    const input = await installation(projectRoot, selection);
+    const input = await installation(projectRoot, selection, signal);
     verifyLoadedImplementation(input);
     const compiler = await loadCompiler(input);
-    await verifyInstalledCompiler(compiler);
+    await verifyInstalledCompiler(compiler, signal);
     loadedImplementations.set(input.packageUrl, JSON.stringify(input.files));
     return compiler;
 }

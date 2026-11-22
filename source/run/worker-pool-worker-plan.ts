@@ -73,7 +73,7 @@ export async function runObservedWorkerCollection<Value>(collect: () => Promise<
 }
 
 async function createWorkerPoolTestPlan(command: WorkerPoolCommand): Promise<TestPlan> {
-    const engine = await resolveHostEngine(command.engine, loadRunEngineModule);
+    const engine = await resolveHostEngine(command.engine, { loadRunEngineModule });
     return await createHostTestPlan({
         processModel: 'worker-pool',
         command,

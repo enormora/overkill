@@ -20,6 +20,7 @@ import type {
 } from './supervised-protocol.ts';
 import {
     kill,
+    isSupervisedAnalysis,
     observeSupervisedChildOutput,
     type SupervisedChildCoverage,
     type SupervisedChildProcess
@@ -145,25 +146,22 @@ async function createLiveRun(
     dependencies: RunOrchestratorDependencies,
     options: SupervisedExecutionOptions
 ): Promise<SupervisedLiveRun> {
-    const child = await (options.timing?.measureAsync(
-        'supervised-process.spawn',
-        emptyTimingSpanMetadata(),
-        async function startTimedLiveSupervisedChild() {
-            return await dependencies.startSupervisedChild({
-                capabilityRestrictions: command.capabilityRestrictions,
-                coverage: options.coverage,
-                cwd: command.cwd,
-                environmentVariables: dependencies.runtimeCapabilityPolicy.readEnvironment(),
-                testFamily: command.testFamily
-            });
-        }
-    ) ?? dependencies.startSupervisedChild({
+    const startOptions = {
+        analysis: command.analysis,
         capabilityRestrictions: command.capabilityRestrictions,
         coverage: options.coverage,
         cwd: command.cwd,
         environmentVariables: dependencies.runtimeCapabilityPolicy.readEnvironment(),
         testFamily: command.testFamily
-    }));
+    };
+    async function startChild(): Promise<SupervisedChildProcess> {
+        return await dependencies.startSupervisedChild(startOptions);
+    }
+    const child = await (options.timing?.measureAsync(
+        'supervised-process.spawn',
+        emptyTimingSpanMetadata(),
+        startChild
+    ) ?? startChild());
     const collectedSignal = createSignal();
     const state = createSupervisedRunState(
         command.retryPolicy?.artifacts ?? 'first-failure-and-final',
@@ -317,6 +315,7 @@ function observeLiveRun(
         terminalFailure: liveRun.terminalFailure
     });
     const interrupt = observeSupervisedTransport({
+        analysis: command.analysis === true,
         accept(message) {
             return validLiveMessage(message, liveRun, command);
         },
@@ -400,7 +399,7 @@ async function createLiveRunRuntime(
 
     return {
         ...runtimeWithoutTimeout,
-        timeout: createHardTimeout(runtimeWithoutTimeout)
+        timeout: createHardTimeout({ ...runtimeWithoutTimeout, analysis: isSupervisedAnalysis(resolvedRun) })
     };
 }
 

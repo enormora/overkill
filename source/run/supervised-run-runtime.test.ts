@@ -272,7 +272,7 @@ export const testNode: TestNode = suite('Supervised run runtime', [
     test('createHardTimeout() reschedules for the oldest active case', function (scope) {
         const live = childProcess({ exitCode: null, pid: 1, signalCode: null });
         const record = timeoutRuntime(live.child);
-        const timeout = createHardTimeout(record.runtime);
+        const timeout = createHardTimeout({ ...record.runtime, analysis: false });
 
         scheduleOverlappingCases(record, timeout);
         scope.assert.deepEqual(record.delays(), [ 1000, 500, 1000 ]);

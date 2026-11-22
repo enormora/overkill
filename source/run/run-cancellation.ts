@@ -1,3 +1,4 @@
+import type { ProfileConfig } from '../config/types.ts';
 import { currentReplay } from './replay-context.ts';
 import { invalidRequest, supervisedCancellationError } from './run-errors.ts';
 import { createResultFromResolutionError, reportCollectionErrorResult } from './run-collection-error-result.ts';
@@ -8,22 +9,39 @@ import type { RunOrchestrator } from './run-orchestrator-types.ts';
 import { snapshotRunCommand } from './frozen-run-command.ts';
 import { selectProfile } from './test-profile.ts';
 
+type CancellationNamespace = 'baseline' | 'bench' | 'bench-calibrate' | 'test';
+
+function supportsCancellation(
+    profile: ProfileConfig,
+    namespace: CancellationNamespace
+): boolean {
+    if (namespace === 'baseline') {
+        return profile.execution.processModel === 'supervised-process';
+    }
+    if (namespace !== 'test') {
+        return false;
+    }
+    return profile.execution.processModel === 'supervised-process' ||
+        typeof profile.testFamily !== 'string' && profile.testFamily.features.execution === 'analysis';
+}
+
 function assertSupervisedTest(
     command: Parameters<RunOrchestrator['run']>[0],
-    namespace: 'baseline' | 'bench' | 'bench-calibrate' | 'test'
+    namespace: CancellationNamespace
 ): void {
     const snapshot = snapshotRunCommand(command).command;
     const profile = selectProfile(snapshot.request.profile, snapshot.config);
-    const ordinary = namespace === 'test' || namespace === 'baseline';
-    const supervised = ordinary && profile.execution.processModel === 'supervised-process';
-    if (currentReplay() === null && !supervised) {
+    if (supportsCancellation(profile, namespace)) {
+        return;
+    }
+    if (currentReplay() === null) {
         invalidRequest('Invocation cancellation requires a supervised-process test profile.');
     }
 }
 
 export function readRunCancellation(
     command: Parameters<RunOrchestrator['run']>[0],
-    namespace: 'baseline' | 'bench' | 'bench-calibrate' | 'test',
+    namespace: CancellationNamespace,
     options: RunInvocationOptions | RunInvocationTimingOptions | undefined
 ): Readonly<AbortSignal> | null {
     const signal: unknown = options === undefined ? null : Reflect.get(options, 'signal') ?? null;
