@@ -89,7 +89,7 @@ const evidenceCases = createTestFacade({
     resources: {
         baseline: defineResource({
             name: 'mutation campaign baseline',
-            scope: 'per-suite',
+            scope: 'shared-per-worker',
             requirements: [],
             dispose: null,
             async acquire() {
