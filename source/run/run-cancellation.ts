@@ -16,7 +16,9 @@ function assertSupervisedTest(
     const profile = selectProfile(snapshot.request.profile, snapshot.config);
     const ordinary = namespace === 'test' || namespace === 'baseline';
     const supervised = ordinary && profile.execution.processModel === 'supervised-process';
-    if (currentReplay() === null && !supervised) {
+    const analysis = namespace === 'test' && typeof profile.testFamily !== 'string' &&
+        profile.testFamily.features.execution === 'analysis';
+    if (currentReplay() === null && !supervised && !analysis) {
         invalidRequest('Invocation cancellation requires a supervised-process test profile.');
     }
 }

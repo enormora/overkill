@@ -41,7 +41,9 @@ import {
     createSupervisedResourceLifecycleTiming,
     createSupervisedChildReporter
 } from './supervised-child-execution.ts';
+import { withAnalysisCollection } from './analysis-deadline.ts';
 import {
+    assignedAnalysisCollection,
     supervisedAssignedPlan,
     assignedPropertyCorpus,
     supervisedAssignedWork,
@@ -319,15 +321,20 @@ async function run(
         assignment.attachmentEndpoint,
         null,
         async function executeAttachmentAssignment() {
-            return await executeAssignment({
-                assignment,
-                collectedPlan: selected,
-                command,
-                dependencies,
-                host,
-                startedAtMs,
-                wallClock
-            });
+            return await withAnalysisCollection(
+                assignedAnalysisCollection(assignment),
+                async function executeSelected() {
+                    return await executeAssignment({
+                        assignment,
+                        collectedPlan: selected,
+                        command,
+                        dependencies,
+                        host,
+                        startedAtMs,
+                        wallClock
+                    });
+                }
+            );
         }
     );
     return result;

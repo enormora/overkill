@@ -1,4 +1,5 @@
 import { finalizedResourceCheckResult } from '../engine/resource-check-result.ts';
+import { completeAnalysisResults, reportInterruptedAnalysis } from './supervised-analysis-result.ts';
 import { workIdentityKey } from '../engine/identity.ts';
 import type {
     ReporterEvent,
@@ -20,6 +21,7 @@ import type { RunOrchestratorDependencies } from './run-orchestrator-dependencie
 import {
     replayUsesLocalProcessPolicy,
     createSupervisedHardTimeout,
+    isSupervisedAnalysis,
     kill,
     type SupervisedChildHardTimeout,
     type SupervisedChildProcess
@@ -217,7 +219,9 @@ function partialRunPlanStatus(input: PartialRunResultInput): RunResult['planStat
 function createPartialRunResult(input: PartialRunResultInput): RunResult {
     return createRunResultFromCollectedPlan(
         input.collectedPlan,
-        input.state.perTestResults(),
+        isSupervisedAnalysis(input.resolvedRun)
+            ? completeAnalysisResults(input.collectedPlan, input.state.perTestResults())
+            : input.state.perTestResults(),
         input.state.runnerErrors(),
         {
             completedAtMicroseconds: Number(input.dependencies.wallClock.currentMonotonicMicroseconds),
@@ -531,11 +535,10 @@ export async function finishSupervisedRuntime(
 
     const result = await runtime.finalizeResult(selectRunResult(runtime, startedAtMicroseconds));
 
-    const reportedResult = await reportTerminalCases(
-        result,
-        runtime.state.terminalCases(),
-        runtime.collectedPlan.read() ?? supervisedCollectedPlan(runtime.resolvedRun),
-        runtime.reporterDelivery
-    );
+    const plan = runtime.collectedPlan.read() ?? supervisedCollectedPlan(runtime.resolvedRun);
+    const interrupted = isSupervisedAnalysis(runtime.resolvedRun) && runtime.completedResult.read() === null;
+    const reportedResult = interrupted
+        ? await reportInterruptedAnalysis(result, plan, runtime.state, runtime.reporterDelivery)
+        : await reportTerminalCases(result, runtime.state.terminalCases(), plan, runtime.reporterDelivery);
     return await reportFinalResult(reportedResult, runtime);
 }

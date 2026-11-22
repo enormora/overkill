@@ -6,6 +6,13 @@ import {
     workerPoolHostRole
 } from './child-process-roles.ts';
 
+import {
+    analysisOwnerRole,
+    analysisProcessGroupArgument,
+    monitorAnalysisOwner,
+    startAnalysisOwnerMonitor
+} from './supervised-process-group.ts';
+
 export const childProcessEntryPointUrl = import.meta.url;
 
 async function runChildProcessRole(role: string | null): Promise<void> {
@@ -16,8 +23,16 @@ async function runChildProcessRole(role: string | null): Promise<void> {
         return;
     }
     if (role === supervisedChildRole) {
+        if (process.argv.includes(analysisProcessGroupArgument)) {
+            await startAnalysisOwnerMonitor(fileURLToPath(childProcessEntryPointUrl));
+        }
         await import('./supervised-child.entry-point.ts');
 
+        return;
+    }
+
+    if (role === analysisOwnerRole) {
+        monitorAnalysisOwner(process.argv.at(-1));
         return;
     }
 

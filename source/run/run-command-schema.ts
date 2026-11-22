@@ -77,6 +77,7 @@ export const executionCommandFields = {
         title: z.string()
     }),
     scheduling: z.enum([ 'concurrent', 'serial' ]),
+    analysis: z.literal(true).optional(),
     family: frozenFamilyDefinitionSchema.nullable().default(null),
     testFamily: z.string(),
     timeoutMilliseconds: z.number()

@@ -4,6 +4,7 @@ import { preparePlacedFamily, executePreparedFamilyWithDriver, type Engine } fro
 import { builtinTestFamily, isBuiltinFamilyId } from '../engine/builtin-test-families.ts';
 import type { ExecuteOptions, ExecutionDriver } from '../engine/execution.ts';
 import { bindFamilySettings, type BoundFamilySettings, type FamilyValue } from '../engine/test-family.ts';
+import { analysisSignal, expectedAnalysisCollection, withAnalysisDeadline } from './analysis-deadline.ts';
 import { familyWorkCatalog } from './family-work-catalog.ts';
 import { familyCatalog, setFamilyCatalog, type FrozenFamilyDefinition } from './family-catalog.ts';
 import { collectedRunPlanFromTestPlan } from './collected-run-plan.ts';
@@ -95,31 +96,45 @@ export async function executeHostFamily(
     driver: ExecutionDriver,
     options: ExecuteOptions
 ): Promise<RunResult> {
-    const family = families.get(source);
-    if (family === undefined) {
+    const registered = families.get(source);
+    if (registered === undefined) {
         return await driver(selected, options);
     }
-    const { signal } = new AbortController();
-    await using prepared = await preparePlacedFamily(family.engine, {
-        testPlan: implementationPlan(selected) === null
-            ? family.source
-            : setImplementationPlan(family.source, implementationPlan(selected) ?? { catalog: null, admission: 'all' }),
-        testFamily: family.binding.testFamily,
-        binding: family.binding,
-        projectRoot: family.projectRoot,
-        signal
-    }, family.placement);
-    validatePreparedCatalog(family.expected, family.catalog, prepared);
-    const collected = await prepared.collect({
-        workIds: selected.cases.map(function identity(testCase) {
-            return testCase.workId;
-        }),
-        signal
-    });
-    const admittedOptions = family.binding.testFamily.features.execution === 'analysis'
-        ? analysisHostOptions(options)
-        : options;
-    return await executePreparedFamilyWithDriver(family.engine, collected, { ...admittedOptions, signal }, driver);
+    const family = registered;
+    const analysis = family.binding.testFamily.features.execution === 'analysis';
+    const timeout = analysis ? options.timeoutPolicy?.timeoutMilliseconds ?? null : null;
+    async function execute(signal: AbortSignal): Promise<RunResult> {
+        await using prepared = await preparePlacedFamily(family.engine, {
+            testPlan: implementationPlan(selected) === null
+                ? family.source
+                : setImplementationPlan(
+                    family.source,
+                    implementationPlan(selected) ?? { catalog: null, admission: 'all' }
+                ),
+            testFamily: family.binding.testFamily,
+            binding: family.binding,
+            projectRoot: family.projectRoot,
+            signal
+        }, family.placement);
+        validatePreparedCatalog(family.expected, family.catalog, prepared);
+        const collected = await prepared.collect({
+            workIds: selected.cases.map(function identity(testCase) {
+                return testCase.workId;
+            }),
+            signal
+        });
+        const expected = expectedAnalysisCollection();
+        if (analysis && expected !== undefined && !isDeepStrictEqual(expected, collected.facts.collection)) {
+            throw new TypeError('Frozen analysis collection changed; collect a new run.');
+        }
+        const admittedOptions = analysis
+            ? analysisHostOptions(options)
+            : options;
+        return await executePreparedFamilyWithDriver(family.engine, collected, { ...admittedOptions, signal }, driver);
+    }
+    return timeout === null
+        ? await execute(analysisSignal())
+        : await withAnalysisDeadline(timeout, 'Analysis checking exceeded soft timeout.', execute);
 }
 
 export async function registerImportedHostFamilyPlan(
@@ -129,7 +144,7 @@ export async function registerImportedHostFamilyPlan(
     definition: FrozenFamilyDefinition
 ): Promise<TestPlan> {
     const { projectRoot, processModel: placement } = definition;
-    const { signal } = new AbortController();
+    const signal = analysisSignal();
     await using prepared = await preparePlacedFamily(engine, {
         testPlan: source,
         testFamily: binding.testFamily,

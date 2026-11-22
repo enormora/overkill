@@ -17,6 +17,8 @@ import {
     createWorkerPoolHostProcessStarter
 } from './worker-pool-host-process-starter.ts';
 
+import { analysisOwnerPipe, signalAnalysisGroup } from './supervised-process-group.ts';
+
 const childProcessEntryPoint = fileURLToPath(childProcessEntryPointUrl);
 const childPackage = await packageMetadata(childProcessEntryPointUrl);
 const childPackageRoot = childPackage?.directory ?? dirname(dirname(childProcessEntryPoint));
@@ -26,6 +28,7 @@ type ChildForkOptions = {
     readonly env: Readonly<Record<string, string>>;
     readonly execArgv: readonly string[];
     readonly stdio: readonly ['ignore', 'pipe', 'pipe', 'ipc'];
+    readonly detached?: boolean;
 };
 
 function forkSupervisedChildProcess(
@@ -33,16 +36,27 @@ function forkSupervisedChildProcess(
     childArguments: readonly string[],
     options: ChildForkOptions
 ): SupervisedChildProcess {
+    const ownsGroup = options.detached === true;
     const child = fork(modulePath, Array.from(childArguments), {
         cwd: options.cwd,
         env: options.env,
         execArgv: Array.from(options.execArgv),
         serialization: currentExecutionSession() === null ? 'json' : 'advanced',
-        stdio: Array.from(options.stdio)
+        detached: ownsGroup,
+        stdio: ownsGroup ? [ ...options.stdio, 'pipe' ] : Array.from(options.stdio)
     });
 
+    let groupClosed = false;
+    let groupTerminated = false;
+    child.once('close', function releaseGroup() {
+        groupClosed = true;
+    });
+    child.once('exit', function releaseOwnerPipe() {
+        child.stdio[analysisOwnerPipe]?.destroy();
+    });
     return {
         closeTransport() {
+            child.stdio[analysisOwnerPipe]?.destroy();
             child.stdout?.destroy();
             child.stderr?.destroy();
             if (child.connected) {
@@ -54,7 +68,14 @@ function forkSupervisedChildProcess(
             return child.exitCode;
         },
         kill(signal) {
-            return child.kill(signal);
+            if (ownsGroup) {
+                if (groupClosed || groupTerminated || child.pid === undefined) {
+                    return false;
+                }
+                groupTerminated = signalAnalysisGroup(child.pid);
+                return groupTerminated;
+            }
+            return child.exitCode === null && child.signalCode === null && child.kill(signal);
         },
         on(...registration) {
             const [ event, listener ] = registration;

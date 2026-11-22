@@ -36,6 +36,18 @@ export function validateFamilyDefinition(profile: DefinedFamilyProfile): void {
     }
 }
 
+function validateHardDeadline(
+    profile: ProjectDefinedFamilyProfile,
+    processModel: DefinedFamilyProfile['execution']['processModel']
+): void {
+    if (
+        profile.testFamily.features.execution === 'analysis' && processModel === 'in-process' &&
+        profile.timeouts?.hardMilliseconds !== undefined
+    ) {
+        throw new ConfigError('In-process analysis does not support an explicit hard timeout.');
+    }
+}
+
 export function normalizeDefinedFamilyProfile(profile: ProjectDefinedFamilyProfile): DefinedFamilyProfile {
     const binding = bindFamilySettings(profile.testFamily, profile.settings);
     const analysis = profile.testFamily.features.execution === 'analysis';
@@ -46,6 +58,7 @@ export function normalizeDefinedFamilyProfile(profile: ProjectDefinedFamilyProfi
                 ? { processModel: 'in-process', scheduling: 'serial', maxConcurrency: 1 }
                 : undefined)
         );
+    validateHardDeadline(profile, execution.processModel);
     const normalized = {
         ...normalizeProfilePolicy(
             profile,

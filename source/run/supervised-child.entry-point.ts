@@ -1,6 +1,7 @@
 import { createClock } from '@enormora/clock';
+import { withAnalysisSignal } from './analysis-deadline.ts';
+import { supervisedCancellationSchema, supervisedParentMessageSchema } from './supervised-parent-message-schema.ts';
 import { createChildProcessOutbox } from './child-process-outbox.ts';
-import { supervisedParentMessageSchema } from './supervised-parent-message-schema.ts';
 import {
     envelopeMessage
 } from './child-process-protocol.ts';
@@ -17,11 +18,18 @@ import { createNodeProcessUsageTracker } from './process-usage.ts';
 import { runSupervisedChild, type SupervisedChildHost } from './supervised-child.ts';
 import {
     supervisedChildCorrelationId,
+    supervisedCancellationCorrelationId,
     type SupervisedAssignmentCommand,
     type SupervisedChildCommand,
     type SupervisedRunCommand
 } from './supervised-protocol.ts';
 
+const cancellation = new AbortController();
+function cancelAnalysis(message: unknown): void {
+    if (envelopeMessage(message, supervisedCancellationCorrelationId, supervisedCancellationSchema) !== null) {
+        cancellation.abort(new DOMException('Supervised analysis cancelled.', 'AbortError'));
+    }
+}
 const ownedMessageListeners = new WeakSet<(message: unknown) => void>();
 
 const outbox = createChildProcessOutbox(supervisedChildCorrelationId, {
@@ -58,6 +66,10 @@ function readAssignment(message: unknown): SupervisedAssignmentCommand {
 async function receiveParentMessage<Message>(read: (message: unknown) => Message): Promise<Message> {
     return new Promise(function waitForParentMessage(resolve, reject) {
         const listener = function receiveMessage(message: unknown): void {
+            if (envelopeMessage(message, supervisedCancellationCorrelationId, supervisedCancellationSchema) !== null) {
+                return;
+            }
+            process.off('message', listener);
             try {
                 resolve(read(message));
             } catch (error: unknown) {
@@ -65,7 +77,7 @@ async function receiveParentMessage<Message>(read: (message: unknown) => Message
             }
         };
         ownedMessageListeners.add(listener);
-        process.once('message', listener);
+        process.on('message', listener);
     });
 }
 async function receiveCommand(): Promise<SupervisedChildCommand> {
@@ -99,39 +111,47 @@ function dropBodyReadPermission(command: SupervisedRunCommand): void {
     }
 }
 
-await runSupervisedChild(
-    {
-        disconnect,
-        flush: outbox.flush,
-        discoverRunFiles: runDiscovery.discoverRunFiles,
-        dropBodyReadPermission,
-        observeIpcListeners(record) {
-            return observeProcessIpcListeners(process, record, ownedMessageListeners);
-        },
-        observeProcessExit() {
-            return function stopObservingChildExit() {
-                return undefined;
-            };
-        },
-        readEnvironment() {
-            return readProcessEnvironment(process);
-        },
-        readStorage(name) {
-            return readWebStorage(globalThis, name);
-        },
-        loadRunEngineModule,
-        loadRunTestModules,
-        receiveAssignment,
-        receiveCommand,
-        send,
-        setExitCode(code) {
-            process.exitCode = code;
-        },
-        validatePermissionHost
-    },
-    {
-        createProcessUsageTracker: createNodeProcessUsageTracker,
-        createClock,
-        readActiveResourceTypes: process.getActiveResourcesInfo
-    }
-);
+ownedMessageListeners.add(cancelAnalysis);
+process.on('message', cancelAnalysis);
+try {
+    await withAnalysisSignal(cancellation.signal, async function runChild() {
+        await runSupervisedChild(
+            {
+                disconnect,
+                flush: outbox.flush,
+                discoverRunFiles: runDiscovery.discoverRunFiles,
+                dropBodyReadPermission,
+                observeIpcListeners(record) {
+                    return observeProcessIpcListeners(process, record, ownedMessageListeners);
+                },
+                observeProcessExit() {
+                    return function stopObservingChildExit() {
+                        return undefined;
+                    };
+                },
+                readEnvironment() {
+                    return readProcessEnvironment(process);
+                },
+                readStorage(name) {
+                    return readWebStorage(globalThis, name);
+                },
+                loadRunEngineModule,
+                loadRunTestModules,
+                receiveAssignment,
+                receiveCommand,
+                send,
+                setExitCode(code) {
+                    process.exitCode = code;
+                },
+                validatePermissionHost
+            },
+            {
+                createProcessUsageTracker: createNodeProcessUsageTracker,
+                createClock,
+                readActiveResourceTypes: process.getActiveResourcesInfo
+            }
+        );
+    });
+} finally {
+    process.off('message', cancelAnalysis);
+}

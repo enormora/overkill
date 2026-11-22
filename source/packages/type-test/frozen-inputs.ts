@@ -7,11 +7,15 @@ type PathObservation<Value> = {
     readonly path: string;
     readonly value: Value;
 };
+type StatObservation = { readonly mode: number; readonly size: number; readonly mtime: number; };
+type DirectoryEntries = { readonly files: readonly string[]; readonly directories: readonly string[]; };
+
 export type FrozenInputs = {
     readonly files: readonly PathObservation<string | null>[];
     readonly directories: readonly PathObservation<boolean>[];
     readonly probes: readonly PathObservation<boolean>[];
-    readonly directoryEntries: readonly PathObservation<readonly string[]>[];
+    readonly directoryEntries: readonly PathObservation<DirectoryEntries>[];
+    readonly stats: readonly PathObservation<StatObservation | null>[];
     readonly realPaths: readonly PathObservation<string>[];
 };
 export function sourceFingerprint(text: string): string {
@@ -29,53 +33,88 @@ function observations<Value>(values: ReadonlyMap<string, Value>): readonly PathO
 }
 
 export type ProjectInputObservation = {
-    readonly fs: NonNullable<APIOptions['fs']> & Pick<typeof compilerFileSystem, 'realpath'>;
+    readonly fs: NonNullable<APIOptions['fs']> & Pick<typeof compilerFileSystem, 'readFile' | 'realpath'>;
     readonly snapshot: () => FrozenInputs;
 };
+function accessibleEntries(path: string): DirectoryEntries {
+    const files: string[] = [];
+    const directories: string[] = [];
+    for (const name of compilerFileSystem.entries(path)) {
+        (compilerFileSystem.directoryExists(`${path}/${name}`) ? directories : files).push(name);
+    }
+    return { files, directories };
+}
+
+function statObservation(stat: ReturnType<typeof compilerFileSystem.stat>): StatObservation | null {
+    return stat === undefined ? null : { mode: stat.mode, size: stat.size, mtime: stat.mtime.getTime() };
+}
+
+type ObservedValues<Value> = {
+    readonly record: (path: string, value: Value) => void;
+    readonly snapshot: () => readonly PathObservation<Value>[];
+};
+
 export function observeProjectInputs(): ProjectInputObservation {
+    let drift: Error | null = null;
+    function observe<Value>(): ObservedValues<Value> {
+        const values = new Map<string, Value>();
+        return {
+            record(path: string, value: Value) {
+                if (values.has(path) && !isDeepStrictEqual(values.get(path), value)) {
+                    drift = drift ?? new Error(`Type-test input changed after collection: ${path}`);
+                } else {
+                    values.set(path, value);
+                }
+            },
+            snapshot() {
+                return observations(values);
+            }
+        };
+    }
     const observed = {
-        files: new Map<string, string | null>(),
-        directories: new Map<string, boolean>(),
-        probes: new Map<string, boolean>(),
-        directoryEntries: new Map<string, readonly string[]>(),
-        realPaths: new Map<string, string>()
+        files: observe<string | null>(),
+        directories: observe<boolean>(),
+        probes: observe<boolean>(),
+        directoryEntries: observe<DirectoryEntries>(),
+        stats: observe<StatObservation | null>(),
+        realPaths: observe<string>()
     };
     return {
         fs: {
-            readFile(path) {
+            readFile(path: string) {
                 const text = compilerFileSystem.readFile(path);
-                observed.files.set(path, text === undefined ? null : sourceFingerprint(text));
+                observed.files.record(path, text === undefined ? null : sourceFingerprint(text));
                 return text;
             },
             fileExists(path) {
                 const value = compilerFileSystem.fileExists(path);
-                observed.probes.set(path, value);
+                observed.probes.record(path, value);
                 return value;
             },
             directoryExists(path) {
                 const value = compilerFileSystem.directoryExists(path);
-                observed.directories.set(path, value);
+                observed.directories.record(path, value);
                 return value;
             },
             getAccessibleEntries(path) {
-                const names = compilerFileSystem.entries(path);
-                observed.directoryEntries.set(path, names);
+                const entries = accessibleEntries(path);
+                observed.directoryEntries.record(path, entries);
                 return {
-                    files: names.filter(function (name) {
-                        return !compilerFileSystem.directoryExists(`${path}/${name}`);
-                    }),
-                    directories: names.filter(function (name) {
-                        return compilerFileSystem.directoryExists(`${path}/${name}`);
-                    }),
+                    files: Array.from(entries.files),
+                    directories: Array.from(entries.directories),
                     symlinks: undefined
                 };
             },
             realpath(path: string) {
                 const value = compilerFileSystem.realpath(path);
-                observed.realPaths.set(path, value);
+                observed.realPaths.record(path, value);
                 return value;
             },
-            stat: compilerFileSystem.stat,
+            stat(path) {
+                const value = compilerFileSystem.stat(path);
+                observed.stats.record(path, statObservation(value));
+                return value;
+            },
             writeFile() {
                 throw new Error('Type-test analysis cannot emit files.');
             },
@@ -84,18 +123,22 @@ export function observeProjectInputs(): ProjectInputObservation {
             }
         },
         snapshot() {
+            if (drift !== null) {
+                throw drift;
+            }
             return {
-                files: observations(observed.files),
-                directories: observations(observed.directories),
-                probes: observations(observed.probes),
-                directoryEntries: observations(observed.directoryEntries),
-                realPaths: observations(observed.realPaths)
+                files: observed.files.snapshot(),
+                directories: observed.directories.snapshot(),
+                probes: observed.probes.snapshot(),
+                directoryEntries: observed.directoryEntries.snapshot(),
+                stats: observed.stats.snapshot(),
+                realPaths: observed.realPaths.snapshot()
             };
         }
     };
 }
 
-export function verifyProjectInputs(inputs: FrozenInputs): void {
+export function verifyProjectInputs(inputs: FrozenInputs, signal: AbortSignal): void {
     const current = {
         files(path: string) {
             const text = compilerFileSystem.readFile(path);
@@ -105,15 +148,19 @@ export function verifyProjectInputs(inputs: FrozenInputs): void {
         probes(path: string) {
             return compilerFileSystem.fileExists(path);
         },
-        directoryEntries: compilerFileSystem.entries,
+        directoryEntries: accessibleEntries,
+        stats(path: string) {
+            return statObservation(compilerFileSystem.stat(path));
+        },
         realPaths(path: string) {
             return compilerFileSystem.realpath(path);
         }
     };
-    const names = [ 'files', 'directories', 'probes', 'directoryEntries', 'realPaths' ] as const;
+    const names = [ 'files', 'directories', 'probes', 'directoryEntries', 'stats', 'realPaths' ] as const;
     for (const name of names) {
         const values = inputs[name];
         for (const observation of values) {
+            signal.throwIfAborted();
             if (!isDeepStrictEqual(current[name](observation.path), observation.value)) {
                 throw new Error(`Type-test input changed after collection: ${observation.path}`);
             }

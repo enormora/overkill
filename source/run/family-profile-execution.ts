@@ -1,6 +1,7 @@
 import { executePreparedFamilyWithDriver } from '../engine/engine.ts';
 import type { FamilyExecuteOptions } from '../engine/family-run.ts';
 import type { RunResult } from '../engine/run-result.ts';
+import { withAnalysisDeadline } from './analysis-deadline.ts';
 import type { LocalFamilyRunPlan } from './family-profile-types.ts';
 import type { ResolvedRun } from './run-types.ts';
 import { isFamilyPlan } from './family-profile-run.ts';
@@ -52,6 +53,21 @@ export async function executeLocalFamily(
     options: FamilyExecuteOptions,
     dependencies: RunOrchestratorDependencies
 ): Promise<RunResult> {
+    if (isAnalysisFamilyRun(run)) {
+        const { preparation, collected } = run.plan.family;
+        return await withAnalysisDeadline(
+            run.facts.execution.timeoutPolicy.softMilliseconds,
+            'Analysis checking exceeded soft timeout.',
+            async function check(signal) {
+                return await executePreparedFamilyWithDriver(
+                    preparation.engine,
+                    collected,
+                    { ...options, signal },
+                    dependencies.execute
+                );
+            }
+        );
+    }
     return isFamilyPlan(run.plan)
         ? await executePreparedFamilyWithDriver(
             run.plan.family.preparation.engine,

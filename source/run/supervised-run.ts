@@ -1,3 +1,4 @@
+import { analysisSignal, withAnalysisSignal } from './analysis-deadline.ts';
 import {
     type RunAttachmentRecord,
     activeRuntimeAttachments,
@@ -150,6 +151,7 @@ async function createLiveRun(
         emptyTimingSpanMetadata(),
         async function startTimedLiveSupervisedChild() {
             return await dependencies.startSupervisedChild({
+                ...command.analysis === true ? { analysis: true } : {},
                 capabilityRestrictions: command.capabilityRestrictions,
                 coverage: options.coverage,
                 cwd: command.cwd,
@@ -158,6 +160,7 @@ async function createLiveRun(
             });
         }
     ) ?? dependencies.startSupervisedChild({
+        ...command.analysis === true ? { analysis: true } : {},
         capabilityRestrictions: command.capabilityRestrictions,
         coverage: options.coverage,
         cwd: command.cwd,
@@ -317,6 +320,7 @@ function observeLiveRun(
         terminalFailure: liveRun.terminalFailure
     });
     const interrupt = observeSupervisedTransport({
+        analysis: command.analysis === true,
         accept(message) {
             return validLiveMessage(message, liveRun, command);
         },
@@ -479,7 +483,9 @@ export async function runSupervisedCommand(
     const liveRun = await createLiveRun(command, dependencies, options);
     observeLiveRun(command, liveRun, options.signal);
     try {
-        return await executeLiveCommand(command, liveRun, createResolvedRun);
+        return await withAnalysisSignal(options.signal ?? analysisSignal(), async function runLiveCommand() {
+            return await executeLiveCommand(command, liveRun, createResolvedRun);
+        });
     } catch (error: unknown) {
         kill(liveRun.child);
         await liveRun.finishedSignal.promise;

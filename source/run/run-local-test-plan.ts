@@ -2,6 +2,7 @@ import {
     createExecutionGlobalErrorObserver,
     type ExecutionGlobalErrorObserver
 } from '../engine/execution-global-error-observer.ts';
+import { withAnalysisDeadline } from './analysis-deadline.ts';
 import { RunCollectionError } from './run-errors.ts';
 import { preparedFamilyMetadata } from './prepared-family-plan.ts';
 import { setFamilyCatalog } from './family-catalog.ts';
@@ -34,6 +35,28 @@ export async function createLocalTestPlan(input: LocalTestPlanInput): Promise<Lo
     const globalErrorObserver = createExecutionGlobalErrorObserver('in-process');
     try {
         return await globalErrorObserver.runBoundary(async function runObservedCollection() {
+            if (
+                typeof input.profile.testFamily !== 'string' &&
+                input.profile.testFamily.features.execution === 'analysis'
+            ) {
+                try {
+                    return await globalErrorObserver.runPhase('collection', async function prepareAnalysis() {
+                        return await withAnalysisDeadline(
+                            input.profile.timeouts.collectionMilliseconds,
+                            'Analysis preparation exceeded collection timeout.',
+                            async function prepare(signal) {
+                                return await createProfileTestPlan(input, signal);
+                            }
+                        );
+                    });
+                } catch (error: unknown) {
+                    throw new RunCollectionError(
+                        error instanceof Error ? error.message : String(error),
+                        { cause: error },
+                        'loader'
+                    );
+                }
+            }
             let rejectCollection: (error: RunCollectionError) => void = function ignoreReject() {
                 return undefined;
             };

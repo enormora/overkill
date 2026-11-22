@@ -95,11 +95,16 @@ async function originalProject(
 ): Promise<{ readonly project: FrozenProject; readonly directory: string; }> {
     const directory = await fixtureDirectory(scope);
     await writeFixture(directory);
-    const project = await loadProject(join(directory, 'tsconfig.json'), {
-        kind: 'package',
-        specifier: 'typescript-beta',
-        version: '7.1.0-beta'
-    }, process.cwd());
+    const project = await loadProject(
+        join(directory, 'tsconfig.json'),
+        {
+            kind: 'package',
+            specifier: 'typescript-beta',
+            version: '7.1.0-beta'
+        },
+        process.cwd(),
+        scope.signal
+    );
     scope.cleanup(async function disposeCompiler() {
         await disposeProject(project);
     });

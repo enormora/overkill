@@ -65,7 +65,7 @@ async function reportCheckerResult(context: FamilyAnalysisContext, result: RunRe
 
 async function executeCheckerCollection(collected: CollectedCheckerRun, context: FamilyAnalysisContext): Promise<void> {
     context.signal.throwIfAborted();
-    const { result, facts } = await collected.execute();
+    const { result, facts } = await collected.execute(context.signal);
     await reportCheckerResult(context, result);
     await context.report({ kind: 'artifact', artifact: checkerFactsArtifact(result, facts) });
 }
@@ -78,8 +78,7 @@ export async function prepare(input: FamilyPreparationInput<TypeTestSettings>): 
             ...settings,
             projectConfigPath: resolve(input.projectRoot, settings.projectConfigPath)
         },
-        input.projectRoot,
-        input.expandVariants
+        { projectRoot: input.projectRoot, signal: input.signal, expandVariants: input.expandVariants }
     );
     return {
         testPlan: preparation.testPlan,
@@ -88,7 +87,10 @@ export async function prepare(input: FamilyPreparationInput<TypeTestSettings>): 
             await preparation.dispose();
         },
         async collect(selection) {
-            const collected = await preparation.collect(selectedCheckerPlan(preparation, selection.workIds));
+            const collected = await preparation.collect(
+                selectedCheckerPlan(preparation, selection.workIds),
+                selection.signal
+            );
             return {
                 kind: 'analysis',
                 facts: collected.facts,

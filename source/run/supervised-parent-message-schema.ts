@@ -30,6 +30,7 @@ const assignmentSchema: z.ZodType<SupervisedAssignmentCommand> = z.union([
         implementations: implementationCatalogSchema.nullable().default(null),
         corpus: propertyCorpusSnapshotSchema,
         assignedWork: z.array(workIdSchema),
+        analysisCollection: z.json().optional(),
         propertyPolicies: assignedPropertyPoliciesSchema.default([]),
         workloadInputs: workloadInputsSchema.default([]),
         attachmentEndpoint: attachmentEndpointSchema.nullable()
@@ -41,6 +42,8 @@ const assignmentSchema: z.ZodType<SupervisedAssignmentCommand> = z.union([
         attachmentEndpoint: attachmentEndpointSchema.nullable()
     })
 ]);
+export const supervisedCancellationSchema = z.strictObject({ kind: z.literal('cancel') });
+
 export const supervisedParentMessageSchema: z.ZodType<SupervisedAssignmentCommand | SupervisedChildCommand> = z.union([
     commandSchema,
     assignmentSchema

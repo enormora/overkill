@@ -140,6 +140,9 @@ function createSupervisedCommandBase(input: SupervisedCommandBaseInput): Supervi
     return {
         benchmarkNormalization: input.benchmarkNormalization,
         benchmarkGarbageCollection: input.profile.testFamily === 'benchmark' ? input.profile.garbageCollection : null,
+        ...typeof input.profile.testFamily !== 'string' && input.profile.testFamily.features.execution === 'analysis'
+            ? { analysis: true as const }
+            : {},
         family: freezeProfileFamily({
             profile: input.profile,
             source: input.source,

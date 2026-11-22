@@ -14,6 +14,7 @@ import { evaluateSite } from './original-evidence.ts';
 
 import { createSourceAnalysis, type SourceAnalysis } from './source-analysis-port.ts';
 import { compilerFileSystem } from './compiler-file-system.ts';
+import { runCompilerOperation } from './compiler-lifetime.ts';
 
 export function projectSourceAnalysis(project: FrozenProject): SourceAnalysis {
     const { checker } = project.configured;
@@ -47,14 +48,20 @@ function projectDiagnostic(diagnostic: Diagnostic): string {
     return `${diagnostic.fileName}:${line}:${column}: TS${diagnostic.code}: ${diagnostic.text}`;
 }
 
-async function validateProject(project: FrozenProject): Promise<void> {
-    const diagnostics = [
-        ...await project.program.getConfigFileParsingDiagnostics(),
-        ...await project.program.getGlobalDiagnostics(),
-        ...await project.program.getProgramDiagnostics(),
-        ...await project.program.getSyntacticDiagnostics(),
-        ...await project.program.getSemanticDiagnostics()
-    ];
+async function validateProject(project: FrozenProject, signal: AbortSignal): Promise<void> {
+    const diagnostics: Diagnostic[] = [];
+    for (
+        const read of [
+            project.program.getConfigFileParsingDiagnostics,
+            project.program.getGlobalDiagnostics,
+            project.program.getProgramDiagnostics,
+            project.program.getSyntacticDiagnostics,
+            project.program.getSemanticDiagnostics
+        ]
+    ) {
+        signal.throwIfAborted();
+        diagnostics.push(...await read.call(project.program));
+    }
     if (diagnostics.length > 0) {
         throw new Error(diagnostics.map(projectDiagnostic).join('\n'), { cause: diagnostics });
     }
@@ -62,11 +69,13 @@ async function validateProject(project: FrozenProject): Promise<void> {
 
 async function checkOriginalAssertions(
     project: FrozenProject,
-    assertionPlan: OriginalAssertionPlan
+    assertionPlan: OriginalAssertionPlan,
+    signal: AbortSignal
 ): Promise<readonly SiteEvidence[]> {
     const checked: SiteEvidence[] = [];
     const analysis = typeAnalysis(project);
     for (const site of assertionPlan.sites) {
+        signal.throwIfAborted();
         checked.push(await evaluateSite(analysis, site, project.compiler.version));
     }
     return checked;
@@ -84,16 +93,27 @@ function assertionFacts(
 
 export type CompilerCheck = {
     readonly facts: CheckerExecution['facts'];
-    readonly verify: () => Promise<void>;
-    readonly check: () => Promise<CheckerExecution>;
+    readonly verify: (signal: AbortSignal) => Promise<void>;
+    readonly check: (signal: AbortSignal) => Promise<CheckerExecution>;
 };
 
-export async function collectProject(plan: TestPlan, project: FrozenProject): Promise<CompilerCheck> {
+export async function collectProject(
+    plan: TestPlan,
+    project: FrozenProject,
+    collectionSignal: AbortSignal
+): Promise<CompilerCheck> {
     let assertionPlan: OriginalAssertionPlan = { modules: [], sites: [], issues: [] };
     let collectionError: Error | null = null;
     try {
-        assertionPlan = await collectOriginalAssertions(projectSourceAnalysis(project), plan);
+        assertionPlan = await runCompilerOperation(
+            project.lifetime,
+            collectionSignal,
+            async function collectAssertions() {
+                return await collectOriginalAssertions(projectSourceAnalysis(project), plan);
+            }
+        );
     } catch (error: unknown) {
+        collectionSignal.throwIfAborted();
         collectionError = error instanceof Error
             ? error
             : new Error('Type-test source analysis failed.', { cause: error });
@@ -114,31 +134,34 @@ export async function collectProject(plan: TestPlan, project: FrozenProject): Pr
         sources: assertionPlan.modules.map(function original(module) {
             return { path: module.path, fingerprint: fingerprint(module.originalText) };
         }),
-        inputs: project.inputs,
+        inputs: project.observation.snapshot(),
         issues: assertionPlan.issues,
         assertions: assertionPlan.sites.map(assertionFacts)
     };
-    async function checkProject(): Promise<readonly SiteEvidence[]> {
-        await validateProject(project);
+    async function checkProject(signal: AbortSignal): Promise<readonly SiteEvidence[]> {
+        await validateProject(project, signal);
         if (collectionError !== null) {
             throw collectionError;
         }
-        return await checkOriginalAssertions(project, assertionPlan);
+        return await checkOriginalAssertions(project, assertionPlan, signal);
     }
     const facts = parseAdapterFacts(sourceFacts);
     return {
         facts,
-        async verify() {
-            await verifyFrozenProject(project, assertionPlan.modules);
+        async verify(signal) {
+            await verifyFrozenProject(project, assertionPlan.modules, signal);
         },
-        async check() {
+        async check(signal) {
             const started = performance.now();
             try {
-                const checked = await checkProject();
+                const checked = await runCompilerOperation(project.lifetime, signal, async function checkAssertions() {
+                    return await checkProject(signal);
+                });
                 return {
                     result: nativeCheckResult({ plan, assertionPlan, checked, error: null, started }),
                     facts: parseAdapterFacts({
                         ...sourceFacts,
+                        inputs: project.observation.snapshot(),
                         evidence: checked.map(function (entry) {
                             return {
                                 ...assertionFacts(entry.site),
@@ -151,6 +174,7 @@ export async function collectProject(plan: TestPlan, project: FrozenProject): Pr
                     })
                 };
             } catch (error: unknown) {
+                signal.throwIfAborted();
                 const failure = error instanceof Error
                     ? error
                     : new Error('Type-test checker failed.', { cause: error });

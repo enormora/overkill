@@ -7,6 +7,7 @@ import { prepareDefinedFamily, type Engine } from '../engine/engine.ts';
 import { familySettings, type ProfileConfig } from '../config/types.ts';
 import { builtinTestFamily } from '../engine/builtin-test-families.ts';
 import { bindFamilySettings, type BoundFamilySettings } from '../engine/test-family.ts';
+import { analysisSignal, withAnalysisDeadline } from './analysis-deadline.ts';
 import { collectedFamilyPlan, preparedFamilyMetadata, selectedPreparedPlan } from './prepared-family-plan.ts';
 import { validateRecordedFamilyFacts } from './replay-family-validation.ts';
 import type { LocalFamilyRunPlan, RunnerFamilyPreparation } from './family-profile-types.ts';
@@ -99,12 +100,19 @@ async function collectSelectedFamily(preparation: RunnerFamilyPreparation, run: 
     }
     const { testPlan } = run.plan;
     const collected = await withFamilySetupDiagnostics(async function collectBackend(): Promise<CollectedFamilyRun> {
-        return await preparation.prepared.collect({
-            workIds: testPlan.cases.map(function identity(testCase) {
-                return testCase.workId;
-            }),
-            signal: preparation.signal
+        const workIds = testPlan.cases.map(function identity(testCase) {
+            return testCase.workId;
         });
+        if (preparation.binding.testFamily.features.execution === 'analysis') {
+            return await withAnalysisDeadline(
+                run.facts.execution.timeoutPolicy.collectionMilliseconds,
+                'Analysis collection exceeded collection timeout.',
+                async function collect(signal) {
+                    return await preparation.prepared.collect({ workIds, signal });
+                }
+            );
+        }
+        return await preparation.prepared.collect({ workIds, signal: preparation.signal });
     });
     validateRecordedFamilyFacts(collected.facts);
     const selection = collectedFamilyPlan(run.plan, { preparation, collected });
@@ -163,13 +171,22 @@ export async function resolveFamilyRun(
 export async function recollectProfileFamily(
     previous: RunnerFamilyPreparation,
     selection: TestPlan,
+    collectionMilliseconds: number,
     resolve: (plan: TestPlan) => ResolvedRun
 ): Promise<ResolvedRun> {
-    const { signal } = new AbortController();
-    const fresh = await prepareFamilyBinding(previous.engine, previous.sourcePlan, previous.binding, {
-        projectRoot: previous.projectRoot,
-        signal
-    });
+    async function prepare(signal: AbortSignal): Promise<RunnerFamilyPreparation> {
+        return await prepareFamilyBinding(previous.engine, previous.sourcePlan, previous.binding, {
+            projectRoot: previous.projectRoot,
+            signal
+        });
+    }
+    const fresh = previous.binding.testFamily.features.execution === 'analysis'
+        ? await withAnalysisDeadline(
+            collectionMilliseconds,
+            'Analysis preparation exceeded collection timeout.',
+            prepare
+        )
+        : await prepare(analysisSignal());
     return await resolveFamilyRun(
         { ...fresh, definition: previous.definition },
         async function selectFreshPreparation() {

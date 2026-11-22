@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { type TestNode, table, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { frozenTypeProject } from '../../../../test-support/frozen-type-project.ts';
-import { verifyProjectInputs } from '../../../../packages/type-test/frozen-inputs.ts';
+import { observeProjectInputs, verifyProjectInputs } from '../../../../packages/type-test/frozen-inputs.ts';
 import { loadProject, disposeProject, type FrozenProject } from '../../../../packages/type-test/frozen-project.ts';
 import { projectSourceAnalysis } from '../../../../packages/type-test/native-execution.ts';
 import { originalSourceFile } from '../../../../packages/type-test/source-analysis.ts';
@@ -27,11 +27,16 @@ async function linkedProject(scope: TestScope): Promise<{
     });
     const alias = join(directory, 'alias');
     await symlink(join(directory, 'original'), alias, 'dir');
-    const frozen = await loadProject(join(alias, 'tsconfig.json'), {
-        kind: 'package',
-        specifier: 'typescript-beta',
-        version: '7.1.0-beta'
-    }, process.cwd());
+    const frozen = await loadProject(
+        join(alias, 'tsconfig.json'),
+        {
+            kind: 'package',
+            specifier: 'typescript-beta',
+            version: '7.1.0-beta'
+        },
+        process.cwd(),
+        scope.signal
+    );
     scope.cleanup(async function () {
         await disposeProject(frozen);
     });
@@ -39,6 +44,17 @@ async function linkedProject(scope: TestScope): Promise<{
 }
 
 export const testNode: TestNode = suite('frozen compiler inputs', [
+    test('invalidates inputs when an observed read changes and then reverts', async function (scope) {
+        const directory = await frozenTypeProject(scope, { 'case.ts': 'export type Value = string;' });
+        const path = join(directory, 'case.ts');
+        const observed = observeProjectInputs();
+        observed.fs.readFile(path);
+        await writeFile(path, 'export type Value = number;');
+        observed.fs.readFile(path);
+        await writeFile(path, 'export type Value = string;');
+        scope.assert.throws(observed.snapshot, { message: /input changed/u });
+        return scope.assert.collect();
+    }),
     test('matches canonical callback paths and detects changed project links', async function (scope) {
         const { directory, alias, frozen } = await linkedProject(scope);
         const file = await originalSourceFile(
@@ -46,11 +62,11 @@ export const testNode: TestNode = suite('frozen compiler inputs', [
             await realpath(join(directory, 'original/case.ts'))
         );
         scope.assert.equal(file?.fileName, join(alias, 'case.ts'));
-        verifyProjectInputs(frozen.inputs);
+        verifyProjectInputs(frozen.inputs, scope.signal);
         await unlink(alias);
         await symlink(join(directory, 'replacement'), alias, 'dir');
         scope.assert.throws(function () {
-            verifyProjectInputs(frozen.inputs);
+            verifyProjectInputs(frozen.inputs, scope.signal);
         }, { message: /input changed/u });
         return scope.assert.collect();
     }),
@@ -64,21 +80,26 @@ export const testNode: TestNode = suite('frozen compiler inputs', [
             const file = scope.parameters;
 
             const directory = await frozenTypeProject(scope, projectFiles);
-            const frozen = await loadProject(join(directory, 'tsconfig.json'), {
-                kind: 'package',
-                specifier: 'typescript-beta',
-                version: '7.1.0-beta'
-            }, process.cwd());
+            const frozen = await loadProject(
+                join(directory, 'tsconfig.json'),
+                {
+                    kind: 'package',
+                    specifier: 'typescript-beta',
+                    version: '7.1.0-beta'
+                },
+                process.cwd(),
+                scope.signal
+            );
             scope.cleanup(async function () {
                 await disposeProject(frozen);
             });
-            verifyProjectInputs(frozen.inputs);
+            verifyProjectInputs(frozen.inputs, scope.signal);
             scope.assert.true(frozen.inputs.files.some(function (input) {
                 return input.path === join(directory, file);
             }));
             await writeFile(join(directory, file), `${projectFiles[file]}\n`);
             scope.assert.throws(function () {
-                verifyProjectInputs(frozen.inputs);
+                verifyProjectInputs(frozen.inputs, scope.signal);
             }, { message: /input changed/u });
             return scope.assert.collect();
         }
@@ -90,22 +111,27 @@ export const testNode: TestNode = suite('frozen compiler inputs', [
             'node_modules/@types/.keep': ''
         });
         const types = join(directory, 'node_modules', '@types');
-        const frozen = await loadProject(join(directory, 'tsconfig.json'), {
-            kind: 'package',
-            specifier: 'typescript-beta',
-            version: '7.1.0-beta'
-        }, process.cwd());
+        const frozen = await loadProject(
+            join(directory, 'tsconfig.json'),
+            {
+                kind: 'package',
+                specifier: 'typescript-beta',
+                version: '7.1.0-beta'
+            },
+            process.cwd(),
+            scope.signal
+        );
         scope.cleanup(async function () {
             await disposeProject(frozen);
         });
         scope.assert.true(frozen.inputs.directoryEntries.some(function (entry) {
             return entry.path === types;
         }));
-        verifyProjectInputs(frozen.inputs);
+        verifyProjectInputs(frozen.inputs, scope.signal);
         await mkdir(join(types, 'added'));
         await writeFile(join(types, 'added', 'index.d.ts'), 'declare const added: string;');
         scope.assert.throws(function () {
-            verifyProjectInputs(frozen.inputs);
+            verifyProjectInputs(frozen.inputs, scope.signal);
         }, { message: /input changed/u });
         return scope.assert.collect();
     }),
@@ -114,18 +140,23 @@ export const testNode: TestNode = suite('frozen compiler inputs', [
             'tsconfig.json': '{"compilerOptions":{"types":[],"noLib":true},"files":["case.ts"]}',
             'case.ts': "import type { Value } from './missing.js'; export type Result = Value;"
         });
-        const frozen = await loadProject(join(directory, 'tsconfig.json'), {
-            kind: 'package',
-            specifier: 'typescript-beta',
-            version: '7.1.0-beta'
-        }, process.cwd());
+        const frozen = await loadProject(
+            join(directory, 'tsconfig.json'),
+            {
+                kind: 'package',
+                specifier: 'typescript-beta',
+                version: '7.1.0-beta'
+            },
+            process.cwd(),
+            scope.signal
+        );
         scope.cleanup(async function () {
             await disposeProject(frozen);
         });
-        verifyProjectInputs(frozen.inputs);
+        verifyProjectInputs(frozen.inputs, scope.signal);
         await writeFile(join(directory, 'missing.ts'), 'export type Value = string;');
         scope.assert.throws(function () {
-            verifyProjectInputs(frozen.inputs);
+            verifyProjectInputs(frozen.inputs, scope.signal);
         }, { message: /input changed/u });
         return scope.assert.collect();
     })

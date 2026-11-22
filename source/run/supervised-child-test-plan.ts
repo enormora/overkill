@@ -2,6 +2,7 @@ import {
     createExecutionGlobalErrorObserver,
     type ExecutionGlobalErrorObserver
 } from '../engine/execution-global-error-observer.ts';
+import { withAnalysisDeadline, withAnalysisSignal } from './analysis-deadline.ts';
 import { createHostTestPlan, resolveHostEngine } from './host-test-plan.ts';
 import type { RunnerError, TestPlan } from './run-engine-primitives.ts';
 import { RunCollectionError } from './run-errors.ts';
@@ -88,7 +89,7 @@ export async function runObservedSupervisedChildCommand(
     }
 }
 
-export async function createSupervisedChildTestPlan(
+async function createChildTestPlan(
     command: SupervisedChildCommand,
     dependencies: SupervisedChildTestPlanDependencies
 ): Promise<TestPlan> {
@@ -115,6 +116,24 @@ export async function createSupervisedChildTestPlan(
                 : await createRunTestPlanFromFiles({ ...input, files: policy.files }, collectionPolicy);
         }
     });
+}
+
+export async function createSupervisedChildTestPlan(
+    command: SupervisedChildCommand,
+    dependencies: SupervisedChildTestPlanDependencies
+): Promise<TestPlan> {
+    if (command.analysis === true) {
+        return await withAnalysisDeadline(
+            command.collectionTimeoutMilliseconds,
+            'Analysis preparation exceeded collection timeout.',
+            async function prepare(signal) {
+                return await withAnalysisSignal(signal, async function collectAnalysis() {
+                    return await createChildTestPlan(command, dependencies);
+                });
+            }
+        );
+    }
+    return await createChildTestPlan(command, dependencies);
 }
 
 export async function validateSupervisedPolicy(

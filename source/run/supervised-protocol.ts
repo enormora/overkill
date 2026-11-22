@@ -1,3 +1,4 @@
+import type { FamilyValue } from '../engine/test-family.ts';
 import { withImplementationPlan } from '../engine/body-reference-plan.ts';
 import { createDefaultWorkId, workIdentityKey, type CaseId, type WorkId } from '../engine/identity.ts';
 import type {
@@ -39,6 +40,7 @@ import {
 type RunEngineSelection = RunCommand['engine'];
 
 type SupervisedCommandBase = {
+    readonly analysis?: true | undefined;
     readonly implementations: RunFacts['implementations'];
     readonly implementationContext: { readonly projectRoot: string; };
     readonly snapshots: SnapshotRun | null;
@@ -95,8 +97,10 @@ export type SupervisedRunCommand = SupervisedCommandBase & SupervisedExecutionMo
 export type SupervisedChildCommand = SupervisedCollectCommand | SupervisedRunCommand;
 
 export const supervisedChildCorrelationId = 'supervised-run';
+export const supervisedCancellationCorrelationId = 'supervised-run-cancellation';
 
 type WorkAssignmentCommand = {
+    readonly analysisCollection?: FamilyValue | undefined;
     readonly implementations: RunFacts['implementations'];
     readonly corpus: PropertyCorpusSnapshot;
     readonly propertyPolicies: readonly { readonly work: WorkId; readonly policy: PropertyPolicy; }[];
@@ -117,6 +121,10 @@ export type SupervisedAssignmentCommand = LegacyCaseAssignmentCommand | WorkAssi
 
 function hasAssignedWork(assignment: SupervisedAssignmentCommand): assignment is WorkAssignmentCommand {
     return Object.hasOwn(assignment, 'assignedWork');
+}
+
+export function assignedAnalysisCollection(assignment: SupervisedAssignmentCommand): FamilyValue | undefined {
+    return hasAssignedWork(assignment) ? assignment.analysisCollection : undefined;
 }
 
 export function assignedPropertyCorpus(assignment: SupervisedAssignmentCommand): PropertyCorpusSnapshot {

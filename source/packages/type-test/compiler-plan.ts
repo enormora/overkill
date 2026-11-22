@@ -1,3 +1,4 @@
+import { setTimeout as yieldToTimers } from 'node:timers/promises';
 import type { JsonValue, ReadonlyDeep } from 'type-fest';
 import type { FamilyPreparationInput } from '../../engine/test-family.ts';
 import {
@@ -13,7 +14,12 @@ import { packageVersion, type PackageVersion } from '../../package-version.ts';
 import { loadProject, disposeProject, verifyFrozenProject, type FrozenProject } from './frozen-project.ts';
 import { collectProject, type CompilerCheck } from './native-execution.ts';
 import { nativeCheckResult } from './native-results.ts';
-import { typeTestSettingsSchema, type TypeTestSettings, type CompilerSelection } from './profile-settings.ts';
+import {
+    typeTestSettingsSchema,
+    type TypeTestSettings,
+    type CompilerSelection,
+    type CompilerPolicy
+} from './profile-settings.ts';
 import type { CheckerPreparation, CollectedCheckerRun, CheckerExecution } from './checker-plan.ts';
 
 const microsecondsPerMillisecond = 1000;
@@ -107,20 +113,24 @@ function orderedCompilerResults(plan: TestPlan, results: readonly RunResult[]): 
 
 async function checkCompilerGroups(
     groups: readonly CompilerCheck[],
-    verifyInputs: () => Promise<void>
+    verifyInputs: (signal: AbortSignal) => Promise<void>,
+    signal: AbortSignal
 ): Promise<readonly CheckerExecution[]> {
     async function verify(): Promise<void> {
-        await verifyInputs();
+        signal.throwIfAborted();
+        await verifyInputs(signal);
         for (const group of groups) {
-            await group.verify();
+            await group.verify(signal);
         }
     }
     await verify();
     const results: CheckerExecution[] = [];
     for (const group of groups) {
-        results.push(await group.check());
+        results.push(await group.check(signal));
     }
+    await yieldToTimers(0);
     await verify();
+    signal.throwIfAborted();
     return results;
 }
 
@@ -159,16 +169,21 @@ function completeCompilerMatrix(
     };
 }
 
-export async function executeCompilerMatrix(
-    plan: TestPlan,
-    groups: readonly CompilerCheck[],
-    verifyInputs: () => Promise<void>,
-    planning: Readonly<Record<string, ReadonlyDeep<JsonValue>>>
-): Promise<CheckerExecution> {
+type CompilerMatrixExecution = {
+    readonly plan: TestPlan;
+    readonly groups: readonly CompilerCheck[];
+    readonly verifyInputs: (signal: AbortSignal) => Promise<void>;
+    readonly planning: Readonly<Record<string, ReadonlyDeep<JsonValue>>>;
+    readonly signal: AbortSignal;
+};
+
+export async function executeCompilerMatrix(input: CompilerMatrixExecution): Promise<CheckerExecution> {
+    const { plan, groups, verifyInputs, planning, signal } = input;
     const started = performance.now();
     try {
-        return completeCompilerMatrix(plan, await checkCompilerGroups(groups, verifyInputs), planning, started);
+        return completeCompilerMatrix(plan, await checkCompilerGroups(groups, verifyInputs, signal), planning, started);
     } catch (error: unknown) {
+        signal.throwIfAborted();
         const failure = error instanceof Error
             ? error
             : new Error('Type-test input validation failed.', { cause: error });
@@ -185,14 +200,14 @@ export async function executeCompilerMatrix(
     }
 }
 
-async function collectCompilerGroups(input: CompilerPlan, selected: TestPlan): Promise<{
+async function collectCompilerGroups(input: CompilerPlan, selected: TestPlan, signal: AbortSignal): Promise<{
     readonly groups: readonly CompilerCheck[];
-    readonly verifyUnselected: () => Promise<void>;
+    readonly verifyUnselected: (signal: AbortSignal) => Promise<void>;
 }> {
     const groups: CompilerCheck[] = [];
     const unselected: FrozenProject[] = [];
     for (const [ version, project ] of input.projects) {
-        await verifyFrozenProject(project, []);
+        await verifyFrozenProject(project, [], signal);
         const cases = selected.cases.filter(function (entry) {
             const variant = entry.workId.familyVariant;
             return variant?.family === '@overkill-dev/type-test' && variant.key === `typescript@${version}`;
@@ -201,14 +216,14 @@ async function collectCompilerGroups(input: CompilerPlan, selected: TestPlan): P
         if (first === undefined) {
             unselected.push(project);
         } else {
-            groups.push(await collectProject({ ...selected, cases: [ first, ...cases.slice(1) ] }, project));
+            groups.push(await collectProject({ ...selected, cases: [ first, ...cases.slice(1) ] }, project, signal));
         }
     }
     return {
         groups,
-        async verifyUnselected() {
+        async verifyUnselected(checkSignal) {
             for (const project of unselected) {
-                await verifyFrozenProject(project, []);
+                await verifyFrozenProject(project, [], checkSignal);
             }
         }
     };
@@ -231,9 +246,15 @@ function assertFrozenSelection(input: CompilerPlan, selected: TestPlan): void {
     }
 }
 
-async function collectCompilerPlan(input: CompilerPlan, selected: TestPlan): Promise<CollectedCheckerRun> {
+async function collectCompilerPlan(
+    input: CompilerPlan,
+    selected: TestPlan,
+    signal: AbortSignal
+): Promise<CollectedCheckerRun> {
     assertFrozenSelection(input, selected);
-    const { groups, verifyUnselected } = await collectCompilerGroups(input, selected);
+    const { groups, verifyUnselected } = await collectCompilerGroups(input, selected, signal);
+    await yieldToTimers(0);
+    signal.throwIfAborted();
     const planning = {
         version: 3,
         versions: input.versions,
@@ -247,8 +268,14 @@ async function collectCompilerPlan(input: CompilerPlan, selected: TestPlan): Pro
     };
     return {
         facts: parseAdapterFacts(planning),
-        async execute() {
-            return await executeCompilerMatrix(selected, groups, verifyUnselected, planning);
+        async execute(checkSignal) {
+            return await executeCompilerMatrix({
+                plan: selected,
+                groups,
+                verifyInputs: verifyUnselected,
+                planning,
+                signal: checkSignal
+            });
         }
     };
 }
@@ -264,7 +291,13 @@ function retainCompilerProject(existing: FrozenProject | undefined, project: Fro
     if (compilerFingerprint(existing) !== compilerFingerprint(project)) {
         throw new Error('Conflicting compiler implementations claim the same version.');
     }
-    return existing;
+    return {
+        ...existing,
+        compiler: {
+            ...existing.compiler,
+            resolutions: [ ...existing.compiler.resolutions, ...project.compiler.resolutions ]
+        }
+    };
 }
 
 type CompilerProjects = {
@@ -273,10 +306,11 @@ type CompilerProjects = {
 };
 type CompilerResolution = CompilerProjects & {
     readonly options: TypeTestSettings;
+    readonly signal: AbortSignal;
     readonly projectRoot: string;
 };
 async function retainSelectedProject(input: CompilerResolution, selection: CompilerSelection): Promise<FrozenProject> {
-    const project = await loadProject(input.options.projectConfigPath, selection, input.projectRoot);
+    const project = await loadProject(input.options.projectConfigPath, selection, input.projectRoot, input.signal);
     input.ownership.use(project.ownership);
     const retained = retainCompilerProject(input.projects.get(project.compiler.version), project);
     if (retained !== project) {
@@ -285,14 +319,18 @@ async function retainSelectedProject(input: CompilerResolution, selection: Compi
     return retained;
 }
 
-async function resolveCompilerProjects(options: TypeTestSettings, projectRoot: string): Promise<CompilerProjects> {
+async function resolveCompilerProjects(
+    options: TypeTestSettings,
+    projectRoot: string,
+    signal: AbortSignal
+): Promise<CompilerProjects> {
     const selections = options.compiler.kind === 'matrix' ? options.compiler.compilers : [ options.compiler ];
     const unique = new Map(selections.map(function selectionKey(selection) {
         return [ JSON.stringify(selection), selection ];
     }));
     await using ownership = new AsyncDisposableStack();
     const projects = new Map<string, FrozenProject>();
-    const input = { options, projectRoot, projects, ownership };
+    const input = { options, projectRoot, projects, ownership, signal };
     for (const selection of unique.values()) {
         const project = await retainSelectedProject(input, selection);
         projects.set(project.compiler.version, project);
@@ -301,11 +339,10 @@ async function resolveCompilerProjects(options: TypeTestSettings, projectRoot: s
 }
 
 type FamilyVariantExpander = FamilyPreparationInput<TypeTestSettings>['expandVariants'];
-type CompilerVariantExpansion = readonly [] | readonly [FamilyVariantExpander];
 function expandCompilerWork(
     plan: TestPlan,
     projects: CompilerPlan['projects'],
-    expand: FamilyVariantExpander | undefined
+    expand: FamilyVariantExpander | null
 ): TestPlan {
     const variants = Array.from(projects.values(), function variant(project) {
         return { key: `typescript@${project.compiler.version}`, facts: { version: project.compiler.version } };
@@ -314,44 +351,69 @@ function expandCompilerWork(
     if (firstVariant === undefined) {
         throw new TypeError('At least one compiler is required.');
     }
-    return expand === undefined
+    return expand === null
         ? expandedCompilerPlan(plan, projects)
         : expand([ firstVariant, ...remainingVariants ]);
 }
 
-export async function prepare(
-    plan: TestPlan,
-    settings: unknown,
-    projectRoot: string,
-    ...expansions: CompilerVariantExpansion
-): Promise<CheckerPreparation> {
-    const options = typeTestSettingsSchema.parse(settings);
-    const adapter = await packageVersion(import.meta.url);
-    const group = await resolveCompilerProjects(options, projectRoot);
-    await using ownership = group.ownership;
-    const { projects } = group;
-    const testPlan = expandCompilerWork(plan, projects, expansions[0]);
-    const input: CompilerPlan = {
+function freezeCompilerPlan(
+    testPlan: TestPlan,
+    projects: CompilerPlan['projects'],
+    requestedCompilers: CompilerPolicy,
+    adapter: PackageVersion | null
+): CompilerPlan {
+    return {
         discoveredCases: testPlan.discoveredCases,
         cases: new Map(testPlan.cases.map(function (entry) {
             return [ workIdentityKey(entry.workId), entry ];
         })),
         projects,
-        requestedCompilers: options.compiler,
+        requestedCompilers,
         versions: { adapter }
     };
-    const facts = parseAdapterFacts({
-        requestedCompilers: options.compiler,
+}
+
+function compilerPreparationFacts(
+    projects: CompilerPlan['projects'],
+    requestedCompilers: CompilerPolicy
+): CheckerPreparation['facts'] {
+    return parseAdapterFacts({
+        requestedCompilers,
         compilers: Array.from(projects.values(), function compilerFacts(project) {
             return {
                 version: project.compiler.version,
                 packageUrl: project.compiler.packageUrl,
                 files: project.compiler.files,
+                resolutions: project.compiler.resolutions,
                 projectConfigPath: project.projectConfigPath,
                 inputs: project.inputs
             };
         })
     });
+}
+
+type CompilerPreparationContext = {
+    readonly projectRoot: string;
+    readonly signal: AbortSignal;
+    readonly expandVariants: FamilyVariantExpander | null;
+};
+
+export async function prepare(
+    plan: TestPlan,
+    settings: unknown,
+    context: CompilerPreparationContext
+): Promise<CheckerPreparation> {
+    const { projectRoot, signal, expandVariants } = context;
+    const options = typeTestSettingsSchema.parse(settings);
+    const adapter = await packageVersion(import.meta.url);
+    const group = await resolveCompilerProjects(options, projectRoot, signal);
+    await using ownership = group.ownership;
+    const { projects } = group;
+    const testPlan = expandCompilerWork(plan, projects, expandVariants);
+    await yieldToTimers(0);
+    signal.throwIfAborted();
+    const input = freezeCompilerPlan(testPlan, projects, options.compiler, adapter);
+    const facts = compilerPreparationFacts(projects, options.compiler);
     const retained = ownership.move();
     return {
         testPlan,
@@ -359,8 +421,8 @@ export async function prepare(
         async dispose() {
             await retained.disposeAsync();
         },
-        async collect(selected) {
-            return await collectCompilerPlan(input, selected);
+        async collect(selected, collectionSignal) {
+            return await collectCompilerPlan(input, selected, collectionSignal);
         }
     };
 }
