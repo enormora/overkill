@@ -125,6 +125,15 @@ export async function loadProject(
     };
 }
 
+export function originalProjectFacts(project: FrozenProject): unknown {
+    const configuration = JSON.stringify({
+        options: project.project.options,
+        files: project.project.fileNames,
+        references: project.project.projectReferences ?? []
+    });
+    return JSON.parse(configuration);
+}
+
 export function typeAnalysis(project: FrozenProject): TypeAnalysis {
     return { compiler: project.compiler.syntax, checker: project.configured.checker };
 }
