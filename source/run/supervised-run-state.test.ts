@@ -1,5 +1,5 @@
 import { defineCompositeAssertion } from '@overkill-dev/test/assert';
-import { type TestScope, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 import type { ReporterEvent } from '../engine/reporter.ts';
 
 import {
@@ -316,14 +316,12 @@ export const testNode = suite('Supervised run state', [
         scope.assert.equal(state.captureMode('live'), 'live');
         return scope.assert.collect();
     }),
-    test('preserves authored live capture while terminal output drains', function (scope: TestScope) {
-        const state = createSupervisedRunState('first-failure-and-final');
-        const result = runResultFactory.build({ perTest: [ { id: caseId('live') } ] }).perTest[0];
-        scope.require.defined(result);
-        const key = workIdentityKey(result.workId);
+    test('preserves authored live capture after a case finishes', function (scope) {
+        const { state, key, result } = variantFixture();
         state.addActiveCase(key, { capture: 'live', id: result.id, workId: result.workId }, 0, { index: 0 });
         state.recordTestAttemptResult(key, result, 'final', 1);
         state.removeActiveCase(key);
+        scope.assert.equal(state.captureMode('buffered'), 'live');
         state.beginOutputDraining();
         scope.assert.equal(state.captureMode('buffered'), 'live');
         return scope.assert.collect();

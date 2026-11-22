@@ -390,10 +390,10 @@ export function createSupervisedRunState(
             }
         },
         captureMode(capture) {
-            const active = outputCases(cases);
-            const [ activeCase ] = active.values();
+            const captureCases = cases.active.size === 0 ? cases.outputDraining : cases.active;
+            const [ captureCase ] = captureCases.values();
 
-            return capture === 'live' || active.size !== 1 ? capture : activeCase?.capture ?? capture;
+            return capture === 'live' || captureCases.size !== 1 ? capture : captureCase?.capture ?? capture;
         },
         recordPropertyProgress(key, attempt, evidence) {
             const active = cases.active.get(key);
