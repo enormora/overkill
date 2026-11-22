@@ -18,14 +18,14 @@ be tested. Runtime coverage checks exercise both microtest execution modes.
 One source CLI check exercises coverage flag and report wiring, and one packed
 CLI check exercises the installed supervised worker and reporter.
 
-| Profile              | Boundary                                                                 | Command                             |
-| -------------------- | ------------------------------------------------------------------------ | ----------------------------------- |
-| `microtests`         | In-memory behavior, supervised execution                                 | `just test-microtests`              |
-| `runtime`            | Programmatic runtime integration, files, compiler projects, and real I/O | `just test-integration`             |
-| `cli`                | CLI execution and process ownership on Linux and macOS                   | `just test-cli-integration`         |
-| `package-smoke`      | Freshly packed package exports, consumers, and executable startup        | `just test-package-smoke`           |
-| `mutation-campaigns` | Representative Stryker lifecycle and accuracy cases                     | Included in `just test-integration` |
-| `mutation-campaigns-extended` | Full accuracy matrix and mutation-cost evidence                    | `just test-mutation-campaigns-extended` |
+| Profile                       | Boundary                                                                 | Command                                 |
+| ----------------------------- | ------------------------------------------------------------------------ | --------------------------------------- |
+| `microtests`                  | In-memory behavior, supervised execution                                 | `just test-microtests`                  |
+| `runtime`                     | Programmatic runtime integration, files, compiler projects, and real I/O | `just test-integration`                 |
+| `cli`                         | CLI execution and process ownership on Linux and macOS                   | `just test-cli-integration`             |
+| `package-smoke`               | Freshly packed package exports, consumers, and executable startup        | `just test-package-smoke`               |
+| `mutation-campaigns`          | Representative Stryker lifecycle and accuracy cases                      | Included in `just test-integration`     |
+| `mutation-campaigns-extended` | Full accuracy matrix and mutation-cost evidence                          | `just test-mutation-campaigns-extended` |
 
 Integration files live under `source/integration-tests/<profile>`. Fixtures are
 excluded from profile discovery. Runtime and CLI files form work units in reusable

@@ -16,7 +16,9 @@ export async function createCoverageCaseProject(
         await rm(directory, { recursive: true, force: true });
     });
     const source = await readFile(new URL(caseFile, fixtureRoot), 'utf8');
-    const test = source.replace("'../../../packages/engine/engine.entry-point.ts'", JSON.stringify(engineModule.href));
+    const test = source.replace("'../../../packages/engine/engine.entry-point.ts'", function engineImport() {
+        return JSON.stringify(engineModule.href);
+    });
     await Promise.all([
         copyFile(new URL(sourceFile, fixtureRoot), join(directory, sourceFile)),
         writeFile(join(directory, caseFile), test)

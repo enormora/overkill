@@ -87,7 +87,10 @@ function matchingMutant(mutants: readonly Mutant[], expected: ExpectedMutant): M
         return mutant.file === expected.file && mutant.location.start.line === expected.line;
     });
     const [ mutant ] = matches;
-    assert.ok(mutant !== undefined && matches.length === 1, `Missing or repeated mutant: ${expected.file}:${expected.line}`);
+    assert.ok(
+        mutant !== undefined && matches.length === 1,
+        `Missing or repeated mutant: ${expected.file}:${expected.line}`
+    );
     return mutant;
 }
 
