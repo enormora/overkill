@@ -36,6 +36,8 @@ to isolate it from the integration runner's attachment context.
 CI runs four categories of tests:
 
 - Unit tests: `npx just test-unit-with-coverage`. This is the only unit run in CI.
+  The source line reporter prints periodic progress in non-interactive logs,
+  including GitHub Actions, and includes non-passing results and failure details.
   Overkill coverage includes production code under `source`, including `source/packages`,
   and excludes `*.entry-point.ts`, tests, fixtures, and test support. TypeScript
   files with no executable code are omitted from runtime coverage. The CLI configures V8 collection.

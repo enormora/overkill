@@ -156,9 +156,10 @@ export const testNode: TestNode = suite('Progress reporter', [
                 '  root\n',
                 `    ${colors.red(figures.cross)} fails (0 ms)\n`,
                 'Problems\n',
-                '  root > fails (source/example.test.ts)\n',
+                `  ${colors.red(figures.cross)} root › fails\n`,
+                '    source/example.test.ts\n',
+                '\n',
                 '    Check failed\n',
-                '    source: source/example.test.ts\n',
                 '    expected: null\n',
                 '    actual: null\n',
                 `${colors.red(figures.cross)} 2 discovered, 2 planned, 2 executed ` +

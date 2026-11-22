@@ -3,6 +3,7 @@ import { type TestNode, suite, test } from '@overkill-dev/test';
 import figures from 'figures';
 import colors from 'yoctocolors';
 
+import { defaultSerializationBudget, serializeValueWithBudget } from '../compare/serialized-value.ts';
 import { defaultFailureArtifactPolicy } from '../packages/engine/engine.entry-point.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { createTreeReporter } from './tree-reporter.ts';
@@ -27,7 +28,7 @@ function createLogRecorder(): LogRecorder {
 }
 
 export const testNode: TestNode = suite('Tree reporter', [
-    test('prints logical final results', async function (scope) {
+    test('shows table parameters only in the multiline failure details', async function (scope) {
         const recorder = createLogRecorder();
         const reporter = createTreeReporter({
             stdoutConsole: { log: recorder.log }
@@ -47,14 +48,17 @@ export const testNode: TestNode = suite('Tree reporter', [
             result: runResultFactory.build({
                 perTest: [
                     {
-                        durationMicroseconds: 2000,
+                        durationMicroseconds: 700,
                         id: { file: 'source/example.test.ts', params: null, suite: [ 'root' ], title: 'passes' }
                     },
                     {
                         durationMicroseconds: 3000,
                         id: {
                             file: 'source/example.test.ts',
-                            params: 'row=1',
+                            params: JSON.stringify(serializeValueWithBudget(
+                                { value: 1, tags: [ 'edge' ] },
+                                defaultSerializationBudget
+                            )),
                             suite: [ 'root' ],
                             title: 'fails'
                         },
@@ -70,14 +74,23 @@ export const testNode: TestNode = suite('Tree reporter', [
         scope.assert.deepEqual(recorder.lines(), [
             'source/example.test.ts',
             '  root',
-            `    ${colors.green(figures.tick)} passes (2 ms)`,
-            `    ${colors.red(figures.cross)} fails [row=1] (3 ms)`,
+            `    ${colors.green(figures.tick)} passes (700 µs)`,
+            `    ${colors.red(figures.cross)} fails (3 ms)`,
             'Problems',
-            '  source/example.test.ts: root > fails [row=1] (source/example.test.ts)',
+            `  ${colors.red(figures.cross)} root › fails`,
+            '    source/example.test.ts',
+            '',
             '    Check failed',
-            '    source: source/example.test.ts',
             '    expected: null',
             '    actual: null',
+            '',
+            '    Parameters',
+            '      {',
+            '        tags: [',
+            '          "edge"',
+            '        ],',
+            '        value: 1',
+            '      }',
             `${colors.red(figures.cross)} 2 discovered, 2 planned, 2 executed ` +
             '(1 pass, 1 fail, 0 skip) in 5 ms (total 5 ms, execution 0 ms, overhead 5 ms)'
         ]);
@@ -121,7 +134,9 @@ export const testNode: TestNode = suite('Tree reporter', [
             '  root',
             `    ${colors.red(figures.warning)} crashes (0 ms)`,
             'Problems',
-            '  root > crashes (source/example.test.ts)',
+            `  ${colors.red(figures.cross)} root › crashes`,
+            '    source/example.test.ts',
+            '',
             '    crashed',
             `${colors.red(figures.cross)} 2 discovered, 2 planned, 2 executed ` +
             '(1 pass, 0 fail, 0 skip, 1 crash) in 0 ms (total 0 ms, execution 0 ms, overhead 0 ms)'

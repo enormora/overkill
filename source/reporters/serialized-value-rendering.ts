@@ -13,11 +13,23 @@ export function keyText(key: SerializedPropertyKey): string {
     return key.kind === 'symbol' ? `[${key.value}]` : key.value;
 }
 
+function formatEntry(entry: SerializedEntry, format: RecursiveSerializedValueFormatter): string {
+    return `${keyText(entry.key)}: ${format(entry.value)}`;
+}
+
+function objectPrefix(value: Extract<SerializedValue, { readonly kind: 'object'; }>): string {
+    return value.constructorName === 'Object' ? '' : `${value.constructorName} `;
+}
+
 function formatEntries(entries: readonly SerializedEntry[], format: RecursiveSerializedValueFormatter): string {
+    if (entries.length === 0) {
+        return '{}';
+    }
+
     return `{ ${
         entries
-            .map(function formatEntry(entry) {
-                return `${keyText(entry.key)}: ${format(entry.value)}`;
+            .map(function formatProperty(entry) {
+                return formatEntry(entry, format);
             })
             .join(', ')
     } }`;
@@ -72,7 +84,7 @@ function formatCollectionValue(value: SerializedValue, format: RecursiveSerializ
     }
 
     if (value.kind === 'object') {
-        return `${value.constructorName} ${formatEntries(value.entries, format)}`;
+        return `${objectPrefix(value)}${formatEntries(value.entries, format)}`;
     }
 
     if (value.kind === 'map') {
@@ -150,4 +162,30 @@ export function formatSerializedValue(value: SerializedValue): string {
 
     return collection ?? formatWithRenderers(value, referenceRenderers) ??
         '[Unavailable: unsupported serialized value]';
+}
+
+function collectionLines(open: string, entries: readonly string[], close: string, truncated: boolean): string {
+    const lines = truncated ? [ ...entries, '…' ] : entries;
+    if (lines.length === 0) {
+        return `${open}${close}`;
+    }
+    const body = lines.join(',\n').replaceAll(/^/gmu, '  ');
+    return [ open, body, close ].join('\n');
+}
+
+export function formatMultilineSerializedValue(value: SerializedValue): string {
+    if (value.kind === 'object') {
+        const entries = value.entries.map(function formatProperty(entry) {
+            return formatEntry(entry, formatMultilineSerializedValue);
+        });
+        return collectionLines(`${objectPrefix(value)}{`, entries, '}', value.truncation !== null);
+    }
+    if (value.kind === 'array') {
+        const entries = value.entries.map(function formatItem(entry) {
+            return formatMultilineSerializedValue(entry.value);
+        });
+        return collectionLines('[', entries, ']', value.truncation !== null);
+    }
+
+    return formatSerializedValue(value);
 }

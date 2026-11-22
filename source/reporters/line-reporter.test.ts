@@ -4,6 +4,7 @@ import figures from 'figures';
 import colors from 'yoctocolors';
 
 import { defaultFailureArtifactPolicy } from '../packages/engine/engine.entry-point.ts';
+import { defaultSerializationBudget, serializeValueWithBudget } from '../compare/serialized-value.ts';
 import { resolveRootTestAnnotations } from '../engine/test-data.ts';
 import type { RealTimeReporter } from '../engine/reporter.ts';
 import { createLineReporter, type LineReporterDependencies } from './line-reporter.ts';
@@ -15,6 +16,8 @@ function lineReporterWithLog(log: Log): RealTimeReporter {
     const fakeDependencies: LineReporterDependencies = {
         columns: 80,
         formatOptions: { color: false, wrap: true },
+        interactive: false,
+        showPassing: true,
         stdoutConsole: { log },
         verbose: false
     };
@@ -53,7 +56,8 @@ function suitePathFromTitles(
 }
 
 async function reportNestedSuiteRun(reporter: RealTimeReporter): Promise<void> {
-    const rowCaseId = { file: null, title: 'row 1', params: 'value=1', suite: [ 'rows' ] };
+    const params = JSON.stringify(serializeValueWithBudget({ value: 1 }, defaultSerializationBudget));
+    const rowCaseId = { file: null, title: 'row 1', params, suite: [ 'rows' ] };
 
     await reporter.onEvent({ kind: 'suite-start', suitePath: suitePathFromTitles([ 'rows' ]) });
     await reporter.onEvent({
@@ -168,7 +172,7 @@ export const testNode: TestNode = suite('Line reporter', [
                                     kind: 'leaf',
                                     path: [],
                                     source: 'assert',
-                                    sourceLocations: [ definitionLocation ],
+                                    sourceLocations: [ { ...knownDefinitionLocation, line: 19 } ],
                                     summary: 'numbers differ'
                                 }
                             ],
@@ -182,11 +186,10 @@ export const testNode: TestNode = suite('Line reporter', [
                 durationMicroseconds: 12_000
             });
 
-            scope.assert(doubleUsage.callCount, log, 1);
-            scope.assert(doubleUsage.nthCallWithExactly, log, 0, [
-                errorSymbol,
-                'fails: numbers differ (12 ms) (source/fails.test.ts:8:4)'
-            ]);
+            scope.assert(doubleUsage.callCount, log, 3);
+            scope.assert(doubleUsage.nthCallWithExactly, log, 0, [ errorSymbol, 'fails (12 ms)' ]);
+            scope.assert(doubleUsage.nthCallWithExactly, log, 1, [ '  source/fails.test.ts:19:4' ]);
+            scope.assert(doubleUsage.nthCallWithExactly, log, 2, [ '  numbers differ' ]);
 
             return scope.assert.collect();
         }
@@ -249,7 +252,9 @@ export const testNode: TestNode = suite('Line reporter', [
             durationMicroseconds: 12_000
         });
 
-        scope.assert(doubleUsage.nthCallWithExactly, log, 0, [ errorSymbol, 'fails: names differ (12 ms)' ]);
+        scope.assert(doubleUsage.nthCallWithExactly, log, 0, [ errorSymbol, 'fails (12 ms)' ]);
+        scope.assert(doubleUsage.nthCallWithExactly, log, 1, [ '  source/users.test.ts:10:5' ]);
+        scope.assert(doubleUsage.nthCallWithExactly, log, 2, [ '  names differ' ]);
 
         return scope.assert.collect();
     }),
@@ -286,7 +291,8 @@ export const testNode: TestNode = suite('Line reporter', [
             durationMicroseconds: 12_000
         });
 
-        scope.assert(doubleUsage.nthCallWithExactly, log, 0, [ errorSymbol, 'fails: boom (12 ms)' ]);
+        scope.assert(doubleUsage.nthCallWithExactly, log, 0, [ errorSymbol, 'fails (12 ms)' ]);
+        scope.assert(doubleUsage.nthCallWithExactly, log, 1, [ '  boom' ]);
 
         return scope.assert.collect();
     }),
@@ -321,10 +327,8 @@ export const testNode: TestNode = suite('Line reporter', [
             durationMicroseconds: 12_000
         });
 
-        scope.assert(doubleUsage.nthCallWithExactly, log, 0, [
-            errorSymbol,
-            'fails: Expected at least one assertion. (12 ms)'
-        ]);
+        scope.assert(doubleUsage.nthCallWithExactly, log, 0, [ errorSymbol, 'fails (12 ms)' ]);
+        scope.assert(doubleUsage.nthCallWithExactly, log, 1, [ '  Expected at least one assertion.' ]);
 
         return scope.assert.collect();
     }),
@@ -391,7 +395,8 @@ export const testNode: TestNode = suite('Line reporter', [
             durationMicroseconds: 12_000
         });
 
-        scope.assert(doubleUsage.nthCallWithExactly, log, 0, [ errorSymbol, 'fails: objects differ (12 ms)' ]);
+        scope.assert(doubleUsage.nthCallWithExactly, log, 0, [ errorSymbol, 'fails (12 ms)' ]);
+        scope.assert(doubleUsage.nthCallWithExactly, log, 1, [ '  objects differ' ]);
 
         return scope.assert.collect();
     }),
@@ -464,7 +469,7 @@ export const testNode: TestNode = suite('Line reporter', [
 
         return scope.assert.collect();
     }),
-    test('prints nested suite prefixes', async function (scope) {
+    test('prints row titles without parameters for passing table rows', async function (scope) {
         const log = testDouble<LogFunction>();
         const reporter = lineReporterWithLog(log);
 
@@ -473,7 +478,7 @@ export const testNode: TestNode = suite('Line reporter', [
         scope.assert(doubleUsage.callCount, log, 2);
         scope.assert(doubleUsage.nthCallWithExactly, log, 0, [
             successSymbol,
-            '[rows] row 1 [value=1] (7 ms)'
+            '[rows] row 1 (7 ms)'
         ]);
         scope.assert(doubleUsage.nthCallWithExactly, log, 1, [ successSymbol, 'passes (2 ms)' ]);
 

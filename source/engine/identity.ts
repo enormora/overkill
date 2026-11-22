@@ -120,10 +120,13 @@ export function createDefaultWorkId(testCase: CaseId): WorkId {
     };
 }
 
-export function formatCaseId(caseId: CaseId): string {
+export function formatCaseLabel(caseId: TestId): string {
     const titlePath = [ ...caseId.suite, caseId.title ].join(' > ');
-    const originPath = caseId.file === null ? titlePath : `${caseId.file}: ${titlePath}`;
+    return caseId.file === null ? titlePath : `${caseId.file}: ${titlePath}`;
+}
 
+export function formatCaseId(caseId: CaseId): string {
+    const originPath = formatCaseLabel(caseId);
     if (caseId.params === null) {
         return originPath;
     }

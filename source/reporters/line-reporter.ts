@@ -1,6 +1,5 @@
 import figures from 'figures';
 import colors from 'yoctocolors';
-import type { CaseId } from '../engine/identity.ts';
 import { defineReporter, type DefinedReporter, type RealTimeReporter, type ReporterEvent } from '../engine/reporter.ts';
 import {
     formatDefinitionLocations,
@@ -9,21 +8,24 @@ import {
 import type {
     OrphanedNode,
     RunResult,
+    TestFailure,
     TestOutcome,
     TestVerdict
 } from '../engine/run-result.ts';
 import { formatFailureSummary } from './failure-summary.ts';
+import { formatFailureLocation } from './line-failure-rendering.ts';
 import {
     formatCoverageSummaryLines,
+    formatDuration,
     formatRunFactSummary,
-    formatTimingOffenderLines,
-    formatTimingSummary
+    formatTimingOffenderLines
 } from './run-summary-rendering.ts';
 import { createTerminalLineLogger, type TerminalLineLogger, visibleTerminalWidth } from './terminal.ts';
 import {
     contextPrefix,
-    formatCountSummary,
     formatDebugSummary,
+    formatLineExecutionCounts,
+    formatLineVerdicts,
     problemLines,
     type HumanReporterFormatOptions
 } from './human-reporter-rendering.ts';
@@ -31,12 +33,11 @@ import {
 const successSymbol = colors.green(figures.tick);
 const errorSymbol = colors.red(figures.cross);
 const infoSymbol = colors.cyan(figures.info);
-const microsecondsPerMillisecond = 1000;
 const minimumColumnWidth = 1;
+const minimumDurationGap = 2;
+const progressInterval = 100;
 
-type DefinitionLocationSummary = {
-    readonly primary: string | null;
-};
+type TestEndEvent = Extract<ReporterEvent, { readonly kind: 'test-end'; }>;
 
 type WrapTextState = {
     readonly lines: readonly string[];
@@ -46,6 +47,8 @@ type WrapTextState = {
 export type LineReporterDependencies = {
     readonly columns: number;
     readonly formatOptions: HumanReporterFormatOptions;
+    readonly interactive: boolean;
+    readonly showPassing: boolean;
     readonly stdoutConsole: Pick<typeof console, 'log'>;
     readonly verbose: boolean;
 };
@@ -54,24 +57,12 @@ function indent(depth: number): string {
     return '  '.repeat(depth);
 }
 
-function formatCaseTitle(id: CaseId): string {
-    if (id.params === null) {
-        return id.title;
-    }
-
-    return `${id.title} [${id.params}]`;
-}
-
 function outcomeReason(outcome: TestOutcome): string | null {
     if (outcome.kind === 'skip' || outcome.kind === 'inconclusive') {
         return outcome.reason;
     }
 
     return null;
-}
-
-function formatDuration(durationMicroseconds: number): string {
-    return `${durationMicroseconds / microsecondsPerMillisecond} ms`;
 }
 
 function nextWrapTextState(state: WrapTextState, word: string, textColumns: number): WrapTextState {
@@ -144,55 +135,38 @@ function logWrappedLine(
     }
 }
 
-function outcomeDetail(outcome: TestOutcome): string {
-    const reason = outcomeReason(outcome);
-
-    if (reason !== null) {
-        return `: ${reason}`;
-    }
-
-    if (outcome.kind !== 'fail') {
-        return '';
-    }
-
-    return `: ${formatFailureSummary(outcome.failures[0])}`;
-}
-
 function formatTestResult(
-    id: CaseId,
-    outcome: TestOutcome,
-    durationMicroseconds: number,
+    event: TestEndEvent,
     prefix: string
 ): readonly [string, string] {
-    const context = prefix.length === 0 ? '' : `${prefix} `;
-    const message = `${context}${formatCaseTitle(id)}${outcomeDetail(outcome)} ` +
-        `(${formatDuration(durationMicroseconds)})`;
-
-    if (outcome.kind === 'fail') {
-        return [ errorSymbol, message ];
+    const { outcome } = event;
+    const name = prefix.length === 0 ? event.case.title : `${prefix} ${event.case.title}`;
+    if (outcome === null || outcome.kind === 'fail') {
+        return [ errorSymbol, name ];
     }
-
-    if (outcome.kind === 'pass') {
-        return [ successSymbol, message ];
-    }
-
-    return [ infoSymbol, message ];
+    const reason = outcomeReason(outcome);
+    const message = reason === null ? name : `${name}: ${reason}`;
+    return [ outcome.kind === 'pass' ? successSymbol : infoSymbol, message ];
 }
 
-function formatTerminalTestResult(
-    id: CaseId,
-    verdict: TestVerdict,
-    durationMicroseconds: number,
-    prefix: string
-): readonly [string, string] {
-    const context = prefix.length === 0 ? '' : `${prefix} `;
-    const message = `${context}${formatCaseTitle(id)} (${formatDuration(durationMicroseconds)})`;
+function terminalVerdict(verdict: TestVerdict): string {
+    return verdict === 'process-exhausted' ? 'process exhausted' : 'crashed';
+}
 
-    if (verdict === 'process-exhausted') {
-        return [ errorSymbol, `${message}: process exhausted` ];
+function resultSuffix(event: TestEndEvent): string {
+    const terminal = event.outcome === null ? `: ${terminalVerdict(event.verdict)}` : '';
+    const retried = event.attempt === 0 ? '' : ` [${event.attempt + 1} attempts]`;
+    return terminal + retried + formatDebugSummary(event.artifacts);
+}
+
+function formatResultTiming(message: string, duration: string, suffix: string, width: number | null): string {
+    const inline = `${message} ${duration}${suffix}`;
+    if (width === null || /[\n\r\t]/u.test(message + suffix)) {
+        return inline;
     }
 
-    return [ errorSymbol, `${message}: crashed` ];
+    const gap = width - visibleTerminalWidth(message + suffix) - visibleTerminalWidth(duration);
+    return gap < minimumDurationGap ? inline : `${message}${suffix}${' '.repeat(gap)}${duration}`;
 }
 
 function formatOrphanLines(orphan: OrphanedNode, context: ReportingContext): readonly string[] {
@@ -207,15 +181,34 @@ function formatOrphanLines(orphan: OrphanedNode, context: ReportingContext): rea
     ];
 }
 
-function logSummary(terminal: TerminalLineLogger, result: RunResult): void {
-    const symbol = result.status === 'failed' ? errorSymbol : successSymbol;
+function logProblems(terminal: TerminalLineLogger, lines: readonly string[]): void {
+    if (lines.length === 0) {
+        return;
+    }
+    for (const line of lines) {
+        terminal.line(line);
+    }
+    terminal.line('');
+}
 
-    terminal.line(
-        symbol,
-        `${formatCountSummary(result)} in ${formatDuration(result.timings.summary.totalWallTimeMicroseconds)} (${
-            formatTimingSummary(result)
-        })`
-    );
+function logSummary(terminal: TerminalLineLogger, result: RunResult): void {
+    const failed = result.status === 'failed';
+    const symbol = failed ? errorSymbol : successSymbol;
+    const { summary } = result.timings;
+    const headline = [
+        failed ? 'Run failed' : 'Run passed',
+        ...formatLineVerdicts(result),
+        formatDuration(summary.totalWallTimeMicroseconds)
+    ]
+        .join(' · ');
+    const timing = [
+        `${formatDuration(summary.testExecutionWallTimeMicroseconds)} execution`,
+        `${formatDuration(summary.runnerOverheadWallTimeMicroseconds)} overhead`
+    ]
+        .join(' · ');
+
+    terminal.line(symbol, headline);
+    terminal.line(`  ${formatLineExecutionCounts(result)} · ${timing}`);
 }
 
 function logOrphans(
@@ -236,15 +229,19 @@ function logOrphans(
     }
 }
 
-function failureLocation(
-    event: Extract<ReporterEvent, { readonly kind: 'test-end'; }>,
-    definitionLocations: DefinitionLocationSummary
-): string {
-    if (event.outcome?.kind !== 'fail' || definitionLocations.primary === null) {
-        return '';
+function logFailurePreview(
+    terminal: TerminalLineLogger,
+    event: TestEndEvent,
+    failure: TestFailure | undefined,
+    context: ReportingContext
+): void {
+    const location = formatFailureLocation(failure, event.definitionLocations, context) ?? event.case.file;
+    if (location !== null) {
+        terminal.line(`  ${location}`);
     }
-
-    return ` (${definitionLocations.primary})`;
+    if (failure !== undefined) {
+        terminal.line(`  ${formatFailureSummary(failure)}`);
+    }
 }
 
 function runStartLine(event: Extract<ReporterEvent, { readonly kind: 'run-start'; }>): string {
@@ -255,34 +252,50 @@ function runStartLine(event: Extract<ReporterEvent, { readonly kind: 'run-start'
 }
 
 export function createLineReporter(dependencies: LineReporterDependencies): DefinedReporter<RealTimeReporter> {
-    const { columns, formatOptions, stdoutConsole, verbose } = dependencies;
+    const { formatOptions, interactive, showPassing, stdoutConsole, verbose } = dependencies;
     return defineReporter(function createLineRuntimeReporter(context) {
         const terminal = createTerminalLineLogger({ stdoutConsole });
+        let completed = 0;
+        let planned: number | null = null;
         const wrappedTerminal: TerminalLineLogger = {
             line(...values) {
-                logWrappedLine(terminal, columns, formatOptions, ...values);
+                logWrappedLine(terminal, dependencies.columns, formatOptions, ...values);
             }
         };
 
-        function logTestEnd(event: Extract<ReporterEvent, { readonly kind: 'test-end'; }>): void {
+        function logProgress(): void {
+            completed += 1;
+            if (completed % progressInterval === 0 && completed !== planned) {
+                const count = completed.toLocaleString('en-US');
+                const progress = planned === null ? count : `${count}/${planned.toLocaleString('en-US')}`;
+                wrappedTerminal.line(infoSymbol, `${progress} tests completed`);
+            }
+        }
+
+        function logResult(event: TestEndEvent): void {
+            const work = event.workId;
+            const prefix = contextPrefix(work.runtimes, work.workload, event.case.suite, formatOptions);
+            const [ symbol, message ] = formatTestResult(event, prefix);
+            const width = interactive ? dependencies.columns - visibleTerminalWidth(symbol) - 1 : null;
+            const duration = `(${formatDuration(event.durationMicroseconds)})`;
+            wrappedTerminal.line(symbol, formatResultTiming(message, duration, resultSuffix(event), width));
+            const { outcome } = event;
+            if (outcome === null || outcome.kind === 'fail') {
+                logFailurePreview(wrappedTerminal, event, outcome?.failures[0], context);
+            }
+        }
+
+        function logTestEnd(event: TestEndEvent): void {
             if (event.completion === 'retry') {
                 wrappedTerminal.line(infoSymbol, `Retry after attempt ${event.attempt + 1}: ${event.case.title}`);
                 return;
             }
-            const work = event.workId;
-            const prefix = contextPrefix(work.runtimes, work.workload, event.case.suite, formatOptions);
-            const [ symbol, message ] = event.outcome === null
-                ? formatTerminalTestResult(event.case, event.verdict, event.durationMicroseconds, prefix)
-                : formatTestResult(event.case, event.outcome, event.durationMicroseconds, prefix);
-            const definitionLocations = formatDefinitionLocations(event.definitionLocations, context);
-
-            const retried = event.attempt === 0 ? '' : ` [${event.attempt + 1} attempts]`;
-            wrappedTerminal.line(
-                symbol,
-                `${message}${retried}${failureLocation(event, definitionLocations)}${
-                    formatDebugSummary(event.artifacts)
-                }`
-            );
+            if (!showPassing) {
+                logProgress();
+            }
+            if (showPassing || event.verdict !== 'pass') {
+                logResult(event);
+            }
         }
 
         return {
@@ -293,6 +306,7 @@ export function createLineReporter(dependencies: LineReporterDependencies): Defi
 
             async onEvent(event) {
                 if (event.kind === 'run-start') {
+                    planned = Array.isArray(event.facts.cases) ? event.facts.cases.length : null;
                     wrappedTerminal.line(infoSymbol, runStartLine(event));
                 } else if (event.kind === 'test-end') {
                     logTestEnd(event);
@@ -302,11 +316,7 @@ export function createLineReporter(dependencies: LineReporterDependencies): Defi
             },
 
             async onFinish({ result: finalResult }) {
-                const lines = problemLines(finalResult, context, { verbose });
-
-                for (const line of lines) {
-                    wrappedTerminal.line(line);
-                }
+                logProblems(terminal, problemLines(finalResult, context, { verbose }));
                 logSummary(wrappedTerminal, finalResult);
                 for (const line of formatCoverageSummaryLines(finalResult)) {
                     wrappedTerminal.line(infoSymbol, line);

@@ -4,10 +4,23 @@ import type { RunResult } from '../engine/run-result.ts';
 import type { RunTimingSpan } from '../engine/run-timings.ts';
 
 const microsecondsPerMillisecond = 1000;
+const microsecondsPerSecond = 1_000_000;
+const secondPrecision = 2;
 const slowTimingThresholdMicroseconds = 500_000;
 const slowTimingLimit = 5;
 const percentageFactor = 100;
 const percentagePrecision = 2;
+
+export function formatDuration(microseconds: number): string {
+    if (microseconds > 0 && microseconds < microsecondsPerMillisecond) {
+        return `${microseconds} µs`;
+    }
+    if (microseconds < microsecondsPerSecond) {
+        return `${microseconds / microsecondsPerMillisecond} ms`;
+    }
+
+    return `${Number((microseconds / microsecondsPerSecond).toFixed(secondPrecision))} s`;
+}
 
 function coveragePercentage(metric: CoverageMetric): number {
     return metric.total === 0 ? percentageFactor : metric.covered / metric.total * percentageFactor;
@@ -29,10 +42,6 @@ function stringField(value: Readonly<Record<string, unknown>>, key: string): str
     const field = value[key];
 
     return typeof field === 'string' ? field : null;
-}
-
-function milliseconds(microseconds: number): number {
-    return Math.round(microseconds / microsecondsPerMillisecond);
 }
 
 function readableKind(kind: RunTimingSpan['kind']): string {
@@ -72,12 +81,9 @@ function timingDetails(span: RunTimingSpan): readonly string[] {
 function formatTimingOffender(span: RunTimingSpan): string {
     const details = timingDetails(span);
     const detailText = details.length === 0 ? '' : ` (${details.join(', ')})`;
+    const duration = formatDuration(span.durationMicroseconds);
 
-    return `  ${readableKind(span.kind)}${timingSubject(span)}${detailText}: ${
-        milliseconds(
-            span.durationMicroseconds
-        )
-    } ms`;
+    return `  ${readableKind(span.kind)}${timingSubject(span)}${detailText}: ${duration}`;
 }
 
 function slowTimingSpans(result: RunResult): readonly RunTimingSpan[] {
@@ -136,7 +142,7 @@ export function formatTimingOffenderLines(result: RunResult): readonly string[] 
 export function formatTimingSummary(result: RunResult): string {
     const { summary } = result.timings;
 
-    return `total ${milliseconds(summary.totalWallTimeMicroseconds)} ms, ` +
-        `execution ${milliseconds(summary.testExecutionWallTimeMicroseconds)} ms, ` +
-        `overhead ${milliseconds(summary.runnerOverheadWallTimeMicroseconds)} ms`;
+    return `total ${formatDuration(summary.totalWallTimeMicroseconds)}, ` +
+        `execution ${formatDuration(summary.testExecutionWallTimeMicroseconds)}, ` +
+        `overhead ${formatDuration(summary.runnerOverheadWallTimeMicroseconds)}`;
 }

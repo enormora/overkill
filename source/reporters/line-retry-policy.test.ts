@@ -16,6 +16,8 @@ function lineFixture(): LineFixture {
         columns: 120,
         verbose: false,
         formatOptions: { color: false, wrap: true },
+        interactive: false,
+        showPassing: true,
         stdoutConsole: {
             log(...values) {
                 lines.push(values.join(' '));
@@ -64,7 +66,7 @@ export const testNode: TestNode = suite('line reporter completion policy', [
             result: runResultFactory.build({ status: 'passed', summary: { planned: 1, passed: 1 } }),
             context: { id: null, startedAt: null, facts: null }
         });
-        scope.assert.includes(lines.join('\n'), '1 pass');
+        scope.assert.includes(lines.join('\n'), 'Run passed · 1 passed');
         scope.assert.equal(lines[0]?.startsWith(`${colors.green(figures.tick)} `), true);
         return scope.assert.collect();
     })

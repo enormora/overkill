@@ -224,9 +224,9 @@ export const testNode: TestNode = suite('Human reporter rendering', [
             [
                 'Slow runner overhead:',
                 '  resource acquire for startup (resource database, per-run, process 42, worker lane-1, ' +
-                'timeout): 1200 ms',
-                '  collection import for source/users.test.ts: 1100 ms',
-                '  worker pool ready (worker lane-2): 1000 ms',
+                'timeout): 1.2 s',
+                '  collection import for source/users.test.ts: 1.1 s',
+                '  worker pool ready (worker lane-2): 1 s',
                 '  resource acquire for database (per-run): 900 ms',
                 '  cleanup (failure): 800 ms'
             ]
