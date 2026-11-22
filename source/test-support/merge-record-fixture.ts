@@ -1,5 +1,5 @@
 import { readFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { resolve } from 'node:path';
 import {
     defineCompositeAssertion,
     type CompositeAssertionReturn,
@@ -58,7 +58,7 @@ export const retainedMergedRecord = defineCompositeAssertion({
     async assert(check, command: MergeResultsCommand, merged: MergedRunRecord) {
         const retained = mergedRecordSchema.parse(JSON.parse(
             await readFile(
-                join(command.cwd, command.config.runtimeStateDir, 'runs', `${merged.id}.json`),
+                resolve(command.cwd, command.config.runtimeStateDir, 'runs', `${merged.id}.json`),
                 'utf8'
             )
         ));
@@ -69,7 +69,7 @@ export const retainedMergedRecord = defineCompositeAssertion({
         ]);
         const history = compactHistorySchema.parse(JSON.parse(
             await readFile(
-                join(command.cwd, command.config.runtimeStateDir, 'history', 'index.json'),
+                resolve(command.cwd, command.config.runtimeStateDir, 'history', 'index.json'),
                 'utf8'
             )
         ));
