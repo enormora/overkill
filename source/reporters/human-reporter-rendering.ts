@@ -331,6 +331,11 @@ function caseArtifactDetails(result: RunResult, testResult: RunResult['perTest']
     });
 }
 
+function parameterDetails(parameters: string | null, context: ReportingContext): readonly string[] {
+    const lines = formatCaseParameterLines(parameters, context);
+    return lines.length === 0 ? [] : [ '', ...lines.map(indentDetail) ];
+}
+
 function failedTestLines(
     result: RunResult,
     testResult: RunResult['perTest'][number],
@@ -353,11 +358,6 @@ function failedTestLines(
         ...parameterDetails(testResult.id.params, context),
         ...caseArtifactDetails(result, testResult)
     ];
-}
-
-function parameterDetails(parameters: string | null, context: ReportingContext): readonly string[] {
-    const lines = formatCaseParameterLines(parameters, context);
-    return lines.length === 0 ? [] : [ '', ...lines.map(indentDetail) ];
 }
 
 function passedArtifactLines(

@@ -110,10 +110,11 @@ export const testNode: TestNode = suite('Line reporter progress', [
 
         await reportLongCase(reporter, 'final');
 
+        const paddedTitle = '[top level suite > nested area] renders very long title'.padEnd(72);
         scope.assert(doubleUsage.callCount, log, 1);
         scope.assert(doubleUsage.nthCallWithExactly, log, 0, [
             successSymbol,
-            '[top level suite > nested area] renders very long title'.padEnd(72) + '(6 ms)'
+            `${paddedTitle}(6 ms)`
         ]);
 
         return scope.assert.collect();
