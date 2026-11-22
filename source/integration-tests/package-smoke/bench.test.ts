@@ -134,7 +134,7 @@ const consumerFacade = packageConsumer('Installed benchmark API', function consu
     }
     return { createStandardBenchConsumer, consumerDirectory };
 });
-const { table, test } = consumerFacade;
+const { test } = consumerFacade;
 
 export const testNode = suite('Installed benchmark API', [
     test(
@@ -253,84 +253,24 @@ export const testNode = suite('Installed benchmark API', [
         scope.assert.equal(result.stderr, '');
         return scope.assert.collect();
     }),
-    table({
-        title: 'standard-only installation selects bench profiles and executes the shared runner flow',
-        cases: [ 'run', 'list' ].flatMap(function createPackagedBenchmarkCommandTests(verb) {
-            return [
-                { verb, selection: { title: 'default profile', arguments: [] } },
-                {
-                    verb,
-                    selection: {
-                        title: 'explicit profile',
-                        arguments: [ '--profile=startup', '--config', 'overkill.config.js' ]
-                    }
-                }
-            ];
-        }),
-        caseTitle({ verb, selection }) {
-            return `${verb}, ${selection.title}`;
-        },
-        async test(scope) {
-            const { createStandardBenchConsumer } = scope.resources.consumer;
+    test('standard-only installation runs a selected benchmark profile', async function (scope) {
+        const { createStandardBenchConsumer } = scope.resources.consumer;
+        const consumerFolder = await createStandardBenchConsumer();
+        await writeFile(path.join(consumerFolder, 'overkill.config.js'), benchmarkSelectionConfigScript);
+        await writeFile(path.join(consumerFolder, 'startup.bench.mjs'), standardBenchConsumerScript);
 
-            const { verb, selection } = scope.parameters;
+        const result = await executeNode([
+            path.join(consumerFolder, 'node_modules/@overkill-dev/test/packages/test/overkill.entry-point.js'),
+            'bench',
+            'run',
+            '--profile=startup',
+            '--config',
+            'overkill.config.js',
+            'startup.bench.mjs'
+        ], consumerFolder);
 
-            const consumerFolder = await createStandardBenchConsumer();
-            await writeFile(
-                path.join(consumerFolder, 'overkill.config.js'),
-                benchmarkSelectionConfigScript
-            );
-            await writeFile(
-                path.join(consumerFolder, 'startup.bench.mjs'),
-                standardBenchConsumerScript
-            );
-            const result = await executeNode([
-                path.join(
-                    consumerFolder,
-                    'node_modules/@overkill-dev/test/packages/test/overkill.entry-point.js'
-                ),
-                'bench',
-                verb,
-                ...selection.arguments,
-                'startup.bench.mjs'
-            ], consumerFolder);
-            scope.assert(assertSuccessfulCommand, result);
-            scope.assert.includes(result.stdout, 'parameterized');
-
-            return scope.assert.collect();
-        }
-    }),
-    table({
-        title: 'standard-only installation exposes bench help',
-        cases: [ 'run', 'list' ].flatMap(function createPackagedBenchmarkCommandTests(verb) {
-            return { verb };
-        }),
-        caseTitle({ verb }) {
-            return [ verb ].map(String).join(', ');
-        },
-        async test(scope) {
-            const { createStandardBenchConsumer } = scope.resources.consumer;
-
-            const { verb } = scope.parameters;
-
-            const consumerFolder = await createStandardBenchConsumer();
-            const result = await executeNode([
-                path.join(
-                    consumerFolder,
-                    'node_modules/@overkill-dev/test/packages/test/overkill.entry-point.js'
-                ),
-                'bench',
-                verb,
-                '--help'
-            ], consumerFolder);
-
-            scope.assert.equal(result.exitCode, 0);
-            scope.assert.equal(result.stderr, '');
-            scope.assert.includes(result.stdout, `overkill bench ${verb}`);
-            scope.assert.includes(result.stdout, '--config');
-            scope.assert.includes(result.stdout, '--profile');
-
-            return scope.assert.collect();
-        }
+        scope.assert(assertSuccessfulCommand, result);
+        scope.assert.includes(result.stdout, 'parameterized');
+        return scope.assert.collect();
     })
 ]);

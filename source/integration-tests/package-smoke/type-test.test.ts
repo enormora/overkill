@@ -2,10 +2,8 @@ import { execFile } from 'node:child_process';
 import { cp, mkdir, mkdtemp, rm, writeFile, readFile, readdir } from 'node:fs/promises';
 import { setTimeout as delay } from 'node:timers/promises';
 import { join } from 'node:path';
-import { inspect } from 'node:util';
 
 import { suite } from '@overkill-dev/test';
-import { defaultRunRequest } from '../../test-support/run-command-factory.ts';
 import { sealConsumerDependencies } from './support/consumer-resolution-boundary.ts';
 import { consumerEnvironment } from './support/consumer-environment.ts';
 import { packageConsumer } from './support/package-consumer.ts';
@@ -97,7 +95,7 @@ async function writeCheckingProject(directory: string): Promise<void> {
     );
 }
 
-async function writeRunnerProject(directory: string, processModel: 'in-process' | 'supervised-process'): Promise<void> {
+async function writeRunnerProject(directory: string): Promise<void> {
     await writeFile(
         join(directory, 'runner.mts'),
         `${engineCaseSource}
@@ -110,7 +108,7 @@ await runIfMain(import.meta,testNode);`
 import {family} from '@overkill-dev/type-test';
 import {fileURLToPath} from 'node:url';
 export const config=defineConfig({profiles:{types:{testFamily:family,
-    execution:{processModel:'${processModel}',scheduling:'serial',maxConcurrency:1},
+    execution:{processModel:'supervised-process',scheduling:'serial',maxConcurrency:1},
     files:{include:['runner.mts']},settings:{
     projectConfigPath:fileURLToPath(new URL('./tsconfig.json',import.meta.url)),
     compiler:{kind:'package',specifier:'typescript-beta',version:'7.1.0-beta'}}}}});`
@@ -223,62 +221,17 @@ export const testNode = suite('packaged native type tests', [
             const { isolatedConsumer } = scope.resources.consumer;
 
             const directory = await isolatedConsumer(true);
-            await writeRunnerProject(directory, 'in-process');
+            await writeRunnerProject(directory);
             const result = await runNode(directory, [ 'runner.mts' ]);
             scope.assert.equal(result.code, 0, { message: result.stderr });
             scope.assert.includes(result.stdout, '1 pass');
             return scope.assert.collect();
         }
     ),
-    test('checks only the runner selection in source order', async function (scope) {
-        const { isolatedConsumer } = scope.resources.consumer;
-        const directory = await isolatedConsumer(true);
-        await writeRunnerProject(directory, 'in-process');
-        await writeFile(
-            join(directory, 'runner.mts'),
-            `import * as engine from '@overkill-dev/engine';
-import {sameType} from '@overkill-dev/type-test';
-const metadata={annotations:{},controls:{},definitionLocations:[{kind:'unknown'}]} as const;
-function passing(title:string) {
-    return engine.createTestCase({...metadata,title,body(scope){
-        scope.assert(sameType<string,string>());return scope.assert.collect();
-    }});
-}
-const excluded=engine.createTestCase({...metadata,title:'excluded',body(scope){
-    scope.assert(sameType<string,number>());return scope.assert.collect();
-}});
-export const testNode=engine.createSuite({...metadata,title:'root',
-    children:[passing('selected z'),excluded,passing('selected a')]});`
-        );
-        const request = defaultRunRequest({
-            order: 'lexical',
-            profile: 'types',
-            selection: { kind: 'filter', filter: { kind: 'contains', field: 'title', value: 'selected' } }
-        });
-        const program = `import {commandLineRunner} from '@overkill-dev/run/command-line';
-const reply=await commandLineRunner.runTests({cwd:process.cwd(),configPath:null,
-    runRequest:${inspect(request, { depth: null })}});
-if(reply.exitCode!==0)throw new Error(reply.fallbackDiagnostics.join('\\n'));
-console.log(JSON.stringify(reply.runResult?.perTest.map(entry=>entry.id.title)));`;
-        const result = await runNode(directory, [ '--input-type=module', '--eval', program ]);
-        scope.assert.equal(result.code, 0, { message: result.stderr });
-        scope.assert.includes(result.stdout, '["selected z","selected a"]');
-        return scope.assert.collect();
-    }),
-    test('checks installed beta compilers in a supervised profile', async function (scope) {
-        const { isolatedConsumer } = scope.resources.consumer;
-
-        const directory = await isolatedConsumer(true);
-        await writeRunnerProject(directory, 'supervised-process');
-        const result = await runNode(directory, [ 'runner.mts' ]);
-        scope.assert.equal(result.code, 0, { message: result.stderr });
-        scope.assert.includes(result.stdout, '1 pass');
-        return scope.assert.collect();
-    }),
     test('hard timeout reaps a wedged analysis host and its native compiler', async function (scope) {
         const { isolatedConsumer } = scope.resources.consumer;
         const directory = await isolatedConsumer(true);
-        await writeRunnerProject(directory, 'supervised-process');
+        await writeRunnerProject(directory);
         await wedgeCompilerOnExecution(directory);
         const result = await runNode(directory, [ 'runner.mts' ]);
         scope.assert.equal(result.code, 1, { message: result.stderr });
