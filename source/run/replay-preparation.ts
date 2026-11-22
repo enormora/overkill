@@ -1,6 +1,10 @@
 import { profileFamilyId } from '../config/types.ts';
 import { propertyWitnessCommand } from './witness-replay-preparation.ts';
-import { isRecordedFamilyProfile, restoreFamilyReplayProfile } from './replay-family-profile.ts';
+import {
+    isRecordedFamilyProfile,
+    restoreFamilyReplayProfile,
+    validateReplayFamilyProfile
+} from './replay-family-profile.ts';
 import { invalidRequest } from './run-errors.ts';
 import { restoreReplayProfile } from './replay-profile.ts';
 import { readRecordedReplay } from './replay-record.ts';
@@ -44,6 +48,7 @@ export async function prepareRecordedReplay(
     ) {
         invalidRequest('Recorded profile and execution facts are inconsistent.');
     }
+    validateReplayFamilyProfile(record, profile);
     return {
         replay: { kind: 'record', record },
         command: {

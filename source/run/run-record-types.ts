@@ -116,6 +116,7 @@ export type CompactRunResult = {
     readonly perTest: readonly CompactTestResult[];
 };
 type CompactRunFacts = {
+    readonly family: RunFacts['family'] | null;
     readonly benchmarkHost: RunFacts['benchmarkHost'];
     readonly benchmarkPlacement: RunFacts['benchmarkPlacement'];
     readonly benchmarkCalibration: RunFacts['benchmarkCalibration'];

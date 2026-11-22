@@ -1153,6 +1153,7 @@ type RunFilter =
     | { readonly filters: NonEmptyReadonlyArray<RunFilter>; readonly kind: 'any'; }
     | { readonly filter: RunFilter; readonly kind: 'not'; }
     | { readonly id: CaseId; readonly kind: 'case-id'; }
+    | { readonly kind: 'family-variant'; readonly variant: WorkId['familyVariant']; }
     | { readonly field: RunStringFilterField; readonly kind: 'equals'; readonly value: string; }
     | { readonly field: RunStringFilterField; readonly kind: 'contains'; readonly value: string; }
     | { readonly field: RunStringFilterField; readonly kind: 'glob'; readonly pattern: string; }

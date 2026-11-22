@@ -1,7 +1,7 @@
 import { posix as path } from 'node:path';
 import type { NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node-shape.ts';
 import { caseIdentityKey, workIdentityKey, type CaseId, type WorkId } from '../engine/identity.ts';
-import { workIdSchema } from '../engine/identity-schema.ts';
+import { familyVariantSchema, workIdSchema } from '../engine/identity-schema.ts';
 import type { TestPlanCase } from '../engine/test-plan.ts';
 import type { RunFilter, RunSelection, RunStringFilterField } from './run-request-types.ts';
 
@@ -269,6 +269,9 @@ const filterNodeValidators: Readonly<Record<string, FilterNodeValidator>> = {
     'work-id': function invalidWorkIdentity(filter) {
         return workIdSchema.safeParse(filter.id).success ? null : 'Run filter work id is invalid.';
     },
+    'family-variant': function invalidFamilyVariant(filter) {
+        return familyVariantSchema.safeParse(filter.variant).success ? null : 'Run filter family variant is invalid.';
+    },
     all: invalidCompositeFilterMessage,
     any: invalidCompositeFilterMessage,
     'case-id': function invalidCaseIdFilter(filter) {
@@ -372,7 +375,7 @@ export function invalidRunSelectionMessage(selection: unknown): string | null {
     return 'Run selection kind is unknown.';
 }
 
-type LeafRunFilter = Exclude<RunFilter, { readonly kind: 'all' | 'any' | 'not'; }>;
+type LeafRunFilter = Exclude<RunFilter, { readonly kind: 'all' | 'any' | 'family-variant' | 'not'; }>;
 type RuntimeRunFilter = Extract<
     LeafRunFilter,
     { readonly kind: 'runtime' | 'runtime-dimension' | 'runtime-scenario' | 'runtime-variant'; }
@@ -428,6 +431,9 @@ function copyLeafRunFilter(filter: LeafRunFilter): RunFilter {
 }
 
 function copyRunFilter(filter: RunFilter): RunFilter {
+    if (filter.kind === 'family-variant') {
+        return { kind: 'family-variant', variant: familyVariantSchema.parse(filter.variant) };
+    }
     if (filter.kind === 'all' || filter.kind === 'any') {
         return {
             filters: assertNonEmptyFilters(filter.filters.map(copyRunFilter)),
@@ -571,6 +577,10 @@ function matchesLeafRunFilter(filter: LeafRunFilter, candidate: RunFilterCandida
     return matchesTextFilter(filter, candidate);
 }
 
+function sameFamilyVariant(actual: WorkId['familyVariant'], expected: WorkId['familyVariant']): boolean {
+    return actual?.family === expected?.family && actual?.key === expected?.key;
+}
+
 export function matchesRunFilter(filter: RunFilter, candidate: RunFilterCandidate): boolean {
     if (filter.kind === 'all') {
         return filter.filters.every(function childMatches(childFilter) {
@@ -588,5 +598,8 @@ export function matchesRunFilter(filter: RunFilter, candidate: RunFilterCandidat
         return !matchesRunFilter(filter.filter, candidate);
     }
 
+    if (filter.kind === 'family-variant') {
+        return sameFamilyVariant(candidate.workId.familyVariant, filter.variant);
+    }
     return matchesLeafRunFilter(filter, candidate);
 }

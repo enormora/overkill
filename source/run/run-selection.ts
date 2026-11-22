@@ -1,6 +1,6 @@
 import { hasAttachedResourceDescriptors } from '../engine/test-body-resource-attachment.ts';
 import type { NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node-shape.ts';
-import { createCaseId, createDefaultWorkId, type CaseId } from '../engine/identity.ts';
+import { createCaseId, createDefaultWorkId, type CaseId, type WorkId } from '../engine/identity.ts';
 import { profileFamilyId, type RunOrder, type ProfileConfig } from '../config/types.ts';
 import { assertCollectedPropertyPolicies, resolveTestPlanPropertyPolicy } from './property-collection.ts';
 import type {
@@ -340,8 +340,18 @@ export function assertCollectedRunPlanHasCases(plan: CollectedRunPlan): void {
     }
 }
 
-export function resolveLastFailedSelection(selection: RunSelection, failedCases: readonly CaseId[]): RunSelection {
-    const [ first, ...rest ] = failedCases.map(caseId);
+export function resolveLastFailedSelection(
+    selection: RunSelection,
+    failedCases: readonly CaseId[],
+    failedWork: readonly WorkId[]
+): RunSelection {
+    const cases = failedCases.map(function unexpandedCase(id) {
+        return all([ caseId(id), { kind: 'family-variant', variant: null } ]);
+    });
+    const work = failedWork.map(function exactWork(id) {
+        return { kind: 'work-id' as const, id };
+    });
+    const [ first, ...rest ] = [ ...cases, ...work ];
     if (first === undefined || selection.kind === 'none') {
         return { kind: 'none' };
     }

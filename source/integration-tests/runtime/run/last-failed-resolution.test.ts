@@ -26,7 +26,13 @@ export const testNode = suite('last-failed resolution', [
         });
         scope.assert.deepEqual(resolved.request.selection, {
             kind: 'filter',
-            filter: { kind: 'any', filters: [ { kind: 'case-id', id: historyWork.case } ] }
+            filter: {
+                kind: 'any',
+                filters: [ {
+                    kind: 'all',
+                    filters: [ { kind: 'case-id', id: historyWork.case }, { kind: 'family-variant', variant: null } ]
+                } ]
+            }
         });
         scope.assert.equal(resolved.request.lastFailed, true);
         scope.assert.equal(fixture.invocation.command.request.selection.kind, 'all');

@@ -206,7 +206,7 @@ The replacement for `.only`:
 - `--title 'login'` runs tests whose title contains the text
 - `--file source/auth/login.test.ts` runs only that file
 - `--filter 'tag=fast'` runs matching annotations
-- `--last-failed` selects cases from compact history and persists this run
+- `--last-failed` selects failed cases or exact family variants from compact history and persists this run
 - `--watch` reruns the selected suite on file change
 
 None of these modify test source.

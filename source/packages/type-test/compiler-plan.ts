@@ -15,6 +15,8 @@ import {
     loadProject,
     disposeProject,
     verifyFrozenProject,
+    originalProjectFacts,
+    fingerprint,
     type FrozenProject
 } from './frozen-project.ts';
 import { collectProject, type CompilerCheck } from './native-execution.ts';
@@ -390,6 +392,8 @@ function compilerPreparationFacts(
                 files: project.compiler.files,
                 resolutions: project.compiler.resolutions,
                 projectConfigPath: project.projectConfigPath,
+                projectFingerprint: fingerprint(project.projectText),
+                configuration: originalProjectFacts(project),
                 inputs: project.inputs
             };
         })

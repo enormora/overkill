@@ -43,6 +43,21 @@ const runSummarySchema = z.strictObject({
     skipped: z.number()
 });
 
+export const runOutcomeObservationSchema = z
+    .array(
+        diagnosticFields
+            .perTest
+            .element
+            .pick({
+                benchmark: true,
+                workId: true,
+                verdict: true,
+                durationMicroseconds: true
+            })
+            .strip()
+            .extend({ durationMicroseconds: z.number().nonnegative() })
+    )
+    .readonly();
 export const runObservationFields = {
     resourceChecks: diagnosticFields.resourceChecks,
     runnerErrors: z.array(runnerErrorSchema),

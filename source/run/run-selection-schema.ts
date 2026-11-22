@@ -1,5 +1,5 @@
 import { z } from 'zod/v4';
-import { caseIdSchema, workIdSchema } from '../engine/identity-schema.ts';
+import { caseIdSchema, familyVariantSchema, workIdSchema } from '../engine/identity-schema.ts';
 import type { RunFilter, RunSelection } from './run-request-types.ts';
 import { invalidRunSelectionMessage } from './run-selection-filters.ts';
 
@@ -13,6 +13,7 @@ const filterSchema: z.ZodType<RunFilter> = z.lazy(function recursiveFilter() {
         z.strictObject({ kind: z.literal('not'), filter: filterSchema }),
         z.strictObject({ kind: z.literal('case-id'), id: caseIdSchema }),
         z.strictObject({ kind: z.literal('work-id'), id: workIdSchema }),
+        z.strictObject({ kind: z.literal('family-variant'), variant: familyVariantSchema }),
         z.strictObject({ kind: z.literal('contains'), field, value: z.string() }),
         z.strictObject({ kind: z.literal('equals'), field, value: z.string() }),
         z.strictObject({ kind: z.literal('glob'), field, pattern: z.string() }),

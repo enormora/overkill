@@ -1,12 +1,11 @@
 import type { ReadonlyDeep } from 'type-fest';
 import { z } from 'zod';
 import { caseIdSchema as caseId } from '../engine/identity-schema.ts';
-import { durationHistoryStateSchema } from './duration-history-storage.ts';
+import { caseHistoryStatusSchema, durationHistoryStateSchema } from './duration-history-storage.ts';
 
 const timestamp = z.iso.datetime({ offset: true });
 const count = z.number().int().nonnegative();
-const caseStatus = z.enum([ 'failed', 'inconclusive', 'passed', 'skipped' ]);
-const observation = z.strictObject({ runId: z.string(), observedAt: timestamp, status: caseStatus });
+const observation = z.strictObject({ runId: z.string(), observedAt: timestamp, status: caseHistoryStatusSchema });
 const summary = z.strictObject({
     id: z.string(),
     startedAt: timestamp,
@@ -34,5 +33,4 @@ export const compactHistorySchema = z.strictObject({
     }))
 });
 export type CompactHistory = ReadonlyDeep<z.output<typeof compactHistorySchema>>;
-export type CaseHistoryStatus = z.output<typeof caseStatus>;
 export type HistoryRunSummary = ReadonlyDeep<z.output<typeof summary>>;
