@@ -25,7 +25,7 @@ function benchmarkCommand(): RunCommand {
 function preparedBenchmark(): RunResult {
     const command = benchmarkCommand();
     const profile = command.config.profiles.startup;
-    if (profile === undefined || profile === null) {
+    if (profile === undefined) {
         throw new Error('Expected profile to satisfy defined.');
     }
     if (profile.testFamily !== 'benchmark') {

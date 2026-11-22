@@ -1,12 +1,13 @@
-import type { ParameterizedTestScope } from '@overkill-dev/test';
-import { defineCompositeAssertion } from '@overkill-dev/test/assert';
-import { readdir, writeFile } from 'node:fs/promises';
+import { readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { table, suite } from '@overkill-dev/test';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import { checkedInCorpusChecks, capturedPropertyFailure } from '../../test-support/property-evidence-assertions.ts';
 
 import type { RunResult } from '../../packages/engine/engine.entry-point.ts';
 import { orchestrator } from '../../packages/run/run.entry-point.ts';
 import {
+    captureReplayWitness,
     type ReplayProject,
     replayProject,
     writeReplayCase,
@@ -88,20 +89,7 @@ const verifyCorpus = defineCompositeAssertion({
             check.equal(result.summary.failed, 1),
             check.deepEqual(result.runnerErrors, [])
         ]);
-        const evidence = result.perTest[0]?.property?.invocations[0];
-        if (evidence === undefined || evidence === null) {
-            return check.group([ initialChecks, check.defined(evidence) ]);
-        }
-        const intermediateChecks = check.defined(evidence);
-        if (evidence.summary === undefined || evidence.summary === null) {
-            return check.group([ initialChecks, intermediateChecks, check.defined(evidence.summary) ]);
-        }
-        return check.group([
-            initialChecks,
-            intermediateChecks,
-            check.defined(evidence.summary),
-            check.true(evidence.summary.accounting.phases['checked-in-corpus'].executed > 0)
-        ]);
+        return check.group([ initialChecks, checkedInCorpusChecks(check, result) ]);
     }
 });
 
@@ -132,7 +120,7 @@ const assertUnconfirmedInputs = defineCompositeAssertion({
     name: 'unconfirmed inputs',
     async assert(check, result: RunResult, project: ReplayProject) {
         const evidence = result.perTest[0]?.property?.invocations[0];
-        if (evidence === undefined || evidence === null) {
+        if (evidence === undefined) {
             return check.defined(evidence);
         }
         const initialChecks = check.group([
@@ -167,9 +155,7 @@ export const testNode = suite(
                 return [ processModel, nested ? 'nested' : 'direct' ].map(String).join(', ');
             },
             async test(
-                scope: ParameterizedTestScope<
-                    { readonly processModel: 'in-process' | 'supervised-process'; readonly nested: boolean; }
-                >
+                scope
             ) {
                 const { processModel, nested } = scope.parameters;
 
@@ -185,25 +171,18 @@ export const testNode = suite(
                     }
                 });
 
-                await writeReplayCase(project, linearizabilitySource(nested, 'capture'));
-                const captureWitnessCaptured = await orchestrator.run(project.command);
-                scope.assert.equal(captureWitnessCaptured.summary.failed, 1);
-                scope.assert.deepEqual(captureWitnessCaptured.runnerErrors, []);
-                const captureWitnessWitness = captureWitnessCaptured
-                    .perTest[0]
-                    ?.property
-                    ?.invocations[0]
-                    ?.confirmedWitness;
-                scope.require.defined(captureWitnessWitness);
-                const captureWitnessFile = path.join(project.cwd, 'linearizability.witness.json');
-                await writeFile(captureWitnessFile, JSON.stringify(captureWitnessWitness));
-                const file = captureWitnessFile;
+                const captured = await captureReplayWitness(
+                    project,
+                    linearizabilitySource(nested, 'capture'),
+                    'linearizability.witness.json'
+                );
+                scope.assert(capturedPropertyFailure, captured.result);
 
                 await writeReplayCase(project, linearizabilitySource(nested, 'replay'));
-                await scope.assert(verifyCorpus, project, file);
-                await scope.assert(verifyReplay, project, file, false);
+                await scope.assert(verifyCorpus, project, captured.file);
+                await scope.assert(verifyReplay, project, captured.file, false);
                 await writeReplayCase(project, linearizabilitySource(nested, 'fixed'));
-                await scope.assert(verifyReplay, project, file, true);
+                await scope.assert(verifyReplay, project, captured.file, true);
                 return scope.assert.collect();
             }
         }),

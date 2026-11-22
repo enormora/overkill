@@ -75,7 +75,7 @@ const assertActiveAttempt = defineCompositeAssertion({
     name: 'active attempt',
     assert(check, state: SupervisedRunState) {
         const attempt = crashError(state, 'killed').attributedToAttempt;
-        if (attempt === undefined || attempt === null) {
+        if (attempt === null) {
             return check.defined(attempt);
         }
         return check.group([ check.deepEqual(attempt, { index: 1 }) ]);
@@ -86,7 +86,7 @@ const assertTerminalHistory = defineCompositeAssertion({
     name: 'terminal history',
     assert(check, state: SupervisedRunState) {
         const result = state.perTestResults()[0];
-        if (result === undefined || result === null) {
+        if (result === undefined) {
             return check.defined(result);
         }
         return check.group([

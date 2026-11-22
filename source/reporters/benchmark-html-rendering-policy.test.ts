@@ -1,6 +1,6 @@
 import { table, type TestScope, suite, test } from '@overkill-dev/test';
 
-import { benchmarkHtmlFixture } from '../test-support/benchmark-html-fixture.ts';
+import { benchmarkHtmlFixture, benchmarkBudgetFixture } from '../test-support/benchmark-html-fixture.ts';
 import { validateReporterRunFacts } from '../engine/reporter.ts';
 import { createBenchmarkHtmlReporter } from './benchmark-html-reporter.ts';
 import { createBenchmarkHtmlReport } from './benchmark-html-model.ts';
@@ -8,19 +8,7 @@ import { renderBenchmarkHtml } from './benchmark-html-document.ts';
 import type { BenchmarkHtmlReport } from './benchmark-html-data.ts';
 
 function unboundedBenchmarkHtml(): string {
-    const result = benchmarkHtmlFixture('unbounded');
-    const measured = result.perTest[0];
-    if (measured === undefined || measured === null) {
-        throw new Error('Expected measured to satisfy defined.');
-    }
-    const { benchmark } = measured;
-    if (benchmark === undefined || benchmark === null) {
-        throw new Error('Expected benchmark to satisfy defined.');
-    }
-    const budget = benchmark.budgets[0];
-    if (budget === undefined || budget === null) {
-        throw new Error('Expected budget to satisfy defined.');
-    }
+    const { result, measured, benchmark, budget } = benchmarkBudgetFixture('unbounded');
     return renderBenchmarkHtml(
         createBenchmarkHtmlReport({
             result: {

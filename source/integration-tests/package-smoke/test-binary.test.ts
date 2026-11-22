@@ -1,30 +1,123 @@
-import {
-    testStandardSubpathExportsChecks,
-    resourcesPackageRootExportChecks,
-    simulationPackageExportsChecks
-} from './support/package-export-assertions.ts';
-import { consumerEnvironment } from './support/consumer-environment.ts';
-import { defineCompositeAssertion } from '@overkill-dev/test/assert';
-import { spawn } from 'node:child_process';
+import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import type { Readable } from 'node:stream';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { suite } from '@overkill-dev/test';
+
 import { packageConsumer } from './support/package-consumer.ts';
+import { consumerEnvironment } from './support/consumer-environment.ts';
+import {
+    testStandardSubpathExportsChecks,
+    assertLineReporterVariants,
+    resourcesPackageRootExportChecks,
+    simulationPackageExportsChecks,
+    recordedRunId,
+    assertCompletedRunRecord,
+    assertPackagedFilters,
+    assertRunConfigSubpathExport,
+    assertRunResourceLifecycleSubpathExport,
+    importPackagedFilters
+} from './support/package-export-assertions.ts';
+import { packageSmokeNodeModules } from './support/packaged-module.ts';
+import {
+    authoringSmokeScript,
+    customAuthoringFacadeScript,
+    customAuthoringSmokeScript,
+    consolePolicySmokeScript,
+    expectedRootImportOutput,
+    expectedRunSubpathImportOutput,
+    expectedStandardSubpathImportOutput,
+    finalOnlyReporterConfigScript,
+    lineReporterConfigScript,
+    packageSmokePackageJsonScript,
+    packageSmokeConfigScript,
+    reporterConsoleConfigScript,
+    reporterConsoleSmokeScript,
+    rootImportScript,
+    runSubpathImportScript,
+    standardSubpathImportScript,
+    throwsOnImportSmokeScript
+} from './support/test-binary-scripts.ts';
 
 const testPackageFolder = path.join(packageSmokeNodeModules, '@overkill-dev/test');
 const runPackageFolder = path.join(packageSmokeNodeModules, '@overkill-dev/run');
 const resourcesPackageFolder = path.join(packageSmokeNodeModules, '@overkill-dev/resources');
 const simulationPackageFolder = path.join(packageSmokeNodeModules, '@overkill-dev/simulation');
 const overkillBinEntryPointPath = path.join(testPackageFolder, 'packages/test/overkill.entry-point.js');
+
+type PackageJson = {
+    readonly bin: unknown;
+    readonly engines: unknown;
+    readonly exports: unknown;
+};
+
+type SpawnOutput = {
+    readonly code: number | null;
+    readonly stderr: string;
+    readonly stdout: string;
+};
+
+const packageSmokePackageJsonFile = 'package.json';
+const packageSmokeConfigFile = 'overkill.config.js';
+const lineReporterConfigFile = 'line-reporter-overkill.config.js';
+const finalOnlyReporterConfigFile = 'final-only-reporter-overkill.config.js';
+const reporterConsoleConfigFile = 'reporter-console-overkill.config.js';
+const authoringSmokeFile = 'authoring-smoke.test.mjs';
+const consolePolicySmokeFile = 'console-policy-smoke.test.mjs';
+const reporterConsoleSmokeFile = 'reporter-console-smoke.test.mjs';
+const throwsOnImportSmokeFile = 'throws-on-import-smoke.test.mjs';
+const customAuthoringFolder = 'testing';
+const customAuthoringFacadeFile = path.join(customAuthoringFolder, 'custom-authoring.mjs');
+const customAuthoringSmokeFile = 'custom-authoring-smoke.test.mjs';
+async function collectStream(stream: ChildProcessWithoutNullStreams['stdout']): Promise<string> {
+    return await new Promise(function collect(resolve, reject) {
+        const chunks: Buffer[] = [];
+
+        stream.on('data', function recordChunk(chunk: Buffer) {
+            chunks.push(chunk);
+        });
+        stream.on('error', reject);
+        stream.on('end', function resolveOutput() {
+            resolve(Buffer.concat(chunks).toString('utf8'));
+        });
+    });
+}
+
+async function readPackageJson(packageFolder: string): Promise<PackageJson> {
+    return JSON.parse(await fs.readFile(path.join(packageFolder, 'package.json'), 'utf8')) as PackageJson;
+}
+
+function isBinMap(value: unknown): value is Readonly<Record<string, string>> {
+    return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isPackageExportsMap(value: unknown): value is Readonly<Record<string, unknown>> {
+    return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+async function readPackageExports(
+    packageFolder: string,
+    packageName: string
+): Promise<Readonly<Record<string, unknown>>> {
+    const packageJson = await readPackageJson(packageFolder);
+    const packageExports = packageJson.exports;
+
+    if (!isPackageExportsMap(packageExports)) {
+        throw new Error(`Expected ${packageName} exports map.`);
+    }
+
+    return packageExports;
+}
+
+const historySmokeConfig = 'history-overkill.config.js';
+
 const consumerFacade = packageConsumer('Installed CLI and public exports', function consumerFixture(consumerDirectory) {
-    const packageSmokeFolder = fileURLToPath(new URL('./consumer/', pathToFileURL(`${consumerDirectory}/`)));
+    const packageSmokeFolder = path.join(consumerDirectory, 'consumer');
 
     async function spawnCommand(command: string, args: readonly string[]): Promise<SpawnOutput> {
         await fs.mkdir(packageSmokeFolder, { recursive: true });
         const child = spawn(command, Array.from(args), {
-            env: consumerEnvironment(process.env, consumerDirectory),
+            env: consumerEnvironment(consumerDirectory),
             cwd: packageSmokeFolder,
             stdio: [ 'ignore', 'pipe', 'pipe' ]
         });
@@ -82,23 +175,14 @@ const consumerFacade = packageConsumer('Installed CLI and public exports', funct
             ]);
         }
     });
-    async function writeAuthoringSmokeFile(): Promise<void> {
-        await fs.writeFile(path.join(packageSmokeFolder, authoringSmokeFile), authoringSmokeScript);
-    }
-    async function writeCustomAuthoringSmokeFiles(): Promise<void> {
+    async function writePackageSmokeProject(): Promise<void> {
         await fs.mkdir(path.join(packageSmokeFolder, customAuthoringFolder), { recursive: true });
         await Promise.all([
+            fs.writeFile(path.join(packageSmokeFolder, packageSmokeConfigFile), packageSmokeConfigScript),
+            fs.writeFile(path.join(packageSmokeFolder, authoringSmokeFile), authoringSmokeScript),
             fs.writeFile(path.join(packageSmokeFolder, packageSmokePackageJsonFile), packageSmokePackageJsonScript),
             fs.writeFile(path.join(packageSmokeFolder, customAuthoringFacadeFile), customAuthoringFacadeScript),
             fs.writeFile(path.join(packageSmokeFolder, customAuthoringSmokeFile), customAuthoringSmokeScript)
-        ]);
-    }
-    async function writePackageSmokeProject(): Promise<void> {
-        await fs.mkdir(packageSmokeFolder, { recursive: true });
-        await Promise.all([
-            fs.writeFile(path.join(packageSmokeFolder, packageSmokeConfigFile), packageSmokeConfigScript),
-            writeAuthoringSmokeFile(),
-            writeCustomAuthoringSmokeFiles()
         ]);
     }
     async function writeReporterPolicySmokeProject(): Promise<void> {
@@ -144,116 +228,6 @@ const consumerFacade = packageConsumer('Installed CLI and public exports', funct
     };
 });
 const { test } = consumerFacade;
-
-import type * as LineReporterPackage from '../../packages/reporter-line/reporter-line.entry-point.ts';
-import { packageSmokeNodeModules, resolvePackagedExport } from './support/packaged-module.ts';
-import {
-    recordedRunId,
-    assertCompletedRunRecord,
-    assertPackagedFilters,
-    assertRunConfigSubpathExport,
-    assertRunResourceLifecycleSubpathExport,
-    importPackagedFilters
-} from './support/package-export-assertions.ts';
-import {
-    authoringSmokeScript,
-    customAuthoringFacadeScript,
-    customAuthoringSmokeScript,
-    consolePolicySmokeScript,
-    expectedRootImportOutput,
-    expectedRunSubpathImportOutput,
-    expectedStandardSubpathImportOutput,
-    finalOnlyReporterConfigScript,
-    lineReporterConfigScript,
-    packageSmokePackageJsonScript,
-    packageSmokeConfigScript,
-    reporterConsoleConfigScript,
-    reporterConsoleSmokeScript,
-    rootImportScript,
-    runSubpathImportScript,
-    standardSubpathImportScript,
-    throwsOnImportSmokeScript
-} from './support/test-binary-scripts.ts';
-
-const { createLineProgressReporter, createLineTreeReporter } = await import(
-    await resolvePackagedExport('@overkill-dev/reporter-line')
-) as typeof LineReporterPackage;
-
-type PackageJson = {
-    readonly bin: unknown;
-    readonly engines: unknown;
-    readonly exports: unknown;
-};
-
-type SpawnOutput = {
-    readonly code: number | null;
-    readonly stderr: string;
-    readonly stdout: string;
-};
-
-const packageSmokePackageJsonFile = 'package.json';
-const packageSmokeConfigFile = 'overkill.config.js';
-const lineReporterConfigFile = 'line-reporter-overkill.config.js';
-const finalOnlyReporterConfigFile = 'final-only-reporter-overkill.config.js';
-const reporterConsoleConfigFile = 'reporter-console-overkill.config.js';
-const authoringSmokeFile = 'authoring-smoke.test.mjs';
-const consolePolicySmokeFile = 'console-policy-smoke.test.mjs';
-const reporterConsoleSmokeFile = 'reporter-console-smoke.test.mjs';
-const throwsOnImportSmokeFile = 'throws-on-import-smoke.test.mjs';
-const customAuthoringFolder = 'testing';
-const customAuthoringFacadeFile = path.join(customAuthoringFolder, 'custom-authoring.mjs');
-const customAuthoringSmokeFile = 'custom-authoring-smoke.test.mjs';
-async function collectStream(stream: Readable): Promise<string> {
-    return await new Promise(function collect(resolve, reject) {
-        const chunks: Buffer[] = [];
-
-        stream.on('data', function recordChunk(chunk: Buffer) {
-            chunks.push(chunk);
-        });
-        stream.on('error', reject);
-        stream.on('end', function resolveOutput() {
-            resolve(Buffer.concat(chunks).toString('utf8'));
-        });
-    });
-}
-
-async function readPackageJson(packageFolder: string): Promise<PackageJson> {
-    return JSON.parse(await fs.readFile(path.join(packageFolder, 'package.json'), 'utf8')) as PackageJson;
-}
-
-function isBinMap(value: unknown): value is Readonly<Record<string, string>> {
-    return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function isPackageExportsMap(value: unknown): value is Readonly<Record<string, unknown>> {
-    return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-async function readPackageExports(
-    packageFolder: string,
-    packageName: string
-): Promise<Readonly<Record<string, unknown>>> {
-    const packageJson = await readPackageJson(packageFolder);
-    const packageExports = packageJson.exports;
-
-    if (!isPackageExportsMap(packageExports)) {
-        throw new Error(`Expected ${packageName} exports map.`);
-    }
-
-    return packageExports;
-}
-
-const assertLineReporterVariants = defineCompositeAssertion({
-    name: 'line reporter variants',
-    assert(check) {
-        return check.group([
-            check.equal(typeof createLineProgressReporter, 'function'),
-            check.equal(typeof createLineTreeReporter, 'function')
-        ]);
-    }
-});
-
-const historySmokeConfig = 'history-overkill.config.js';
 
 export const testNode = suite('Installed CLI and public exports', [
     test('history commands support maintenance and clear confirmation', async function (scope) {
@@ -314,12 +288,19 @@ export const testNode = suite('Installed CLI and public exports', [
             throw new Error('Expected @overkill-dev/test exports map.');
         }
 
-        scope.assert.deepEqual(packageExports['.'], {
-            import: './packages/test/test.entry-point.js',
-            types: './packages/test/test.entry-point.d.ts'
-        });
-        scope.assert.equal(result.code, 0);
-        scope.assert.equal(result.stderr, '');
+        scope.assert(defineCompositeAssertion({
+            name: 'imports @overkill-dev/test root facade',
+            assert(check) {
+                return check.group([
+                    check.deepEqual(packageExports['.'], {
+                        import: './packages/test/test.entry-point.js',
+                        types: './packages/test/test.entry-point.d.ts'
+                    }),
+                    check.equal(result.code, 0),
+                    check.equal(result.stderr, '')
+                ]);
+            }
+        }));
         scope.assert.equal(result.stdout, expectedRootImportOutput);
 
         return scope.assert.collect();
@@ -534,8 +515,12 @@ export const testNode = suite('Installed CLI and public exports', [
 
         scope.assert(assertRunConfigSubpathExport, packageExports);
         scope.assert(assertRunResourceLifecycleSubpathExport, packageExports);
-        scope.assert.equal(result.code, 0);
-        scope.assert.equal(result.stderr, '');
+        scope.assert(defineCompositeAssertion({
+            name: 'imports @overkill-dev/run subpath helpers',
+            assert(check) {
+                return check.group([ check.equal(result.code, 0), check.equal(result.stderr, '') ]);
+            }
+        }));
         scope.assert.equal(result.stdout, expectedRunSubpathImportOutput);
         scope.assert(assertPackagedFilters, filters);
 

@@ -1,6 +1,8 @@
-import type { CompositeAssertionReturn } from '@overkill-dev/test/assert';
-import type { CompositeCheckBuilder } from '@overkill-dev/test/assert';
-import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import {
+    type CompositeAssertionReturn,
+    type CompositeCheckBuilder,
+    defineCompositeAssertion
+} from '@overkill-dev/test/assert';
 
 import type { RunResult } from '../../../packages/engine/engine.entry-point.ts';
 import { processEvidenceSchema } from '../../../bench/process-evidence.ts';
@@ -26,10 +28,10 @@ function executions(result: RunResult, title: string): readonly ProcessExecution
     });
 }
 
-const pipeEvidenceChecks = (
+const pipeEvidenceChecks = function (
     check: CompositeCheckBuilder<'assert'>,
     result: RunResult
-): CompositeAssertionReturn<'assert'> => {
+): CompositeAssertionReturn<'assert'> {
     const children = executions(result, 'pipe child probe');
     const observations = children.map(function measuredPipe(execution) {
         if (execution.status !== 'measured' || execution.result.value.output.kind !== 'pipes') {
@@ -44,28 +46,25 @@ const pipeEvidenceChecks = (
             ])
         };
     });
+    const processes = new Set(observations.map(function processIdentity(entry) {
+        return entry.identity;
+    }));
     return check.group([
         check.equal(children.length, 3),
-        check.equal(
-            new Set(observations.map(function processIdentity(entry) {
-                return entry.identity;
-            }))
-                .size,
-            3
-        ),
+        check.equal(processes.size, 3),
         ...observations.map(function retainedChecks(entry) {
             return entry.checks;
         })
     ]);
 };
-const terminalEvidenceChecks = (
+const terminalEvidenceChecks = function (
     check: CompositeCheckBuilder<'assert'>,
     result: RunResult
-): CompositeAssertionReturn<'assert'> => {
+): CompositeAssertionReturn<'assert'> {
     const children = executions(result, 'terminal interaction');
     return check.group([
         check.equal(children.length, 3),
-        ...children.map((execution) => {
+        ...children.map(function (execution) {
             if (execution.status !== 'measured' || execution.result.value.output.kind !== 'terminal') {
                 throw new Error('Expected measured terminal output.');
             }

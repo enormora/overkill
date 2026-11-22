@@ -1,12 +1,14 @@
-import type { CompositeAssertionReturn } from '@overkill-dev/test/assert';
-import type { ParameterizedTestScope } from '@overkill-dev/test';
-import { type CompositeCheckBuilder } from '@overkill-dev/test/assert';
-import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { execFile } from 'node:child_process';
 import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import {
+    defineCompositeAssertion,
+    type CompositeCheckBuilder,
+    type CompositeAssertionReturn
+} from '@overkill-dev/test/assert';
+
 import { table, type TestScope, suite } from '@overkill-dev/test';
 
 import { z } from 'zod';
@@ -60,8 +62,8 @@ if (recordFiles.length !== 1) throw new Error('Expected a record before importin
 const record = JSON.parse(readFileSync(new URL(recordFiles[0], recordFolder), 'utf8'));
 if (record.status !== 'started') throw new Error('Expected an active record while importing tests.');
 export const testNode = test('persisted case', (scope) => {
-    scope.assert.equal(4, 4);
-    return scope.assert.collect();
+    assert.equal(4, 4);
+    return assert.collect();
 });
 `
     );
@@ -96,12 +98,18 @@ async function readSingleRunRecords(directory: string): Promise<readonly SingleR
 
 const assertCompletedRecord = defineCompositeAssertion({
     name: 'completed record',
-    assert(check, record: SingleRunRecord) {
+    async assert(check, directory: string) {
+        const records = await readSingleRunRecords(directory);
+        const [ record ] = records;
+        if (record === undefined) {
+            return check.group([ check.equal(records.length, 1), check.defined(record) ]);
+        }
         const { facts } = record;
         if (facts === null) {
             throw new Error('Completed execution requires run facts.');
         }
         return check.group([
+            check.equal(records.length, 1),
             check.equal(record.status, 'completed'),
             check.equal(record.result?.status, 'passed'),
             check.equal(facts.execution.runRecords.persist, true),
@@ -134,8 +142,8 @@ async function writeLastFailedCase(directory: string, passing: boolean): Promise
         `
 import { test } from ${JSON.stringify(authoringUrl.href)};
 export const testNode = test('persisted case', (scope) => {
-    scope.assert.equal(${String(passing)}, true);
-    return scope.assert.collect();
+    assert.equal(${String(passing)}, true);
+    return assert.collect();
 });
 `
     );
@@ -178,25 +186,23 @@ const assertLastFailedRecords = defineCompositeAssertion({
     }
 });
 
-const sharedSelectionChecks = (
+const sharedSelectionChecks = function (
     check: CompositeCheckBuilder<'assert'>,
     empty: SingleRunRecord,
     executed: SingleRunRecord
-): CompositeAssertionReturn<'assert'> => {
-    if (empty.facts === undefined || empty.facts === null) {
+): CompositeAssertionReturn<'assert'> {
+    if (empty.facts === null) {
         return check.defined(empty.facts);
     }
-    if (executed.facts === undefined || executed.facts === null) {
+    if (executed.facts === null) {
         return check.defined(executed.facts);
     }
     if (
-        empty.facts.reproducibility.selectedIdentities === undefined ||
         empty.facts.reproducibility.selectedIdentities === null
     ) {
         return check.defined(empty.facts.reproducibility.selectedIdentities);
     }
     if (
-        executed.facts.reproducibility.selectedIdentities === undefined ||
         executed.facts.reproducibility.selectedIdentities === null
     ) {
         return check.defined(executed.facts.reproducibility.selectedIdentities);
@@ -207,25 +213,24 @@ const sharedSelectionChecks = (
     ]);
 };
 
-const shardSelectionChecks = (
+const shardSelectionChecks = function (
     check: CompositeCheckBuilder<'assert'>,
     empty: SingleRunRecord,
     executed: SingleRunRecord
-): CompositeAssertionReturn<'assert'> => {
+): CompositeAssertionReturn<'assert'> {
     const initialChecks = check.group([
         check.equal(empty.version, currentRunRecordVersion),
         check.equal(executed.version, currentRunRecordVersion)
     ]);
-    if (empty.replayPlan === undefined || empty.replayPlan === null) {
+    if (empty.replayPlan === null) {
         return check.group([ initialChecks, check.defined(empty.replayPlan) ]);
     }
-    const intermediateChecks = check.defined(empty.replayPlan);
-    if (executed.replayPlan === undefined || executed.replayPlan === null) {
-        return check.group([ initialChecks, intermediateChecks, check.defined(executed.replayPlan) ]);
+
+    if (executed.replayPlan === null) {
+        return check.group([ initialChecks, check.defined(executed.replayPlan) ]);
     }
     return check.group([
         initialChecks,
-        intermediateChecks,
         check.defined(executed.replayPlan),
         sharedSelectionChecks(check.annotated('shared selection'), empty, executed),
         check.notEqual(empty.id, executed.id),
@@ -236,16 +241,16 @@ const shardSelectionChecks = (
     ]);
 };
 
-const shardOutcomeChecks = (
+const shardOutcomeChecks = function (
     check: CompositeCheckBuilder<'assert'>,
     record: SingleRunRecord,
     status: 'failed' | 'passed',
     planned: number
-): CompositeAssertionReturn<'assert'> => {
-    if (record.facts === undefined || record.facts === null) {
+): CompositeAssertionReturn<'assert'> {
+    if (record.facts === null) {
         return check.defined(record.facts);
     }
-    if (record.result === undefined || record.result === null) {
+    if (record.result === null) {
         return check.defined(record.result);
     }
     return check.group([ check.deepEqual({
@@ -270,15 +275,14 @@ const assertShardRecords = defineCompositeAssertion({
         const executed = shards.find(function executedShard(record) {
             return record.result?.perTest.length === 1;
         });
-        if (empty === undefined || empty === null) {
+        if (empty === undefined) {
             return check.defined(empty);
         }
-        const initialChecks = check.defined(empty);
-        if (executed === undefined || executed === null) {
-            return check.group([ initialChecks, check.defined(executed) ]);
+
+        if (executed === undefined) {
+            return check.group([ check.defined(executed) ]);
         }
         return check.group([
-            initialChecks,
             check.defined(executed),
             check.deepEqual({ records: records.length, shards: shards.length }, { records: 3, shards: 2 }),
             shardOutcomeChecks(check.annotated('shard outcome'), empty, 'passed', 0),
@@ -338,6 +342,16 @@ const assertRetainedHistory = defineCompositeAssertion({
     }
 });
 
+const persistedLastFailedSelection = defineCompositeAssertion({
+    name: 'persisted last failed selection',
+    async assert(check, lastFailedExecutionDirectory: string) {
+        return check.group([
+            check.equal(await executeRunCommand(lastFailedExecutionDirectory, [ 'run', '--last-failed' ]), 0),
+            check.equal(await executeRunCommand(lastFailedExecutionDirectory, [ 'run', '--last-failed' ]), 0)
+        ]);
+    }
+});
+
 export const testNode = suite(
     'run recording across execution boundaries',
     [
@@ -351,37 +365,18 @@ export const testNode = suite(
             caseTitle(row) {
                 return row.caseDescription;
             },
-            async test(
-                scope: ParameterizedTestScope<
-                    {
-                        readonly caseDescription: 'in-process' | 'supervised-process' | 'worker-pool';
-                        readonly mode: 'in-process' | 'supervised-process' | 'worker-pool';
-                    }
-                >
-            ) {
-                const { mode } = scope.parameters;
-                const recordedExecutionDirectory = await createRecordedProject(scope.cleanup, mode);
+            async test({ assert, cleanup, parameters: { mode } }) {
+                const recordedExecutionDirectory = await createRecordedProject(cleanup, mode);
                 await executeOverkill(recordedExecutionDirectory);
-                const recordedExecutionRecords = await readSingleRunRecords(recordedExecutionDirectory);
-                scope.assert.equal(recordedExecutionRecords.length, 1);
-                const [ record ] = recordedExecutionRecords;
-                scope.require.defined(record);
-                scope.assert(assertCompletedRecord, record);
-                const lastFailedExecutionDirectory = await createRecordedProject(scope.cleanup, mode);
+                await assert(assertCompletedRecord, recordedExecutionDirectory);
+                const lastFailedExecutionDirectory = await createRecordedProject(cleanup, mode);
                 await writeLastFailedCase(lastFailedExecutionDirectory, false);
-                scope.assert.equal(await executeRunCommand(lastFailedExecutionDirectory, [ 'run', '--record' ]), 1);
+                assert.equal(await executeRunCommand(lastFailedExecutionDirectory, [ 'run', '--record' ]), 1);
                 await writeLastFailedCase(lastFailedExecutionDirectory, true);
-                scope.assert.equal(
-                    await executeRunCommand(lastFailedExecutionDirectory, [ 'run', '--last-failed' ]),
-                    0
-                );
-                scope.assert.equal(
-                    await executeRunCommand(lastFailedExecutionDirectory, [ 'run', '--last-failed' ]),
-                    0
-                );
-                await scope.assert(assertLastFailedRecords, lastFailedExecutionDirectory);
+                await assert(persistedLastFailedSelection, lastFailedExecutionDirectory);
+                await assert(assertLastFailedRecords, lastFailedExecutionDirectory);
 
-                return scope.assert.collect();
+                return assert.collect();
             }
         }),
         table({
@@ -394,19 +389,18 @@ export const testNode = suite(
             caseTitle({ mode }) {
                 return [ mode ].map(String).join(', ');
             },
-            async test(scope) {
-                const { mode } = scope.parameters;
-                const shardExecutionDirectory = await createRecordedProject(scope.cleanup, mode);
+            async test({ assert, cleanup, parameters: { mode } }) {
+                const shardExecutionDirectory = await createRecordedProject(cleanup, mode);
                 await writeLastFailedCase(shardExecutionDirectory, true);
-                scope.assert.equal(await executeRunCommand(shardExecutionDirectory, [ 'run', '--record' ]), 0);
+                assert.equal(await executeRunCommand(shardExecutionDirectory, [ 'run', '--record' ]), 0);
                 const shardExecutionBefore = await readHistorySnapshot(shardExecutionDirectory);
                 await writeLastFailedCase(shardExecutionDirectory, false);
-                await scope.assert(assertShardExitCodes, shardExecutionDirectory);
-                await scope.assert(assertShardRecords, shardExecutionDirectory);
-                scope.assert.equal(await readHistorySnapshot(shardExecutionDirectory), shardExecutionBefore);
-                await scope.assert(assertRetainedHistory, shardExecutionDirectory);
+                await assert(assertShardExitCodes, shardExecutionDirectory);
+                await assert(assertShardRecords, shardExecutionDirectory);
+                assert.equal(await readHistorySnapshot(shardExecutionDirectory), shardExecutionBefore);
+                await assert(assertRetainedHistory, shardExecutionDirectory);
 
-                return scope.assert.collect();
+                return assert.collect();
             }
         })
     ]

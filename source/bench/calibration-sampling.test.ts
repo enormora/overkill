@@ -35,8 +35,8 @@ function calibrationScope(cleanup: TestScope['cleanup'], signal: AbortSignal): B
         workId,
         attemptId: { index: 0 },
         workload: selectedWorkload,
-        signal: signal,
-        cleanup: cleanup,
+        signal,
+        cleanup,
         benchmarkEnvironment: {
             profileGarbageCollection: 'off',
             garbageCollection: { kind: 'unavailable', reason: 'GC unavailable' },

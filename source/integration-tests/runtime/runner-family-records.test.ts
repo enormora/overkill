@@ -1,8 +1,11 @@
-import type { CompositeAssertionReturn } from '@overkill-dev/test/assert';
-import { type CompositeCheckBuilder } from '@overkill-dev/test/assert';
-import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import {
+    type CompositeAssertionReturn,
+    type CompositeCheckBuilder,
+    defineCompositeAssertion
+} from '@overkill-dev/test/assert';
+
 import { table, type TestScope, suite } from '@overkill-dev/test';
 
 import { defineTestFamily } from '../../packages/engine/engine.entry-point.ts';
@@ -45,10 +48,10 @@ export const config={profiles:{cases:{...${policySource},testFamily:family}}};`
     return project;
 }
 
-const familyRecordChecks = (
+const familyRecordChecks = function (
     check: CompositeCheckBuilder<'assert'>,
     record: ReplayRunRecord
-): CompositeAssertionReturn<'assert'> => {
+): CompositeAssertionReturn<'assert'> {
     return check.group([
         check.equal(record.version, 1),
         check.equal(record.facts.implementations, null),
@@ -64,7 +67,7 @@ const assertFamilyReplay = defineCompositeAssertion({
     name: 'family replay',
     async assert(check, project: ReplayProject) {
         const [ record ] = await replayRecords(project);
-        if (record === undefined || record === null) {
+        if (record === undefined) {
             return check.defined(record);
         }
         const initialChecks = check.group([

@@ -1,28 +1,7 @@
-import { consumerEnvironment } from './support/consumer-environment.ts';
 import { execFile } from 'node:child_process';
 import { suite } from '@overkill-dev/test';
+import { consumerEnvironment } from './support/consumer-environment.ts';
 import { packageConsumer } from './support/package-consumer.ts';
-
-const consumerFacade = packageConsumer('packaged differential authoring', function consumerFixture(consumerDirectory) {
-    async function execute(script: string): Promise<string> {
-        return new Promise(function executeConsumer(resolve, reject) {
-            execFile(
-                process.execPath,
-                [ '--input-type=module', '--eval', script ],
-                { env: consumerEnvironment(process.env, consumerDirectory), cwd: consumerDirectory },
-                function completed(error, stdout) {
-                    if (error === null) {
-                        resolve(stdout);
-                    } else {
-                        reject(new Error('Differential package consumer failed.', { cause: error }));
-                    }
-                }
-            );
-        });
-    }
-    return { execute };
-});
-const { test } = consumerFacade;
 
 const script = `
 import { differential } from '@overkill-dev/differential';
@@ -64,6 +43,27 @@ if (result.summary.passed !== 1 || result.summary.inconclusive !== 1 || later !=
 }
 console.log('differential package loaded');
 `;
+
+const consumerFacade = packageConsumer('packaged differential authoring', function consumerFixture(consumerDirectory) {
+    async function execute(source: string): Promise<string> {
+        return new Promise(function executeConsumer(resolve, reject) {
+            execFile(
+                process.execPath,
+                [ '--input-type=module', '--eval', source ],
+                { env: consumerEnvironment(consumerDirectory), cwd: consumerDirectory },
+                function completed(error, stdout) {
+                    if (error === null) {
+                        resolve(stdout);
+                    } else {
+                        reject(new Error('Differential package consumer failed.', { cause: error }));
+                    }
+                }
+            );
+        });
+    }
+    return { execute };
+});
+const { test } = consumerFacade;
 
 export const testNode = suite('packaged differential authoring', [
     test('shares property generators across package copies', async function (scope) {

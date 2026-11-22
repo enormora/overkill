@@ -1,72 +1,13 @@
-import { defineCompositeAssertion } from '@overkill-dev/test/assert';
-import { consumerEnvironment } from './support/consumer-environment.ts';
 import { execFile, type ExecException } from 'node:child_process';
 import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { suite } from '@overkill-dev/test';
-import { packageConsumer, type ConsumerScope } from './support/package-consumer.ts';
-
-const consumerFacade = packageConsumer('Installed attachment support', function consumerFixture(consumerDirectory) {
-    const directory = fileURLToPath(pathToFileURL(`${consumerDirectory}/`));
-    async function executeNode(nodeArguments: readonly string[], expectedExit: 0 | 1): Promise<string> {
-        return new Promise(function runPackagedCli(resolve, reject) {
-            execFile(process.execPath, nodeArguments, {
-                env: consumerEnvironment(process.env, directory),
-                cwd: directory
-            }, function cliCompleted(error, stdout, stderr) {
-                if (cliExitCode(error) === expectedExit) {
-                    resolve(stdout);
-                } else {
-                    reject(
-                        new Error([ error?.message ?? 'Unexpected CLI exit code.', stdout, stderr ].join('\n'), {
-                            cause: error
-                        })
-                    );
-                }
-            });
-        });
-    }
-    const binary = path.join(directory, 'node_modules/@overkill-dev/test/packages/test/overkill.entry-point.js');
-
-    const assertPackagedWitness = defineCompositeAssertion({
-        name: 'packaged witness',
-        async assert(check, artifact: Readonly<z.infer<typeof failureArtifactSchema>>) {
-            const { content } = artifact.payload;
-            if (content.kind !== 'file') {
-                throw new Error('Expected packaged witness file.');
-            }
-            const value: unknown = JSON.parse(await readFile(path.resolve(directory, content.path), 'utf8'));
-            const witness = witnessSchema.parse(value);
-            await writeFile(
-                path.join(directory, failureFixture),
-                failureScript.replace(
-                    'await response.json(); scope.assert.fail();',
-                    'scope.assert.deepEqual(await response.json(), {ready: true});'
-                )
-            );
-            const replay = await executeNode([
-                binary,
-                'replay-witness',
-                content.path,
-                '--profile',
-                'attachments',
-                '--config',
-                failureConfiguration
-            ], 0);
-            return check.group([
-                check.equal(artifact.source, 'native'),
-                check.equal(witness.simulation.payload.interactions.length, 1),
-                check.true(content.path.includes('witnesses/')),
-                check.equal(reportSchema.parse(JSON.parse(replay)).status, 'passed')
-            ]);
-        }
-    });
-    return { directory, executeNode, binary, assertPackagedWitness };
-});
-const { test } = consumerFacade;
 
 import { z } from 'zod/v4';
+import { consumerEnvironment } from './support/consumer-environment.ts';
+import { packageConsumer, type ConsumerScope } from './support/package-consumer.ts';
 
 function cliExitCode(error: Readonly<ExecException> | null): number | null {
     if (error === null) {
@@ -167,6 +108,99 @@ const failureScript = [
 ]
     .join('\n');
 
+const consumerFacade = packageConsumer('Installed attachment support', function consumerFixture(consumerDirectory) {
+    const directory = fileURLToPath(pathToFileURL(`${consumerDirectory}/`));
+    async function executeNode(nodeArguments: readonly string[], expectedExit: 0 | 1): Promise<string> {
+        return new Promise(function runPackagedCli(resolve, reject) {
+            execFile(process.execPath, nodeArguments, {
+                env: consumerEnvironment(directory),
+                cwd: directory
+            }, function cliCompleted(error, stdout, stderr) {
+                if (cliExitCode(error) === expectedExit) {
+                    resolve(stdout);
+                } else {
+                    reject(
+                        new Error([ error?.message ?? 'Unexpected CLI exit code.', stdout, stderr ].join('\n'), {
+                            cause: error
+                        })
+                    );
+                }
+            });
+        });
+    }
+    const binary = path.join(directory, 'node_modules/@overkill-dev/test/packages/test/overkill.entry-point.js');
+
+    const assertPackagedWitness = defineCompositeAssertion({
+        name: 'packaged witness',
+        async assert(check, artifact: Readonly<z.infer<typeof failureArtifactSchema>>) {
+            const { content } = artifact.payload;
+            if (content.kind !== 'file') {
+                throw new Error('Expected packaged witness file.');
+            }
+            const value: unknown = JSON.parse(await readFile(path.resolve(directory, content.path), 'utf8'));
+            const witness = witnessSchema.parse(value);
+            await writeFile(
+                path.join(directory, failureFixture),
+                failureScript.replace(
+                    'await response.json(); scope.assert.fail();',
+                    'scope.assert.deepEqual(await response.json(), {ready: true});'
+                )
+            );
+            const replay = await executeNode([
+                binary,
+                'replay-witness',
+                content.path,
+                '--profile',
+                'attachments',
+                '--config',
+                failureConfiguration
+            ], 0);
+            return check.group([
+                check.equal(artifact.source, 'native'),
+                check.equal(witness.simulation.payload.interactions.length, 1),
+                check.true(content.path.includes('witnesses/')),
+                check.equal(reportSchema.parse(JSON.parse(replay)).status, 'passed')
+            ]);
+        }
+    });
+    return { directory, executeNode, binary, assertPackagedWitness };
+});
+const { test } = consumerFacade;
+
+const sharedAttachmentEvidence = defineCompositeAssertion({
+    name: 'fixtures and bodies retain their runtime attachments',
+    async assert(check, report: Readonly<z.infer<typeof reportSchema>>, directory: string) {
+        const textArtifacts = report.artifacts.flatMap(function textContent(artifact) {
+            return artifact.payload.content.kind === 'text' ? [ artifact.payload.content.text ] : [];
+        });
+        const fileBytes = await Promise.all(report.artifacts.flatMap(function fileContent(artifact) {
+            return artifact.payload.content.kind === 'file'
+                ? [ readFile(path.join(directory, artifact.payload.content.path)) ]
+                : [];
+        }));
+        return check.group([
+            check.equal(report.artifacts.length, 6),
+            check.equal(
+                report
+                    .artifacts
+                    .filter(function belongsToRuntime(artifact) {
+                        return artifact.id.runtimes.some(function fixtureRuntime(runtime) {
+                            return runtime.name === 'runtime';
+                        });
+                    })
+                    .length,
+                3
+            ),
+            ...textArtifacts.map(function serviceMessage(text) {
+                return check.equal(text, 'packaged service ready');
+            }),
+            ...fileBytes.map(function pngHeader(bytes) {
+                return check.deepEqual(Array.from(bytes), [ 137, 80, 78, 71 ]);
+            })
+        ]);
+    }
+});
+
 export const testNode = suite('Installed attachment support', [
     test('published runner and simulation packages share transcript attribution', async function (scope) {
         const { executeNode } = scope.resources.consumer;
@@ -183,35 +217,50 @@ export const testNode = suite('Installed attachment support', [
         scope.assert.equal(await executeNode([ '--input-type=module', '-e', script ], 0), 'isolated\n');
         return scope.assert.collect();
     }),
-    test('integration resources retain native witnesses with their producer version', async (scope: ConsumerScope<typeof consumerFacade>) => {
-        const { directory, executeNode, binary, assertPackagedWitness } = scope.resources.consumer;
+    test(
+        'integration resources retain native witnesses with their producer version',
+        async function (scope: ConsumerScope<typeof consumerFacade>) {
+            const { directory, executeNode, binary, assertPackagedWitness } = scope.resources.consumer;
 
-        const failureConfigScript = configScript
-            .replaceAll(fixture, function () {
-                return failureFixture;
-            })
-            .replaceAll('attachment-smoke-state', 'failure-artifact-smoke-state')
-            .replace('artifacts: result.artifacts', 'artifacts: result.artifacts, runnerErrors: result.runnerErrors');
-        await Promise.all([
-            writeFile(path.join(directory, failureFixture), failureScript),
-            writeFile(path.join(directory, failureConfiguration), failureConfigScript)
-        ]);
-        const output = await executeNode(
-            [ binary, 'run', '--profile', 'attachments', '--config', failureConfiguration ],
-            1
-        );
-        const report = failureReportSchema.parse(JSON.parse(output));
-        scope.assert.deepEqual(report.runnerErrors, []);
-        scope.assert.equal(report.artifacts.length, 2);
-        const artifact = report.artifacts.find(function nativeWitness(entry) {
-            return entry.id.subtype === 'witness';
-        });
-        scope.require.defined(artifact);
-        await scope.assert(assertPackagedWitness, artifact);
+            const failureConfigScript = configScript
+                .replaceAll(fixture, function () {
+                    return failureFixture;
+                })
+                .replaceAll('attachment-smoke-state', 'failure-artifact-smoke-state')
+                .replace(
+                    'artifacts: result.artifacts',
+                    'artifacts: result.artifacts, runnerErrors: result.runnerErrors'
+                );
+            await Promise.all([
+                writeFile(path.join(directory, failureFixture), failureScript),
+                writeFile(path.join(directory, failureConfiguration), failureConfigScript)
+            ]);
+            const output = await executeNode(
+                [ binary, 'run', '--profile', 'attachments', '--config', failureConfiguration ],
+                1
+            );
+            const report = failureReportSchema.parse(JSON.parse(output));
+            scope.assert(
+                defineCompositeAssertion({
+                    name: 'integration resources retain native witnesses with their producer version',
+                    assert(check) {
+                        return check.group([
+                            check.deepEqual(report.runnerErrors, []),
+                            check.equal(report.artifacts.length, 2)
+                        ]);
+                    }
+                })
+            );
+            const artifact = report.artifacts.find(function nativeWitness(entry) {
+                return entry.id.subtype === 'witness';
+            });
+            scope.require.defined(artifact);
+            await scope.assert(assertPackagedWitness, artifact);
 
-        return scope.assert.collect();
-    }),
-    test('fixtures and wrapped bodies share runner attachments', async (scope) => {
+            return scope.assert.collect();
+        }
+    ),
+    test('fixtures and wrapped bodies share runner attachments', async function (scope) {
         const { directory, executeNode, binary } = scope.resources.consumer;
 
         await Promise.all([
@@ -228,32 +277,7 @@ export const testNode = suite('Installed attachment support', [
         ], 0);
         const value: unknown = JSON.parse(output);
         const report = reportSchema.parse(value);
-        scope.assert.equal(report.artifacts.length, 6);
-        scope.assert.equal(
-            report
-                .artifacts
-                .filter(function belongsToRuntime(artifact) {
-                    return artifact.id.runtimes.some(function isFixtureRuntime(runtime) {
-                        return runtime.name === 'runtime';
-                    });
-                })
-                .length,
-            3
-        );
-
-        for (const artifact of report.artifacts) {
-            const { content } = artifact.payload;
-            if (content.kind === 'text') {
-                scope.assert.equal(content.text, 'packaged service ready');
-            } else if (content.kind === 'file') {
-                scope.assert.deepEqual(Array.from(await readFile(path.join(directory, content.path))), [
-                    137,
-                    80,
-                    78,
-                    71
-                ]);
-            }
-        }
+        await scope.assert(sharedAttachmentEvidence, report, directory);
 
         return scope.assert.collect();
     })

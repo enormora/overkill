@@ -43,19 +43,15 @@ function isCapturedOutputArtifact(artifact: RunArtifact): artifact is CapturedOu
 const assertCapturedOutputCap = defineCompositeAssertion({
     name: 'captured output limits',
     assert(check, artifacts: ReturnType<SupervisedRunState['artifacts']>) {
-        const capped = artifacts[0],
-            overflow = artifacts[1];
-        if (capped === undefined || capped === null) {
-            return check.defined(capped);
+        const capped = artifacts[0];
+        const overflow = artifacts[1];
+        if (capped?.payload.kind !== 'captured-output') {
+            return check.partialDeepEqual({ artifact: capped }, { artifact: { payload: { kind: 'captured-output' } } });
         }
-        if (overflow === undefined || overflow === null) {
-            return check.defined(overflow);
-        }
-        if (!isCapturedOutputArtifact(capped)) {
-            return check.equal(capped.payload.kind, 'captured-output');
-        }
-        if (!isCapturedOutputArtifact(overflow)) {
-            return check.equal(overflow.payload.kind, 'captured-output');
+        if (overflow?.payload.kind !== 'captured-output') {
+            return check.partialDeepEqual({ artifact: overflow }, {
+                artifact: { payload: { kind: 'captured-output' } }
+            });
         }
         return check.group([
             check.equal(capped.payload.byteLength, capturedOutputLimitBytes),
@@ -71,7 +67,7 @@ const assertRunCapturedOutput = defineCompositeAssertion({
     name: 'run captured output',
     assert(check, state: SupervisedRunState, testCase: CaseId) {
         const artifact = state.artifacts()[0];
-        if (artifact === undefined || artifact === null) {
+        if (artifact === undefined) {
             return check.defined(artifact);
         }
         if (!isCapturedOutputArtifact(artifact)) {
@@ -116,14 +112,14 @@ const assertInterruptedProperty = defineCompositeAssertion({
     name: 'interrupted property',
     assert(check, results: ReturnType<SupervisedRunState['perTestResults']>, property: PropertyCaseEvidence) {
         const result = results[0];
-        if (result === undefined || result === null) {
+        if (result === undefined) {
             return check.defined(result);
         }
-        if (result.property === undefined || result.property === null) {
+        if (result.property === null) {
             return check.defined(result.property);
         }
         const invocation = result.property.invocations[0];
-        if (invocation === undefined || invocation === null) {
+        if (invocation === undefined) {
             return check.defined(invocation);
         }
         return check.group([
@@ -186,11 +182,49 @@ function variantFixture(): VariantFixture {
             } ]
         })
         .perTest[0];
-    if (result === undefined || result === null) {
+    if (result === undefined) {
         throw new Error('Expected result to satisfy defined.');
     }
     return { ...fixture, result, workId: result.workId };
 }
+
+const concurrentOutputEvidence = defineCompositeAssertion({
+    name: 'captured output retains every concurrent case owner',
+    assert(check, artifacts: readonly RunArtifact[], activeCases: readonly CaseId[]) {
+        const captured = artifacts.filter(isCapturedOutputArtifact);
+        return check.group([
+            check.equal(artifacts.length, 2),
+            check.equal(captured.length, 2),
+            ...captured.map(function caseOwnership(artifact) {
+                const owner = artifact.id.scope;
+                if (owner.kind !== 'case') {
+                    return check.equal(owner.kind, 'case');
+                }
+                return check.group([
+                    check.equal(artifact.payload.kind, 'captured-output'),
+                    check.equal(owner.confidence, 'concurrent-active'),
+                    check.deepEqual(owner.activeCases, activeCases),
+                    check.equal(artifact.payload.text, 'shared output')
+                ]);
+            })
+        ]);
+    }
+});
+const runtimeOutputEvidence = defineCompositeAssertion({
+    name: 'captured output retains runtime scenario identity',
+    assert(check, artifact: RunArtifact | undefined, runtime: RunArtifact['id']['runtimes'][number]) {
+        if (artifact === undefined) {
+            return check.defined(artifact);
+        }
+        if (!isCapturedOutputArtifact(artifact)) {
+            return check.equal(artifact.payload.kind, 'captured-output');
+        }
+        return check.group([
+            check.deepEqual(artifact.id.runtimes, [ runtime ]),
+            check.equal(artifact.id.workload, null)
+        ]);
+    }
+});
 
 export const testNode = suite('Supervised run state', [
     test('rejects stale and duplicate completion without changing accepted history', function (scope) {
@@ -354,24 +388,7 @@ export const testNode = suite('Supervised run state', [
             addActiveCase(state, secondCase);
             state.recordCapturedOutput('stdout', Buffer.from('shared output'), 1);
 
-            const artifacts = state.artifacts();
-
-            scope.assert.equal(artifacts.length, 2);
-            const concurrentArtifactScopeActiveCases: readonly CaseId[] = [ firstCase, secondCase ];
-            const concurrentArtifactScopeCapturedArtifacts = artifacts.filter(isCapturedOutputArtifact);
-
-            for (const concurrentArtifactScopeArtifact of concurrentArtifactScopeCapturedArtifacts) {
-                scope.assert.equal(concurrentArtifactScopeArtifact.payload.kind, 'captured-output');
-                scope.assert.equal(concurrentArtifactScopeArtifact.id.scope.kind, 'case');
-                if (concurrentArtifactScopeArtifact.id.scope.kind === 'case') {
-                    scope.assert.equal(concurrentArtifactScopeArtifact.id.scope.confidence, 'concurrent-active');
-                    scope.assert.deepEqual(
-                        concurrentArtifactScopeArtifact.id.scope.activeCases,
-                        concurrentArtifactScopeActiveCases
-                    );
-                }
-                scope.assert.equal(concurrentArtifactScopeArtifact.payload.text, 'shared output');
-            }
+            scope.assert(concurrentOutputEvidence, state.artifacts(), [ firstCase, secondCase ]);
 
             return scope.assert.collect();
         }
@@ -398,15 +415,7 @@ export const testNode = suite('Supervised run state', [
         );
         state.recordCapturedOutput('stdout', Buffer.from('scenario output'), 1);
 
-        const artifact = state.artifacts()[0];
-        scope.assert.defined(artifact);
-        if (artifact !== undefined) {
-            scope.assert.equal(artifact.payload.kind, 'captured-output');
-        }
-        if (artifact !== undefined && isCapturedOutputArtifact(artifact)) {
-            scope.assert.deepEqual(artifact.id.runtimes, [ runtime ]);
-            scope.assert.equal(artifact.id.workload, null);
-        }
+        scope.assert(runtimeOutputEvidence, state.artifacts()[0], runtime);
 
         return scope.assert.collect();
     }),

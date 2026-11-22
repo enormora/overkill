@@ -3,7 +3,7 @@ import { suite, test } from '@overkill-dev/test';
 
 import { P } from 'ts-pattern';
 import { createFactory } from '@enormora/objectory';
-import { requirePublishedCompositeReference } from '../../test-support/assertion-reference-boundary.ts';
+import { subjectAssertion } from '../../test-support/assertion-reference-boundary.ts';
 import type * as EnginePackage from '../../packages/engine/engine.entry-point.ts';
 import type * as DoublesPackage from '../../packages/doubles/doubles.entry-point.ts';
 import type * as TestPackage from '../../packages/test/test.entry-point.ts';
@@ -399,9 +399,8 @@ export const testNode = suite('Installed engine interoperability', [
             rules: [ doublesPackage.rule.when(matches(P.string)).returns('matched') ]
         });
         scope.assert.equal(patternedDoublePatterned('id'), 'matched');
-        const { calledOnceWith } = doublesPackage.doubleUsage;
-        requirePublishedCompositeReference(calledOnceWith);
-        scope.assert(calledOnceWith, patternedDoublePatterned, [
+
+        scope.assert(subjectAssertion(doublesPackage.doubleUsage.calledOnceWith), patternedDoublePatterned, [
             matches(P.string)
         ]);
 

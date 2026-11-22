@@ -1,5 +1,14 @@
 import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { type TestScope, suite, test } from '@overkill-dev/test';
+import type { CommandLineRunnerResult } from '../../../packages/run/command-line.entry-point.ts';
+import type { OrdinaryBaselineEntry } from '../../../run/baseline-record.ts';
+import {
+    type OrdinaryBaselineFixture,
+    createOrdinaryBaselineFixture,
+    matchingSavedBaselines,
+    successfulBaselineUpdate,
+    ordinaryBaselineFixtureFile
+} from '../../../test-support/ordinary-baseline-fixture.ts';
 
 import { defineReporter } from '../../../packages/engine/engine.entry-point.ts';
 import {
@@ -11,10 +20,7 @@ import {
     type RunCommand,
     type BaselineRunResult
 } from '../../../packages/run/run.entry-point.ts';
-import {
-    createOrdinaryBaselineFixture,
-    ordinaryBaselineFixtureFile
-} from '../../../test-support/ordinary-baseline-fixture.ts';
+
 import { createBaselineCommands } from '../../../run/baseline-commands.ts';
 
 const assertBlockedPublication = defineCompositeAssertion({
@@ -37,26 +43,42 @@ const assertReplayComparison = defineCompositeAssertion({
         ]);
     }
 });
+type ToleratedBaselineChangeEvidence = {
+    readonly result: CommandLineRunnerResult;
+    readonly fixture: OrdinaryBaselineFixture;
+    readonly establishToleratedChangeOriginal: readonly OrdinaryBaselineEntry[];
+};
+
+const toleratedBaselineChange = defineCompositeAssertion({
+    name: 'tolerated baseline change',
+    async assert(
+        check,
+        { result, fixture, establishToleratedChangeOriginal }: ToleratedBaselineChangeEvidence
+    ) {
+        return check.group([
+            check.group([ check.equal(result.exitCode, 1), check.equal(result.stdoutLines.length, 2) ]),
+            check.deepEqual(await fixture.entries(), establishToleratedChangeOriginal)
+        ]);
+    }
+});
+
+async function recordedRunId(command: RunCommand): Promise<string> {
+    const [ record ] = await createHistory({ projectRoot: command.cwd, config: command.config }).list();
+    if (record === undefined) {
+        throw new Error('Expected a recorded baseline update.');
+    }
+    return record.id;
+}
 export const testNode = suite('ordinary baseline failure boundaries', [
-    test('replays a retained baseline update without writing changed proposals', async function (scope: TestScope) {
+    test('replays a retained baseline update without writing changed proposals', async function (scope) {
         const fixture = await createOrdinaryBaselineFixture(scope.cleanup, 'in-process', 'text');
 
         const recordedBaselineUpdateCommand = {
             ...fixture.command,
             request: { ...fixture.command.request, record: true }
         };
-        const recordedBaselineUpdateUpdated = await orchestrator.baseline.update(recordedBaselineUpdateCommand, {
-            timing: null
-        });
-        scope.assert.equal(recordedBaselineUpdateUpdated.result.status, 'passed');
-        const recordedBaselineUpdateRecords = await createHistory({
-            projectRoot: recordedBaselineUpdateCommand.cwd,
-            config: recordedBaselineUpdateCommand.config
-        })
-            .list();
-        const [ record ] = recordedBaselineUpdateRecords;
-        scope.require.defined(record);
-        const runId = record.id;
+        await scope.assert(successfulBaselineUpdate, recordedBaselineUpdateCommand);
+        const runId = await recordedRunId(recordedBaselineUpdateCommand);
 
         const original = await fixture.entries();
         fixture.setActual(43);
@@ -79,8 +101,17 @@ export const testNode = suite('ordinary baseline failure boundaries', [
         fixture.setMissingObservation(true);
         const result = await orchestrator.baseline.update(fixture.command, { timing: null });
         scope.assert(assertBlockedPublication, result);
-        scope.assert.equal(result.result.runnerErrors[0]?.subtype, 'artifact');
-        scope.assert.deepEqual(await fixture.entries(), original);
+        await scope.assert(
+            defineCompositeAssertion({
+                name: 'blocks every pending change when an observation fails',
+                async assert(check) {
+                    return check.group([
+                        check.equal(result.result.runnerErrors[0]?.subtype, 'artifact'),
+                        check.deepEqual(await fixture.entries(), original)
+                    ]);
+                }
+            })
+        );
         return scope.assert.collect();
     }),
     test('blocks successful case proposals when another case fails', async function (scope: TestScope) {
@@ -106,10 +137,19 @@ export const testNode = suite('ordinary baseline failure boundaries', [
             }
         };
         const result = await orchestrator.baseline.apply(command, { timing: null });
-        scope.assert.equal(result.result.summary.failed, 1);
-        scope.assert.equal(result.changes.length, 2);
-        scope.assert.equal(result.writeOutcome.kind, 'blocked');
-        scope.assert.deepEqual(await fixture.entries(), []);
+        await scope.assert(
+            defineCompositeAssertion({
+                name: 'blocks successful case proposals when another case fails',
+                async assert(check) {
+                    return check.group([
+                        check.equal(result.result.summary.failed, 1),
+                        check.equal(result.changes.length, 2),
+                        check.equal(result.writeOutcome.kind, 'blocked'),
+                        check.deepEqual(await fixture.entries(), [])
+                    ]);
+                }
+            })
+        );
         return scope.assert.collect();
     }),
     test('preserves completed writes when final reporter delivery fails', async function (scope) {
@@ -130,9 +170,18 @@ export const testNode = suite('ordinary baseline failure boundaries', [
         });
         const command = { ...fixture.command, config: { ...fixture.command.config, reporters: [ reporter ] } };
         const result = await orchestrator.baseline.update(command, { timing: null });
-        scope.assert.equal(result.result.status, 'failed');
-        scope.assert.equal(result.result.runnerErrors[0]?.subtype, 'reporter');
-        scope.assert.equal(result.writeOutcome.kind, 'written');
+        scope.assert(
+            defineCompositeAssertion({
+                name: 'preserves completed writes when final reporter delivery fails',
+                assert(check) {
+                    return check.group([
+                        check.equal(result.result.status, 'failed'),
+                        check.equal(result.result.runnerErrors[0]?.subtype, 'reporter'),
+                        check.equal(result.writeOutcome.kind, 'written')
+                    ]);
+                }
+            })
+        );
         const entries = await fixture.entries();
         scope.assert.equal(entries.length, 2);
         return scope.assert.collect();
@@ -165,9 +214,7 @@ export const testNode = suite('ordinary baseline failure boundaries', [
             const establishToleratedChangeOriginal = await fixture.entries();
             fixture.setActual(43);
             fixture.setTolerance(1);
-            const establishToleratedChangeCompared = await orchestrator.run(fixture.command, { timing: null });
-            scope.assert.equal(establishToleratedChangeCompared.status, 'passed');
-            const original = establishToleratedChangeOriginal;
+            await scope.assert(matchingSavedBaselines, fixture.command);
 
             const commands = createBaselineCommands({
                 async loadConfig() {
@@ -183,9 +230,7 @@ export const testNode = suite('ordinary baseline failure boundaries', [
                 configPath: null,
                 runRequest: fixture.command.request
             });
-            scope.assert.equal(result.exitCode, 1);
-            scope.assert.equal(result.stdoutLines.length, 2);
-            scope.assert.deepEqual(await fixture.entries(), original);
+            await scope.assert(toleratedBaselineChange, { result, fixture, establishToleratedChangeOriginal });
             return scope.assert.collect();
         }
     )

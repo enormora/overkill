@@ -74,7 +74,7 @@ const assertProcessMetric = defineCompositeAssertion({
     name: 'process metric',
     assert(check, metrics: HostProcessMetrics, expected: ExpectedProcessMetric) {
         const reading = metrics[expected.name];
-        if (reading === undefined || reading === null) {
+        if (reading === undefined) {
             return check.defined(reading);
         }
         return check.group([

@@ -1,6 +1,6 @@
-import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { table, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { orchestrator, type RunnerResult } from '../../packages/run/run.entry-point.ts';

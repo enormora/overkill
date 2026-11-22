@@ -31,9 +31,6 @@ function createPolicyFixture(): PolicyFixture {
     }));
     const testCase = plan.cases[0];
     const policy = snapshotRuntimePolicy(createResourceLifecycleRuntimePolicy(plan.cases, null), snapshotWire);
-    if (testCase === undefined || testCase === null) {
-        throw new Error('Expected testCase to satisfy defined.');
-    }
     if (policy === null) {
         throw new Error('Expected policy to satisfy notNull.');
     }
@@ -46,7 +43,7 @@ const assertSnapshotError = defineCompositeAssertion({
         const { work, attempt, cause } = expected;
         const initialChecks = check.equal(errors.length, 1);
         const [ error ] = errors;
-        if (error === undefined || error === null) {
+        if (error === undefined) {
             return check.group([ initialChecks, check.defined(error) ]);
         }
         return check.group([

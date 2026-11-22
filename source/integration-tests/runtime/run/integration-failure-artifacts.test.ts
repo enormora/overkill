@@ -1,9 +1,7 @@
-import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { setTimeout as wait } from 'node:timers/promises';
-import { defineMacro, suite, test, type TestScope } from '@overkill-dev/test';
 
-import { parseWitnessFile } from '../../../packages/engine/engine.entry-point.ts';
+import { defineMacro, suite, test, type TestScope } from '@overkill-dev/test';
 
 import {
     defineResource,
@@ -13,8 +11,13 @@ import {
     createLocalProcessServiceResource
 } from '../../../packages/test/resources.entry-point.ts';
 import { defineSimulatedHttpServer } from '../../../packages/simulation/simulation.entry-point.ts';
-import { executeEvidence } from '../../../test-support/failure-evidence-fixture.ts';
-import type { AttachmentFixture } from '../../../test-support/attachment-fixture.ts';
+import {
+    executeEvidence,
+    assertPreparedFile,
+    assertNativeEvidence,
+    assertCapturedText,
+    assertSeededWitness
+} from '../../../test-support/failure-evidence-fixture.ts';
 import { defaultAttachmentLimits } from '../../../engine/runtime-attachment.ts';
 import { resultWithRuntimeAttachments } from '../../../run/attachment-results.ts';
 
@@ -39,16 +42,6 @@ const diagnostic = withFailureArtifacts(
         }
     }
 );
-const assertPreparedFile = defineCompositeAssertion({
-    name: 'prepared file',
-    async assert(check, fixture: AttachmentFixture) {
-        const artifact = fixture.store.selectedArtifacts()[0];
-        if (artifact?.payload.content.kind !== 'file') {
-            throw new TypeError('Expected retained evidence file.');
-        }
-        return check.group([ check.equal(await readFile(artifact.payload.content.path, 'utf8'), 'before cleanup') ]);
-    }
-});
 const daemon = createLocalProcessServiceResource({
     name: 'daemon',
     scope: 'per-case',
@@ -75,37 +68,8 @@ const daemon = createLocalProcessServiceResource({
         return { output: owner.output.stdout.text() };
     }
 });
-const assertNativeEvidence = defineCompositeAssertion({
-    name: 'native evidence',
-    async assert(check, fixture: AttachmentFixture) {
-        const witness = fixture.store.selectedArtifacts().find(function nativeWitness(artifact) {
-            return artifact.id.subtype === 'witness';
-        });
-        if (witness?.payload.content.kind !== 'file') {
-            throw new Error('Expected native witness file.');
-        }
-        const value = parseWitnessFile(JSON.parse(await readFile(witness.payload.content.path, 'utf8')));
-        return check.group([ check.partialDeepEqual(value, {
-            version: 1,
-            seed: null,
-            simulation: { name: 'api' }
-        }) ]);
-    }
-});
-const assertCapturedText = defineCompositeAssertion({
-    name: 'captured text',
-    assert(check, fixture: AttachmentFixture, name: string, expected: string) {
-        const artifact = fixture.store.selectedArtifacts().find(function matchingOutput(entry) {
-            return entry.payload.name === name;
-        });
-        if (artifact?.payload.content.kind !== 'text') {
-            throw new Error('Expected retained service output.');
-        }
-        return check.group([ check.equal(artifact.payload.content.text, expected) ]);
-    }
-});
-const assertFirstPartyEvidence = defineMacro((title: string) =>
-    test(title, async (scope) => {
+const assertFirstPartyEvidence = defineMacro(function (title: string) {
+    return test(title, async function (scope) {
         const api = createSimulatedHttpServerResource({
             address: { kind: 'loopback', port: 0 },
             simulation: defineSimulatedHttpServer({
@@ -135,8 +99,8 @@ const assertFirstPartyEvidence = defineMacro((title: string) =>
         await scope.assert(assertNativeEvidence, fixture);
 
         return scope.assert.collect();
-    })
-);
+    });
+});
 export const testNode = suite('Integration failure artifacts', [
     assertFirstPartyEvidence('failed managed services retain HTTP evidence, decoded output, and native witnesses'),
     test('native witnesses preserve decimal simulation seeds and runtime state', async function (scope) {
@@ -161,20 +125,7 @@ export const testNode = suite('Integration failure artifacts', [
             1,
             defaultAttachmentLimits
         );
-        const witness = fixture.store.selectedArtifacts().find(function nativeWitness(artifact) {
-            return artifact.id.subtype === 'witness';
-        });
-        if (witness?.payload.content.kind !== 'file') {
-            throw new Error('Expected seeded witness file.');
-        }
-        const value = parseWitnessFile(JSON.parse(await readFile(witness.payload.content.path, 'utf8')));
-        scope.assert.partialDeepEqual(value, {
-            seed: '9007199254740993',
-            scenario: 'fault',
-            runtimeSnapshot: { phase: 'request' },
-            faultConfiguration: { delay: 5 }
-        });
-        scope.assert.deepEqual(fixture.result.runnerErrors, []);
+        await scope.assert(assertSeededWitness, fixture);
         return scope.assert.collect();
     }),
     test('oversized seedless witnesses become bounded omissions', async function (scope: TestScope) {

@@ -1,5 +1,5 @@
-import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { setTimeout as wait } from 'node:timers/promises';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { table, suite } from '@overkill-dev/test';
 
 import { createLocalProcessServiceResource, withResources } from '../../../packages/test/resources.entry-point.ts';
@@ -13,7 +13,7 @@ const assertProcessOutput = defineCompositeAssertion({
         const artifact = fixture.store.selectedArtifacts().find(function matchingOutput(entry) {
             return entry.payload.name === name;
         });
-        if (artifact === undefined || artifact === null) {
+        if (artifact === undefined) {
             return check.defined(artifact);
         }
         if (artifact.payload.content.kind !== 'text') {

@@ -1,7 +1,7 @@
-import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import diagnosticsChannel from 'node:diagnostics_channel';
 import { createServer, request as createRequest, type ServerResponse } from 'node:http';
 import { connect } from 'node:net';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { suite, test, type TestScope } from '@overkill-dev/test';
 
 import { httpTranscriptBodyByteLimit, type HttpTranscript } from '../../../transcript/http-transcript.ts';
@@ -297,36 +297,51 @@ const assertMalformedResponseEntries = defineCompositeAssertion({
     }
 });
 
+const boundedExternalHttpRequest = defineCompositeAssertion({
+    name: 'external HTTP requests retain bounded body evidence',
+    assert(check, transcript: HttpTranscript, body: string) {
+        const entry = transcript.firstEntry;
+        if (entry === null) {
+            return check.defined(entry);
+        }
+        if (entry[0] !== 'http') {
+            return check.equal(entry[0], 'http');
+        }
+        const response = entry[1].outcome.kind === 'response'
+            ? [
+                check.deepEqual(entry[1].outcome.response.body, {
+                    kind: 'unavailable',
+                    reason: 'transport-does-not-expose-body'
+                })
+            ]
+            : [];
+        return check.group([
+            check.deepEqual({ body: entry[1].request.body, kind: entry[1].outcome.kind }, {
+                body: {
+                    bytes: textEncoder.encode(body.slice(0, httpTranscriptBodyByteLimit)),
+                    kind: 'truncated',
+                    originalByteLength: body.length
+                },
+                kind: 'response'
+            }),
+            ...response
+        ]);
+    }
+});
+
 export const testNode = suite('Local HTTP transcript', [
-    test('local HTTP resources record external request metadata and bounded bodies', async (scope: TestScope) => {
+    test('local HTTP resources record external request metadata and bounded bodies', async function (scope) {
         const session = await startResources({ resources: { app: localHttpResource() }, signal: testSignal });
         const body = 'x'.repeat(httpTranscriptBodyByteLimit + 1);
 
         await requestWithNodeHttp(session.context.app.baseUrl, body);
-        const entry = session.context.app.transcript.firstEntry;
-
-        scope.require.defined(entry);
-        scope.assert.equal(entry[0], 'http');
-        if (entry[0] === 'http') {
-            scope.assert.deepEqual(entry[1].request.body, {
-                bytes: textEncoder.encode(body.slice(0, httpTranscriptBodyByteLimit)),
-                kind: 'truncated',
-                originalByteLength: body.length
-            });
-            scope.assert.equal(entry[1].outcome.kind, 'response');
-            if (entry[1].outcome.kind === 'response') {
-                scope.assert.deepEqual(entry[1].outcome.response.body, {
-                    kind: 'unavailable',
-                    reason: 'transport-does-not-expose-body'
-                });
-            }
-        }
+        scope.assert(boundedExternalHttpRequest, session.context.app.transcript, body);
 
         await session.disposeOnce({ signal: testSignal });
 
         return scope.assert.collect();
     }),
-    test('local HTTP resources record requests outside instrumented clients', async (scope: TestScope) => {
+    test('local HTTP resources record requests outside instrumented clients', async function (scope: TestScope) {
         const session = await startResources({ resources: { app: localHttpResource() }, signal: testSignal });
 
         await requestWithRawTcp(session.context.app.endpoint);
@@ -348,7 +363,7 @@ export const testNode = suite('Local HTTP transcript', [
 
         return scope.assert.collect();
     }),
-    test('local HTTP resources support transcript policies', async (scope) => {
+    test('local HTTP resources support transcript policies', async function (scope) {
         scope.assert.equal(await transcriptEntryCount({ kind: 'disabled' }), 0);
         scope.assert.deepEqual(await captureFailureEntries(), [
             [ 'capture-error', { message: 'capture failed', source: 'custom' } ]
@@ -361,7 +376,7 @@ export const testNode = suite('Local HTTP transcript', [
 
         return scope.assert.collect();
     }),
-    test('local HTTP transcripts contain malformed response diagnostics', async (scope) => {
+    test('local HTTP transcripts contain malformed response diagnostics', async function (scope) {
         let actionState: DiagnosticActionState = {
             action: { error: 'connection failed', kind: 'error' },
             request: {}

@@ -1,6 +1,10 @@
-import type { CompositeAssertionReference, CompositeAssertionReturn } from '@overkill-dev/test/assert';
-import { type CompositeCheckBuilder } from '@overkill-dev/test/assert';
-import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import {
+    type CompositeAssertionReference,
+    type CompositeAssertionReturn,
+    type CompositeCheckBuilder,
+    defineCompositeAssertion
+} from '@overkill-dev/test/assert';
+
 import { defineMacro, test, suite } from '@overkill-dev/test';
 
 import {
@@ -223,12 +227,12 @@ function scopedResource(scope: ResourceScope): ScopedResource {
     });
 }
 
-const sessionContextChecks = (
+const sessionContextChecks = function (
     check: CompositeCheckBuilder<'assert'>,
     session: ServiceContextSession,
     events: EventLog,
     acquisitions: number
-): CompositeAssertionReturn<'assert'> => {
+): CompositeAssertionReturn<'assert'> {
     return check.group([
         check.equal(acquisitions, 1),
         check.deepEqual(Object.keys(session.context), [ 'service' ]),
@@ -242,11 +246,11 @@ const sessionContextChecks = (
     ]);
 };
 
-const sessionDisposalChecks = async (
+const sessionDisposalChecks = async function (
     check: CompositeCheckBuilder<'assert'>,
     session: DisposableSession,
     events: EventLog
-): Promise<CompositeAssertionReturn<'assert'>> => {
+): Promise<CompositeAssertionReturn<'assert'>> {
     await session.disposeOnce({ signal: testSignal() });
     await session.disposeOnce({ signal: testSignal() });
     return check.group([ check.deepEqual(events.values().slice(4), [ 'server dispose', 'database dispose' ]) ]);

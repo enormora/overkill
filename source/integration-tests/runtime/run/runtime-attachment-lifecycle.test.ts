@@ -38,8 +38,8 @@ function resourceLifecycleCase(engine: Engine): SubjectTestNode {
     });
 }
 
-const assertLifecycleEvidence = defineMacro((title: string) =>
-    test(title, async (scope) => {
+const assertLifecycleEvidence = defineMacro(function (title: string) {
+    return test(title, async function (scope) {
         const engine = createTestEngine();
         const plan = engine.createTestPlan(
             engine.createRoot({ ...definition, title: 'lifecycle', children: [ resourceLifecycleCase(engine) ] })
@@ -78,8 +78,8 @@ const assertLifecycleEvidence = defineMacro((title: string) =>
         );
 
         return scope.assert.collect();
-    })
-);
+    });
+});
 
 export const testNode = suite('Runtime attachment lifecycle', [
     assertLifecycleEvidence('fixture lifecycle evidence remains case owned and caught errors fail the attempt')

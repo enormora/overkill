@@ -77,13 +77,23 @@ function cancellationFixture(): CancellationFixture {
     return { runtime, dispatcher, primaryLane, duplicateLane };
 }
 
+type ClaimedCancellation = CancellationFixture & {
+    readonly primary: NonNullable<ReturnType<WorkerPoolWorkDispatcher['pull']>>;
+    readonly duplicate: NonNullable<ReturnType<WorkerPoolWorkDispatcher['pull']>>;
+};
+function claimedCancellation(): ClaimedCancellation {
+    const fixture = cancellationFixture();
+    const primary = fixture.dispatcher.pull(fixture.primaryLane);
+    const duplicate = fixture.dispatcher.pull(fixture.duplicateLane);
+    if (primary === null || duplicate === null) {
+        throw new Error('Expected both cancellation lanes to be claimed.');
+    }
+    return { ...fixture, primary, duplicate };
+}
+
 export const testNode = suite('replay dispatcher lifecycle', [
-    test('cancels the recorded duplicate after its authority completes', (scope: TestScope) => {
-        const { runtime, dispatcher, primaryLane, duplicateLane } = cancellationFixture();
-        const primary = dispatcher.pull(primaryLane);
-        const duplicate = dispatcher.pull(duplicateLane);
-        scope.require.defined(primary);
-        scope.require.defined(duplicate);
+    test('cancels the recorded duplicate after its authority completes', function (scope) {
+        const { runtime, dispatcher, primaryLane, primary, duplicate } = claimedCancellation();
         const task = { ...createTaskRun(runtime.runState), members: duplicate.members };
         runtime.activeTasks.add(task);
         dispatcher.finish(primary, { learnWarmth: false, workerCrashed: false, retainReservation: false });

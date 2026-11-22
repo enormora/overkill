@@ -1,8 +1,7 @@
-import type { ParameterizedTestScope } from '@overkill-dev/test';
-import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { readFile } from 'node:fs/promises';
-import path from 'node:path';
 import { table, type TestScope, suite, test } from '@overkill-dev/test';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import { retainedWitnessFile } from '../../test-support/property-witness-fixture.ts';
 
 import { parseWitnessFile, type RunResult } from '../../packages/engine/engine.entry-point.ts';
 import { orchestrator, type RunCommand } from '../../packages/run/run.entry-point.ts';
@@ -58,7 +57,7 @@ const assertConfigWitness = defineCompositeAssertion({
     name: 'config witness',
     async assert(check, saved: SavedConfigFailure) {
         const confirmed = saved.result.perTest[0]?.property?.invocations[0]?.confirmedWitness;
-        if (confirmed === undefined || confirmed === null) {
+        if (confirmed === undefined) {
             return check.defined(confirmed);
         }
         if (confirmed === null) {
@@ -96,6 +95,10 @@ const replayConfigWitness = defineCompositeAssertion({
     }
 });
 
+async function failingConfigProject(cleanup: TestScope['cleanup'], processModel: ProcessModel): Promise<ReplayProject> {
+    const command = await projectPropertyCommand(cleanup, processModel);
+    return { cwd: command.cwd, command };
+}
 export const testNode = suite('project-backed ESLint properties', [
     table({
         title: 'retains and replays generated config failures',
@@ -103,13 +106,10 @@ export const testNode = suite('project-backed ESLint properties', [
         caseTitle(processModel) {
             return processModel;
         },
-        async test(scope: ParameterizedTestScope<'supervised-process' | 'worker-pool'>) {
-            const processModel = scope.parameters;
-            const replayConfigFailureCommand = await projectPropertyCommand(scope.cleanup, processModel);
-            const replayConfigFailureProject = {
-                cwd: replayConfigFailureCommand.cwd,
-                command: replayConfigFailureCommand
-            };
+        async test(
+            { cleanup, assert: assertContext, parameters: processModel }
+        ) {
+            const replayConfigFailureProject = await failingConfigProject(cleanup, processModel);
             const replayConfigFailureFailingCase = generatedCase.replace(
                 "return [{rules: {'no-debugger': 'error'}}];",
                 `return [{
@@ -121,26 +121,28 @@ export const testNode = suite('project-backed ESLint properties', [
             await writeReplayCase(replayConfigFailureProject, replayConfigFailureFailingCase);
 
             const retainedConfigFailureResult = await orchestrator.run(replayConfigFailureProject.command);
-            scope.assert.equal(retainedConfigFailureResult.summary.failed, 1);
-            scope.assert.deepEqual(retainedConfigFailureResult.runnerErrors, []);
-            const retainedConfigFailureWitness = retainedConfigFailureResult.artifacts.find(
-                function retainedWitness(artifact) {
-                    return artifact.id.subtype === 'witness';
-                }
+            assertContext(
+                defineCompositeAssertion({
+                    name: 'retains and replays generated config failures',
+                    assert(check) {
+                        return check.group([
+                            check.equal(
+                                retainedConfigFailureResult
+                                    .summary
+                                    .failed,
+                                1
+                            ),
+                            check.deepEqual(retainedConfigFailureResult.runnerErrors, [])
+                        ]);
+                    }
+                })
             );
-            scope.require.defined(retainedConfigFailureWitness);
-            if (
-                retainedConfigFailureWitness.payload.kind !== 'runtime-attachment' ||
-                retainedConfigFailureWitness.payload.content.kind !== 'file'
-            ) {
-                throw new TypeError('Expected a retained property witness file.');
-            }
             const replayConfigFailureSaved = {
-                file: path.resolve(replayConfigFailureProject.cwd, retainedConfigFailureWitness.payload.content.path),
+                file: retainedWitnessFile(retainedConfigFailureResult, replayConfigFailureProject.cwd),
                 result: retainedConfigFailureResult
             };
 
-            await scope.assert(assertConfigWitness, replayConfigFailureSaved);
+            await assertContext(assertConfigWitness, replayConfigFailureSaved);
             await writeReplayCase(
                 replayConfigFailureProject,
                 replayConfigFailureFailingCase.replace(
@@ -148,9 +150,9 @@ export const testNode = suite('project-backed ESLint properties', [
                     "gen.constant(null).map(() => {throw new Error('generated during replay');})"
                 )
             );
-            await scope.assert(replayConfigWitness, replayConfigFailureProject, replayConfigFailureSaved.file);
+            await assertContext(replayConfigWitness, replayConfigFailureProject, replayConfigFailureSaved.file);
 
-            return scope.assert.collect();
+            return assertContext.collect();
         }
     }),
     table({
@@ -165,11 +167,18 @@ export const testNode = suite('project-backed ESLint properties', [
             const command = await projectPropertyCommand(scope.cleanup, processModel);
             const resolved = await orchestrator.resolve(command);
             const result = await orchestrator.run(command);
-            scope.assert.equal(resolved.facts.cases[0]?.propertyPolicy?.newTrials, 2);
-            scope.assert.equal(result.summary.passed, 1);
-            scope.assert.equal(result.summary.failed, 0);
-            scope.assert.equal(result.summary.runtimePolicy, 0);
-            scope.assert.deepEqual(result.runnerErrors, []);
+            scope.assert(defineCompositeAssertion({
+                name: 'project-backed ESLint properties',
+                assert(check) {
+                    return check.group([
+                        check.equal(resolved.facts.cases[0]?.propertyPolicy?.newTrials, 2),
+                        check.equal(result.summary.passed, 1),
+                        check.equal(result.summary.failed, 0),
+                        check.equal(result.summary.runtimePolicy, 0),
+                        check.deepEqual(result.runnerErrors, [])
+                    ]);
+                }
+            }));
             return scope.assert.collect();
         }
     }),

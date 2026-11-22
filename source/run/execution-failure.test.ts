@@ -1,5 +1,5 @@
-import { z } from 'zod/v4';
 import { deserialize, serialize } from 'node:v8';
+import { z } from 'zod/v4';
 import { suite, test } from '@overkill-dev/test';
 
 import {

@@ -1,6 +1,6 @@
-import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { type TestScope, suite, test } from '@overkill-dev/test';
 
 import {
@@ -24,7 +24,7 @@ import { readPerformanceBaselineReport } from '../../baselines/performance-repor
 
 function benchmarkProfile(fixture: BaselineFixture): BenchmarkProfileConfig {
     const profile = fixture.command.config.profiles.startup;
-    if (profile === undefined || profile === null) {
+    if (profile === undefined) {
         throw new Error('Expected profile to satisfy defined.');
     }
     if (profile.testFamily !== 'benchmark') {
@@ -75,7 +75,7 @@ const assertPresentationFailure = defineCompositeAssertion({
     name: 'presentation failure',
     assert(check, delivery: BenchmarkBaselineRunResult) {
         const report = readPerformanceBaselineReport(delivery.result);
-        if (report === undefined || report === null) {
+        if (report === null) {
             return check.defined(report);
         }
         return check.group([

@@ -1,15 +1,18 @@
-import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { writeFile, readFile } from 'node:fs/promises';
-import { suite, test, type TestScope } from '@overkill-dev/test';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import { suite, test } from '@overkill-dev/test';
+import type { AttachmentStore } from '../../../run/attachment-store.ts';
+import type { AttachmentResponse } from '../../../run/attachment-protocol.ts';
 
 import {
     defaultAttachmentLimits,
     type RuntimeAttachmentArtifact,
+    type AttachmentWriter,
     type RuntimeAttachments
 } from '../../../engine/runtime-attachment.ts';
 import { attachmentFixture, attachmentWork as work } from '../../../test-support/attachment-fixture.ts';
 import { snapshotJson } from '../../../attachments/json-snapshot.ts';
-import { createAttachmentExecution } from '../../../run/attachment-execution.ts';
+import { createAttachmentExecution, type AttachmentExecution } from '../../../run/attachment-execution.ts';
 import { createAttachmentStream } from '../../../run/attachment-writer.ts';
 
 const metadata = { name: 'evidence', mediaType: 'application/octet-stream' };
@@ -31,16 +34,16 @@ const assertFailedWriter = defineCompositeAssertion({
     name: 'failed writer',
     async assert(check, attachments: RuntimeAttachments) {
         const writer = await attachments.open({ ...metadata, kind: 'binary' });
-        const first = await check.rejects(async () => {
+        const first = await check.rejects(async function () {
             await writer.write(Uint8Array.of(1, 2, 3, 4));
         }, { message: 'Binary attachment byte limit exceeded.' });
-        const later = await check.rejects(async () => {
+        const later = await check.rejects(async function () {
             await writer.write(Uint8Array.of(5));
         }, { message: 'Binary attachment byte limit exceeded.' });
         return check.group([
             first,
             later,
-            await check.rejects(async () => {
+            await check.rejects(async function () {
                 await writer.close();
             }, { message: 'Binary attachment byte limit exceeded.' })
         ]);
@@ -51,8 +54,79 @@ function rejectCaptureTransport(cause: unknown): never {
     throw cause;
 }
 
+type RejectedAttachmentWriteEvidence = { readonly omitted: AttachmentResponse; readonly store: AttachmentStore; };
+
+const rejectedAttachmentWrite = defineCompositeAssertion({
+    name: 'rejected attachment write',
+    async assert(
+        check,
+        { omitted, store }: RejectedAttachmentWriteEvidence
+    ) {
+        return check.group([
+            check.deepEqual(omitted, {
+                kind: 'error',
+                message: 'Attachment writer is closed.',
+                reason: 'operation-error'
+            }),
+            check.deepEqual(await store.finish(null), []),
+            check.equal(store.artifacts()[0]?.payload.content.kind, 'file')
+        ]);
+    }
+});
+
+const pendingWriteFailure = defineCompositeAssertion({
+    name: 'write and close retain the pending transport failure',
+    async assert(
+        check,
+        writer: AttachmentWriter<Uint8Array | string>,
+        pending: ReturnType<typeof Promise.withResolvers<undefined>>
+    ) {
+        const writing = writer.write('log');
+        const rejectedWrite = check.rejects(async function () {
+            await writing;
+        }, { message: 'transport write failed' });
+        const closing = writer.close();
+        const rejectedClose = check.rejects(async function () {
+            await closing;
+        }, { message: 'transport write failed' });
+        pending.reject(new Error('transport write failed'));
+        return check.group(await Promise.all([ rejectedWrite, rejectedClose ]));
+    }
+});
+const overlappingWrite = defineCompositeAssertion({
+    name: 'rejects overlapping writes while close waits for completion',
+    async assert(
+        check,
+        writer: AttachmentWriter<Uint8Array | string>,
+        pending: PromiseWithResolvers<undefined>
+    ) {
+        const writing = writer.write('one');
+        const rejected = await check.rejects(async function () {
+            await writer.write('two');
+        }, { message: 'Attachment writes require an open writer and an awaited previous write.' });
+        const closing = writer.close();
+        pending.resolve(undefined);
+        const [ , artifact ] = await Promise.all([ writing, closing ]);
+        return check.group([
+            rejected,
+            check.deepEqual(artifact.payload.content, {
+                kind: 'text',
+                text: 'one',
+                byteLength: 3,
+                completion: { kind: 'complete' }
+            })
+        ]);
+    }
+});
+const attachmentCompletionErrors = defineCompositeAssertion({
+    name: 'retains every rejected attachment operation',
+    async assert(check, execution: AttachmentExecution, expected: number) {
+        const errors = await execution.finish();
+        return check.equal(errors.length, expected);
+    }
+});
 export const testNode = suite('Runtime attachment validation', [
-    test('foreign transport rejections preserve incomplete capture metadata', async (scope: TestScope) => {
+    test('foreign transport rejections preserve incomplete capture metadata', async function (scope) {
         const { store } = await attachmentFixture(scope.cleanup, defaultAttachmentLimits);
         const opened = await store.exchange('test', {
             kind: 'open',
@@ -93,17 +167,19 @@ export const testNode = suite('Runtime attachment validation', [
         await scope.assert.rejects(async function failedClose() {
             await writer.close();
         }, { message: 'Attachment write failed.' });
-        const artifact = store.artifacts()[0];
-        scope.require.defined(artifact);
-        scope.assert.partialDeepEqual(artifact.payload.content, {
-            kind: 'text',
-            text: '',
-            completion: { kind: 'incomplete', reason: 'write-error' }
+        scope.assert.partialDeepEqual<unknown, unknown>(store.artifacts()[0], {
+            payload: {
+                content: {
+                    kind: 'text',
+                    text: '',
+                    completion: { kind: 'incomplete', reason: 'write-error' }
+                }
+            }
         });
 
         return scope.assert.collect();
     }),
-    test('failed binary writers refuse further operations and do not add unclosed errors', async (scope) => {
+    test('failed binary writers refuse further operations and do not add unclosed errors', async function (scope) {
         const { store } = await attachmentFixture(scope.cleanup, { ...defaultAttachmentLimits, maxArtifactBytes: 1 });
         const opened = await store.exchange('test', {
             kind: 'open',
@@ -127,63 +203,59 @@ export const testNode = suite('Runtime attachment validation', [
             reason: 'byte-limit'
         });
         const omitted = await store.exchange('test', { kind: 'omit', writer: opened.writer });
-        scope.assert.deepEqual(omitted, {
-            kind: 'error',
-            message: 'Attachment writer is closed.',
-            reason: 'operation-error'
-        });
-        scope.assert.deepEqual(await store.finish(null), []);
-        scope.assert.equal(store.artifacts()[0]?.payload.content.kind, 'file');
+        await scope.assert(rejectedAttachmentWrite, { omitted, store });
 
         return scope.assert.collect();
     }),
-    test('resource consumers cannot substitute another runtime variant of a selected case', async (scope) => {
+    test('resource consumers cannot substitute another runtime variant of a selected case', async function (scope) {
         const { store } = await attachmentFixture(scope.cleanup, defaultAttachmentLimits);
         const foreign = { ...work, runtimes: [ { name: 'outside', dimensions: {}, scenarios: {}, variantId: null } ] };
         const response = await store.exchange('test', { kind: 'resource-consumer', boundary: 'owner', work: foreign });
-        scope.assert.deepEqual(response, {
-            kind: 'error',
-            message: 'Resource consumer is outside selected work.',
-            reason: 'operation-error'
-        });
-        scope.assert.deepEqual(store.selectedArtifacts(), []);
+        scope.assert(
+            defineCompositeAssertion({
+                name: 'resource consumers cannot substitute another runtime variant of a selected case',
+                assert(check) {
+                    return check.group([
+                        check.deepEqual(response, {
+                            kind: 'error',
+                            message: 'Resource consumer is outside selected work.',
+                            reason: 'operation-error'
+                        }),
+                        check.deepEqual(store.selectedArtifacts(), [])
+                    ]);
+                }
+            })
+        );
 
         return scope.assert.collect();
     }),
-    test('a pending write failure keeps the artifact incomplete when close races it', async (scope: TestScope) => {
-        const { store } = await attachmentFixture(scope.cleanup, defaultAttachmentLimits);
-        const pending = Promise.withResolvers<undefined>();
-        const execution = createAttachmentExecution(async function failPendingTransport(operation) {
-            if (operation.kind === 'write') {
-                await pending.promise;
-            }
-            return store.exchange('pending', operation);
-        }, { ...defaultAttachmentLimits, maxInlineBytes: 1024 });
-        const writer = await execution.context.forProducer({ kind: 'case' }).open({ ...metadata, kind: 'text' });
+    test(
+        'a pending write failure keeps the artifact incomplete when close races it',
+        async function (scope) {
+            const { store } = await attachmentFixture(scope.cleanup, defaultAttachmentLimits);
+            const pending = Promise.withResolvers<undefined>();
+            const execution = createAttachmentExecution(async function failPendingTransport(operation) {
+                if (operation.kind === 'write') {
+                    await pending.promise;
+                }
+                return store.exchange('pending', operation);
+            }, { ...defaultAttachmentLimits, maxInlineBytes: 1024 });
+            const writer = await execution.context.forProducer({ kind: 'case' }).open({ ...metadata, kind: 'text' });
 
-        const pendingFailureWriting = writer.write('log');
-        const pendingFailureRejectedWrite = scope.assert.rejects(async function rejectPendingWrite() {
-            await pendingFailureWriting;
-        }, { message: 'transport write failed' });
-        const pendingFailureClosing = writer.close();
-        const pendingFailureRejectedClose = scope.assert.rejects(async function rejectFailedClose() {
-            await pendingFailureClosing;
-        }, { message: 'transport write failed' });
-        pending.reject(new Error('transport write failed'));
-        await Promise.all([ pendingFailureRejectedWrite, pendingFailureRejectedClose ]);
+            await scope.assert(pendingWriteFailure, writer, pending);
 
-        const content = store.artifacts()[0]?.payload.content;
-        scope.require.defined(content);
-        scope.assert.deepEqual(content, {
-            kind: 'text',
-            text: '',
-            byteLength: 0,
-            completion: { kind: 'incomplete', reason: 'write-error' }
-        });
+            const content = store.artifacts()[0]?.payload.content;
+            scope.assert.deepEqual<unknown, unknown>(content, {
+                kind: 'text',
+                text: '',
+                byteLength: 0,
+                completion: { kind: 'incomplete', reason: 'write-error' }
+            });
 
-        return scope.assert.collect();
-    }),
-    test('close waits for the pending write and overlapping writes are rejected', async (scope) => {
+            return scope.assert.collect();
+        }
+    ),
+    test('close waits for the pending write and overlapping writes are rejected', async function (scope) {
         const { store } = await attachmentFixture(scope.cleanup, defaultAttachmentLimits);
         const pending = Promise.withResolvers<undefined>();
         const execution = createAttachmentExecution(async function waitForWrite(operation) {
@@ -193,25 +265,11 @@ export const testNode = suite('Runtime attachment validation', [
             return store.exchange('pending', operation);
         }, { ...defaultAttachmentLimits, maxInlineBytes: 1024 });
         const writer = await execution.context.forProducer({ kind: 'case' }).open({ ...metadata, kind: 'text' });
-        const writing = writer.write('one');
-        await scope.assert.rejects(async function rejectOverlappingWrite() {
-            await writer.write('two');
-        }, {
-            message: 'Attachment writes require an open writer and an awaited previous write.'
-        });
-        const closing = writer.close();
-        pending.resolve(undefined);
-        const [ , artifact ] = await Promise.all([ writing, closing ]);
-        scope.assert.deepEqual(artifact.payload.content, {
-            kind: 'text',
-            text: 'one',
-            byteLength: 3,
-            completion: { kind: 'complete' }
-        });
+        await scope.assert(overlappingWrite, writer, pending);
 
         return scope.assert.collect();
     }),
-    test('binary writers reject strings and writes after close', async (scope) => {
+    test('binary writers reject strings and writes after close', async function (scope) {
         const { execution, store } = await attachmentFixture(scope.cleanup, defaultAttachmentLimits);
         const writer = await execution.context.forProducer({ kind: 'case' }).open({ ...metadata, kind: 'binary' });
         await scope.assert.rejects(async function rejectTextOnBinary() {
@@ -224,13 +282,12 @@ export const testNode = suite('Runtime attachment validation', [
         }, { message: 'Attachment writes require an open writer and an awaited previous write.' });
         scope.assert.equal(store.artifacts().length, 1);
         scope.assert(assertBinaryContent, artifact);
-        const errors = await execution.finish();
-        scope.assert.equal(errors.length, 2);
+        await scope.assert(attachmentCompletionErrors, execution, 2);
 
         return scope.assert.collect();
     }),
     suite('file capture copies evidence and preserves overflow failures', [
-        test('independent copy', async (scope) => {
+        test('independent copy', async function (scope) {
             const { execution, directory } = await attachmentFixture(scope.cleanup, defaultAttachmentLimits);
             const source = `${directory}/source.bin`;
             await writeFile(source, Uint8Array.of(1, 2));
@@ -244,7 +301,7 @@ export const testNode = suite('Runtime attachment validation', [
 
             return scope.assert.collect();
         }),
-        test('file overflow', async (scope) => {
+        test('file overflow', async function (scope) {
             const { execution, directory, store } = await attachmentFixture(scope.cleanup, {
                 ...defaultAttachmentLimits,
                 maxArtifactBytes: 3
@@ -263,7 +320,7 @@ export const testNode = suite('Runtime attachment validation', [
             return scope.assert.collect();
         })
     ]),
-    test('JSON descriptors and depth preserve representable values', (scope) => {
+    test('JSON descriptors and depth preserve representable values', function (scope) {
         const accessor = Object.defineProperty({}, 'value', {
             enumerable: true,
             get() {
@@ -283,16 +340,18 @@ export const testNode = suite('Runtime attachment validation', [
             snapshotJson(value, 1024)?.encoded,
             '{"first":{"ready":true},"second":{"ready":true}}'
         );
-        const nested: unknown = Array.from({ length: 66 }).reduce<unknown>(function nest(child) {
-            return [ child ];
-        }, null);
         scope.assert.throws(function rejectDeepJson() {
-            snapshotJson(nested, 1024);
+            snapshotJson(
+                Array.from({ length: 66 }).reduce<unknown>(function (child) {
+                    return [ child ];
+                }, null),
+                1024
+            );
         }, { message: 'Attachments require finite, acyclic JSON values with depth at most 64.' });
 
         return scope.assert.collect();
     }),
-    test('invalid metadata and JSON failures remain bounded per attempt', async (scope) => {
+    test('invalid metadata and JSON failures remain bounded per attempt', async function (scope) {
         const { execution } = await attachmentFixture(scope.cleanup, defaultAttachmentLimits);
         await execution.runAttempt(work, { index: 0 }, async function rejectInvalidMetadata() {
             const attachments = execution.context.forProducer({ kind: 'case' });
@@ -307,8 +366,22 @@ export const testNode = suite('Runtime attachment validation', [
                 }, { name: 'AttachmentOperationError' });
             }
         });
-        scope.assert.equal(execution.takeErrors({ kind: 'case', work, attempt: { index: 0 } }).length, 100);
-        scope.assert.deepEqual(execution.takeErrors({ kind: 'case', work, attempt: { index: 0 } }), []);
+        scope.assert(
+            defineCompositeAssertion({
+                name: 'invalid metadata and JSON failures remain bounded per attempt',
+                assert(check) {
+                    return check.group([
+                        check.equal(
+                            execution
+                                .takeErrors({ kind: 'case', work, attempt: { index: 0 } })
+                                .length,
+                            100
+                        ),
+                        check.deepEqual(execution.takeErrors({ kind: 'case', work, attempt: { index: 0 } }), [])
+                    ]);
+                }
+            })
+        );
 
         return scope.assert.collect();
     })

@@ -1,9 +1,10 @@
-export function consumerEnvironment(environment: Readonly<NodeJS.ProcessEnv>, directory: string): NodeJS.ProcessEnv {
+import { dirname } from 'node:path';
+
+export function consumerEnvironment(directory: string): Readonly<Record<string, string>> {
     const hook = new URL('./consumer-isolation.ts', import.meta.url);
-    const options = [ environment.NODE_OPTIONS ?? '', `--import=${hook.href}` ];
+    hook.searchParams.set('root', directory);
     return {
-        ...environment,
-        NODE_OPTIONS: options.join(' ').trim(),
-        OVERKILL_PACKAGE_SMOKE_ROOT: directory
+        PATH: dirname(process.execPath),
+        NODE_OPTIONS: `--no-preserve-symlinks --no-preserve-symlinks-main --import=${hook.href}`
     };
 }

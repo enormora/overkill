@@ -1,8 +1,11 @@
-import type { CompositeAssertionReturn } from '@overkill-dev/test/assert';
-import { type CompositeCheckBuilder } from '@overkill-dev/test/assert';
-import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import {
+    type CompositeAssertionReturn,
+    type CompositeCheckBuilder,
+    defineCompositeAssertion
+} from '@overkill-dev/test/assert';
+
 import { table, suite } from '@overkill-dev/test';
 
 import type { RunResult } from '../../packages/engine/engine.entry-point.ts';
@@ -56,10 +59,10 @@ function modelSource(nested: boolean, mode: 'capture' | 'invalid' | 'replay'): s
         .join('\n');
 }
 
-const modelMismatchChecks = (
+const modelMismatchChecks = function (
     check: CompositeCheckBuilder<'assert'>,
     result: RunResult
-): CompositeAssertionReturn<'assert'> => {
+): CompositeAssertionReturn<'assert'> {
     return check.group([
         check.equal(result.summary.failed, 1),
         check.deepEqual(result.runnerErrors, []),
@@ -93,10 +96,10 @@ const verifyCorpus = defineCompositeAssertion({
     name: 'verify corpus',
     async assert(check, project: ReplayProject, file: string) {
         const profile = project.command.config.profiles.cases;
-        if (profile === undefined || profile === null) {
+        if (profile === undefined) {
             return check.defined(profile);
         }
-        const initialChecks = check.defined(profile);
+
         if (profile.testFamily !== 'property') {
             throw new TypeError('Expected property profile.');
         }
@@ -116,22 +119,11 @@ const verifyCorpus = defineCompositeAssertion({
         const target = regression.perTest[0]?.property?.invocations.find(function (invocation) {
             return (invocation.summary?.accounting.phases['checked-in-corpus'].executed ?? 0) > 0;
         });
-        if (target === undefined || target === null) {
-            return check.group([ initialChecks, intermediateChecks, check.defined(target) ]);
-        }
         return check.group([
-            initialChecks,
             intermediateChecks,
-            check.defined(target),
-            check.equal(
-                target
-                    .summary
-                    ?.accounting
-                    .phases
-                    .exploration
-                    .executed,
-                0
-            )
+            check.partialDeepEqual(target ?? {}, {
+                summary: { accounting: { phases: { exploration: { executed: 0 } } } }
+            })
         ]);
     }
 });

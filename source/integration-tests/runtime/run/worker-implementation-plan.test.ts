@@ -58,7 +58,7 @@ async function referencePlan(root: string, name: string, signal: AbortSignal): P
 async function project(signal: AbortSignal, use: (root: string) => Promise<void>): Promise<void> {
     await using temporary = await startResources({
         resources: { directory: createTemporaryDirectoryResource('directory') },
-        signal: signal
+        signal
     });
     try {
         await use(temporary.context.directory.path);

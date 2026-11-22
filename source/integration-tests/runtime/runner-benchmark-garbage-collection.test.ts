@@ -1,9 +1,8 @@
-import type { ParameterizedTestScope } from '@overkill-dev/test';
-import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { execFile } from 'node:child_process';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { table, type TestScope, suite, test } from '@overkill-dev/test';
 
 import type { RunResult } from '../../packages/engine/engine.entry-point.ts';
@@ -74,31 +73,22 @@ const assertRequestedHost = defineCompositeAssertion({
 const assertGarbageCollectionRun = defineCompositeAssertion({
     name: 'garbage collection run',
     assert(check, result: RunResult) {
-        const initialChecks = check.group([
-            check.equal(result.summary.passed, 1),
-            check.deepEqual(result.runnerErrors, [])
-        ]);
-        const measured = result.perTest[0]?.benchmark;
+        const tested = result.perTest[0];
+        const measured = tested?.benchmark;
         if (measured === undefined || measured === null) {
-            return check.group([ initialChecks, check.defined(measured) ]);
-        }
-        const intermediateChecks = check.group([
-            check.defined(measured),
-            check.equal(measured.metrics.exposed?.median, 1),
-            check.partialDeepEqual(measured.lifecycle ?? {}, {
-                policy: { garbageCollection: 'after-sample' },
-                garbageCollection: { mode: 'after-sample', completed: 3, failures: 0 }
-            })
-        ]);
-        const attempted = result.perTest[0]?.attempts[0].benchmark;
-        if (attempted === undefined || attempted === null) {
-            return check.group([ initialChecks, intermediateChecks, check.defined(attempted) ]);
+            return check.group([ check.defined(measured), check.notNull(measured) ]);
         }
         return check.group([
-            initialChecks,
-            intermediateChecks,
-            check.defined(attempted),
-            check.deepEqual(attempted, measured)
+            check.equal(result.summary.passed, 1),
+            check.deepEqual(result.runnerErrors, []),
+            check.partialDeepEqual(measured, {
+                metrics: { exposed: { median: 1 } },
+                lifecycle: {
+                    policy: { garbageCollection: 'after-sample' },
+                    garbageCollection: { mode: 'after-sample', completed: 3, failures: 0 }
+                }
+            }),
+            check.deepEqual({ benchmark: tested?.attempts[0].benchmark }, { benchmark: measured })
         ]);
     }
 });
@@ -149,6 +139,17 @@ async function runExposedGarbageCollectionProbe(): Promise<string> {
     });
 }
 
+const directOriginalHost = defineCompositeAssertion({
+    name: 'preserves the original direct worker host',
+    assert(check, profile: RunCommand['config']['profiles'][string] | undefined) {
+        if (profile === undefined) {
+            return check.defined(profile);
+        }
+        return profile.execution.processModel === 'worker-pool'
+            ? check.deepEqual(profile.execution.hostProcess, { kind: 'direct' })
+            : check.defined(profile);
+    }
+});
 export const testNode = suite('benchmark GC process boundaries', [
     test(
         'rejects direct engine GC even when the caller explicitly exposes it',
@@ -192,7 +193,7 @@ export const testNode = suite('benchmark GC process boundaries', [
         caseTitle(boundary) {
             return boundary;
         },
-        async test(scope: ParameterizedTestScope<Boundary>) {
+        async test(scope) {
             const boundary = scope.parameters;
 
             const originalGc = globalThis.gc;
@@ -200,11 +201,7 @@ export const testNode = suite('benchmark GC process boundaries', [
             const listed = await orchestrator.bench.list(command, { timing: null });
             scope.assert(assertRequestedHost, listed.facts.execution);
 
-            const originalHostProfile = command.config.profiles.bench;
-            scope.require.defined(originalHostProfile);
-            if (originalHostProfile.execution.processModel === 'worker-pool') {
-                scope.assert.deepEqual(originalHostProfile.execution.hostProcess, { kind: 'direct' });
-            }
+            scope.assert(directOriginalHost, command.config.profiles.bench);
 
             const result = await orchestrator.bench.run(command, { timing: null });
             scope.assert(assertGarbageCollectionRun, result);

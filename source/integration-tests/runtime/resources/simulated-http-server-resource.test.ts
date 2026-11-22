@@ -1,10 +1,11 @@
 import { defineCompositeAssertion } from '@overkill-dev/test/assert';
-import { defineMacro, suite, test, type TestScope } from '@overkill-dev/test';
+import { defineMacro, suite, test } from '@overkill-dev/test';
+import { httpScenarioEvidence } from '../../../test-support/http-scenario-assertions.ts';
 
 import { resourceAttachments } from '../../../attachments/attachment-context.ts';
 
 import { defineSimulatedHttpServer } from '../../../simulation/simulation.ts';
-import type { HttpTranscript } from '../../../transcript/http-transcript.ts';
+
 import { ResourceLifecycleError } from '../../../resources/resource-lifecycle-error.ts';
 import { startResources } from '../../../resources/resource-session.ts';
 import { defineRuntime } from '../../../resources/resources.ts';
@@ -56,20 +57,19 @@ const assertSimulatedHttpResourceResponses = defineCompositeAssertion({
     }
 });
 
-const assertSimulatedHttpResource = defineMacro((title: string) =>
-    test(title, async (scope: TestScope) => {
-        const simulation = defineSimulatedHttpServer({
-            name: 'api',
-            scenarios: {
-                default: { status: 200, title: 'standard responses' },
-                outage: { status: 503, title: 'upstream outage' }
-            },
-            handle(_request, scenario) {
-                return Response.json({ key: scenario.key }, { status: scenario.descriptor.status });
-            }
-        });
+const assertSimulatedHttpResource = defineMacro(function (title: string) {
+    return test(title, async function (scope) {
         const resource = createSimulatedHttpServerResource({
-            simulation,
+            simulation: defineSimulatedHttpServer({
+                name: 'api',
+                scenarios: {
+                    default: { status: 200, title: 'standard responses' },
+                    outage: { status: 503, title: 'upstream outage' }
+                },
+                handle(_request, scenario) {
+                    return Response.json({ key: scenario.key }, { status: scenario.descriptor.status });
+                }
+            }),
             address: { kind: 'loopback', port: 0 }
         });
         const session = await startResources({ resources: { api: resource }, signal: testSignal() });
@@ -78,37 +78,38 @@ const assertSimulatedHttpResource = defineMacro((title: string) =>
 
         scope.assert(assertSimulatedHttpResourceDescriptor, resource);
         await scope.assert(assertSimulatedHttpResourceResponses, defaultResponse, outageResponse);
-        const simulatedHttpTranscriptTranscript: HttpTranscript<{ readonly scenario: string; }> = session
-            .context
-            .api
-            .transcript;
-        const simulatedHttpTranscriptOutageEntry = simulatedHttpTranscriptTranscript.lastEntry;
-
-        scope.require.defined(simulatedHttpTranscriptOutageEntry);
-        scope.assert.equal(simulatedHttpTranscriptTranscript.entryCount, 2);
-        scope.assert.equal(simulatedHttpTranscriptOutageEntry[0], 'http');
-        if (simulatedHttpTranscriptOutageEntry[0] === 'http') {
-            scope.assert.deepEqual(simulatedHttpTranscriptOutageEntry[1].context, { scenario: 'outage' });
-        }
+        scope.assert(httpScenarioEvidence, {
+            count: session.context.api.transcript.entryCount,
+            entry: session.context.api.transcript.lastEntry
+        }, { count: 2, scenario: 'outage', url: null });
 
         await session.disposeOnce({ signal: testSignal() });
 
         return scope.assert.collect();
-    })
-);
+    });
+});
 
-const assertHandlerErrorsFailResourceDisposal = defineMacro((title: string) =>
-    test(title, async (scope: TestScope) => {
+const handlerDisposalFailure = defineCompositeAssertion({
+    name: 'handler failures remain attached to resource disposal',
+    assert(check, failure: unknown, handlerError: Error) {
+        if (!(failure instanceof ResourceLifecycleError)) {
+            return check.instanceOf(failure, ResourceLifecycleError);
+        }
+        return check.deepEqual(failure.failures(), [ { cause: handlerError, phase: 'dispose', resourceName: 'api' } ]);
+    }
+});
+
+const assertHandlerErrorsFailResourceDisposal = defineMacro(function (title: string) {
+    return test(title, async function (scope) {
         const handlerError = new Error('handler exploded');
-        const simulation = defineSimulatedHttpServer({
-            name: 'api',
-            scenarios: { default: { title: 'standard responses' } },
-            handle() {
-                throw handlerError;
-            }
-        });
         const resource = createSimulatedHttpServerResource({
-            simulation,
+            simulation: defineSimulatedHttpServer({
+                name: 'api',
+                scenarios: { default: { title: 'standard responses' } },
+                handle() {
+                    throw handlerError;
+                }
+            }),
             address: { kind: 'loopback', port: 0 }
         });
         const session = await startResources({ resources: { api: resource }, signal: testSignal() });
@@ -117,30 +118,22 @@ const assertHandlerErrorsFailResourceDisposal = defineMacro((title: string) =>
         const disposalError = await rejectedValue(session.disposeOnce({ signal: testSignal() }));
 
         scope.assert.equal(response.status, 500);
-        scope.require.instanceOf(disposalError, ResourceLifecycleError);
-        scope.assert.deepEqual(disposalError.failures(), [
-            {
-                cause: handlerError,
-                phase: 'dispose',
-                resourceName: 'api'
-            }
-        ]);
+        scope.assert(handlerDisposalFailure, disposalError, handlerError);
 
         return scope.assert.collect();
-    })
-);
+    });
+});
 
-const assertExplicitResourceAddress = defineMacro((title: string) =>
-    test(title, async (scope) => {
-        const simulation = defineSimulatedHttpServer({
-            name: 'api',
-            scenarios: { default: { title: 'standard responses' } },
-            handle() {
-                return Response.json({ status: 'ok' });
-            }
-        });
+const assertExplicitResourceAddress = defineMacro(function (title: string) {
+    return test(title, async function (scope) {
         const resource = createSimulatedHttpServerResource({
-            simulation,
+            simulation: defineSimulatedHttpServer({
+                name: 'api',
+                scenarios: { default: { title: 'standard responses' } },
+                handle() {
+                    return Response.json({ status: 'ok' });
+                }
+            }),
             address: { kind: 'host', host: '127.0.0.1', port: 0 }
         });
         const session = await startResources({ resources: { api: resource }, signal: testSignal() });
@@ -150,23 +143,22 @@ const assertExplicitResourceAddress = defineMacro((title: string) =>
         await session.disposeOnce({ signal: testSignal() });
 
         return scope.assert.collect();
-    })
-);
+    });
+});
 
-const assertRuntimeScenarioSelectsBaseUrl = defineMacro((title: string) =>
-    test(title, async (scope) => {
-        const simulation = defineSimulatedHttpServer({
-            name: 'api',
-            scenarios: {
-                default: { status: 200, title: 'standard responses' },
-                outage: { status: 503, title: 'upstream outage' }
-            },
-            handle(_request, scenario) {
-                return Response.json({ key: scenario.key }, { status: scenario.descriptor.status });
-            }
-        });
+const assertRuntimeScenarioSelectsBaseUrl = defineMacro(function (title: string) {
+    return test(title, async function (scope) {
         const resource = createSimulatedHttpServerResource({
-            simulation,
+            simulation: defineSimulatedHttpServer({
+                name: 'api',
+                scenarios: {
+                    default: { status: 200, title: 'standard responses' },
+                    outage: { status: 503, title: 'upstream outage' }
+                },
+                handle(_request, scenario) {
+                    return Response.json({ key: scenario.key }, { status: scenario.descriptor.status });
+                }
+            }),
             address: { kind: 'loopback', port: 0 }
         });
         const runtime = defineRuntime({
@@ -179,27 +171,33 @@ const assertRuntimeScenarioSelectsBaseUrl = defineMacro((title: string) =>
         const session = await startRuntime({ runtime, signal: testSignal() });
         const response = await fetch(session.context.api.baseUrl);
 
-        scope.assert.equal(resource.scenarios.api.timing, 'request-routed');
-        scope.assert.equal(response.status, 503);
-        scope.assert.deepEqual(await response.json(), { key: 'outage' });
+        await scope.assert(defineCompositeAssertion({
+            name: 'routes resource requests to the selected scenario',
+            async assert(check) {
+                return check.group([
+                    check.equal(resource.scenarios.api.timing, 'request-routed'),
+                    check.equal(response.status, 503),
+                    check.deepEqual(await response.json(), { key: 'outage' })
+                ]);
+            }
+        }));
 
         await session.disposeOnce({ signal: testSignal() });
 
         return scope.assert.collect();
-    })
-);
+    });
+});
 
-const assertScenarioContextFallbacks = defineMacro((title: string) =>
-    test(title, async (scope) => {
-        const simulation = defineSimulatedHttpServer({
-            name: 'api',
-            scenarios: { default: { title: 'standard responses' } },
-            handle() {
-                return Response.json({ status: 'ok' });
-            }
-        });
+const assertScenarioContextFallbacks = defineMacro(function (title: string) {
+    return test(title, async function (scope) {
         const resource = createSimulatedHttpServerResource({
-            simulation,
+            simulation: defineSimulatedHttpServer({
+                name: 'api',
+                scenarios: { default: { title: 'standard responses' } },
+                handle() {
+                    return Response.json({ status: 'ok' });
+                }
+            }),
             address: { kind: 'loopback', port: 0 }
         });
         const acquired = await resource.acquire({
@@ -240,8 +238,8 @@ const assertScenarioContextFallbacks = defineMacro((title: string) =>
         );
 
         return scope.assert.collect();
-    })
-);
+    });
+});
 
 export const testNode = suite('Simulated HTTP server resource', [
     assertSimulatedHttpResource('simulated HTTP server resources expose acquired server handles'),

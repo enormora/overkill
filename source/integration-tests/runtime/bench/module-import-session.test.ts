@@ -13,12 +13,12 @@ type InvalidFrame = {
     readonly message: string;
 };
 
-async function modulePeer(scope: Pick<TestScope, 'cleanup'>): Promise<ModulePeer> {
+async function modulePeer(cleanup: TestScope['cleanup']): Promise<ModulePeer> {
     const session = await createModuleImportSession();
-    scope.cleanup(session.close);
+    cleanup(session.close);
     session.start();
     const socket = connect({ host: '127.0.0.1', port: Number(session.arguments[0]) });
-    scope.cleanup(function closePeer() {
+    cleanup(function closePeer() {
         socket.destroy();
     });
     socket.on('error', function closeRejectedPeer() {
@@ -64,7 +64,7 @@ export const testNode = suite('module import control protocol', [
             definitionLocations: [ { kind: 'unknown' } ],
             title: 'open and close frame readers',
             async body(innerScope) {
-                const peer = await modulePeer(innerScope);
+                const peer = await modulePeer(innerScope.cleanup);
                 peer.socket.end(`${JSON.stringify(importedMessage(peer.token))}\n`);
                 await innerScope.assert.rejects(async function reportInterruptedSession() {
                     return await peer.session.report();
@@ -97,7 +97,7 @@ export const testNode = suite('module import control protocol', [
     test(
         'starts import only after readiness and returns authenticated metadata',
         async function (scope) {
-            const peer = await modulePeer(scope);
+            const peer = await modulePeer(scope.cleanup);
             peer.socket.write(`${JSON.stringify({ kind: 'ready', token: peer.token })}\n`);
             const commandEvent = await once(peer.socket, 'data');
             const command: unknown = commandEvent[0];
@@ -122,7 +122,7 @@ export const testNode = suite('module import control protocol', [
         async test(scope) {
             const frame = scope.parameters;
 
-            const peer = await modulePeer(scope);
+            const peer = await modulePeer(scope.cleanup);
             peer.socket.end(`${frame.frame(peer.token)}\n`);
             await scope.assert.rejects(async function rejectedReport() {
                 return await peer.session.report();
@@ -131,7 +131,7 @@ export const testNode = suite('module import control protocol', [
         }
     }),
     test('rejects a second readiness command', async function (scope) {
-        const peer = await modulePeer(scope);
+        const peer = await modulePeer(scope.cleanup);
         const message = `${JSON.stringify({ kind: 'ready', token: peer.token })}\n`;
         peer.socket.write(message);
         await once(peer.socket, 'data');
@@ -142,7 +142,7 @@ export const testNode = suite('module import control protocol', [
         return scope.assert.collect();
     }),
     test('rejects malformed JSON without an unhandled owner rejection', async function (scope) {
-        const peer = await modulePeer(scope);
+        const peer = await modulePeer(scope.cleanup);
         peer.socket.end('not-json\n');
         await scope.assert.rejects(async function rejectedReport() {
             return await peer.session.report();
@@ -150,7 +150,7 @@ export const testNode = suite('module import control protocol', [
         return scope.assert.collect();
     }),
     test('bounds a frame before JSON parsing', async function (scope) {
-        const peer = await modulePeer(scope);
+        const peer = await modulePeer(scope.cleanup);
         peer.socket.end('x'.repeat(65_537));
         await scope.assert.rejects(async function rejectedReport() {
             return await peer.session.report();

@@ -1,5 +1,7 @@
 import { createServer } from 'node:http';
 import { setTimeout as wait } from 'node:timers/promises';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+
 import { suite, test, type TestScope } from '@overkill-dev/test';
 
 import { resourceAttachments } from '../../../attachments/attachment-context.ts';
@@ -67,8 +69,36 @@ async function waitForOutput(owner: LocalProcessOwner, value: string): Promise<v
     throw new Error(`Process output did not include "${value}".`);
 }
 
+const readyHttpService = defineCompositeAssertion({
+    name: 'ready HTTP service retains its request and response',
+    assert(check, handle: LocalHttpResourceHandle<LocalHttpServiceHandle>, responseBody: string) {
+        const entry = handle.transcript.firstEntry;
+        if (entry === null) {
+            return check.defined(entry);
+        }
+        const details = entry[0] === 'http' && entry[1].outcome.kind === 'response'
+            ? [
+                check.equal(entry[1].request.method, 'GET'),
+                check.equal(entry[1].request.url, `${handle.baseUrl}/`),
+                check.deepEqual(entry[1].outcome.response.body, {
+                    bytes: textEncoder.encode('ready'),
+                    kind: 'complete'
+                })
+            ]
+            : [];
+        return check.group([
+            check.equal(handle.endpoint.host, '127.0.0.1'),
+            check.true(handle.endpoint.port > 0),
+            check.equal(responseBody, 'ready'),
+            check.equal(handle.transcript.entryCount, 1),
+            check.equal(entry[0], 'http'),
+            ...details
+        ]);
+    }
+});
+
 export const testNode = suite('Local service resource', [
-    test('local-service resources preserve lifecycle metadata', (scope) => {
+    test('local-service resources preserve lifecycle metadata', function (scope) {
         const database = testDatabase();
         const service = defineLocalServiceResource({
             name: 'redis',
@@ -99,7 +129,7 @@ export const testNode = suite('Local service resource', [
 
         return scope.assert.collect();
     }),
-    test('local-service resources hide owner handles and dispose once', async (scope) => {
+    test('local-service resources hide owner handles and dispose once', async function (scope) {
         const events: string[] = [];
         const service = defineLocalServiceResource({
             name: 'service',
@@ -155,7 +185,7 @@ export const testNode = suite('Local service resource', [
 
         return scope.assert.collect();
     }),
-    test('local-service resources clean up after readiness failures', async (scope) => {
+    test('local-service resources clean up after readiness failures', async function (scope) {
         const events: string[] = [];
         const readyError = new Error('not ready');
         const service = defineLocalServiceResource({
@@ -192,7 +222,7 @@ export const testNode = suite('Local service resource', [
 
         return scope.assert.collect();
     }),
-    test('local-service resources support projected scopes', async (scope: TestScope) => {
+    test('local-service resources support projected scopes', async function (scope: TestScope) {
         const database = testDatabase();
         const service = defineLocalServiceResource({
             name: 'mongo',
@@ -267,7 +297,7 @@ export const testNode = suite('Local service resource', [
 
         return scope.assert.collect();
     }),
-    test('local HTTP service resources expose ready loopback endpoints', async (scope: TestScope) => {
+    test('local HTTP service resources expose ready loopback endpoints', async function (scope) {
         const service = createLocalHttpServiceResource({
             name: 'app',
             scope: 'per-case',
@@ -290,23 +320,7 @@ export const testNode = suite('Local service resource', [
         const response = await fetch(session.context.app.baseUrl);
         const responseBody = await response.text();
 
-        scope.assert.equal(session.context.app.endpoint.host, '127.0.0.1');
-        scope.assert.equal(session.context.app.endpoint.port > 0, true);
-        scope.assert.equal(responseBody, 'ready');
-        const localHttpTranscriptHandle: LocalHttpResourceHandle<LocalHttpServiceHandle> = session.context.app;
-        const localHttpTranscriptEntry = localHttpTranscriptHandle.transcript.firstEntry;
-
-        scope.require.defined(localHttpTranscriptEntry);
-        scope.assert.equal(localHttpTranscriptHandle.transcript.entryCount, 1);
-        scope.assert.equal(localHttpTranscriptEntry[0], 'http');
-        if (localHttpTranscriptEntry[0] === 'http' && localHttpTranscriptEntry[1].outcome.kind === 'response') {
-            scope.assert.equal(localHttpTranscriptEntry[1].request.method, 'GET');
-            scope.assert.equal(localHttpTranscriptEntry[1].request.url, `${localHttpTranscriptHandle.baseUrl}/`);
-            scope.assert.deepEqual(localHttpTranscriptEntry[1].outcome.response.body, {
-                bytes: textEncoder.encode('ready'),
-                kind: 'complete'
-            });
-        }
+        scope.assert(readyHttpService, session.context.app, responseBody);
 
         await session.disposeOnce({ signal: testSignal });
         scope.assert.equal(await rejectedValue(fetch(session.context.app.baseUrl)) instanceof Error, true);

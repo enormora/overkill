@@ -120,7 +120,7 @@ const assertSharedExhaustion = defineCompositeAssertion({
         const artifacts = runtime.runState.artifacts();
         const initialChecks = check.equal(artifacts.length, 1);
         const artifact = artifacts[0];
-        if (artifact === undefined || artifact === null) {
+        if (artifact === undefined) {
             return check.group([ initialChecks, check.defined(artifact) ]);
         }
         const intermediateChecks = check.group([

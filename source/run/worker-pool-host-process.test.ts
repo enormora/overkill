@@ -1,263 +1,22 @@
 import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { type TestScope, suite, test } from '@overkill-dev/test';
-
-import { createDeterministicClock } from '@enormora/clock';
-
 import {
-    createWorkerMessagePortFixture as createFakePort,
-    type WorkerMessagePortFixture as FakePort
-} from '../test-support/worker-message-port-fixture.ts';
-import { createFakeHostChild, type FakeHostChild } from '../test-support/fake-worker-pool-host-process.ts';
-import { createDefaultWorkId } from '../engine/identity.ts';
-import {
-    defaultFailureArtifactPolicy,
-    type ProcessUsageSnapshot,
-    type RunProcessUsage
-} from '../packages/engine/engine.entry-point.ts';
-import type {
-    CreatedWorkerPool,
-    WorkerPoolCreationOptions,
-    WorkerPoolProcessUsageTracker,
-    WorkerPoolHostProcessStartOptions
-} from './run-orchestrator-dependencies.ts';
-import type { WorkerPoolCommand, WorkerPoolTask } from './worker-pool-protocol.ts';
-import { serializeError, serializeWorkerPoolMessage, type WorkerPoolHostCommand } from './worker-pool-host-protocol.ts';
-import { createHostedWorkerPool } from './worker-pool-host-process.ts';
-
-type WorkerMessagePort = Readonly<WorkerPoolTask['port']>;
-
-type HostedPoolFixture = {
-    readonly child: FakeHostChild;
-    readonly pool: CreatedWorkerPool;
-};
-
-type RunningTaskFixture = HostedPoolFixture & {
-    readonly result: Promise<unknown>;
-};
-
-type ForwardingFixture = RunningTaskFixture & {
-    readonly controller: AbortController;
-    readonly output: readonly string[];
-    readonly port: FakePort;
-};
-
-type ProcessUsageTrackingFixture = HostedPoolFixture & {
-    readonly observedSamples: readonly number[];
-    readonly tracker: WorkerPoolProcessUsageTracker;
-};
-
-function workerPoolOptions(overrides: Partial<WorkerPoolCreationOptions> = {}): WorkerPoolCreationOptions {
-    return {
-        cwd: '/project',
-        hostProcess: { kind: 'child', nodeArguments: [ '--expose-gc' ] },
-        testFamily: 'integration',
-        workerCount: 2,
-        workerLifecycle: 'reuse',
-        ...overrides
-    };
-}
-
-function workerPoolCommand(): WorkerPoolCommand {
-    return {
-        implementations: null,
-        implementationContext: { projectRoot: '/project' },
-
-        family: null,
-        debug: { mode: 'off', selectors: [] },
-        failureArtifacts: defaultFailureArtifactPolicy,
-        capture: 'buffered',
-        replay: null,
-        snapshots: null,
-        seed: '0',
-        benchmarkNormalization: null,
-        benchmarkGarbageCollection: null,
-        propertyPolicy: null,
-        attachmentEndpoint: null,
-        retryPolicy: null,
-        collectionTimeoutMilliseconds: 100,
-        cwd: '/project',
-        definitionLocationCapture: 'enabled',
-        engine: { kind: 'default' },
-        hardTimeoutMilliseconds: 200,
-        maxConcurrency: 5,
-        hostProcess: { kind: 'child', nodeArguments: [ '--expose-gc' ] },
-        paths: [ 'test.ts' ],
-        processBudgets: {
-            activeResourceCount: null,
-            javaScriptEngineHeapBytes: null,
-            residentSetBytes: null,
-            residentSetGrowthBytesPerSecond: null
-        },
-        processUsageSamplingIntervalMilliseconds: 10,
-        root: { annotations: {}, controls: {}, title: process.cwd() },
-        scheduling: 'serial',
-        testFamily: 'integration',
-        timeoutMilliseconds: 100,
-        workerLifecycle: 'reuse'
-    };
-}
-
-function messagePort(port: FakePort): WorkerMessagePort {
-    return port as unknown as WorkerMessagePort;
-}
-
-function abortSignal(): AbortSignal {
-    const controller = new AbortController();
-
-    return controller.signal;
-}
-
-function commandKind(command: WorkerPoolHostCommand): WorkerPoolHostCommand['kind'] {
-    return command.kind;
-}
-
-function newRangeError(message: string): RangeError {
-    return new RangeError(message);
-}
-
-function processUsageSample(
-    capturedAtMicroseconds: number,
-    residentSetBytes: number
-): ProcessUsageSnapshot {
-    return {
-        activeResourceCount: capturedAtMicroseconds / 10,
-        activeResourceTypes: [ 'temporary-directory' ],
-        capturedAtMicroseconds,
-        javaScriptEngineHeapBytes: residentSetBytes / 2,
-        residentSetBytes
-    };
-}
-
-const ignoreStartOptions: (options: WorkerPoolHostProcessStartOptions) => void = function ignoreStartOptions() {
-    return undefined;
-};
-
-function closePoolAfterTest(cleanup: TestScope['cleanup'], fixture: HostedPoolFixture): void {
-    cleanup(async function closeHostedPool() {
-        await fixture.pool.destroy();
-        fixture.child.emitExit();
-    });
-}
-
-function createPoolFixture(
-    cleanup: TestScope['cleanup'],
-    options: WorkerPoolCreationOptions,
-    onStart: (options: WorkerPoolHostProcessStartOptions) => void
-): HostedPoolFixture {
-    const child = createFakeHostChild();
-
-    const fixture = {
-        child,
-        pool: createHostedWorkerPool({
-            wallClock: createDeterministicClock({ initialUnixEpochMicroseconds: 0n }),
-            environmentVariables: {},
-            options,
-            startWorkerPoolHost(startOptions) {
-                onStart(startOptions);
-
-                return child;
-            }
-        })
-    };
-    closePoolAfterTest(cleanup, fixture);
-    return fixture;
-}
-
-async function waitForRunTaskCommand(
-    child: FakeHostChild
-): Promise<Extract<WorkerPoolHostCommand, { readonly kind: 'run-task'; }>> {
-    for (let attempt = 0; attempt < 5; attempt += 1) {
-        const command = child.sentCommands().find(function isRunTask(candidate) {
-            return candidate.kind === 'run-task';
-        });
-
-        if (command !== undefined) {
-            return command;
-        }
-
-        await Promise.resolve();
-    }
-
-    throw new Error('Expected hosted worker-pool run-task command.');
-}
-
-async function runTask(pool: CreatedWorkerPool): Promise<unknown> {
-    return pool.run({
-        workloadInputs: [],
-        assignedUnits: [ {
-            traceUnit: { familyVariant: null, key: 'test.ts', mode: 'case', runtimes: [], workload: null },
-            attempt: 'attempt-0',
-            work: [ createDefaultWorkId({ file: 'test.ts', suite: [], title: 'case', params: null }) ]
-        } ],
-        assignedWork: [ createDefaultWorkId({ file: 'test.ts', suite: [], title: 'case', params: null }) ],
-        boundaryUseCounts: [],
-        lane: 'lane',
-        lifecycle: { endpoint: null, token: 'lifecycle' },
-        projectedResources: { resources: [] },
-        runWork: [ createDefaultWorkId({ file: 'test.ts', suite: [], title: 'case', params: null }) ],
-        command: workerPoolCommand(),
-        kind: 'run',
-        port: messagePort(createFakePort()),
-        startedAtMilliseconds: 100
-    }, {
-        name: 'run',
-        signal: abortSignal(),
-        transferList: []
-    });
-}
-
-async function runCollectTask(
-    pool: CreatedWorkerPool,
-    port: FakePort,
-    signal: AbortSignal
-): Promise<unknown> {
-    return pool.run({
-        kind: 'collect',
-        command: workerPoolCommand(),
-        port: messagePort(port)
-    }, {
-        name: 'collect',
-        signal,
-        transferList: []
-    });
-}
-
-async function startRunTask(fixture: HostedPoolFixture): Promise<RunningTaskFixture> {
-    const result = runTask(fixture.pool);
-
-    await waitForRunTaskCommand(fixture.child);
-
-    return { ...fixture, result };
-}
-
-function emitTaskOutput(
-    child: FakeHostChild,
-    runTaskCommand: Extract<WorkerPoolHostCommand, { readonly kind: 'run-task'; }>
-): void {
-    child.stdout.emit('host stdout');
-    child.stderr.emit('host stderr');
-    child.emitMessage({
-        kind: 'task-message',
-        message: serializeWorkerPoolMessage({
-            capturedAtMicroseconds: 50,
-            chunk: Buffer.from('task stdout'),
-            kind: 'output',
-            stream: 'stdout'
-        }),
-        taskId: runTaskCommand.taskId
-    });
-}
-
-function resolveTask(
-    child: FakeHostChild,
-    runTaskCommand: Extract<WorkerPoolHostCommand, { readonly kind: 'run-task'; }>
-): void {
-    child.emitMessage({
-        kind: 'task-result',
-        result: { ok: true },
-        taskId: runTaskCommand.taskId
-    });
-}
+    type ForwardingFixture,
+    workerPoolOptions,
+    commandKind,
+    newRangeError,
+    ignoreStartOptions,
+    createPoolFixture,
+    waitForRunTaskCommand,
+    startRunTask,
+    emitTaskOutput,
+    resolveTask,
+    createForwardingFixture,
+    createTrackingFixture,
+    collectTwoProcessUsageSamples,
+    startTrackingWithOneSample
+} from '../test-support/hosted-worker-pool-fixture.ts';
+import { serializeError } from './worker-pool-host-protocol.ts';
 
 const assertForwardingResult = defineCompositeAssertion({
     name: 'forwarding result',
@@ -276,50 +35,6 @@ const assertForwardingResult = defineCompositeAssertion({
         ]);
     }
 });
-
-function createTrackingFixture(cleanup: TestScope['cleanup']): ProcessUsageTrackingFixture {
-    const fixture = createPoolFixture(
-        cleanup,
-        workerPoolOptions({ workerLifecycle: 'fresh-worker-per-unit' }),
-        ignoreStartOptions
-    );
-    const tracker = fixture.pool.createProcessUsageTracker?.({ samplingIntervalMilliseconds: 25 });
-    const observedSamples: number[] = [];
-
-    if (tracker === undefined) {
-        throw new Error('Expected hosted worker-pool resource tracker.');
-    }
-
-    tracker.start(function observeSample(sample) {
-        observedSamples.push(sample.capturedAtMicroseconds);
-    });
-
-    return { ...fixture, observedSamples, tracker };
-}
-
-async function collectTwoProcessUsageSamples(fixture: ProcessUsageTrackingFixture): Promise<RunProcessUsage> {
-    const start = fixture.tracker.waitForStart?.();
-
-    await Promise.resolve();
-    fixture.child.emitMessage({ kind: 'process-usage-sample', sample: processUsageSample(10, 200) });
-    await start;
-    fixture.child.emitMessage({ kind: 'process-usage-sample', sample: processUsageSample(20, 260) });
-    await fixture.tracker.waitForStart?.();
-
-    return fixture.tracker.finish();
-}
-
-async function startTrackingWithOneSample(
-    child: FakeHostChild,
-    tracker: WorkerPoolProcessUsageTracker
-): Promise<void> {
-    tracker.start();
-    const start = tracker.waitForStart?.();
-
-    await Promise.resolve();
-    child.emitMessage({ kind: 'process-usage-sample', sample: processUsageSample(10, 200) });
-    await start;
-}
 
 export const testNode = suite('Hosted worker pools', [
     test('reports a missing host process usage sample', function (scope: TestScope) {
@@ -363,42 +78,23 @@ export const testNode = suite('Hosted worker pools', [
     test(
         'forwards tasks, output, messages, and aborts',
         async function (scope) {
-            const createForwardingFixtureChild = createFakeHostChild();
-            const createForwardingFixtureOutput: string[] = [];
-            const createForwardingFixturePool = createHostedWorkerPool({
-                wallClock: createDeterministicClock({ initialUnixEpochMicroseconds: 0n }),
-                environmentVariables: { NODE_OPTIONS: '--inspect' },
-                options: workerPoolOptions(),
-                startWorkerPoolHost(options) {
-                    scope.assert.deepEqual(options.nodeArguments, [ '--expose-gc' ]);
-                    scope.assert.equal(options.testFamily, 'integration');
-
-                    return createForwardingFixtureChild;
-                }
+            const fixture = createForwardingFixture(scope.cleanup, function (options) {
+                scope.assert(
+                    defineCompositeAssertion({
+                        name: 'forwards tasks, output, messages, and aborts',
+                        assert(check) {
+                            return check.group([
+                                check.deepEqual(options.nodeArguments, [ '--expose-gc' ]),
+                                check
+                                    .equal(
+                                        options.testFamily,
+                                        'integration'
+                                    )
+                            ]);
+                        }
+                    })
+                );
             });
-            closePoolAfterTest(scope.cleanup, {
-                child: createForwardingFixtureChild,
-                pool: createForwardingFixturePool
-            });
-            const createForwardingFixturePort = createFakePort();
-            const createForwardingFixtureController = new AbortController();
-
-            createForwardingFixturePool.setHostOutputSink?.(function collectOutput(stream, chunk) {
-                createForwardingFixtureOutput.push(`${stream}:${Buffer.from(chunk).toString()}`);
-            });
-
-            const fixture = {
-                child: createForwardingFixtureChild,
-                controller: createForwardingFixtureController,
-                output: createForwardingFixtureOutput,
-                pool: createForwardingFixturePool,
-                port: createForwardingFixturePort,
-                result: runCollectTask(
-                    createForwardingFixturePool,
-                    createForwardingFixturePort,
-                    createForwardingFixtureController.signal
-                )
-            };
 
             const runTaskCommand = await waitForRunTaskCommand(fixture.child);
 
@@ -415,14 +111,21 @@ export const testNode = suite('Hosted worker pools', [
         const fixture = createTrackingFixture(scope.cleanup);
         const usage = await collectTwoProcessUsageSamples(fixture);
 
-        scope.assert.deepEqual(fixture.observedSamples, [ 10, 20 ]);
-        scope.assert.equal(usage.sampleCount, 2);
-        scope.assert.equal(usage.peakResidentSetBytes, 260);
-        scope.assert.equal(fixture.pool.options.isolateWorkers, true);
-        scope.assert.deepEqual(
-            fixture.child.sentCommands().map(commandKind),
-            [ 'configure', 'start-process-usage-tracking', 'finish-process-usage-tracking' ]
-        );
+        scope.assert(defineCompositeAssertion({
+            name: 'exposes host process usage samples',
+            assert(check) {
+                return check.group([
+                    check.deepEqual(fixture.observedSamples, [ 10, 20 ]),
+                    check.equal(usage.sampleCount, 2),
+                    check.equal(usage.peakResidentSetBytes, 260),
+                    check.equal(fixture.pool.options.isolateWorkers, true),
+                    check.deepEqual(
+                        fixture.child.sentCommands().map(commandKind),
+                        [ 'configure', 'start-process-usage-tracking', 'finish-process-usage-tracking' ]
+                    )
+                ]);
+            }
+        }));
 
         return scope.assert.collect();
     }),

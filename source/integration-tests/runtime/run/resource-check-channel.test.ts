@@ -1,7 +1,7 @@
-import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { Worker } from 'node:worker_threads';
 import { once } from 'node:events';
 import { setImmediate as scheduleDeliveryTurn } from 'node:timers';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { suite, test, type TestScope } from '@overkill-dev/test';
 
 import { createDefaultWorkId } from '../../../engine/identity.ts';

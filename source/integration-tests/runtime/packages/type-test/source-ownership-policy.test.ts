@@ -1,7 +1,6 @@
 import { table, suite, test } from '@overkill-dev/test';
-import type { TestPlan } from '../../../../engine/test-plan.ts';
-
 import * as ast from 'typescript-beta/ast';
+import type { TestPlan } from '../../../../engine/test-plan.ts';
 
 import { ownedCallback, callbackOrigin as origin } from '../../../../test-support/callback-source.ts';
 import { testDouble } from '../../../../packages/test/test.entry-point.ts';

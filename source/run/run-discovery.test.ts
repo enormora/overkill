@@ -1,6 +1,6 @@
-import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { suite, test } from '@overkill-dev/test';
 
 import { createVirtualRunDiscovery } from '../test-support/virtual-run-discovery.ts';

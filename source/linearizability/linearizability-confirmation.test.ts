@@ -11,7 +11,7 @@ const assertExhaustedConfirmation = defineCompositeAssertion({
     name: 'exhausted confirmation',
     assert(check, result: RunResult, failures: number) {
         const evidence = result.perTest[0]?.property?.invocations[0];
-        if (evidence === undefined || evidence === null) {
+        if (evidence === undefined) {
             return check.defined(evidence);
         }
         const initialChecks = check.group([
@@ -22,25 +22,24 @@ const assertExhaustedConfirmation = defineCompositeAssertion({
         ]);
         if (failures === 1) {
             return check.group([ initialChecks, check.equal(evidence.confirmedWitness, null) ]);
-        } else {
-            const confirmedWitnessChecks = check.notNull(evidence.confirmedWitness);
-            if (evidence.summary === null) {
-                return check.group([ initialChecks, confirmedWitnessChecks, check.notNull(evidence.summary) ]);
-            }
-            return check.group([
-                initialChecks,
-                confirmedWitnessChecks,
-                check.notNull(evidence.summary),
-                check.greaterThan(evidence.summary.accounting.phases.shrinking.executed, 0)
-            ]);
         }
+        const confirmedWitnessChecks = check.notNull(evidence.confirmedWitness);
+        if (evidence.summary === null) {
+            return check.group([ initialChecks, confirmedWitnessChecks, check.notNull(evidence.summary) ]);
+        }
+        return check.group([
+            initialChecks,
+            confirmedWitnessChecks,
+            check.notNull(evidence.summary),
+            check.greaterThan(evidence.summary.accounting.phases.shrinking.executed, 0)
+        ]);
     }
 });
 const assertScheduleDisagreement = defineCompositeAssertion({
     name: 'schedule disagreement',
     assert(check, result: RunResult) {
         const evidence = result.perTest[0]?.property?.invocations[0];
-        if (evidence === undefined || evidence === null) {
+        if (evidence === undefined) {
             return check.defined(evidence);
         }
         return check.group([

@@ -1,9 +1,17 @@
-import type { CompositeCheckBuilder, CompositeAssertionGroup } from '@overkill-dev/test/assert';
-import type { CompositeAssertionReference, CompositeAssertionReturn } from '@overkill-dev/test/assert';
-import { engineCasePassedChecks } from '../../../../test-support/create-test-engine.ts';
-import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import {
+    type CompositeCheckBuilder,
+    type CompositeAssertionGroup,
+    type CompositeAssertionReference,
+    type CompositeAssertionReturn,
+    defineCompositeAssertion
+} from '@overkill-dev/test/assert';
+
 import { defineMacro, test, suite } from '@overkill-dev/test';
-import { executeEngineCase, type EngineCaseBody } from '../../../../test-support/create-test-engine.ts';
+import {
+    engineCasePassedChecks,
+    executeEngineCase,
+    type EngineCaseBody
+} from '../../../../test-support/create-test-engine.ts';
 
 import {
     defineReporter,
@@ -112,7 +120,7 @@ async function executeObservedBody(body: EngineCaseBody): Promise<ObservedExecut
 function firstCaseResult(observed: ObservedExecution): RunResult['perTest'][number] {
     const [ result ] = observed.result.perTest;
 
-    if (result === undefined || result === null) {
+    if (result === undefined) {
         throw new Error('Expected result to satisfy defined.');
     }
 
@@ -122,7 +130,7 @@ function firstCaseResult(observed: ObservedExecution): RunResult['perTest'][numb
 function firstRunnerError(observed: ObservedExecution): RunResult['runnerErrors'][number] {
     const [ error ] = observed.result.runnerErrors;
 
-    if (error === undefined || error === null) {
+    if (error === undefined) {
         throw new Error('Expected error to satisfy defined.');
     }
 

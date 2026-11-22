@@ -1,4 +1,5 @@
 import { rm } from 'node:fs/promises';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { table, suite, test } from '@overkill-dev/test';
 
 import { defaultAttachmentLimits } from '../../engine/runtime-attachment.ts';
@@ -303,9 +304,7 @@ export const testNode = suite('Runner capability policy', [
         caseTitle({ fixture, model }) {
             return [ model.processModel, fixture.name ].map(String).join(', ');
         },
-        async test(scope) {
-            const { fixture, model } = scope.parameters;
-
+        async test({ assert: assertContext, parameters: { fixture, model } }) {
             const result = await orchestrator.run(createRunCommand(
                 [ fixture.path ],
                 createRunConfig(model.processModel, model.scheduling, memoryReporter)
@@ -314,12 +313,19 @@ export const testNode = suite('Runner capability policy', [
             const capabilities = runnerErrorCapabilities(result);
 
             await cleanupPolicyFixture(fixture.path);
-            scope.assert.equal(testResult?.verdict, 'runtime-policy');
-            scope.assert.equal(result.summary.runtimePolicy, 1);
-            scope.assert.equal(capabilities.includes(fixture.expectedCapability[model.processModel]), true);
+            assertContext(defineCompositeAssertion({
+                name: 'enforces microtest capability restrictions',
+                assert(check) {
+                    return check.group([
+                        check.equal(testResult?.verdict, 'runtime-policy'),
+                        check.equal(result.summary.runtimePolicy, 1)
+                    ]);
+                }
+            }));
+            assertContext.equal(capabilities.includes(fixture.expectedCapability[model.processModel]), true);
             const consolidatedProcessEnvironmentErrorsModel: MicrotestProcessModel = model.processModel;
             if (fixture.path === envPolicyFixturePath) {
-                scope.assert.equal(
+                assertContext.equal(
                     capabilityCount(
                         capabilities,
                         fixture.expectedCapability[consolidatedProcessEnvironmentErrorsModel]
@@ -328,7 +334,7 @@ export const testNode = suite('Runner capability policy', [
                 );
             }
 
-            return scope.assert.collect();
+            return assertContext.collect();
         }
     }),
     test('integration profiles ignore microtest capability restrictions', async function (scope) {

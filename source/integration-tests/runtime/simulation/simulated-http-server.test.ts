@@ -1,15 +1,14 @@
 import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { defineMacro, suite, test, type TestScope } from '@overkill-dev/test';
+import { httpScenarioEvidence } from '../../../test-support/http-scenario-assertions.ts';
 
-import type { HttpTranscript, HttpTranscriptEntry } from '../../../transcript/http-transcript.ts';
+import type { HttpTranscriptEntry } from '../../../transcript/http-transcript.ts';
 import {
     defineSimulatedHttpServer,
     defineSimulation,
     type SimulatedHttpServerDefinition
 } from '../../../simulation/simulation.ts';
 import { startSimulatedHttpServer } from '../../../simulation/simulated-http-server.ts';
-
-type AssertPostRequestBodyAssertions = { readonly assert: Pick<TestScope['assert'], 'deepEqual'>; };
 
 type CompletionOrderScenarios = {
     readonly default: { readonly title: 'standard responses'; };
@@ -52,8 +51,8 @@ const assertScenarioResponses = defineCompositeAssertion({
     }
 });
 
-const assertScenarioRouting = defineMacro((title: string) =>
-    test(title, async (scope: TestScope) => {
+const assertScenarioRouting = defineMacro(function (title: string) {
+    return test(title, async function (scope) {
         const requests: string[] = [];
         const simulation = defineSimulatedHttpServer({
             name: 'api',
@@ -82,49 +81,41 @@ const assertScenarioRouting = defineMacro((title: string) =>
             'default:/checkout?cart=full',
             'payments-500:/checkout?cart=full'
         ]);
-        const scenarioTranscriptTranscript: HttpTranscript<{ readonly scenario: string; }> = server.transcript;
-        const scenarioTranscriptBaseUrl: string = server.baseUrl;
-        const scenarioTranscriptFailureEntry = scenarioTranscriptTranscript.nthEntry(1);
-
-        scope.require.defined(scenarioTranscriptFailureEntry);
-        scope.assert.equal(scenarioTranscriptTranscript.entryCount, 3);
-        scope.assert.equal(scenarioTranscriptFailureEntry[0], 'http');
-        if (scenarioTranscriptFailureEntry[0] === 'http') {
-            scope.assert.deepEqual(scenarioTranscriptFailureEntry[1].context, { scenario: 'payments-500' });
-            scope.assert.equal(
-                scenarioTranscriptFailureEntry[1].request.url,
-                `${scenarioTranscriptBaseUrl}/checkout?cart=full`
-            );
-        }
+        scope.assert(httpScenarioEvidence, {
+            count: server.transcript.entryCount,
+            entry: server.transcript.nthEntry(1)
+        }, { count: 3, scenario: 'payments-500', url: `${server.baseUrl}/checkout?cart=full` });
 
         return scope.assert.collect();
-    })
-);
+    });
+});
 
-async function assertPostRequestBody(
-    scope: AssertPostRequestBodyAssertions
-): Promise<void> {
-    const simulation = defineSimulatedHttpServer({
-        name: 'api',
-        scenarios: { default: { title: 'standard responses' } },
-        async handle(request) {
-            return Response.json({
-                body: await request.text(),
-                method: request.method
-            });
-        }
-    });
-    await using server = await startSimulatedHttpServer({ simulation });
-    const response = await fetch(server.baseUrl, {
-        body: 'checkout=true',
-        method: 'POST'
-    });
+const assertPostRequestBody = defineCompositeAssertion({
+    name: 'POST handlers receive their request body',
+    async assert(check) {
+        const simulation = defineSimulatedHttpServer({
+            name: 'api',
+            scenarios: { default: { title: 'standard responses' } },
+            async handle(request) {
+                return Response.json({
+                    body: await request.text(),
+                    method: request.method
+                });
+            }
+        });
+        await using server = await startSimulatedHttpServer({ simulation });
+        const response = await fetch(server.baseUrl, {
+            body: 'checkout=true',
+            method: 'POST'
+        });
 
-    scope.assert.deepEqual(await response.json(), {
-        body: 'checkout=true',
-        method: 'POST'
-    });
-}
+        const actual: unknown = await response.json();
+        return check.deepEqual(actual, {
+            body: 'checkout=true',
+            method: 'POST'
+        });
+    }
+});
 
 function completionOrderSimulation(
     slowStarted: PromiseWithResolvers<undefined>,
@@ -170,8 +161,8 @@ async function completionOrderedEntries(
     });
 }
 
-const assertDisposalClosesServer = defineMacro((title: string) =>
-    test(title, async (scope) => {
+const assertDisposalClosesServer = defineMacro(function (title: string) {
+    return test(title, async function (scope) {
         const simulation = defineSimulatedHttpServer({
             name: 'api',
             scenarios: { default: { title: 'standard responses' } },
@@ -190,11 +181,11 @@ const assertDisposalClosesServer = defineMacro((title: string) =>
         scope.assert.equal(await rejectedValue(fetch(baseUrl, { signal: testSignal() })) instanceof Error, true);
 
         return scope.assert.collect();
-    })
-);
+    });
+});
 
-const assertHandlerErrorsFailDisposal = defineMacro((title: string) =>
-    test(title, async (scope) => {
+const assertHandlerErrorsFailDisposal = defineMacro(function (title: string) {
+    return test(title, async function (scope) {
         const handlerError = new Error('handler exploded');
         const simulation = defineSimulatedHttpServer({
             name: 'api',
@@ -212,11 +203,11 @@ const assertHandlerErrorsFailDisposal = defineMacro((title: string) =>
         scope.assert.equal(disposalError, handlerError);
 
         return scope.assert.collect();
-    })
-);
+    });
+});
 
-const assertNonErrorHandlerFailuresFailDisposal = defineMacro((title: string) =>
-    test(title, async (scope: TestScope) => {
+const assertNonErrorHandlerFailuresFailDisposal = defineMacro(function (title: string) {
+    return test(title, async function (scope: TestScope) {
         const simulation = defineSimulatedHttpServer({
             name: 'api',
             scenarios: { default: { title: 'standard responses' } },
@@ -241,11 +232,11 @@ const assertNonErrorHandlerFailuresFailDisposal = defineMacro((title: string) =>
         scope.assert.equal(disposalError.message, 'Simulation handler failed with a non-error value.');
 
         return scope.assert.collect();
-    })
-);
+    });
+});
 
-const assertInvalidSimulationRejected = defineMacro((title: string) =>
-    test(title, async (scope: TestScope) => {
+const assertInvalidSimulationRejected = defineMacro(function (title: string) {
+    return test(title, async function (scope: TestScope) {
         const invalidSimulation = defineSimulation({
             name: 'api',
             scenarios: { default: { title: 'standard responses' } }
@@ -260,12 +251,12 @@ const assertInvalidSimulationRejected = defineMacro((title: string) =>
         );
 
         return scope.assert.collect();
-    })
-);
+    });
+});
 
 export const testNode = suite('Simulated HTTP server', [
     assertScenarioRouting('routes default and URL-selected scenarios'),
-    test('simulated HTTP transcripts append by completion with request-start sequence numbers', async (scope) => {
+    test('simulated HTTP transcripts append by completion with request-start sequence numbers', async function (scope) {
         const slowStarted = Promise.withResolvers<undefined>();
         const releaseSlowResponse = Promise.withResolvers<undefined>();
         const simulation = completionOrderSimulation(slowStarted, releaseSlowResponse);
@@ -290,7 +281,7 @@ export const testNode = suite('Simulated HTTP server', [
     }),
     assertDisposalClosesServer('disposal closes the listener'),
     test('forwards request bodies', async function (scope) {
-        await assertPostRequestBody(scope);
+        await scope.assert(assertPostRequestBody);
 
         return scope.assert.collect();
     }),

@@ -1,5 +1,5 @@
 import { defineCompositeAssertion } from '@overkill-dev/test/assert';
-import { type TestScope, suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { defineResource } from '../packages/resources/resources.entry-point.ts';
 import { assertResourceDependencyScopes, resourceDependencyScopeAllowed } from '../resources/resource-graph.ts';
@@ -328,7 +328,7 @@ const assertErrorDescriptions = defineCompositeAssertion({
 
 export const testNode = suite('Execution plan compatibility', [
     suite('resource dependency scopes follow ownership nesting', [
-        test('dependency scopes', (scope) => {
+        test('dependency scopes', function (scope) {
             const scopes = [ 'per-run', 'per-file', 'per-suite', 'shared-per-worker', 'per-case' ] as const;
             const allowed = scopes.map(function resourceRow(resourceScope) {
                 return scopes.map(function dependencyCell(dependencyScope) {
@@ -346,7 +346,7 @@ export const testNode = suite('Execution plan compatibility', [
 
             return scope.assert.collect();
         }),
-        test('dependency graphs', (scope) => {
+        test('dependency graphs', function (scope) {
             const dependency = defineResource({
                 acquire() {
                     return 'dependency';
@@ -394,7 +394,7 @@ export const testNode = suite('Execution plan compatibility', [
         scope.assert(assertIdentityConflicts);
         return scope.assert.collect();
     }),
-    test('execution compatibility reports lifecycle and worker capacity conflicts', (scope: TestScope) => {
+    test('execution compatibility reports lifecycle and worker capacity conflicts', function (scope) {
         const plan = collectedPlan();
         const [ first, second ] = collectedRunCaseEntries(plan);
         if (first === undefined || second === undefined) {
@@ -428,7 +428,7 @@ export const testNode = suite('Execution plan compatibility', [
 
         return scope.assert.collect();
     }),
-    test('resource ownership selects lane and unit placements', (scope) => {
+    test('resource ownership selects lane and unit placements', function (scope) {
         const runPlan = resourcePlan('per-run');
         const [ firstRun, secondRun ] = requiredPlanWork(runPlan);
         const filePlan = resourcePlan('per-file');

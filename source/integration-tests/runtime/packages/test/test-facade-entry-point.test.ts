@@ -1,6 +1,9 @@
-import type { CompositeAssertionReturn } from '@overkill-dev/test/assert';
-import { type CompositeCheckBuilder } from '@overkill-dev/test/assert';
-import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import {
+    type CompositeAssertionReturn,
+    type CompositeCheckBuilder,
+    defineCompositeAssertion
+} from '@overkill-dev/test/assert';
+
 import { suite, test, type TestScope } from '@overkill-dev/test';
 import type { EngineCaseBody } from '../../../../test-support/create-test-engine.ts';
 
@@ -140,10 +143,10 @@ function firstFailedCheckSourceLocations(result: Awaited<ReturnType<typeof execu
     return failure.checks[0].sourceLocations;
 }
 
-const sourceLocationInThisFileChecks = (
+const sourceLocationInThisFileChecks = function (
     check: CompositeCheckBuilder<'assert'>,
     location: SourceLocation
-): CompositeAssertionReturn<'assert'> => {
+): CompositeAssertionReturn<'assert'> {
     if (location.kind !== 'known') {
         const initialChecks = check.equal(location.kind, 'known');
         return initialChecks;
@@ -154,12 +157,12 @@ const sourceLocationInThisFileChecks = (
     );
 };
 
-const firstSourceLocationInThisFileChecks = (
+const firstSourceLocationInThisFileChecks = function (
     check: CompositeCheckBuilder<'assert'>,
     sourceLocations: readonly SourceLocation[]
-): CompositeAssertionReturn<'assert'> => {
+): CompositeAssertionReturn<'assert'> {
     const sourceLocation = sourceLocations[0];
-    if (sourceLocation === undefined || sourceLocation === null) {
+    if (sourceLocation === undefined) {
         return check.defined(sourceLocation);
     }
     return check.group([
@@ -172,9 +175,7 @@ const assertMacroLocationForwarding = defineCompositeAssertion({
     name: 'macro location forwarding',
     assert(check, testCase: TestCase, failedSourceLocations: readonly SourceLocation[]) {
         const macroDefinitionLocation = testCase.definitionLocations[0];
-        if (macroDefinitionLocation === undefined || macroDefinitionLocation === null) {
-            return check.defined(macroDefinitionLocation);
-        }
+
         return check.group([
             check.defined(macroDefinitionLocation),
             check.equal(testCase.definitionLocations.length, 2),
@@ -208,7 +209,7 @@ const assertParameterizedBodyLocationForwarding = defineCompositeAssertion({
 const assertFacadeAuthoredCase = defineCompositeAssertion({
     name: 'facade authored case',
     assert(check, plannedCase: FacadeAuthoringExecution['plannedCase']) {
-        if (plannedCase === undefined || plannedCase === null) {
+        if (plannedCase === undefined) {
             return check.defined(plannedCase);
         }
         return check.group([
@@ -331,9 +332,7 @@ const assertFacadeRuntimePlan = defineCompositeAssertion({
     name: 'facade runtime plan',
     assert(check, plan: TestPlan) {
         const plannedCase = plan.discoveredCases[0];
-        if (plannedCase === undefined || plannedCase === null) {
-            return check.defined(plannedCase);
-        }
+
         return check.group([
             check.equal(plannedCase.testFamily, null),
             check.deepEqual(plannedCase.resourceAttachments.directResources, [

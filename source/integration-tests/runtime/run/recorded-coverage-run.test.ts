@@ -1,13 +1,16 @@
-import type { CompositeAssertionReturn } from '@overkill-dev/test/assert';
-import { type CompositeCheckBuilder } from '@overkill-dev/test/assert';
-import { defineCompositeAssertion } from '@overkill-dev/test/assert';
-import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import {
+    type CompositeAssertionReturn,
+    type CompositeCheckBuilder,
+    defineCompositeAssertion
+} from '@overkill-dev/test/assert';
+
 import { table, suite, test } from '@overkill-dev/test';
 
 import type { RunResult, RunArtifactId } from '../../../packages/engine/engine.entry-point.ts';
 import {
     withCoverageRecordFixture,
+    writeNativeCoverage,
     type CoverageRecordFixture
 } from '../../../test-support/coverage-record-fixture.ts';
 import { defaultMicrotestProfile, defaultRunConfig } from '../../../test-support/run-command-factory.ts';
@@ -18,36 +21,16 @@ import { runRecordedCoverage } from '../../../run/recorded-coverage-run.ts';
 
 const config = defaultRunConfig({ profiles: { microtest: defaultMicrotestProfile({ coverage: { outputs: [] } }) } });
 
-async function writeNativeCoverage(directory: string): Promise<void> {
-    const url = new URL('../fixtures/coverage-source.ts', import.meta.url);
-    const source = await readFile(url, 'utf8');
-    await writeFile(
-        path.join(directory, 'coverage-test.json'),
-        JSON.stringify({
-            result: [ {
-                functions: [ {
-                    functionName: '',
-                    isBlockCoverage: true,
-                    ranges: [ { count: 0, endOffset: source.length, startOffset: 0 } ]
-                } ],
-                scriptId: '1',
-                url: url.href
-            } ],
-            timestamp: 0
-        })
-    );
-}
-
-const finalArtifactsChecks = (
+const finalArtifactsChecks = function (
     check: CompositeCheckBuilder<'assert'>,
     fixture: CoverageRecordFixture,
     result: RunResult
-): CompositeAssertionReturn<'assert'> => {
+): CompositeAssertionReturn<'assert'> {
     const record = fixture.records.at(-1);
-    if (record === undefined || record === null) {
+    if (record === undefined) {
         return check.defined(record);
     }
-    if (record.result === undefined || record.result === null) {
+    if (record.result === null) {
         return check.defined(record.result);
     }
     return check.group([

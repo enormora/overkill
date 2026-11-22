@@ -1,7 +1,7 @@
 import { createRequire } from 'node:module';
 import { cp, mkdir, realpath } from 'node:fs/promises';
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
-import { getPreEmitDiagnostics, type Diagnostic, type Program } from 'typescript';
+import { flattenDiagnosticMessageText, getPreEmitDiagnostics, type Program } from 'typescript';
 
 const compilerDirectory = resolve('target/package-smoke/compiler');
 export const consumerCompilerTypes = {
@@ -23,10 +23,10 @@ export async function installConsumerTypes(): Promise<void> {
     ]);
 }
 
-export async function consumerTypeDiagnostics(program: Program, directory: string): Promise<readonly Diagnostic[]> {
+export async function consumerTypeDiagnostics(program: Program, directory: string): Promise<readonly string[]> {
     const roots = await Promise.all(
-        [ directory, join(directory, 'node_modules'), compilerDirectory ].map(function canonicalRoot(root) {
-            return realpath(root);
+        [ directory, join(directory, 'node_modules'), compilerDirectory ].map(async function canonicalRoot(root) {
+            return await realpath(root);
         })
     );
     const files = await Promise.all(
@@ -35,8 +35,8 @@ export async function consumerTypeDiagnostics(program: Program, directory: strin
             .filter(function consumerSource(source) {
                 return !program.isSourceFileDefaultLibrary(source);
             })
-            .map(function canonicalSource(source) {
-                return realpath(source.fileName);
+            .map(async function canonicalSource(source) {
+                return await realpath(source.fileName);
             })
     );
     for (const file of files) {
@@ -49,5 +49,7 @@ export async function consumerTypeDiagnostics(program: Program, directory: strin
             throw new Error(`TypeScript resolved an uninstalled declaration: ${file}`);
         }
     }
-    return getPreEmitDiagnostics(program);
+    return getPreEmitDiagnostics(program).map(function diagnosticMessage(diagnostic) {
+        return flattenDiagnosticMessageText(diagnostic.messageText, '\n');
+    });
 }

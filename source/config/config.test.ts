@@ -11,10 +11,14 @@ import {
     createSingleConfigModuleLoader,
     resolvedConfigFixturePath
 } from '../test-support/run-config-module-loader.ts';
-import { defineConfig } from './profile-config.ts';
-import type { LoadedConfig } from './config-loader.ts';
+import {
+    defineConfig,
+    type LoadedConfig,
+    type ProfileConfig,
+    type MicrotestProfileConfig
+} from '../packages/run/run.entry-point.ts';
+
 import { normalizeCoveragePolicy } from './profile-normalization.ts';
-import type { MicrotestProfileConfig, ProfileConfig } from './types.ts';
 
 type ConfigModule = {
     readonly config: unknown;
@@ -36,9 +40,7 @@ const assertDefaultMicrotestProcessUsage = defineCompositeAssertion({
     name: 'default microtest process usage',
     assert(check, config: LoadedConfig) {
         const profile = selectTestProfile('microtest', config);
-        if (profile === undefined || profile === null) {
-            return check.defined(profile);
-        }
+
         return check.group([ check.deepEqual(profile.processUsage, defaultMicrotestProfile().processUsage) ]);
     }
 });
@@ -47,9 +49,7 @@ const assertProfileTiming = defineCompositeAssertion({
     name: 'profile timing',
     assert(check, config: LoadedConfig, profileName: string, collection: 'precise' | 'summary') {
         const profile = selectTestProfile(profileName, config);
-        if (profile === undefined || profile === null) {
-            return check.defined(profile);
-        }
+
         return check.group([ check.deepEqual(profile.timings, { collection }) ]);
     }
 });
@@ -57,7 +57,7 @@ const assertProfileTiming = defineCompositeAssertion({
 function requireMicrotestProfile(
     profile: ProfileConfig | undefined
 ): MicrotestProfileConfig {
-    if (profile === undefined || profile === null) {
+    if (profile === undefined) {
         throw new Error('Expected profile to satisfy defined.');
     }
 

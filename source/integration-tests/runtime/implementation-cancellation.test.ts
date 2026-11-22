@@ -97,6 +97,17 @@ async function startPreload(directory: string, key: string): Promise<PendingPrel
     };
 }
 
+async function readyPreload(directory: string, control: PreloadControl): Promise<PendingPreload> {
+    const preload = await startPreload(directory, control.key);
+    await control.started;
+    return preload;
+}
+async function resumeChangedModule(directory: string, control: PreloadControl): Promise<string> {
+    await writeFile(join(directory, 'candidate.mjs'), "throw new Error('changed module evaluated');");
+    control.resume();
+    return await control.finished;
+}
+
 export const testNode = suite('implementation preload cancellation', [
     test(
         'closes pending delivery before delayed evaluation can import changed files',
@@ -106,19 +117,15 @@ export const testNode = suite('implementation preload cancellation', [
             scope.cleanup(async function closeControl() {
                 control.close();
             });
-            const verifyCancellationDirectory: string = directory.path;
-            const verifyCancellationPreload = await startPreload(verifyCancellationDirectory, control.key);
-            await control.started;
+            const verifyCancellationPreload = await readyPreload(directory.path, control);
             verifyCancellationPreload.controller.abort(new Error('Canceled implementation preload.'));
             await scope.assert.rejects(async function canceled() {
                 return await verifyCancellationPreload.admission;
             }, { message: 'Canceled implementation preload.' });
-            await writeFile(
-                join(verifyCancellationDirectory, 'candidate.mjs'),
-                "throw new Error('changed module evaluated');"
+            scope.assert.equal(
+                await resumeChangedModule(directory.path, control),
+                'Implementation delivery is closed.'
             );
-            control.resume();
-            scope.assert.equal(await control.finished, 'Implementation delivery is closed.');
             await scope.yieldToNextTurn();
 
             return scope.assert.collect();

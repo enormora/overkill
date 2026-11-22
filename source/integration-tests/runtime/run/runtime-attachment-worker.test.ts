@@ -1,4 +1,5 @@
 import path from 'node:path';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { suite, test, type TestScope } from '@overkill-dev/test';
 
 import { defaultAttachmentLimits } from '../../../engine/runtime-attachment.ts';
@@ -15,21 +16,24 @@ function isAttachmentCapabilityModule(value: unknown): value is AttachmentCapabi
 }
 
 export const testNode = suite('Runtime attachment worker', [
-    test('workers without a shared lifecycle use their execution token for attachments', async (scope: TestScope) => {
-        const { store } = await attachmentFixture(scope.cleanup, defaultAttachmentLimits);
-        const server = await createAttachmentServer(store, defaultAttachmentLimits);
-        await runWithWorkerAttachments(server.endpoint, null, async function attachWithoutSharedLifecycle() {
-            await resourceAttachments('service').json({ name: 'setup', mediaType: 'application/json' }, true);
-        });
-        await server.finish();
-        scope.assert.equal(store.artifacts().length, 1);
-        const artifact = store.artifacts()[0];
-        scope.require.defined(artifact);
-        scope.assert.deepEqual(artifact.payload.producer, { kind: 'resource', name: 'service' });
+    test(
+        'workers without a shared lifecycle use their execution token for attachments',
+        async function (scope: TestScope) {
+            const { store } = await attachmentFixture(scope.cleanup, defaultAttachmentLimits);
+            const server = await createAttachmentServer(store, defaultAttachmentLimits);
+            await runWithWorkerAttachments(server.endpoint, null, async function attachWithoutSharedLifecycle() {
+                await resourceAttachments('service').json({ name: 'setup', mediaType: 'application/json' }, true);
+            });
+            await server.finish();
+            scope.assert.equal(store.artifacts().length, 1);
+            const artifact = store.artifacts()[0];
+            scope.require.defined(artifact);
+            scope.assert.deepEqual(artifact.payload.producer, { kind: 'resource', name: 'service' });
 
-        return scope.assert.collect();
-    }),
-    test('separate package module instances share the active attachment context', async (scope) => {
+            return scope.assert.collect();
+        }
+    ),
+    test('separate package module instances share the active attachment context', async function (scope) {
         const { execution, store } = await attachmentFixture(scope.cleanup, defaultAttachmentLimits);
         const moduleURL = new URL(
             `../../../attachments/attachment-context${path.extname(import.meta.url)}?package-copy`,
@@ -49,7 +53,7 @@ export const testNode = suite('Runtime attachment worker', [
 
         return scope.assert.collect();
     }),
-    test('shared resource teardown keeps its attachment channel across worker tasks', async (scope) => {
+    test('shared resource teardown keeps its attachment channel across worker tasks', async function (scope) {
         const { store } = await attachmentFixture(scope.cleanup, defaultAttachmentLimits);
         const server = await createAttachmentServer(store, defaultAttachmentLimits);
         scope.cleanup(async function finishAttachmentServer() {
@@ -67,13 +71,22 @@ export const testNode = suite('Runtime attachment worker', [
         });
         scope.assert.equal(store.artifacts().length, 2);
         for (const artifact of store.artifacts()) {
-            scope.assert.equal(artifact.id.scope.kind, 'run');
-            scope.assert.deepEqual(artifact.payload.producer, { kind: 'resource', name: 'shared-service' });
-            scope.assert.deepEqual(artifact.payload.content, {
-                byteLength: artifact.payload.name === 'setup' ? 17 : 20,
-                kind: 'json',
-                value: { phase: artifact.payload.name }
-            });
+            scope.assert(
+                defineCompositeAssertion({
+                    name: 'shared resource teardown keeps its attachment channel across worker tasks',
+                    assert(check) {
+                        return check.group([
+                            check.equal(artifact.id.scope.kind, 'run'),
+                            check.deepEqual(artifact.payload.producer, { kind: 'resource', name: 'shared-service' }),
+                            check.deepEqual(artifact.payload.content, {
+                                byteLength: artifact.payload.name === 'setup' ? 17 : 20,
+                                kind: 'json',
+                                value: { phase: artifact.payload.name }
+                            })
+                        ]);
+                    }
+                })
+            );
         }
 
         return scope.assert.collect();

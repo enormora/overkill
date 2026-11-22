@@ -1,8 +1,11 @@
-import type { CompositeAssertionReturn } from '@overkill-dev/test/assert';
-import { type CompositeCheckBuilder } from '@overkill-dev/test/assert';
-import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { mkdir, mkdtemp, writeFile, rm, readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import {
+    type CompositeAssertionReturn,
+    type CompositeCheckBuilder,
+    defineCompositeAssertion
+} from '@overkill-dev/test/assert';
+
 import { type TestScope, suite, test } from '@overkill-dev/test';
 
 import type { Type } from 'typescript-beta/async';
@@ -132,11 +135,11 @@ function operands(types: ReadonlyMap<string, Type>, name: string): readonly [Typ
     return [ actual, expected ];
 }
 
-const equalityChecks = async (
+const equalityChecks = async function (
     check: CompositeCheckBuilder<'assert'>,
     analysis: TypeAnalysis,
     types: ReadonlyMap<string, Type>
-): Promise<CompositeAssertionReturn<'assert'>> => {
+): Promise<CompositeAssertionReturn<'assert'>> {
     const checks = await Promise.all([ ...equal, ...unequal ].map(async function compareOriginalTypes(name) {
         const [ actual, expected ] = operands(types, name);
         return check.annotated(name).deepEqual(await compareRelation(analysis, 'sameType', actual, expected), {
@@ -150,11 +153,11 @@ const equalityChecks = async (
     }
     return check.group([ first, ...remaining ]);
 };
-const assignabilityChecks = async (
+const assignabilityChecks = async function (
     check: CompositeCheckBuilder<'assert'>,
     analysis: TypeAnalysis,
     types: ReadonlyMap<string, Type>
-): Promise<CompositeAssertionReturn<'assert'>> => {
+): Promise<CompositeAssertionReturn<'assert'>> {
     const checks = await Promise.all(
         [ 'AnyUnknown', 'NeverString', 'Literal' ].map(async function compareDirections(name) {
             const [ source, target ] = operands(types, name);

@@ -53,7 +53,7 @@ const assertBoundedTimeline = defineCompositeAssertion({
             return check.defined(measured);
         }
         const { timeline } = measured;
-        if (timeline === undefined || timeline === null) {
+        if (timeline === null) {
             return check.defined(timeline);
         }
         return check.group([

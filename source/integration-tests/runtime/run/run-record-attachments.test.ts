@@ -1,3 +1,4 @@
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { defineMacro, suite, test } from '@overkill-dev/test';
 
 import { z } from 'zod/v4';
@@ -42,7 +43,7 @@ function parentRecord(fixture: AttachmentRunFixture): RunRecordSession {
 
 function parentSnapshot(fixture: AttachmentRunFixture): Snapshot {
     const content = Array.from(fixture.writes.values()).at(-1);
-    if (content === undefined || content === null) {
+    if (content === undefined) {
         throw new Error('Expected content to satisfy defined.');
     }
     return snapshotSchema.parse(JSON.parse(content));
@@ -76,29 +77,48 @@ async function finalizeParent(record: RunRecordSession, result: RunResult | null
     }
 }
 
-const assertSharedRecord = defineMacro((title: string, fail: boolean) =>
-    test(title, async (scope) => {
+async function startedParentRecord(fixture: AttachmentRunFixture): Promise<RunRecordSession> {
+    const record = parentRecord(fixture);
+    await record.start(null);
+    return record;
+}
+const finalizedParent = defineCompositeAssertion({
+    name: 'retains the attachment after finalizing the parent record',
+    assert(check, fixture: AttachmentRunFixture, fail: boolean) {
+        const final = parentSnapshot(fixture);
+        return check.group([
+            check.equal(final.status, fail ? 'interrupted' : 'completed'),
+            check.equal(final.result?.artifacts.length, 1)
+        ]);
+    }
+});
+const assertSharedRecord = defineMacro(function (title: string, fail: boolean) {
+    return test(title, async function (scope) {
         const fixture = await localAttachmentRunFixture(scope.cleanup);
-        const record = parentRecord(fixture);
-        await record.start(null);
+        const record = await startedParentRecord(fixture);
         let result: RunResult | null = null;
         if (fail) {
-            await scope.assert.rejects(async () => {
+            await scope.assert.rejects(async function () {
                 await captureAttachments(fixture, record, fail);
             }, { message: 'Execution escaped.' });
         } else {
             result = await captureAttachments(fixture, record, fail);
         }
-        scope.assert.equal(fixture.writes.size, 1);
-        scope.assert.equal(parentSnapshot(fixture).status, 'started');
+        scope.assert(defineCompositeAssertion({
+            name: 'keeps the invocation record started during attachment capture',
+            assert(check) {
+                return check.group([
+                    check.equal(fixture.writes.size, 1),
+                    check.equal(parentSnapshot(fixture).status, 'started')
+                ]);
+            }
+        }));
         await finalizeParent(record, result);
-        const final = parentSnapshot(fixture);
-        scope.assert.equal(final.status, fail ? 'interrupted' : 'completed');
-        scope.assert.equal(final.result?.artifacts.length, 1);
+        scope.assert(finalizedParent, fixture, fail);
 
         return scope.assert.collect();
-    })
-);
+    });
+});
 
 export const testNode = suite('attachment recording shares its invocation record', [
     assertSharedRecord('successful attachments leave completion to the invocation owner', false),

@@ -1,5 +1,5 @@
-import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { setImmediate as scheduleImmediate } from 'node:timers';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { suite, test } from '@overkill-dev/test';
 
 import type { CaseId, TestPlan } from '../../../packages/engine/engine.entry-point.ts';

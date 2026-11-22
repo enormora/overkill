@@ -213,10 +213,10 @@ const assertScenarioRuntimeIdentities = defineCompositeAssertion({
     assert(check, defaultExpansion: TestPlan, selectedExpansion: TestPlan) {
         const defaultRuntime = defaultExpansion.cases[0].workId.runtimes[0];
         const selectedRuntime = selectedExpansion.cases[0].workId.runtimes[0];
-        if (defaultRuntime === undefined || defaultRuntime === null) {
+        if (defaultRuntime === undefined) {
             return check.defined(defaultRuntime);
         }
-        if (selectedRuntime === undefined || selectedRuntime === null) {
+        if (selectedRuntime === undefined) {
             return check.defined(selectedRuntime);
         }
         return check.group([

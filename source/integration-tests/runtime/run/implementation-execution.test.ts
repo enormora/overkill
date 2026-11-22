@@ -1,9 +1,12 @@
-import type { CompositeAssertionReturn } from '@overkill-dev/test/assert';
-import { type CompositeCheckBuilder } from '@overkill-dev/test/assert';
-import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { mkdtempDisposable, readFile, realpath } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import {
+    type CompositeAssertionReturn,
+    type CompositeCheckBuilder,
+    defineCompositeAssertion
+} from '@overkill-dev/test/assert';
+
 import { table, suite } from '@overkill-dev/test';
 
 import type { IntegrationProfileConfig } from '../../../config/types.ts';
@@ -56,10 +59,10 @@ async function runPlacement(
             request: defaultRunRequest({ profile: 'integration', paths: [ 'portable.test.mjs' ] })
         });
 }
-const lifetimeChecks = (
+const lifetimeChecks = function (
     check: CompositeCheckBuilder<'assert'>,
     events: readonly string[]
-): CompositeAssertionReturn<'assert'> => {
+): CompositeAssertionReturn<'assert'> {
     return check.group([
         check.equal(
             events

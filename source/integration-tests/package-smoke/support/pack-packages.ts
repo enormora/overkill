@@ -1,9 +1,9 @@
-import { installConsumerTypes } from './consumer-types.ts';
 import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { packAllPackages } from 'packtory';
 import { z } from 'zod/v4';
+import { installConsumerTypes } from './consumer-types.ts';
 
 const { configuration } = z.object({ configuration: z.unknown() }).parse(
     await import(pathToFileURL(resolve('packtory.config.js')).href)

@@ -1,7 +1,10 @@
-import type { CompositeAssertionReturn } from '@overkill-dev/test/assert';
-import { type CompositeCheckBuilder, defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { mkdir, mkdtemp, rm } from 'node:fs/promises';
 import { join } from 'node:path';
+import {
+    type CompositeAssertionReturn,
+    type CompositeCheckBuilder,
+    defineCompositeAssertion
+} from '@overkill-dev/test/assert';
 import { table, suite } from '@overkill-dev/test';
 import { executionTitle } from '../../test-support/execution-profile-title.ts';
 
@@ -64,17 +67,17 @@ function commandForWorkloads(execution: BenchmarkExecution, directory: string): 
     };
 }
 
-const workloadArtifactsChecks = (
+const workloadArtifactsChecks = function (
     check: CompositeCheckBuilder<'assert'>,
     result: RunResult,
     count: number
-): CompositeAssertionReturn<'assert'> => {
+): CompositeAssertionReturn<'assert'> {
     const artifacts = result.artifacts.filter(function duration(artifact) {
         return artifact.payload.kind === 'runtime-attachment' && artifact.payload.name === 'duration';
     });
     return check.group([
         check.equal(artifacts.length, count),
-        ...artifacts.map((artifact) => {
+        ...artifacts.map(function (artifact) {
             return check.group([
                 check.true(artifact.id.workload?.name === 'small' || artifact.id.workload?.name === 'large'),
                 check.equal(artifact.id.runtimes.length, 1)
@@ -83,17 +86,17 @@ const workloadArtifactsChecks = (
     ]);
 };
 
-const fixtureLifetimesChecks = (
+const fixtureLifetimesChecks = function (
     check: CompositeCheckBuilder<'assert'>,
     result: RunResult,
     count: number
-): CompositeAssertionReturn<'assert'> => {
+): CompositeAssertionReturn<'assert'> {
     const [ firstCheck, ...remainingChecks ] =
         ([ [ 'fixture-acquisition', count / 2 ], [ 'fixture-disposal', count / 2 ], [
             'registry-disposal',
             1
         ] ] as const)
-            .map(([ name, expected ]) => {
+            .map(function ([ name, expected ]) {
                 const artifacts = result.artifacts.filter(function fixtureArtifact(artifact) {
                     return artifact.payload.kind === 'runtime-attachment' && artifact.payload.name === name;
                 });
@@ -105,11 +108,11 @@ const fixtureLifetimesChecks = (
     return check.group([ firstCheck, ...remainingChecks ]);
 };
 
-const workloadResultsChecks = (
+const workloadResultsChecks = function (
     check: CompositeCheckBuilder<'assert'>,
     result: RunResult,
     count: number
-): CompositeAssertionReturn<'assert'> => {
+): CompositeAssertionReturn<'assert'> {
     const initialChecksBeforeNextAction = check.group([
         check.equal(result.status, 'passed'),
         check.equal(result.summary.discovered, 4),
@@ -128,10 +131,10 @@ const workloadResultsChecks = (
     ]);
 };
 
-const workloadShardsChecks = async (
+const workloadShardsChecks = async function (
     check: CompositeCheckBuilder<'assert'>,
     command: RunCommand
-): Promise<CompositeAssertionReturn<'assert'>> => {
+): Promise<CompositeAssertionReturn<'assert'>> {
     const first = await orchestrator.bench.list({
         ...command,
         request: { ...command.request, shard: { index: 1, total: 2 } }
@@ -173,10 +176,10 @@ const assertWorkloadPlanning = defineCompositeAssertion({
     }
 });
 
-const filteredBaselinesChecks = async (
+const filteredBaselinesChecks = async function (
     check: CompositeCheckBuilder<'assert'>,
     command: RunCommand
-): Promise<CompositeAssertionReturn<'assert'>> => {
+): Promise<CompositeAssertionReturn<'assert'>> {
     const apply = await orchestrator.bench.baseline.apply(command, { timing: null });
     const initialChecks = check.equal(apply.changes.length, 0);
     const stored = await orchestrator.bench.baseline.list({

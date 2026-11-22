@@ -1,9 +1,12 @@
-import type { CompositeAssertionReturn } from '@overkill-dev/test/assert';
-import { type CompositeCheckBuilder, defineCompositeAssertion } from '@overkill-dev/test/assert';
-import { mkdir, mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
+
 import { join } from 'node:path';
-import { table, suite } from '@overkill-dev/test';
+import {
+    type CompositeCheckBuilder,
+    defineCompositeAssertion,
+    type CompositeAssertionReturn
+} from '@overkill-dev/test/assert';
+import { table, suite, type TestScope } from '@overkill-dev/test';
 import { executionTitle } from '../../test-support/execution-profile-title.ts';
 
 import {
@@ -25,9 +28,7 @@ import { defaultRunRequest } from '../../test-support/run-command-factory.ts';
 import { createBenchmarkCommands } from '../../run/benchmark-commands.ts';
 import { readBenchmarkRunMetadata } from '../../bench/benchmark-run-report.ts';
 
-const lifecycleFile = 'target/benchmark-lifecycle.txt';
-
-const fixture = 'source/integration-tests/runtime/fixtures/benchmark.bench.test.ts';
+const fixtureUrl = new URL('./fixtures/benchmark.bench.test.ts', import.meta.url);
 const workerExecution: BenchmarkExecution = {
     assignmentPolicy: 'case-count-balanced',
     dispatchPolicy: 'dynamic-lease',
@@ -54,19 +55,17 @@ function caseLifecycle(event: ReporterEvent): readonly string[] {
     return event.kind === 'test-end' ? [ `end:${event.case.title}` ] : [];
 }
 
-const workerPlacementChecks = (
+const workerPlacementChecks = function (
     check: CompositeCheckBuilder<'assert'>,
     execution: RunExecutionFacts
-): CompositeAssertionReturn<'assert'> => {
-    if (execution.processModel === 'worker-pool') {
-        return check.group([
+): CompositeAssertionReturn<'assert'> {
+    return execution.processModel === 'worker-pool'
+        ? check.group([
             check.equal(execution.workerCount.resolved, 1),
             check.equal(execution.workerCount.requested, 4),
             check.equal(execution.workerCount.profileMaximum, 4)
-        ]);
-    } else {
-        return check.equal(execution.processModel, 'supervised-process');
-    }
+        ])
+        : check.equal(execution.processModel, 'supervised-process');
 };
 
 type BenchmarkObserver = {
@@ -105,7 +104,9 @@ function createBenchmarkCommand(
     reporter: DefinedReporter
 ): RunCommand {
     const config = normalizeConfig({
-        profiles: { startup: { testFamily: 'benchmark', files: { include: [ fixture ] } } },
+        profiles: {
+            startup: { testFamily: 'benchmark', files: { include: [ join(directory, 'benchmark.bench.test.ts') ] } }
+        },
         reporters: [ reporter ],
         runtimeStateDir: directory
     });
@@ -125,10 +126,10 @@ function createBenchmarkCommand(
     };
 }
 
-const listedBenchmarkFactsChecks = (
+const listedBenchmarkFactsChecks = function (
     check: CompositeCheckBuilder<'assert'>,
     facts: Awaited<ReturnType<typeof orchestrator.bench.list>>['facts']
-): CompositeAssertionReturn<'assert'> => {
+): CompositeAssertionReturn<'assert'> {
     const initialChecks = check.group([
         check.equal(facts.execution.testFamily, 'benchmark'),
         check.equal(facts.benchmarkHost, null),
@@ -137,7 +138,7 @@ const listedBenchmarkFactsChecks = (
     const runtimeCase = facts.cases.find(function passingCase(entry) {
         return entry.id.title === 'passes';
     });
-    if (runtimeCase === undefined || runtimeCase === null) {
+    if (runtimeCase === undefined) {
         return check.group([ initialChecks, check.defined(runtimeCase) ]);
     }
     return check.group([
@@ -186,10 +187,10 @@ const assertBenchmarkShards = defineCompositeAssertion({
     }
 });
 
-const benchmarkArtifactsChecks = (
+const benchmarkArtifactsChecks = function (
     check: CompositeCheckBuilder<'assert'>,
     result: RunResult
-): CompositeAssertionReturn<'assert'> => {
+): CompositeAssertionReturn<'assert'> {
     const names = new Set(result.artifacts.map(function attachmentName(artifact) {
         return artifact.payload.kind === 'runtime-attachment' ? artifact.payload.name : '';
     }));
@@ -203,11 +204,11 @@ const benchmarkArtifactsChecks = (
     ]);
 };
 
-const benchmarkHostMetadataChecks = (
+const benchmarkHostMetadataChecks = function (
     check: CompositeCheckBuilder<'assert'>,
     _result: RunResult,
     observer: BenchmarkObserver
-): CompositeAssertionReturn<'assert'> => {
+): CompositeAssertionReturn<'assert'> {
     const start = observer.events.find(function runStart(event) {
         return event.kind === 'run-start';
     });
@@ -215,11 +216,14 @@ const benchmarkHostMetadataChecks = (
         throw new Error('Missing benchmark start facts.');
     }
     const runMetadata = readBenchmarkRunMetadata(start.facts);
-    if (runMetadata?.host === undefined || runMetadata?.host === null) {
-        return check.defined(runMetadata?.host);
+    if (runMetadata === null) {
+        return check.defined(runMetadata);
+    }
+    if (runMetadata.host === null) {
+        return check.defined(runMetadata.host);
     }
     return check.group([
-        check.defined(runMetadata?.host),
+        check.defined(runMetadata.host),
         check.false(Object.hasOwn(runMetadata, 'version')),
         check.equal(runMetadata.calibration, null),
         check.equal(runMetadata.host.snapshot.version, 1),
@@ -243,7 +247,10 @@ const assertBenchmarkResults = defineCompositeAssertion({
             check.deepEqual(delivery.result.runnerErrors, []),
             benchmarkHostMetadataChecks(check.annotated('benchmark host metadata'), delivery.result, observer),
             check
-                .equal(await readFile(lifecycleFile, 'utf8'), 'acquire\nbody\ndispose\n'),
+                .equal(
+                    await readFile(join(command.config.runtimeStateDir, 'benchmark-lifecycle.txt'), 'utf8'),
+                    'acquire\nbody\ndispose\n'
+                ),
             check.deepEqual(observer.events.flatMap(caseLifecycle), [
                 'start:passes',
                 'end:passes',
@@ -269,7 +276,10 @@ const assertBenchmarkEmptySelection = defineCompositeAssertion({
         }, { timing: null });
         return check.group([
             check.equal(empty.summary.planned, 0),
-            check.equal(await readFile(lifecycleFile, 'utf8'), 'acquire\nbody\ndispose\n')
+            check.equal(
+                await readFile(join(command.config.runtimeStateDir, 'benchmark-lifecycle.txt'), 'utf8'),
+                'acquire\nbody\ndispose\n'
+            )
         ]);
     }
 });
@@ -302,31 +312,46 @@ const assertBenchmarkFailureExitCode = defineCompositeAssertion({
     }
 });
 
+type BenchmarkProject = { readonly observer: BenchmarkObserver; readonly command: RunCommand; };
+async function benchmarkProject(
+    cleanup: TestScope['cleanup'],
+    execution: BenchmarkExecution
+): Promise<BenchmarkProject> {
+    await mkdir('target', { recursive: true });
+    const directory = await mkdtemp(join(process.cwd(), 'target/benchmark-'));
+    cleanup(async function () {
+        await rm(directory, { recursive: true, force: true });
+    });
+    const original = await readFile(fixtureUrl, 'utf8');
+    const source = original
+        .replace("'target/benchmark-lifecycle.txt'", function () {
+            return JSON.stringify(join(directory, 'benchmark-lifecycle.txt'));
+        })
+        .replaceAll(
+            /from '(?<specifier>\.\.\/[^']+)'/gu,
+            function (_match, specifier: string) {
+                const resolved = new URL(specifier, fixtureUrl);
+                return `from ${JSON.stringify(resolved.href)}`;
+            }
+        );
+    await writeFile(join(directory, 'benchmark.bench.test.ts'), source);
+    const observer = createBenchmarkObserver();
+    return { observer, command: createBenchmarkCommand(execution, directory, observer.reporter) };
+}
 export const testNode = suite(
     'benchmark runner integration',
     [ table({
         title: 'executes benchmark strategies across process boundaries',
         cases: executions,
         caseTitle: executionTitle,
-        async test(scope) {
-            const execution = scope.parameters;
-
-            const directory = await mkdtemp(join(tmpdir(), 'overkill-benchmark-'));
-            const observer = createBenchmarkObserver();
-            const command = createBenchmarkCommand(execution, directory, observer.reporter);
-            await mkdir('target', { recursive: true });
-            await rm(lifecycleFile, { force: true });
-            try {
-                await scope.assert(assertBenchmarkList, command, observer);
-                await scope.assert(assertBenchmarkShards, command);
-                await scope.assert(assertBenchmarkResults, command, observer);
-                await scope.assert(assertBenchmarkEmptySelection, command);
-                await scope.assert(assertBenchmarkFailureExitCode, command);
-                return scope.assert.collect();
-            } finally {
-                await rm(lifecycleFile, { force: true });
-                await rm(directory, { recursive: true, force: true });
-            }
+        async test({ assert, cleanup, parameters: execution }) {
+            const { observer, command } = await benchmarkProject(cleanup, execution);
+            await assert(assertBenchmarkList, command, observer);
+            await assert(assertBenchmarkShards, command);
+            await assert(assertBenchmarkResults, command, observer);
+            await assert(assertBenchmarkEmptySelection, command);
+            await assert(assertBenchmarkFailureExitCode, command);
+            return assert.collect();
         }
     }) ]
 );

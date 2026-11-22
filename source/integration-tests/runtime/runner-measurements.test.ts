@@ -1,9 +1,12 @@
-import type { CompositeAssertionReturn } from '@overkill-dev/test/assert';
-import { type CompositeCheckBuilder } from '@overkill-dev/test/assert';
-import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { mkdir, mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import {
+    type CompositeAssertionReturn,
+    type CompositeCheckBuilder,
+    defineCompositeAssertion
+} from '@overkill-dev/test/assert';
+
 import { table, suite } from '@overkill-dev/test';
 
 import { defineReporter, type ReporterEvent } from '../../packages/engine/engine.entry-point.ts';
@@ -70,11 +73,11 @@ function measurementCommand(
     };
 }
 
-const listedMeasurementsChecks = async (
+const listedMeasurementsChecks = async function (
     check: CompositeCheckBuilder<'assert'>,
     command: RunCommand,
     events: readonly ReporterEvent[]
-): Promise<CompositeAssertionReturn<'assert'>> => {
+): Promise<CompositeAssertionReturn<'assert'>> {
     const listed = await orchestrator.bench.list(command, { timing: null });
     return check.group([
         check.equal(listed.facts.cases.length, 4),
@@ -86,9 +89,9 @@ const listedMeasurementsChecks = async (
     ]);
 };
 
-const measurementLifecycleChecks = async (
+const measurementLifecycleChecks = async function (
     check: CompositeCheckBuilder<'assert'>
-): Promise<CompositeAssertionReturn<'assert'>> => {
+): Promise<CompositeAssertionReturn<'assert'>> {
     const lifecycleText = await readFile(lifecycleFile, 'utf8');
     const lifecycle = lifecycleText.trim().split('\n').toSorted(function (left, right) {
         return left.localeCompare(right);
@@ -96,10 +99,10 @@ const measurementLifecycleChecks = async (
     return check.group([ check.deepEqual(lifecycle, [ 'acquire:1', 'acquire:2', 'dispose:1', 'dispose:2' ]) ]);
 };
 
-const invocationEvidenceChecks = (
+const invocationEvidenceChecks = function (
     check: CompositeCheckBuilder<'assert'>,
     test: Awaited<ReturnType<typeof orchestrator.bench.run>>['perTest'][number]
-): CompositeAssertionReturn<'assert'> => {
+): CompositeAssertionReturn<'assert'> {
     const measurement = test.benchmark?.lifecycle?.measurement;
     if (measurement === undefined || measurement === null) {
         return check.defined(measurement);
@@ -114,11 +117,11 @@ const invocationEvidenceChecks = (
     ]);
 };
 
-const warmupEvidenceChecks = (
+const warmupEvidenceChecks = function (
     check: CompositeCheckBuilder<'assert'>,
     result: Awaited<ReturnType<typeof orchestrator.bench.run>>
-): CompositeAssertionReturn<'assert'> => {
-    const [ firstCheck, ...remainingChecks ] = result.perTest.map((test) => {
+): CompositeAssertionReturn<'assert'> {
+    const [ firstCheck, ...remainingChecks ] = result.perTest.map(function (test) {
         const lifecycle = test.benchmark?.lifecycle;
         if (lifecycle === undefined || lifecycle === null) {
             return check.defined(lifecycle);
@@ -134,7 +137,7 @@ const warmupEvidenceChecks = (
             return artifactReferenceKey(candidate.id) ===
                 artifactReferenceKey(JSON.parse(lifecycle.warmup.rawSamples.reference ?? 'null'));
         });
-        if (artifact === undefined || artifact === null) {
+        if (artifact === undefined) {
             return check.group([ initialChecks, check.defined(artifact) ]);
         }
         return check.group([
@@ -152,10 +155,10 @@ const warmupEvidenceChecks = (
     return check.group([ firstCheck, ...remainingChecks ]);
 };
 
-const measurementProgressChecks = (
+const measurementProgressChecks = function (
     check: CompositeCheckBuilder<'assert'>,
     events: readonly ReporterEvent[]
-): CompositeAssertionReturn<'assert'> => {
+): CompositeAssertionReturn<'assert'> {
     return check.group([
         check.equal(
             events

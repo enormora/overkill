@@ -1,7 +1,7 @@
-import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { mkdir, mkdtemp, readFile, readdir, rename, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { type TestScope, suite, test } from '@overkill-dev/test';
 
 import { createCaseId, createDefaultWorkId } from '../../../engine/identity.ts';

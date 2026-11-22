@@ -1,8 +1,9 @@
-import type { ParameterizedTestScope } from '@overkill-dev/test';
-import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { readFile, readdir, writeFile, mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { table, type TestScope, suite, test } from '@overkill-dev/test';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import { retainedWitnessFile, retainedWitnessEvidence } from '../../../test-support/property-witness-fixture.ts';
+import { type RunReporterDeliveryResult, orchestrator } from '../../../packages/run/run.entry-point.ts';
 
 import {
     defineReporter,
@@ -11,7 +12,7 @@ import {
     type RunResult,
     type DefinedReporter
 } from '../../../packages/engine/engine.entry-point.ts';
-import { orchestrator } from '../../../packages/run/run.entry-point.ts';
+
 import { packageVersion } from '../../../package-version.ts';
 import {
     replayProject,
@@ -20,7 +21,7 @@ import {
     replayRecords,
     type ReplayProject
 } from '../../../test-support/replay-project-fixture.ts';
-import { witnessReplayLines } from '../../../reporters/witness-replay-lines.ts';
+
 import { parseSerializedRunDiagnostics, serializeRunDiagnostics } from '../../../run/run-record-result.ts';
 
 function propertyWitnesses(result: RunResult): readonly RunArtifact[] {
@@ -56,15 +57,12 @@ const assertWitnessInput = defineCompositeAssertion({
         const witness = parseWitnessFile(JSON.parse(await readFile(file, 'utf8')));
         const producer = await packageVersion(import.meta.url);
         const confirmed = result.perTest[0]?.property?.invocations[0]?.confirmedWitness;
-        if (confirmed === undefined || confirmed === null) {
-            return check.defined(confirmed);
-        }
         if (producer === null) {
             return check.notNull(producer);
         }
         return check.group([
             check.deepEqual(witness.producedBy, { library: producer.name, libraryVersion: producer.version }),
-            check.deepEqual(witness, confirmed),
+            check.deepEqual({ witness }, { witness: confirmed }),
             check.deepEqual(
                 propertyWitnesses(result).map(function source(artifact) {
                     return [ artifact.source, artifact.id.attempt?.index ];
@@ -81,7 +79,7 @@ const assertWitnessRecord = defineCompositeAssertion({
         const records = await replayRecords(project);
         const initialChecks = check.equal(records.length, 1);
         const record = records[0];
-        if (record === undefined || record === null) {
+        if (record === undefined) {
             return check.group([ initialChecks, check.defined(record) ]);
         }
         const intermediateChecks = check.group([ check.defined(record), check.equal(record.status, 'completed') ]);
@@ -153,6 +151,21 @@ function witnessReport(): WitnessReport {
     };
 }
 
+type RetainedWitnessReportEvidence = { readonly delivery: RunReporterDeliveryResult; readonly report: WitnessReport; };
+
+const retainedWitnessReport = defineCompositeAssertion({
+    name: 'retained witness report',
+    assert(
+        check,
+        { delivery, report }: RetainedWitnessReportEvidence
+    ) {
+        return check.group([
+            check.deepEqual(delivery.result.runnerErrors, []),
+            check.deepEqual(report.artifacts(), propertyWitnesses(delivery.result))
+        ]);
+    }
+});
+
 export const testNode = suite('property witness storage', [
     table({
         title: 'retains replayable witnesses and records without an explicit request',
@@ -160,41 +173,23 @@ export const testNode = suite('property witness storage', [
         caseTitle(processModel) {
             return processModel;
         },
-        async test(scope: ParameterizedTestScope<'in-process' | 'supervised-process'>) {
-            const processModel = scope.parameters;
-
-            const project = await witnessProject(scope.cleanup, processModel, false);
+        async test(
+            { cleanup, assert, parameters: processModel }
+        ) {
+            const project = await witnessProject(cleanup, processModel, false);
             const report = witnessReport();
             const delivery = await orchestrator.runWithReporterDelivery({
                 ...project.command,
                 config: { ...project.command.config, reporters: [ report.reporter ] }
             });
-            scope.assert.deepEqual(delivery.result.runnerErrors, []);
-            scope.assert.deepEqual(report.artifacts(), propertyWitnesses(delivery.result));
-            const witnessFileResult = delivery.result;
-            const witnessFileCwd = project.cwd;
+            assert(retainedWitnessReport, { delivery, report });
+            assert(retainedWitnessEvidence, delivery.result);
+            const file = retainedWitnessFile(delivery.result, project.cwd);
+            await assert(assertWitnessInput, delivery.result, file);
 
-            const witnessFileArtifacts = propertyWitnesses(witnessFileResult);
-            scope.assert.equal(witnessFileArtifacts.length, 1);
-            const witnessFileArtifact = witnessFileArtifacts[0];
-            scope.require.defined(witnessFileArtifact);
-            if (
-                witnessFileArtifact.payload.kind !== 'runtime-attachment' ||
-                witnessFileArtifact.payload.content.kind !== 'file'
-            ) {
-                throw new Error('Expected a retained witness file.');
-            }
-            scope.assert.includes(
-                witnessReplayLines(witnessFileArtifacts)[0] ?? '',
-                witnessFileArtifact.payload.content.path
-            );
-            const witnessFileFile = path.resolve(witnessFileCwd, witnessFileArtifact.payload.content.path);
-            await scope.assert(assertWitnessInput, witnessFileResult, witnessFileFile);
-            const file = witnessFileFile;
-
-            await scope.assert(assertWitnessRecord, project, delivery.result);
-            await scope.assert(assertWitnessReplay, project, file);
-            return scope.assert.collect();
+            await assert(assertWitnessRecord, project, delivery.result);
+            await assert(assertWitnessReplay, project, file);
+            return assert.collect();
         }
     }),
     test('passing properties retain compact records without witness files', async function (scope) {

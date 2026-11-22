@@ -16,7 +16,7 @@ const assertOneCommittedSample = defineCompositeAssertion({
     name: 'one committed sample',
     async assert(check, store: HistoryStorage) {
         const index = await readCompactHistory(store, directory);
-        if (index === undefined || index === null) {
+        if (index === null) {
             return check.defined(index);
         }
         return check.group([

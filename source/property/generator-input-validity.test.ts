@@ -1,5 +1,5 @@
 import { defineCompositeAssertion } from '@overkill-dev/test/assert';
-import { suite, test, type TestScope } from '@overkill-dev/test';
+import { suite, table, test, type TestScope } from '@overkill-dev/test';
 
 import { Random } from 'fast-check';
 import { xoroshiro128plus } from 'pure-rand/generator/xoroshiro128plus';
@@ -79,6 +79,56 @@ const assertMappedInput = defineCompositeAssertion({
     }
 });
 
+const seeds = Array.from({ length: 10 }, function (_value, seed) {
+    return seed;
+});
+const recursiveLimits = [ 0, 1, 2, 4 ];
+const recursiveGenerator = gen.recursive<Tree>({
+    leaf: gen.constant(null),
+    branch(child) {
+        return gen.integer({ min: 1, max: 3 }).flatMap(function dependentBranch(length) {
+            return gen.array(child, { minLength: length, maxLength: length }).map<Tree>(function (children) {
+                return children;
+            });
+        });
+    },
+    maxDepth: 3
+});
+function indexedCandidates(seed: number): readonly GeneratedInput<IndexedInput>[] {
+    const root = generateInput(
+        indexedGenerator,
+        new Random(xoroshiro128plus(seed)),
+        undefined,
+        generatorContext(3, 2, 100_000)
+    );
+    return [
+        root,
+        ...shrinkDescendants(root, 30, function (candidate) {
+            return candidate.shrink();
+        })
+    ];
+}
+function recursiveCandidates(maxDepth: number, seed: number): readonly GeneratedInput<Tree>[] {
+    const context = { ...generatorContext(3, maxDepth, 100_000) };
+    const root = generateInput(recursiveGenerator, new Random(xoroshiro128plus(seed)), undefined, context);
+    Object.assign(context, { maxDepth: 10, maxSize: 10 });
+    return [
+        root,
+        ...shrinkDescendants(root, 20, function (candidate) {
+            return candidate.shrink();
+        })
+    ];
+}
+const recursiveBounds = defineCompositeAssertion({
+    name: 'retained recursive limits',
+    assert(check, candidate: GeneratedInput<Tree>, maxDepth: number) {
+        return check.group([
+            check.equal(treeDepth(candidate.reconstruct()) <= Math.min(maxDepth, 3), true),
+            check.equal(treeWidth(candidate.reconstruct()) <= 3, true)
+        ]);
+    }
+});
+
 export const testNode = suite('reconstructed generator validity', [
     test('reconstructs the exact dependent candidates selected by contextual shrinking', function (scope: TestScope) {
         const domain = prepareGenerator(indexedGenerator, generatorContext(3, 2, 100_000));
@@ -110,69 +160,61 @@ export const testNode = suite('reconstructed generator validity', [
         scope.assert.equal(actual.length > 10, true);
         return scope.assert.collect();
     }),
-    test('retains dependent indexes, changing element bounds, and container caps', function (scope) {
-        let examined = 0;
-        for (let seed = 0; seed < 10; seed += 1) {
-            const root = generateInput(
-                indexedGenerator,
-                new Random(xoroshiro128plus(seed)),
-                undefined,
-                generatorContext(3, 2, 100_000)
-            );
-            const descendants = shrinkDescendants(root, 30, function children(candidate) {
-                return candidate.shrink();
-            });
-            for (const candidate of [ root, ...descendants ]) {
+    table({
+        title: 'retains dependent indexes and container caps after mutation',
+        cases: seeds,
+        caseTitle(seed) {
+            return `seed ${seed}`;
+        },
+        test({ assert, parameters: seed }) {
+            for (const candidate of indexedCandidates(seed)) {
                 const value = candidate.reconstruct();
-                scope.assert(assertIndexedDomain, value);
-                value.values.length = 0;
-                value.dependent.fill(-1);
+                assert(assertIndexedDomain, value);
+                Reflect.set(value.values, 'length', 0);
+                Reflect.apply(Array.prototype.fill, value.dependent, [ -1 ]);
                 value.bytes.fill(255);
-                scope.assert(assertIndexedDomain, candidate.reconstruct());
+                assert(assertIndexedDomain, candidate.reconstruct());
             }
-            examined += descendants.length;
+            return assert.collect();
         }
-        scope.assert.equal(examined > 30, true);
+    }),
+    test('explores more than thirty dependent shrink descendants', function (scope) {
+        scope.assert.equal(
+            seeds.reduce(function (count, seed) {
+                return count + indexedCandidates(seed).length - 1;
+            }, 0) > 30,
+            true
+        );
         return scope.assert.collect();
     }),
-    test('snapshots limits and retains recursive depth through dependent reconstruction', function (scope) {
-        let expanded = 0;
-        for (const maxDepth of [ 0, 1, 2, 4 ]) {
-            for (let seed = 0; seed < 10; seed += 1) {
-                const generator = gen.recursive<Tree>({
-                    leaf: gen.constant(null),
-                    branch(child) {
-                        return gen.integer({ min: 1, max: 3 }).flatMap(function dependentBranch(length) {
-                            return gen.array(child, { minLength: length, maxLength: length }).map<Tree>(
-                                function recursiveValue(children) {
-                                    return children;
-                                }
-                            );
-                        });
-                    },
-                    maxDepth: 3
-                });
-                const context = { ...generatorContext(3, maxDepth, 100_000) };
-                const root = generateInput(generator, new Random(xoroshiro128plus(seed)), undefined, context);
-                Object.assign(context, { maxDepth: 10, maxSize: 10 });
-                const candidates = [
-                    root,
-                    ...shrinkDescendants(root, 20, function children(candidate) {
-                        return candidate.shrink();
-                    })
-                ];
-                for (const candidate of candidates) {
-                    scope.assert.equal(treeDepth(candidate.reconstruct()) <= Math.min(maxDepth, 3), true);
-                    scope.assert.equal(treeWidth(candidate.reconstruct()) <= 3, true);
-                }
-                expanded += candidates
-                    .filter(function expanded(candidate) {
-                        return candidate.reconstruct() !== null;
-                    })
-                    .length;
+    table({
+        title: 'snapshots recursive limits through dependent reconstruction',
+        cases: recursiveLimits.flatMap(function (maxDepth) {
+            return seeds.map(function (seed) {
+                return { maxDepth, seed };
+            });
+        }),
+        caseTitle({ maxDepth, seed }) {
+            return `depth ${maxDepth}, seed ${seed}`;
+        },
+        test({ assert, parameters: { maxDepth, seed } }) {
+            for (const candidate of recursiveCandidates(maxDepth, seed)) {
+                assert(recursiveBounds, candidate, maxDepth);
             }
+            return assert.collect();
         }
-        scope.assert.equal(expanded > 0, true);
+    }),
+    test('explores non-null recursive branches', function (scope) {
+        scope.assert.equal(
+            recursiveLimits.some(function (maxDepth) {
+                return seeds.some(function (seed) {
+                    return recursiveCandidates(maxDepth, seed).some(function (candidate) {
+                        return candidate.reconstruct() !== null;
+                    });
+                });
+            }),
+            true
+        );
         return scope.assert.collect();
     }),
     test('preserves filtering and permits repeated and expanding mapped outputs', function (scope) {

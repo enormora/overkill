@@ -51,7 +51,7 @@ async function cachedWitness(cleanup: TestScope['cleanup']): Promise<CachedWitne
         })
     };
     const [ entryId ] = await writeCorpusIndex(path.join(cwd, 'cache.json'), [ witness ]);
-    if (entryId === undefined || entryId === null) {
+    if (entryId === undefined) {
         throw new Error('Expected fixture entryId.');
     }
     return {

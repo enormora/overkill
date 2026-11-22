@@ -1,5 +1,5 @@
-import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import path from 'node:path';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { suite, test, type TestScope } from '@overkill-dev/test';
 
 import { attachmentFixture, attachmentWork as work } from '../../../test-support/attachment-fixture.ts';
@@ -45,10 +45,17 @@ async function copyModule(sourcePath: string): Promise<unknown> {
     const moduleUrl = new URL(`${sourcePath}${path.extname(import.meta.url)}?isolated-copy`, import.meta.url);
     return await import(moduleUrl.href);
 }
+async function copiedFailureContext(): Promise<FailureContextCopy> {
+    const copy = await copyModule('../../../attachments/resource-failure-context');
+    if (!isFailureContextCopy(copy)) {
+        throw new Error('Expected resource failure context exports.');
+    }
+    return copy;
+}
 const assertAttemptScope = defineCompositeAssertion({
     name: 'attempt scope',
     assert(check, identity: ReturnType<typeof transcriptAttempt>, index: number) {
-        if (identity === undefined || identity === null) {
+        if (identity === null) {
             return check.defined(identity);
         }
         return check.group([ check.deepEqual(identity, { work, attempt: { index } }) ]);
@@ -56,11 +63,8 @@ const assertAttemptScope = defineCompositeAssertion({
 });
 
 export const testNode = suite('Failure artifact sharing', [
-    test('copied resource packages share owner context and attempt scope identities', async (scope) => {
-        const copy = await copyModule('../../../attachments/resource-failure-context');
-        if (!isFailureContextCopy(copy)) {
-            throw new Error('Expected resource failure context exports.');
-        }
+    test('copied resource packages share owner context and attempt scope identities', async function (scope) {
+        const copy = await copiedFailureContext();
         const context = { name: 'service', condition: { kind: 'attempt', work, attempt: { index: 0 } } } as const;
         const originalScope = createTranscriptAttemptScope(work, { index: 0 });
         const copiedScope = copy.createTranscriptAttemptScope(work, { index: 1 });
@@ -73,7 +77,7 @@ export const testNode = suite('Failure artifact sharing', [
 
         return scope.assert.collect();
     }),
-    test('attempt cleanup drains streams created by a copied package', async (scope: TestScope) => {
+    test('attempt cleanup drains streams created by a copied package', async function (scope: TestScope) {
         const copy = await copyModule('../../../attachments/failure-artifact-stream');
         if (!isStreamCopy(copy)) {
             throw new Error('Expected failure stream exports.');
@@ -102,7 +106,7 @@ export const testNode = suite('Failure artifact sharing', [
 
         return scope.assert.collect();
     }),
-    test('copied transcript packages preserve attempt isolation', async (scope) => {
+    test('copied transcript packages preserve attempt isolation', async function (scope) {
         const copy = await copyModule('../../../transcript/transcript-store');
         if (!isTranscriptCopy(copy)) {
             throw new Error('Expected transcript scope exports.');

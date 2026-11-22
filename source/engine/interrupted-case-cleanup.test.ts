@@ -1,5 +1,5 @@
-import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import assert from 'node:assert/strict';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { table, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { createStoredValue, type StoredValue } from '../stored-value.ts';
@@ -9,7 +9,7 @@ import { createAssertionRecorder } from './assertion-recorder.ts';
 import { createTestScopeLifecycle } from './test-scope-lifecycle.ts';
 import type { ConcurrentCase } from './execution-supervision.ts';
 
-type RegistrationProbe = {readonly registerCleanup: () => void; readonly startWork: () => void};
+type RegistrationProbe = { readonly registerCleanup: () => void; readonly startWork: () => void; };
 
 type CleanupState = {
     readonly body: PromiseWithResolvers<undefined>;
@@ -44,10 +44,14 @@ function createCleanupProbe(cleanup: TestScope['cleanup']): CleanupProbe {
     const fixture = createInterruptedCase(async function pendingBody(testScope) {
         state.observeRegistration({
             registerCleanup() {
-                testScope.cleanup(function lateCleanup() { state.recordEvent('late'); });
+                testScope.cleanup(function lateCleanup() {
+                    state.recordEvent('late');
+                });
             },
             startWork() {
-                testScope.startInFlight(async function lateOperation() { state.recordEvent('late operation'); });
+                testScope.startInFlight(async function lateOperation() {
+                    state.recordEvent('late operation');
+                });
             }
         });
         testScope.cleanup(function firstCleanup() {
@@ -72,14 +76,34 @@ async function trackedExecution(probe: CleanupProbe): Promise<ConcurrentCase> {
     return result;
 }
 
+type BlockedCleanup = { readonly running: Promise<ConcurrentCase>; };
+async function beginBlockedCleanup(probe: CleanupProbe): Promise<BlockedCleanup> {
+    const running = trackedExecution(probe);
+    probe.fixture.clock.advanceByMilliseconds(10);
+    await probe.started.promise;
+    return { running };
+}
+async function releaseLateBody(
+    probe: CleanupProbe,
+    result: ConcurrentCase,
+    yieldToNextTurn: TestScope['yieldToNextTurn']
+): Promise<ConcurrentCase> {
+    const snapshot = structuredClone(result);
+    probe.body.resolve(undefined);
+    await yieldToNextTurn();
+    return snapshot;
+}
+
 const assertClosedRegistration = defineCompositeAssertion({
     name: 'closed registration',
     assert(check, probe: CleanupProbe) {
         const captured = probe.registrations[0];
-        if (captured === undefined) { return check.defined(captured); }
+        if (captured === undefined) {
+            return check.defined(captured);
+        }
         return check.group([
-            check.throws(captured.registerCleanup, {message: /cannot be called after test cleanup/}),
-            check.throws(captured.startWork, {message: /cannot be called after test cleanup/})
+            check.throws(captured.registerCleanup, { message: /cannot be called after test cleanup/ }),
+            check.throws(captured.startWork, { message: /cannot be called after test cleanup/ })
         ]);
     }
 });
@@ -98,25 +122,52 @@ const assertCleanupFailures = defineCompositeAssertion({
     }
 });
 
+const cleanupRemainsPending = defineCompositeAssertion({
+    name: 'cleanup remains pending',
+    assert(check, probe: CleanupProbe) {
+        return check.group([
+            check.false(probe.returned.read()),
+            check.deepEqual(Array.from(probe.events), [ 'second' ])
+        ]);
+    }
+});
+
 export const testNode = suite('interrupted case cleanup', [
     test('awaits reverse cleanup before returning while the body remains pending', async function (scope) {
         const probe = createCleanupProbe(scope.cleanup);
 
-        const finishInterruptedCleanupRunning = trackedExecution(probe);
-        probe.fixture.clock.advanceByMilliseconds(10);
-        await probe.started.promise;
-        scope.assert.false(probe.returned.read());
-        scope.assert.deepEqual(Array.from(probe.events), [ 'second' ]);
+        const { running } = await beginBlockedCleanup(probe);
+        scope.assert(cleanupRemainsPending, probe);
         probe.cleanup.resolve(undefined);
-        const finishInterruptedCleanupResult = await finishInterruptedCleanupRunning;
-        scope.assert.equal(finishInterruptedCleanupResult.result.verdict, 'crashed');
-        scope.assert.deepEqual(probe.events, [ 'second', 'first' ]);
-        const result = finishInterruptedCleanupResult;
-        const verifyLateBodySnapshot = structuredClone(result);
-        probe.body.resolve(undefined);
-        await scope.yieldToNextTurn();
-        scope.assert.deepEqual(probe.events, [ 'second', 'first' ]);
-        scope.assert.deepEqual(result, verifyLateBodySnapshot);
+        const finishInterruptedCleanupResult = await running;
+        scope.assert(
+            defineCompositeAssertion({
+                name: 'awaits reverse cleanup before returning while the body remains pending',
+                assert(check) {
+                    return check.group([
+                        check.equal(finishInterruptedCleanupResult.result.verdict, 'crashed'),
+                        check.deepEqual(probe.events, [ 'second', 'first' ])
+                    ]);
+                }
+            })
+        );
+
+        const verifyLateBodySnapshot = await releaseLateBody(
+            probe,
+            finishInterruptedCleanupResult,
+            scope.yieldToNextTurn
+        );
+        scope.assert(
+            defineCompositeAssertion({
+                name: 'awaits reverse cleanup before returning while the body remains pending',
+                assert(check) {
+                    return check.group([
+                        check.deepEqual(probe.events, [ 'second', 'first' ]),
+                        check.deepEqual(finishInterruptedCleanupResult, verifyLateBodySnapshot)
+                    ]);
+                }
+            })
+        );
         scope.assert(assertClosedRegistration, probe);
 
         return scope.assert.collect();

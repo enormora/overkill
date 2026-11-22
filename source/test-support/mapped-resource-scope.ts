@@ -15,9 +15,10 @@ export async function mappedResourceScope(value: unknown): Promise<unknown> {
     if (typeof body !== 'function') {
         throw new TypeError('Expected a composed body.');
     }
+    const controller = new AbortController();
     const input = {
         tag: 'original',
-        signal: new AbortController().signal,
+        signal: controller.signal,
         cleanup() {
             return undefined;
         }

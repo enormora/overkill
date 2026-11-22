@@ -73,7 +73,7 @@ const assertSoftCancellation = defineCompositeAssertion({
     name: 'soft cancellation',
     assert(check, result: PerTestResult) {
         const measured = result.benchmark;
-        if (measured === undefined || measured === null) {
+        if (measured === null) {
             return check.defined(measured);
         }
         return check.group([

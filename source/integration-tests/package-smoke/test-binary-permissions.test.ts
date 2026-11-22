@@ -1,59 +1,13 @@
-import { consumerEnvironment } from './support/consumer-environment.ts';
 import { spawn } from 'node:child_process';
 import { chmod, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { text } from 'node:stream/consumers';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { suite } from '@overkill-dev/test';
 import { packageConsumer } from './support/package-consumer.ts';
 
-const consumerFacade = packageConsumer('shipped CLI permission policies', function consumerFixture(consumerDirectory) {
-    const consumerFolder = fileURLToPath(new URL('./permission-consumer/', pathToFileURL(`${consumerDirectory}/`)));
-    const binaryPath = fileURLToPath(
-        new URL(
-            './node_modules/@overkill-dev/test/packages/test/overkill.entry-point.js',
-            pathToFileURL(`${consumerDirectory}/`)
-        )
-    );
-    async function runBinary(profile: string, file: string): Promise<CliResult> {
-        await mkdir(consumerFolder, { recursive: true });
-        await rm(path.join(consumerFolder, file.replace('.test.mjs', '-output.txt')), { force: true });
-        await Promise.all([
-            writeFile(path.join(consumerFolder, 'package.json'), '{"type":"module"}'),
-            writeFile(path.join(consumerFolder, 'overkill.config.js'), configScript),
-            writeFile(path.join(consumerFolder, 'pure.test.mjs'), pureScript),
-            writeFile(path.join(consumerFolder, 'filesystem.test.mjs'), filesystemScript),
-            writeFile(path.join(consumerFolder, 'subprocess.test.mjs'), subprocessScript)
-        ]);
-        await chmod(binaryPath, 0o755);
-        const environment = readProcessEnvironment(process);
-        const child = spawn(binaryPath, [ 'run', '--config', 'overkill.config.js', '--profile', profile, file ], {
-            cwd: consumerFolder,
-            env: consumerEnvironment({
-                ...environment,
-                PATH: `${path.dirname(process.execPath)}${path.delimiter}${environment.PATH ?? ''}`
-            }, consumerDirectory),
-            stdio: [ 'ignore', 'pipe', 'pipe' ]
-        });
-        const stdout = text(child.stdout);
-        const stderr = text(child.stderr);
-        const code = await new Promise<number | null>(function waitForExit(resolve, reject) {
-            child.once('error', reject);
-            child.once('close', resolve);
-        });
-
-        return {
-            code,
-            stderr: await stderr,
-            stdout: await stdout
-        };
-    }
-
-    return { runBinary, binaryPath, consumerFolder };
-});
-const { table } = consumerFacade;
-
-import { readProcessEnvironment } from '../../run/node-host-readers.ts';
+import { consumerEnvironment } from './support/consumer-environment.ts';
 
 type CliResult = {
     readonly code: number | null;
@@ -138,6 +92,67 @@ export const testNode = test('asserts without runtime effects', function (scope)
 });
 `;
 
+const permissionOutcome = defineCompositeAssertion({
+    name: 'CLI permission policy outcome',
+    assert(check, result: CliResult, profile: string, permission: string) {
+        const policyChecks = profile === 'integration'
+            ? [ check.false(result.stdout.includes('Runner error:')) ]
+            : [ check.includes(result.stdout, `Permission denied: ${permission}`) ];
+        const observedChecks = profile === 'observed' && permission === 'FileSystemWrite'
+            ? [ check.includes(result.stdout, 'Permission denied: FileSystemRead') ]
+            : [];
+        return check.group([
+            check.equal(result.code, profile === 'integration' ? 0 : 2),
+            check.match(result.stdout, /^ {2}1 executed · [\d.]+ (?:µs|ms|s) execution · /mu),
+            check.equal(result.stderr, ''),
+            ...policyChecks,
+            ...observedChecks
+        ]);
+    }
+});
+
+const consumerFacade = packageConsumer('shipped CLI permission policies', function consumerFixture(consumerDirectory) {
+    const consumerFolder = fileURLToPath(new URL('./permission-consumer/', pathToFileURL(`${consumerDirectory}/`)));
+    const binaryPath = fileURLToPath(
+        new URL(
+            './node_modules/@overkill-dev/test/packages/test/overkill.entry-point.js',
+            pathToFileURL(`${consumerDirectory}/`)
+        )
+    );
+    async function runBinary(profile: string, file: string): Promise<CliResult> {
+        await mkdir(consumerFolder, { recursive: true });
+        await rm(path.join(consumerFolder, file.replace('.test.mjs', '-output.txt')), { force: true });
+        await Promise.all([
+            writeFile(path.join(consumerFolder, 'package.json'), '{"type":"module"}'),
+            writeFile(path.join(consumerFolder, 'overkill.config.js'), configScript),
+            writeFile(path.join(consumerFolder, 'pure.test.mjs'), pureScript),
+            writeFile(path.join(consumerFolder, 'filesystem.test.mjs'), filesystemScript),
+            writeFile(path.join(consumerFolder, 'subprocess.test.mjs'), subprocessScript)
+        ]);
+        await chmod(binaryPath, 0o755);
+        const child = spawn(binaryPath, [ 'run', '--config', 'overkill.config.js', '--profile', profile, file ], {
+            cwd: consumerFolder,
+            env: consumerEnvironment(consumerDirectory),
+            stdio: [ 'ignore', 'pipe', 'pipe' ]
+        });
+        const stdout = text(child.stdout);
+        const stderr = text(child.stderr);
+        const code = await new Promise<number | null>(function waitForExit(resolve, reject) {
+            child.once('error', reject);
+            child.once('close', resolve);
+        });
+
+        return {
+            code,
+            stderr: await stderr,
+            stdout: await stdout
+        };
+    }
+
+    return { runBinary, binaryPath, consumerFolder };
+});
+const { table } = consumerFacade;
+
 export const testNode = suite('shipped CLI permission policies', [
     table({
         title: 'pure microtests pass through the executable shebang',
@@ -185,17 +200,7 @@ export const testNode = suite('shipped CLI permission policies', [
             const outputFile = file.replace('.test.mjs', '-output.txt');
             const result = await runBinary(profile, file);
 
-            scope.assert.equal(result.code, profile === 'integration' ? 0 : 2);
-            scope.assert.match(result.stdout, /^ {2}1 executed · [\d.]+ (?:µs|ms|s) execution · /mu);
-            if (profile === 'integration') {
-                scope.assert.false(result.stdout.includes('Runner error:'));
-            } else {
-                scope.assert.includes(result.stdout, `Permission denied: ${permission}`);
-                if (profile === 'observed' && permission === 'FileSystemWrite') {
-                    scope.assert.includes(result.stdout, 'Permission denied: FileSystemRead');
-                }
-            }
-            scope.assert.equal(result.stderr, '');
+            scope.assert(permissionOutcome, result, profile, permission);
 
             const consumerFiles = await readdir(consumerFolder);
             scope.assert.equal(consumerFiles.includes(outputFile), profile !== 'microtest');

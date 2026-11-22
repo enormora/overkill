@@ -1,6 +1,6 @@
-import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { table, suite } from '@overkill-dev/test';
 
 import { z } from 'zod/v4';

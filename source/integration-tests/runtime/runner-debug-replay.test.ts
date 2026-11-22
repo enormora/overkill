@@ -1,6 +1,6 @@
-import type { TestScope } from '@overkill-dev/test';
+import { type TestScope, suite, test } from '@overkill-dev/test';
 import { defineCompositeAssertion } from '@overkill-dev/test/assert';
-import { suite, test } from '@overkill-dev/test';
+import type { ReplayRunRecord } from '../../run/replay-record-types.ts';
 
 import {
     replayProject,
@@ -35,23 +35,44 @@ const assertReplayRequests = defineCompositeAssertion({
         ]);
     }
 });
-export const testNode = suite('debug replay activation', [
-    test('replay clears inherited debug and accepts fresh scoped capture', async function (scope: TestScope) {
-        const debugSourceRunProject = await replayProject(scope.cleanup, replayProfile('in-process'));
-        await writeReplayCase(debugSourceRunProject, replayPassingCase('retained case', true));
-        const debugSourceRunOriginalRun = await executeReplayCli(debugSourceRunProject, [
-            'run',
-            '--profile',
-            'cases',
-            '--debug'
+type ScopedReplayOutputEvidence = {
+    readonly ordinaryReplay: { readonly code: number; readonly output: string; };
+    readonly debugReplay: { readonly code: number; readonly output: string; };
+};
+
+const scopedReplayOutput = defineCompositeAssertion({
+    name: 'scoped replay output',
+    assert(
+        check,
+        { ordinaryReplay, debugReplay }: ScopedReplayOutputEvidence
+    ) {
+        return check.group([
+            check.deepEqual([ ordinaryReplay.code, debugReplay.code ], [ 0, 0 ]),
+            check.equal(ordinaryReplay.output.includes('[debug:'), false),
+            check.equal(debugReplay.output.includes('[debug:'), true)
         ]);
-        if (debugSourceRunOriginalRun.code !== 0) {
-            throw new Error(debugSourceRunOriginalRun.output);
-        }
-        const [ original ] = await replayRecords(debugSourceRunProject);
-        scope.require.defined(original);
-        scope.assert.equal(original.request.debug.mode, 'all');
-        const source = { project: debugSourceRunProject, runId: original.id };
+    }
+});
+
+type RecordedDebugRun = { readonly project: ReplayProject; readonly record: ReplayRunRecord; };
+async function recordedDebugRun(cleanup: TestScope['cleanup']): Promise<RecordedDebugRun> {
+    const project = await replayProject(cleanup, replayProfile('in-process'));
+    await writeReplayCase(project, replayPassingCase('retained case', true));
+    const initial = await executeReplayCli(project, [ 'run', '--profile', 'cases', '--debug' ]);
+    if (initial.code !== 0) {
+        throw new Error(initial.output);
+    }
+    const [ record ] = await replayRecords(project);
+    if (record === undefined) {
+        throw new Error('Expected a recorded debug run.');
+    }
+    return { project, record };
+}
+export const testNode = suite('debug replay activation', [
+    test('replay clears inherited debug and accepts fresh scoped capture', async function (scope) {
+        const { project, record } = await recordedDebugRun(scope.cleanup);
+        scope.assert.equal(record.request.debug.mode, 'all');
+        const source = { project, runId: record.id };
 
         const ordinaryReplay = await executeReplayCli(source.project, [ 'replay', source.runId ]);
         const debugReplay = await executeReplayCli(source.project, [
@@ -63,9 +84,7 @@ export const testNode = suite('debug replay activation', [
         if (debugReplay.code !== 0) {
             throw new Error(debugReplay.output);
         }
-        scope.assert.deepEqual([ ordinaryReplay.code, debugReplay.code ], [ 0, 0 ]);
-        scope.assert.equal(ordinaryReplay.output.includes('[debug:'), false);
-        scope.assert.equal(debugReplay.output.includes('[debug:'), true);
+        scope.assert(scopedReplayOutput, { ordinaryReplay, debugReplay });
         await scope.assert(assertReplayRequests, source);
         return scope.assert.collect();
     })

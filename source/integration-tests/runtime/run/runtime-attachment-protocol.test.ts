@@ -1,15 +1,18 @@
-import type { CompositeAssertionReturn } from '@overkill-dev/test/assert';
-import { type CompositeCheckBuilder } from '@overkill-dev/test/assert';
-import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { connect, createServer, type Server, type Socket } from 'node:net';
 import { once } from 'node:events';
+import {
+    type CompositeAssertionReturn,
+    type CompositeCheckBuilder,
+    defineCompositeAssertion
+} from '@overkill-dev/test/assert';
+
 import { test, suite, type TestScope } from '@overkill-dev/test';
 
 import { createDefaultWorkId } from '../../../engine/identity.ts';
 import { defaultAttachmentLimits } from '../../../engine/runtime-attachment.ts';
 import { attachmentFixture, type AttachmentFixture } from '../../../test-support/attachment-fixture.ts';
 import { createAttachmentServer, type AttachmentServer } from '../../../run/attachment-server.ts';
-import { createAttachmentConnection } from '../../../run/attachment-connection.ts';
+import { createAttachmentConnection, type AttachmentConnection } from '../../../run/attachment-connection.ts';
 import {
     attachmentMaxFrameBytes,
     attachmentMaxPendingRequests,
@@ -26,12 +29,12 @@ const open: Extract<AttachmentOperation, { readonly kind: 'open'; }> = {
     metadata: { name: 'log', mediaType: 'text/plain' }
 };
 
-const channelInterruptionChecks = async (
+const channelInterruptionChecks = async function (
     check: CompositeCheckBuilder<'assert'>,
     store: AttachmentFixture['store'],
     writer: number,
     write: AttachmentOperation
-): Promise<CompositeAssertionReturn<'assert'>> => {
+): Promise<CompositeAssertionReturn<'assert'>> {
     const initialChecks = check.group([
         check.deepEqual(await store.finish('second'), []),
         check.deepEqual(await store.finish('first'), [ { kind: 'run' } ]),
@@ -45,7 +48,7 @@ const channelInterruptionChecks = async (
     const closed = await store.exchange('first', { kind: 'close', writer, reason: 'complete' });
     const intermediateChecks = check.equal(closed.kind, 'closed');
     const content = store.artifacts()[0]?.payload.content;
-    if (content === undefined || content === null) {
+    if (content === undefined) {
         return check.group([ initialChecks, intermediateChecks, check.defined(content) ]);
     }
     return check.group([
@@ -77,15 +80,15 @@ const assertOversizedRequest = defineCompositeAssertion({
         return check.group([ check.deepEqual(await server.finish(), []), check.deepEqual(store.artifacts(), []) ]);
     }
 });
-const boundedServerArtifactsChecks = async (
+const boundedServerArtifactsChecks = async function (
     check: CompositeCheckBuilder<'assert'>,
     server: AttachmentServer,
     store: AttachmentFixture['store']
-): Promise<CompositeAssertionReturn<'assert'>> => {
+): Promise<CompositeAssertionReturn<'assert'>> {
     await server.finish();
     const initialChecks = check.equal(store.artifacts().length, 1);
     const content = store.artifacts()[0]?.payload.content;
-    if (content === undefined || content === null) {
+    if (content === undefined) {
         return check.group([ initialChecks, check.defined(content) ]);
     }
     return check.group([
@@ -292,31 +295,59 @@ const assertInvalidReply = defineCompositeAssertion({
     }
 });
 
+const disconnectedPendingRequests = defineCompositeAssertion({
+    name: 'disconnect rejects every bounded pending request',
+    async assert(check, connection: AttachmentConnection, socket: Socket) {
+        const settled = Promise.allSettled(
+            Array.from({ length: attachmentMaxPendingRequests }, function () {
+                return connection.exchange(open);
+            })
+        );
+        const overflow = check.rejects(async function () {
+            await connection.exchange(open);
+        }, { message: 'Attachment transport request limit exceeded.' });
+        await Promise.resolve();
+        socket.destroy();
+        const overflowCheck = await overflow;
+        const results = await settled;
+        return check.group([
+            overflowCheck,
+            check.equal(
+                results
+                    .filter(function (result) {
+                        return result.status === 'rejected';
+                    })
+                    .length,
+                256
+            )
+        ]);
+    }
+});
 export const testNode = suite(
     'Runtime attachment protocol',
     [
         suite('validates ownership and message bounds', [
-            test('server request floods disconnect and keep allocation bounded', async (scope) => {
+            test('server request floods disconnect and keep allocation bounded', async function (scope) {
                 await scope.assert(assertServerQueueLimit, scope.cleanup);
                 return scope.assert.collect();
             }),
-            test('oversized request frames disconnect without creating artifacts', async (scope) => {
+            test('oversized request frames disconnect without creating artifacts', async function (scope) {
                 await scope.assert(assertOversizedRequest, scope.cleanup);
                 return scope.assert.collect();
             }),
-            test('writer channels isolate ownership and interruption', async (scope) => {
+            test('writer channels isolate ownership and interruption', async function (scope) {
                 await scope.assert(assertWriterIsolation, scope.cleanup);
                 return scope.assert.collect();
             }),
-            test('unknown owners and incompatible operations are rejected', async (scope) => {
+            test('unknown owners and incompatible operations are rejected', async function (scope) {
                 await scope.assert(assertOwnerValidation, scope.cleanup);
                 return scope.assert.collect();
             }),
-            test('invalid execution tokens close the attachment connection', async (scope) => {
+            test('invalid execution tokens close the attachment connection', async function (scope) {
                 await scope.assert(assertInvalidToken, scope.cleanup);
                 return scope.assert.collect();
             }),
-            test('pending request limits reject excess work and settle on disconnect', async (scope) => {
+            test('pending request limits reject excess work and settle on disconnect', async function (scope) {
                 const server = createServer();
                 const port = await listen(server);
                 const peer = new Promise<Socket>(function acceptPeer(resolve) {
@@ -330,28 +361,7 @@ export const testNode = suite(
                 });
                 await connection.ready;
                 const pendingDisconnectSocket: Socket = await peer;
-                const pendingDisconnectPending = Array.from(
-                    { length: attachmentMaxPendingRequests },
-                    async function pendingRequest() {
-                        return connection.exchange(open);
-                    }
-                );
-                const pendingDisconnectSettled = Promise.allSettled(pendingDisconnectPending);
-                const pendingDisconnectOverflow = scope.assert.rejects(async function exceedPendingLimit() {
-                    await connection.exchange(open);
-                }, { message: 'Attachment transport request limit exceeded.' });
-                await Promise.resolve();
-                pendingDisconnectSocket.destroy();
-                await pendingDisconnectOverflow;
-                const pendingDisconnectResults = await pendingDisconnectSettled;
-                scope.assert.equal(
-                    pendingDisconnectResults
-                        .filter(function rejected(result) {
-                            return result.status === 'rejected';
-                        })
-                        .length,
-                    256
-                );
+                await scope.assert(disconnectedPendingRequests, connection, pendingDisconnectSocket);
 
                 await new Promise<void>(function closePeer(resolve, reject) {
                     server.close(function closed(error) {

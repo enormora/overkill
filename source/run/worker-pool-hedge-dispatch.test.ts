@@ -1,6 +1,9 @@
-import type { CompositeAssertionReturn } from '@overkill-dev/test/assert';
-import { type CompositeCheckBuilder } from '@overkill-dev/test/assert';
-import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import {
+    type CompositeAssertionReturn,
+    type CompositeCheckBuilder,
+    defineCompositeAssertion
+} from '@overkill-dev/test/assert';
+
 import { suite, test } from '@overkill-dev/test';
 
 import type { PlacementPlan } from './run-types.ts';
@@ -287,11 +290,11 @@ const assertIncompatibleLaneSuppressesHedge = defineCompositeAssertion({
     }
 });
 
-const earlyHedgeDelayChecks = (
+const earlyHedgeDelayChecks = function (
     check: CompositeCheckBuilder<'assert'>,
     state: HedgeDispatchState,
     lane: PlacementLane
-): CompositeAssertionReturn<'assert'> => {
+): CompositeAssertionReturn<'assert'> {
     return check.group([
         check.equal(laneHasPotentialHedge(state, lane), true),
         check.equal(hedgeWakeDelay(state, lane), 50),

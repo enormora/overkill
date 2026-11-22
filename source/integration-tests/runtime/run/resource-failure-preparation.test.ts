@@ -1,11 +1,16 @@
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { suite, test } from '@overkill-dev/test';
 
 import type { TestPlanCase } from '../../../packages/engine/engine.entry-point.ts';
 import { defineResource, withFailureArtifacts } from '../../../packages/test/resources.entry-point.ts';
 import { createTestEngine } from '../../../test-support/create-test-engine.ts';
-import { attachmentFixtureForWork } from '../../../test-support/attachment-fixture.ts';
+import { type AttachmentFixture, attachmentFixtureForWork } from '../../../test-support/attachment-fixture.ts';
 import { defaultAttachmentLimits } from '../../../engine/runtime-attachment.ts';
-import { currentAttachmentContext, runWithAttachmentContext } from '../../../attachments/attachment-context.ts';
+import {
+    type AttachmentContext,
+    currentAttachmentContext,
+    runWithAttachmentContext
+} from '../../../attachments/attachment-context.ts';
 import { prepareAttemptResource, prepareLifetimeResource } from '../../../run/resource-failure-preparation.ts';
 import type { ManagedResourceRecord } from '../../../run/resource-lifecycle-session-acquirer.ts';
 
@@ -68,8 +73,28 @@ function ownerRecord(recordCapture: (capture: OwnerCapture) => void): ManagedRes
     };
 }
 
+type PassiveAttachmentConsumersEvidence = {
+    readonly outerContext: AttachmentContext | null;
+    readonly captures: readonly OwnerCapture[];
+    readonly fixture: AttachmentFixture;
+};
+
+const passiveAttachmentConsumers = defineCompositeAssertion({
+    name: 'passive attachment consumers',
+    assert(
+        check,
+        { outerContext, captures, fixture }: PassiveAttachmentConsumersEvidence
+    ) {
+        return check.group([
+            check.equal(currentAttachmentContext(), outerContext),
+            check.deepEqual(captures, []),
+            check.deepEqual(fixture.store.artifacts(), [])
+        ]);
+    }
+});
+
 export const testNode = suite('Resource failure preparation', [
-    test('projected consumers and unmanaged sessions never invoke owner collectors', async (scope) => {
+    test('projected consumers and unmanaged sessions never invoke owner collectors', async function (scope) {
         const captures: OwnerCapture[] = [];
         const record = ownerRecord(function recordKind(kind) {
             captures.push(kind);
@@ -85,13 +110,11 @@ export const testNode = suite('Resource failure preparation', [
             await prepareAttemptResource({ ...record, external: true }, testCase, { index: 0 });
             await prepareLifetimeResource({ ...record, external: true });
         });
-        scope.assert.equal(currentAttachmentContext(), outerContext);
-        scope.assert.deepEqual(captures, []);
-        scope.assert.deepEqual(fixture.store.artifacts(), []);
+        scope.assert(passiveAttachmentConsumers, { outerContext, captures, fixture });
 
         return scope.assert.collect();
     }),
-    test('resource owners prepare exact attempt and lifetime evidence with private handles', async (scope) => {
+    test('resource owners prepare exact attempt and lifetime evidence with private handles', async function (scope) {
         const captures: OwnerCapture[] = [];
         const record = ownerRecord(function recordKind(kind) {
             captures.push(kind);

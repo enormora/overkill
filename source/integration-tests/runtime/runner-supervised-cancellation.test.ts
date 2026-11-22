@@ -65,7 +65,7 @@ const assertReaped = defineCompositeAssertion({
     assert(check, processIds: readonly number[]) {
         return check.group([
             check.equal(processIds.length, 1),
-            ...processIds.map((pid) => {
+            ...processIds.map(function (pid) {
                 return check.group([
                     check.notEqual(pid, process.pid),
                     check.throws(function probeChild() {

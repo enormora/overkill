@@ -1,4 +1,8 @@
-import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import {
+    type CompositeCheckBuilder,
+    type CompositeAssertionReturn,
+    defineCompositeAssertion
+} from '@overkill-dev/test/assert';
 import { defineMacro, type TestScope, suite, test } from '@overkill-dev/test';
 
 import {
@@ -73,13 +77,13 @@ const assertRecordingSnapshots = defineCompositeAssertion({
     assert(check, fixture: CoverageRecordFixture, status: RecordingScenario['status']) {
         const first = fixture.records[0];
         const last = fixture.records.at(-1);
-        if (first === undefined || first === null) {
+        if (first === undefined) {
             return check.defined(first);
         }
-        if (last === undefined || last === null) {
+        if (last === undefined) {
             return check.defined(last);
         }
-        if (last.result === undefined || last.result === null) {
+        if (last.result === null) {
             return check.defined(last.result);
         }
         return check.group([
@@ -90,8 +94,8 @@ const assertRecordingSnapshots = defineCompositeAssertion({
     }
 });
 
-const assertRecordedRun = defineMacro((title: string, scenario: RecordingScenario) =>
-    test(title, async (scope) => {
+const assertRecordedRun = defineMacro(function (title: string, scenario: RecordingScenario) {
+    return test(title, async function (scope) {
         await withMemoryCoverageRecordFixture(config, scenario.failedWrites, async function execute(fixture) {
             const { command, orchestrator } = recordedInvocation(fixture);
             const result = await orchestrator.run({
@@ -107,20 +111,32 @@ const assertRecordedRun = defineMacro((title: string, scenario: RecordingScenari
         });
 
         return scope.assert.collect();
-    })
-);
+    });
+});
+
+type RecordedReplayPlan = NonNullable<CoverageRecordFixture['records'][number]['replayPlan']>;
+function replaySelectionChecks(
+    check: CompositeCheckBuilder<'assert'>,
+    plan: RecordedReplayPlan
+): CompositeAssertionReturn<'assert'> {
+    return check.deepEqual({
+        defined: plan.defined,
+        planned: plan.files[0]?.cases.length,
+        file: plan.discoveredFiles[0]?.file
+    }, { defined: 2, planned: 1, file: passingFile });
+}
 
 const assertReplayPlanSnapshot = defineCompositeAssertion({
     name: 'replay plan snapshot',
     assert(check, fixture: CoverageRecordFixture) {
         const started = fixture.records[0];
         const frozen = fixture.records[1];
-        if (started === undefined || started === null) {
+        if (started === undefined) {
             return check.defined(started);
         }
-        const initialChecks = check.defined(started);
-        if (frozen === undefined || frozen === null) {
-            return check.group([ initialChecks, check.defined(frozen) ]);
+
+        if (frozen === undefined) {
+            return check.group([ check.defined(frozen) ]);
         }
         const intermediateChecks = check.group([
             check.defined(frozen),
@@ -131,18 +147,13 @@ const assertReplayPlanSnapshot = defineCompositeAssertion({
                 result: null
             })
         ]);
-        if (frozen.replayPlan === undefined || frozen.replayPlan === null) {
-            return check.group([ initialChecks, intermediateChecks, check.defined(frozen.replayPlan) ]);
+        if (frozen.replayPlan === null) {
+            return check.group([ intermediateChecks, check.defined(frozen.replayPlan) ]);
         }
         return check.group([
-            initialChecks,
             intermediateChecks,
             check.defined(frozen.replayPlan),
-            check.deepEqual({
-                defined: frozen.replayPlan.defined,
-                planned: frozen.replayPlan.files[0]?.cases.length,
-                file: frozen.replayPlan.discoveredFiles[0]?.file
-            }, { defined: 2, planned: 1, file: passingFile }),
+            replaySelectionChecks(check, frozen.replayPlan),
             check.deepEqual<unknown, unknown>(fixture.records.at(-1)?.replayPlan, frozen.replayPlan)
         ]);
     }

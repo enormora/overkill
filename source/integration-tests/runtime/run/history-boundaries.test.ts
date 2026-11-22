@@ -1,7 +1,7 @@
-import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { mkdtemp, rm, mkdir } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { suite, test } from '@overkill-dev/test';
 
 import { completedHistoryRecord, type CompletedHistoryFixture } from '../../../test-support/history-record-fixture.ts';

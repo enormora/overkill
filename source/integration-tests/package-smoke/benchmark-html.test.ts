@@ -1,4 +1,3 @@
-import { packageConsumer } from './support/package-consumer.ts';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { suite } from '@overkill-dev/test';
@@ -6,6 +5,7 @@ import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import type * as BenchmarkHtmlPackage from '../../packages/reporter-benchmark-html/reporter-benchmark-html.entry-point.ts';
 import { defaultFailureArtifactPolicy } from '../../engine/failure-artifact-policy.ts';
 import { benchmarkHtmlTimelineFixture } from '../../test-support/benchmark-html-fixture.ts';
+import { packageConsumer } from './support/package-consumer.ts';
 import { resolvePackagedExport } from './support/packaged-module.ts';
 
 const packagedReport = defineCompositeAssertion({

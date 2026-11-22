@@ -1,5 +1,5 @@
-import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import assert from 'node:assert/strict';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { table, suite, test, type TestScope } from '@overkill-dev/test';
 
 import { INSTRUMENTER_CONSTANTS, type InstrumenterContext, type MutantCoverage } from '@stryker-mutator/api/core';

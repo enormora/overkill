@@ -1,6 +1,6 @@
-import type { ParameterizedTestScope } from '@overkill-dev/test';
 import { AsyncResource } from 'node:async_hooks';
-import { table, suite, test, type TestScope } from '@overkill-dev/test';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import { type ParameterizedTestScope, table, suite, test, type TestScope } from '@overkill-dev/test';
 
 import {
     createFailureArtifactStream,
@@ -20,72 +20,87 @@ import { runWithAttachmentExecution } from './resource-lifecycle-state.ts';
 const metadata = { mediaType: 'application/json', name: 'evidence' };
 
 export const testNode = suite('inline attachment ownership', [
-    test('prepared evidence cannot borrow an active attempt when its own attempt is unknown', async (scope: TestScope) => {
-        const { execution, store } = inlineAttachmentFixture(defaultAttachmentLimits, [ work ]);
-        await runWithAttachmentExecution(execution, async function ownedRun() {
-            await execution.runAttempt(work, { index: 0 }, async function selectedAttempt() {
-                const attachments = preparedResourceAttachments(
-                    'service',
-                    { kind: 'attempt', work, attempt: { index: 99 } },
-                    'instrumented',
-                    'attachment'
-                );
-                scope.require.defined(attachments);
-                await scope.assert.rejects(async function rejectUnknownAttempt() {
-                    await attachments.json(metadata, { ready: true });
-                }, { message: 'Failure artifact escaped its test attempt.' });
-            });
-        });
-        const errors = await execution.finish();
-        scope.assert.equal(errors.length, 1);
-        scope.assert.equal(errors[0]?.subtype, 'attribution-drift');
-        scope.assert.deepEqual(store.artifacts(), []);
-
-        return scope.assert.collect();
-    }),
-    test('simultaneous runs keep service streams with identical work identities separate', async (scope: TestScope) => {
-        const [ left, right ] = [
-            inlineAttachmentFixture(defaultAttachmentLimits, [ work ]),
-            inlineAttachmentFixture(defaultAttachmentLimits, [ work ])
-        ];
-        const rightStarted = Promise.withResolvers<undefined>();
-        const leftFinished = Promise.withResolvers<undefined>();
-        async function finishRight(stream: FailureArtifactStream): Promise<void> {
-            rightStarted.resolve(undefined);
-            await leftFinished.promise;
-            stream.write(' end');
-            await stream.close();
-        }
-        async function finishLeft(): Promise<void> {
-            await rightStarted.promise;
-            await closeAttemptFailureStreams(work, { index: 0 });
-            leftFinished.resolve(undefined);
-        }
-        async function capturedAttempt(fixture: AttachmentFixture, side: 'left' | 'right'): Promise<void> {
-            await runWithAttachmentExecution(fixture.execution, async function ownedRun() {
-                await fixture.execution.runAttempt(work, { index: 0 }, async function sharedWorkIdentity() {
-                    const stream = createFailureArtifactStream(
-                        { name: 'service', condition: { kind: 'attempt', work, attempt: { index: 0 } } },
-                        'boundary-captured',
-                        'stdout',
-                        'text/plain'
+    test(
+        'prepared evidence cannot borrow an active attempt when its own attempt is unknown',
+        async function (scope: TestScope) {
+            const { execution, store } = inlineAttachmentFixture(defaultAttachmentLimits, [ work ]);
+            await runWithAttachmentExecution(execution, async function ownedRun() {
+                await execution.runAttempt(work, { index: 0 }, async function selectedAttempt() {
+                    const attachments = preparedResourceAttachments(
+                        'service',
+                        { kind: 'attempt', work, attempt: { index: 99 } },
+                        'instrumented',
+                        'attachment'
                     );
-                    if (stream === null) {
-                        throw new Error('Expected managed service capture.');
-                    }
-                    stream.write(side);
-                    await (side === 'right' ? finishRight(stream) : finishLeft());
+                    scope.require.defined(attachments);
+                    await scope.assert.rejects(async function rejectUnknownAttempt() {
+                        await attachments.json(metadata, { ready: true });
+                    }, { message: 'Failure artifact escaped its test attempt.' });
                 });
             });
-        }
-        await Promise.all([ capturedAttempt(left, 'left'), capturedAttempt(right, 'right') ]);
-        const artifact = right.store.artifacts()[0];
-        scope.require.defined(artifact);
-        scope.assert.partialDeepEqual(artifact.payload.content, { kind: 'text', text: 'right end' });
+            const errors = await execution.finish();
+            scope.assert(
+                defineCompositeAssertion({
+                    name: 'prepared evidence cannot borrow an active attempt when its own attempt is unknown',
+                    assert(check) {
+                        return check.group([
+                            check.equal(errors.length, 1),
+                            check.equal(errors[0]?.subtype, 'attribution-drift'),
+                            check.deepEqual(store.artifacts(), [])
+                        ]);
+                    }
+                })
+            );
 
-        return scope.assert.collect();
-    }),
-    test('late service output preserves its expired attempt attribution', async (scope) => {
+            return scope.assert.collect();
+        }
+    ),
+    test(
+        'simultaneous runs keep service streams with identical work identities separate',
+        async function (scope) {
+            const [ left, right ] = [
+                inlineAttachmentFixture(defaultAttachmentLimits, [ work ]),
+                inlineAttachmentFixture(defaultAttachmentLimits, [ work ])
+            ];
+            const rightStarted = Promise.withResolvers<undefined>();
+            const leftFinished = Promise.withResolvers<undefined>();
+            async function finishRight(stream: FailureArtifactStream): Promise<void> {
+                rightStarted.resolve(undefined);
+                await leftFinished.promise;
+                stream.write(' end');
+                await stream.close();
+            }
+            async function finishLeft(): Promise<void> {
+                await rightStarted.promise;
+                await closeAttemptFailureStreams(work, { index: 0 });
+                leftFinished.resolve(undefined);
+            }
+            async function capturedAttempt(fixture: AttachmentFixture, side: 'left' | 'right'): Promise<void> {
+                await runWithAttachmentExecution(fixture.execution, async function ownedRun() {
+                    await fixture.execution.runAttempt(work, { index: 0 }, async function sharedWorkIdentity() {
+                        const stream = createFailureArtifactStream(
+                            { name: 'service', condition: { kind: 'attempt', work, attempt: { index: 0 } } },
+                            'boundary-captured',
+                            'stdout',
+                            'text/plain'
+                        );
+                        if (stream === null) {
+                            throw new Error('Expected managed service capture.');
+                        }
+                        stream.write(side);
+                        await (side === 'right' ? finishRight(stream) : finishLeft());
+                    });
+                });
+            }
+            await Promise.all([ capturedAttempt(left, 'left'), capturedAttempt(right, 'right') ]);
+            scope.assert.partialDeepEqual<unknown, unknown>(right.store.artifacts()[0], {
+                payload: { content: { kind: 'text', text: 'right end' } }
+            });
+
+            return scope.assert.collect();
+        }
+    ),
+    test('late service output preserves its expired attempt attribution', async function (scope) {
         const { execution, store } = inlineAttachmentFixture(defaultAttachmentLimits, [ work ]);
         const captured = Promise.withResolvers<FailureArtifactStream>();
         await runWithAttachmentExecution(execution, async function captureFirstAttempt() {
@@ -107,12 +122,21 @@ export const testNode = suite('inline attachment ownership', [
         const stream = await captured.promise;
         stream.write('late output');
         const errors = await execution.finish();
-        scope.assert.equal(errors[0]?.subtype, 'attribution-drift');
-        scope.assert.equal(store.artifacts().length, 1);
+        scope.assert(
+            defineCompositeAssertion({
+                name: 'late service output preserves its expired attempt attribution',
+                assert(check) {
+                    return check.group([
+                        check.equal(errors[0]?.subtype, 'attribution-drift'),
+                        check.equal(store.artifacts().length, 1)
+                    ]);
+                }
+            })
+        );
 
         return scope.assert.collect();
     }),
-    test('captured resource attachment APIs reject writes after the integration run ends', async (scope) => {
+    test('captured resource attachment APIs reject writes after the integration run ends', async function (scope) {
         const { execution, store } = inlineAttachmentFixture(defaultAttachmentLimits, [ work ]);
         const attachments = execution.context.forProducer({ kind: 'resource', name: 'service' });
         await attachments.json(metadata, { ready: true });
@@ -120,8 +144,17 @@ export const testNode = suite('inline attachment ownership', [
         await scope.assert.rejects(async function rejectLateRunAttachment() {
             await attachments.json(metadata, { late: true });
         }, { message: 'Attachment escaped its integration run.' });
-        scope.assert.equal(store.artifacts().length, 1);
-        scope.assert.equal(execution.takeErrors({ kind: 'run' })[0]?.subtype, 'attribution-drift');
+        scope.assert(
+            defineCompositeAssertion({
+                name: 'captured resource attachment APIs reject writes after the integration run ends',
+                assert(check) {
+                    return check.group([
+                        check.equal(store.artifacts().length, 1),
+                        check.equal(execution.takeErrors({ kind: 'run' })[0]?.subtype, 'attribution-drift')
+                    ]);
+                }
+            })
+        );
 
         return scope.assert.collect();
     }),
@@ -159,7 +192,7 @@ export const testNode = suite('inline attachment ownership', [
             return scope.assert.collect();
         }
     }),
-    test('expired attempts fail without attributing evidence to another attempt', async (scope) => {
+    test('expired attempts fail without attributing evidence to another attempt', async function (scope) {
         const { execution, store } = inlineAttachmentFixture(defaultAttachmentLimits, [ work ]);
         const deferred = Promise.withResolvers<() => Promise<unknown>>();
         await runWithAttachmentExecution(execution, async function scheduleLateAttachment() {
@@ -173,13 +206,22 @@ export const testNode = suite('inline attachment ownership', [
         const expired = await deferred.promise;
         await scope.assert.rejects(expired, { message: 'Attachment escaped its test attempt.' });
         const errors = execution.takeErrors({ kind: 'run' });
-        scope.assert.equal(errors[0]?.subtype, 'attribution-drift');
-        scope.assert.equal(errors[0]?.attributedToWork, null);
-        scope.assert.equal(store.artifacts().length, 0);
+        scope.assert(
+            defineCompositeAssertion({
+                name: 'expired attempts fail without attributing evidence to another attempt',
+                assert(check) {
+                    return check.group([
+                        check.equal(errors[0]?.subtype, 'attribution-drift'),
+                        check.equal(errors[0]?.attributedToWork, null),
+                        check.equal(store.artifacts().length, 0)
+                    ]);
+                }
+            })
+        );
 
         return scope.assert.collect();
     }),
-    test('attachment budgets span every attempt in a retry chain', async (scope) => {
+    test('attachment budgets span every attempt in a retry chain', async function (scope) {
         const limits = { ...defaultAttachmentLimits, maxScopeBytes: 3, maxScopeAttachments: 2 };
         const { execution, store } = inlineAttachmentFixture(limits, [ work ]);
         await runWithAttachmentExecution(execution, async function writeAcrossRetryChain() {
@@ -203,12 +245,26 @@ export const testNode = suite('inline attachment ownership', [
         const retained = store.artifacts().map(function retainedText(artifact) {
             return artifact.payload.content.kind === 'text' ? artifact.payload.content.text : null;
         });
-        scope.assert.deepEqual(retained, [ 'ab', 'a' ]);
-        scope.assert.equal(execution.takeErrors({ attempt: { index: 2 }, kind: 'case', work }).length, 1);
+        scope.assert(
+            defineCompositeAssertion({
+                name: 'attachment budgets span every attempt in a retry chain',
+                assert(check) {
+                    return check.group([
+                        check.deepEqual(retained, [ 'ab', 'a' ]),
+                        check.equal(
+                            execution
+                                .takeErrors({ attempt: { index: 2 }, kind: 'case', work })
+                                .length,
+                            1
+                        )
+                    ]);
+                }
+            })
+        );
 
         return scope.assert.collect();
     }),
-    test('oversized JSON is omitted and caught validation errors still fail the attempt', async (scope) => {
+    test('oversized JSON is omitted and caught validation errors still fail the attempt', async function (scope) {
         const { execution, store } = inlineAttachmentFixture({ ...defaultAttachmentLimits, maxInlineBytes: 5 }, [
             work
         ]);
@@ -222,8 +278,17 @@ export const testNode = suite('inline attachment ownership', [
                 }, { name: 'AttachmentOperationError' });
             });
         });
-        scope.assert.equal(store.artifacts().length, 1);
-        scope.assert.equal(execution.takeErrors({ attempt: { index: 0 }, kind: 'case', work }).length, 1);
+        scope.assert(
+            defineCompositeAssertion({
+                name: 'oversized JSON is omitted and caught validation errors still fail the attempt',
+                assert(check) {
+                    return check.group([
+                        check.equal(store.artifacts().length, 1),
+                        check.equal(execution.takeErrors({ attempt: { index: 0 }, kind: 'case', work }).length, 1)
+                    ]);
+                }
+            })
+        );
 
         return scope.assert.collect();
     })

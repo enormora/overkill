@@ -1,4 +1,5 @@
 import { realpath } from 'node:fs/promises';
+// eslint-disable-next-line node/no-unsupported-features/node-builtins -- Resolver hooks enforce the packed dependency boundary.
 import { registerHooks } from 'node:module';
 import { isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -23,12 +24,16 @@ function isPackedModule(url: string): boolean {
     return !isAbsolute(location) && location.split(sep)[0] !== '..';
 }
 
+function needsPackedResolution(specifier: string): boolean {
+    return !specifier.startsWith('file:') && !isAbsolute(specifier);
+}
+
 registerHooks({
     resolve(specifier, context, nextResolve) {
         const result = nextResolve(specifier, context);
         if (
             context.parentURL !== undefined && isPackedModule(context.parentURL) &&
-            result.url.startsWith('file:') && !specifier.startsWith('file:') && !isAbsolute(specifier) &&
+            result.url.startsWith('file:') && needsPackedResolution(specifier) &&
             !isPackedModule(result.url)
         ) {
             throw new Error(`Packed package resolved an uninstalled dependency: ${specifier}`);

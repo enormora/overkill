@@ -1,5 +1,5 @@
-import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import path from 'node:path';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { suite, test } from '@overkill-dev/test';
 
 import type { TestDebugArtifact } from '../packages/engine/engine.entry-point.ts';
@@ -18,7 +18,7 @@ const assertStoredArtifact = defineCompositeAssertion({
         directory: string,
         artifact: TestDebugArtifact
     ) {
-        if (saved === undefined || saved === null) {
+        if (saved === undefined) {
             return check.defined(saved);
         }
         const initialChecks = check.group([

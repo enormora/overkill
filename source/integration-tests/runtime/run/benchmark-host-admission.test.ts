@@ -1,15 +1,14 @@
 import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { type TestScope, suite, test } from '@overkill-dev/test';
 
-import { normalizeConfig } from '../../../config/config.ts';
+import { normalizeConfig, type BenchmarkHostSnapshot, type RunCommand } from '../../../packages/run/run.entry-point.ts';
 import { benchmarkHostSnapshot } from '../../../test-support/benchmark-host-snapshot.ts';
 import { fakeWorkerPoolRuntimeDependencies } from '../../../test-support/worker-pool-runtime-fixtures.ts';
 import { defaultRunRequest } from '../../../test-support/run-command-factory.ts';
 import { readBenchmarkRunMetadata } from '../../../bench/benchmark-run-report.ts';
 import { canonicalIdentityJson, type RunResult } from '../../../packages/engine/engine.entry-point.ts';
-import type { BenchmarkHostSnapshot } from '../../../bench/benchmark-host-snapshot.ts';
+
 import { createRunCoordinator, type RunCoordinator } from '../../../run/run-coordinator.entry-point.ts';
-import type { RunCommand } from '../../../run/run-types.ts';
 
 type ReporterNotification = { readonly kind: string; };
 

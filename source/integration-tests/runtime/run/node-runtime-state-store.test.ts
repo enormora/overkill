@@ -1,7 +1,7 @@
-import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { chmod, mkdir, mkdtemp, readdir, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { suite, test } from '@overkill-dev/test';
 
 import { createNodeFileStore } from '../../../file-store.ts';
@@ -33,32 +33,38 @@ const assertBlockedReplacement = defineCompositeAssertion({
     }
 });
 
+async function writeWithoutDirectoryAccess(directory: string): Promise<unknown> {
+    await chmod(directory, 0);
+    let failure: unknown = null;
+    try {
+        await createNodeFileStore().write(path.join(directory, 'record.json'), 'record');
+    } catch (error) {
+        failure = error;
+    } finally {
+        await chmod(directory, 0o700);
+    }
+    return failure;
+}
+
 const assertDeniedStorageErrors = defineCompositeAssertion({
     name: 'denied runtime state storage',
     async assert(check, directory: string) {
-        await chmod(directory, 0);
-        try {
-            const failure = await createNodeFileStore().write(path.join(directory, 'record.json'), 'record').catch((
-                error: unknown
-            ) => error);
-            if (!(failure instanceof AggregateError)) {
-                return check.instanceOf(failure, AggregateError);
-            }
-            const errors: readonly unknown[] = failure.errors;
-            return check.group([
-                check.equal(failure.name, 'AggregateError'),
-                check.equal(failure.message, 'Runtime state write and cleanup failed.'),
-                check.equal(errors.length, 2),
-                check.equal(failure.cause, errors[1]),
-                ...errors.map(function permissionFailure(error) {
-                    return error instanceof Error
-                        ? check.equal(Reflect.get(error, 'code'), 'EACCES')
-                        : check.instanceOf(error, Error);
-                })
-            ]);
-        } finally {
-            await chmod(directory, 0o700);
+        const failure = await writeWithoutDirectoryAccess(directory);
+        if (!(failure instanceof AggregateError)) {
+            return check.instanceOf(failure, AggregateError);
         }
+        const errors: readonly unknown[] = failure.errors;
+        return check.group([
+            check.equal(failure.name, 'AggregateError'),
+            check.equal(failure.message, 'Runtime state write and cleanup failed.'),
+            check.equal(errors.length, 2),
+            check.equal(failure.cause, errors[1]),
+            ...errors.map(function permissionFailure(error) {
+                return error instanceof Error
+                    ? check.equal(Reflect.get(error, 'code'), 'EACCES')
+                    : check.instanceOf(error, Error);
+            })
+        ]);
     }
 });
 

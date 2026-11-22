@@ -35,7 +35,7 @@ export async function mutationExecution(
         policy: await frozenMicrotestPolicy(),
         seed: '42',
         freshState,
-        signal: signal,
+        signal,
         client: {
             ...fixture.runner.client,
             async request(request) {

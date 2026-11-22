@@ -1,7 +1,6 @@
-import { mock } from 'node:test';
 import { runInNewContext } from 'node:vm';
 import { types as runtimeTypes } from 'node:util';
-import { type TestScope, suite, test } from '@overkill-dev/test';
+import { type TestScope, suite, test, testDouble } from '@overkill-dev/test';
 
 import { createAsyncMeasurementSample, createMeasurementSample } from './measurement-region.ts';
 import { asyncMeasurementStrategy, measurementStrategy, wallClockMeasurement } from './measurement-strategy.ts';
@@ -57,9 +56,8 @@ function actionError(action: () => unknown): unknown {
 
 export const testNode = suite('measurement regions and collectors', [
     test('marks throughput unavailable when the wall clock cannot resolve the region', function (scope) {
-        const clock = mock.method(process.hrtime, 'bigint', function () {
-            return 0n;
-        });
+        const original = Object.getOwnPropertyDescriptors(process.hrtime);
+        Object.defineProperty(process.hrtime, 'bigint', { ...original.bigint, value: testDouble.returns(0n) });
         try {
             const measured = createMeasurementSample(wallClockMeasurement(), scope.signal).sample.measure(function () {
                 return 3;
@@ -68,7 +66,7 @@ export const testNode = suite('measurement regions and collectors', [
             scope.assert.equal(measured.metrics.operationsPerSecond.availability, 'unavailable');
             return scope.assert.collect();
         } finally {
-            clock.mock.restore();
+            Object.defineProperty(process.hrtime, 'bigint', original.bigint);
         }
     }),
     test('awaits asynchronous values and preserves asynchronous disposal failures', async function (scope) {

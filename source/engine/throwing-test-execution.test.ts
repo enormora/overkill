@@ -1,7 +1,10 @@
-import type { CompositeAssertionReturn } from '@overkill-dev/test/assert';
-import { type CompositeCheckBuilder, defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { AssertionError } from 'node:assert';
 import assert from 'node:assert/strict';
+import {
+    type CompositeAssertionReturn,
+    type CompositeCheckBuilder,
+    defineCompositeAssertion
+} from '@overkill-dev/test/assert';
 import { type TestScope, suite, test } from '@overkill-dev/test';
 
 import { createPermissionDenialRuntimePolicy } from '../run/capability-policy.ts';
@@ -67,10 +70,10 @@ function firstAssertionFailure(outcome: FailOutcome): AssertionTestFailure | nul
     return null;
 }
 
-const sourceLocationInThisFileChecks = (
+const sourceLocationInThisFileChecks = function (
     check: CompositeCheckBuilder<'assert'>,
     location: unknown
-): CompositeAssertionReturn<'assert'> => {
+): CompositeAssertionReturn<'assert'> {
     if (typeof location !== 'object' || location === null || !Object.hasOwn(location, 'kind')) {
         const initialChecks = check.annotated('Expected source location.').fail();
         return initialChecks;

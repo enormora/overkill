@@ -1,14 +1,16 @@
-import type { CompositeAssertionReturn } from '@overkill-dev/test/assert';
-import type { CompositeCheckBuilder } from '@overkill-dev/test/assert';
-
-import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { mkdtemp, rm, readdir, readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
+import {
+    type CompositeAssertionReturn,
+    type CompositeCheckBuilder,
+    defineCompositeAssertion
+} from '@overkill-dev/test/assert';
+
 import { table, suite, test, type TestScope } from '@overkill-dev/test';
 
-import { defaultHistoryPolicy } from '../../config/history-policy.ts';
 import {
     orchestrator,
+    normalizeConfig,
     type SingleRunRecord,
     type CompactRunRecord,
     type RunRequest,
@@ -18,7 +20,6 @@ import {
     type Scheduling
 } from '../../packages/run/run.entry-point.ts';
 import {
-    defaultFailureArtifactPolicy,
     createPlainOutputRenderer,
     type CoverageArtifact,
     type CoverageRunnerError,
@@ -39,31 +40,13 @@ function coverageConfig(
     coverage: CoveragePolicy,
     scheduling: Scheduling
 ): NormalizedConfig {
-    return {
-        history: defaultHistoryPolicy,
+    const config = normalizeConfig({
         loader: { sourceMaps: false, stripMode: 'strip-only' },
         outputRenderer: createPlainOutputRenderer(),
         profiles: {
             microtest: {
-                failureArtifacts: defaultFailureArtifactPolicy,
-                baselines: { adapters: [], directory: 'test-baselines', snapshots: false, stale: 'fail' },
-                coverage,
-                execution: { maxConcurrency: 5, processModel, scheduling },
-                files: null,
-                reporters: null,
-                processUsage: {
-                    budgets: {
-                        activeResourceCount: null,
-                        javaScriptEngineHeapBytes: null,
-                        residentSetBytes: null,
-                        residentSetGrowthBytesPerSecond: null
-                    },
-                    measure: false,
-                    samplingIntervalMilliseconds: 100
-                },
                 testFamily: 'microtest',
-                runRecords: { persist: 'on-demand' },
-                timings: { collection: 'summary' },
+                execution: { maxConcurrency: 5, processModel, scheduling },
                 timeouts: {
                     collectionMilliseconds: 10_000,
                     hardMilliseconds: hardTimeoutMilliseconds,
@@ -71,9 +54,13 @@ function coverageConfig(
                 }
             }
         },
-        reporters: [],
         runtimeStateDir: 'target/coverage-integration'
-    };
+    });
+    const profile = config.profiles.microtest;
+    if (profile?.testFamily !== 'microtest') {
+        throw new Error('Expected a microtest coverage profile.');
+    }
+    return { ...config, reporters: [], profiles: { microtest: { ...profile, coverage } } };
 }
 
 function coverageRequest(): RunRequest {
@@ -105,7 +92,7 @@ function coverageRequest(): RunRequest {
 function coverageArtifact(artifacts: readonly CoverageArtifact[]): CoverageArtifact {
     const [ artifact ] = artifacts;
 
-    if (artifact === undefined || artifact === null) {
+    if (artifact === undefined) {
         throw new Error('Expected artifact to satisfy defined.');
     }
 
@@ -124,10 +111,10 @@ function reportPath(artifact: CoverageArtifact, format: 'lcov' | 'v8'): string {
     );
 }
 
-const coverageFileChecks = async (
+const coverageFileChecks = async function (
     check: CompositeCheckBuilder<'assert'>,
     artifact: CoverageArtifact
-): Promise<CompositeAssertionReturn<'assert'>> => {
+): Promise<CompositeAssertionReturn<'assert'>> {
     const coverageDirectory = path.resolve(artifact.payload.directory);
     const lcovPath = reportPath(artifact, 'lcov');
     const v8Path = reportPath(artifact, 'v8');
@@ -152,16 +139,19 @@ type CoverageExecution = {
     readonly scheduling: Scheduling;
 };
 
-const coverageRecordChecks = async (
+const coverageRecordChecks = async function (
     check: CompositeCheckBuilder<'assert'>,
     artifact: CoverageArtifact,
     result: RunResult,
     execution: CoverageExecution
-): Promise<CompositeAssertionReturn<'assert'>> => {
+): Promise<CompositeAssertionReturn<'assert'>> {
     const recordPath = `${path.dirname(path.resolve(artifact.payload.directory))}.json`;
     const record = JSON.parse(await readFile(recordPath, 'utf8')) as SingleRunRecord;
-    if (record.facts === undefined || record.facts === null) {
-        return check.defined(record.facts);
+    if (record.facts === null) {
+        return check.notNull(record.facts);
+    }
+    if (record.coverage === null) {
+        return check.notNull(record.coverage);
     }
     return check.group([
         check.deepEqual({
@@ -184,9 +174,9 @@ const coverageRecordChecks = async (
             seed: { value: '42' },
             status: 'completed'
         }),
-        check.deepEqual<unknown, unknown>(record.coverage?.policy, defaultCoveragePolicy),
-        check.equal(record.coverage?.directory, artifact.payload.directory),
-        check.equal(record.coverage?.rawDataDirectory, artifact.payload.rawDataDirectory),
+        check.deepEqual<unknown, unknown>(record.coverage.policy, defaultCoveragePolicy),
+        check.equal(record.coverage.directory, artifact.payload.directory),
+        check.equal(record.coverage.rawDataDirectory, artifact.payload.rawDataDirectory),
         check.deepEqual(
             record.identities,
             result.perTest.map(function workIdentity(testResult) {
@@ -205,21 +195,21 @@ async function runCoverage(
     scheduling: Scheduling
 ): Promise<CoverageRunEvidence> {
     const directory = await mkdtemp('target/coverage-run-');
-    cleanup(async () => {
+    cleanup(async function () {
         await rm(directory, { recursive: true, force: true });
     });
     const result = await coverageSubject.run({
         config: {
-            ...coverageConfig(processModel, 10000, defaultCoveragePolicy, scheduling),
+            ...coverageConfig(processModel, 10_000, defaultCoveragePolicy, scheduling),
             runtimeStateDir: directory
         },
         cwd: process.cwd(),
         engine: { kind: 'default' },
         request: coverageRequest()
     });
-    const artifacts = result.artifacts.filter((artifact): artifact is CoverageArtifact =>
-        artifact.payload.kind === 'coverage'
-    );
+    const artifacts = result.artifacts.filter(function (artifact): artifact is CoverageArtifact {
+        return artifact.payload.kind === 'coverage';
+    });
     return { result, artifact: coverageArtifact(artifacts), processModel, scheduling };
 }
 const successfulCoverageRun = defineCompositeAssertion({
@@ -286,7 +276,7 @@ const assertCompletedCrashRecord = defineCompositeAssertion({
         const recordPath = `${path.resolve(rawDirectory, '../..')}.json`;
         const record = JSON.parse(await readFile(recordPath, 'utf8')) as SingleRunRecord;
         const initialChecksBeforeNextAction = check.equal(record.status, 'completed');
-        if (record.result === undefined || record.result === null) {
+        if (record.result === null) {
             return check.group([ initialChecksBeforeNextAction, check.defined(record.result) ]);
         }
         return check.group([
@@ -317,7 +307,7 @@ const assertCompletedCrashRecord = defineCompositeAssertion({
 });
 
 export const testNode = suite('Runner coverage', [
-    test('resolution writes no record and ordinary runs retain compact outcomes', async (scope) => {
+    test('resolution writes no record and ordinary runs retain compact outcomes', async function (scope) {
         const config = {
             ...coverageConfig('in-process', 10_000, defaultCoveragePolicy, 'serial'),
             runtimeStateDir: await mkdtemp('target/coverage-disabled-integration-')
@@ -356,7 +346,7 @@ export const testNode = suite('Runner coverage', [
             return scope.assert.collect();
         }
     }),
-    test('coverage threshold misses fail the run and retain the artifact', async (scope: TestScope) => {
+    test('coverage threshold misses fail the run and retain the artifact', async function (scope: TestScope) {
         const result = await coverageSubject.run({
             config: coverageConfig('in-process', 10_000, {
                 ...defaultCoveragePolicy,
@@ -388,7 +378,7 @@ export const testNode = suite('Runner coverage', [
 
         return scope.assert.collect();
     }),
-    test('crashed supervised runs retain raw storage without publishing a coverage artifact', async (scope) => {
+    test('crashed supervised runs retain raw storage without publishing a coverage artifact', async function (scope) {
         const result = await coverageSubject.run({
             config: {
                 ...coverageConfig('supervised-process', 100, defaultCoveragePolicy, 'concurrent'),
@@ -426,7 +416,7 @@ export const testNode = suite('Runner coverage', [
         async function (scope) {
             const coveredRun = await runCoverage(scope.cleanup, 'in-process', 'concurrent');
             await scope.assert(successfulCoverageRun, coveredRun);
-            const artifact = coveredRun.artifact;
+            const { artifact } = coveredRun;
             const coverageDirectory = path.join(path.resolve(artifact.payload.directory), 'all-files');
 
             await generateCoverageReports({

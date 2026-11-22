@@ -15,7 +15,7 @@ const assertPreparation = defineCompositeAssertion({
     name: 'preparation',
     async assert(check, project: ReplayProject) {
         const [ record ] = await replayRecords(project);
-        if (record === undefined || record === null) {
+        if (record === undefined) {
             return check.defined(record);
         }
         const initialChecks = check.group([

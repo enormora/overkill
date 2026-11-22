@@ -1,7 +1,10 @@
-import type { CompositeAssertionReturn } from '@overkill-dev/test/assert';
-import { type CompositeCheckBuilder } from '@overkill-dev/test/assert';
-import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { mkdir, mkdtemp, rm } from 'node:fs/promises';
+import {
+    type CompositeAssertionReturn,
+    type CompositeCheckBuilder,
+    defineCompositeAssertion
+} from '@overkill-dev/test/assert';
+
 import { table, suite, test } from '@overkill-dev/test';
 
 import { createLineReporter } from '../../packages/reporter-line/reporter-line.entry-point.ts';
@@ -58,13 +61,13 @@ type PlacementScenario = {
     readonly expectedWorkers: number;
 };
 
-const executionChecks = (
+const executionChecks = function (
     check: CompositeCheckBuilder<'assert'>,
     result: Awaited<ReturnType<RunOrchestrator['bench']['run']>>,
     scenario: PlacementScenario
-): CompositeAssertionReturn<'assert'> => {
+): CompositeAssertionReturn<'assert'> {
     const metadata = readBenchmarkRunMetadata(result.context.facts);
-    if (metadata === undefined || metadata === null) {
+    if (metadata === null) {
         return check.defined(metadata);
     }
     return check.group([
@@ -79,11 +82,11 @@ const executionChecks = (
     ]);
 };
 
-const placementChecks = async (
+const placementChecks = async function (
     check: CompositeCheckBuilder<'assert'>,
     directory: string,
     scenario: PlacementScenario
-): Promise<CompositeAssertionReturn<'assert'>> => {
+): Promise<CompositeAssertionReturn<'assert'>> {
     let observations = 0;
     const runner = placementRunner(scenario.busyPercent, function observed() {
         observations += 1;

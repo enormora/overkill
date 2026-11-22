@@ -44,7 +44,7 @@ function scenarioRuntime(name: string, variant: string, resource: ScenarioResour
 }
 
 export const testNode = suite('Runtime scenario matrix', [
-    test('runtime matrices bind scenarios and require matching slots', (scope) => {
+    test('runtime matrices bind scenarios and require matching slots', function (scope) {
         const firstResource = scenarioResource('first-scenario', [ 'default', 'alternate' ]);
         const secondResource = scenarioResource('second-scenario', [ 'default', 'other' ]);
 

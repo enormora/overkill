@@ -1,8 +1,8 @@
-import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { mkdtemp, realpath, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { setTimeout as wait } from 'node:timers/promises';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { type TestScope, suite, test } from '@overkill-dev/test';
 
 import { executeProcessCommand, type ProcessExecutionInput } from '../../bench/process-execution.ts';
@@ -20,7 +20,7 @@ function command(signal: AbortSignal, source: string): ProcessExecutionInput {
         }),
         instrumentation: 'off',
         maximumBytes: 1024,
-        signal: signal,
+        signal,
         environment: { PARENT_VALUE: 'inherited' },
         started() {
             return undefined;

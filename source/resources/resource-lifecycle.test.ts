@@ -1,5 +1,9 @@
-import type { CompositeAssertionReference, CompositeAssertionReturn } from '@overkill-dev/test/assert';
-import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import {
+    type CompositeAssertionReference,
+    type CompositeAssertionReturn,
+    defineCompositeAssertion
+} from '@overkill-dev/test/assert';
+
 import { defineMacro, test, suite } from '@overkill-dev/test';
 
 import {
@@ -22,11 +26,7 @@ type EventLog = {
     readonly add: (...events: readonly string[]) => void;
     readonly values: () => readonly string[];
 };
-type Deferred<Value> = {
-    readonly promise: Promise<Value>;
-    readonly reject: (cause: unknown) => void;
-    readonly resolve: (value: Value) => void;
-};
+
 type DatabaseResource = ResourceDefinition<'database', Database, EmptyResourceDependencies>;
 type ServerDependencies = { readonly database: DatabaseResource; };
 type RuntimeRequest = StartRuntimeRequest<RuntimeDefinition>;
@@ -68,25 +68,6 @@ function createEventLog(): EventLog {
         values() {
             return Array.from(events);
         }
-    };
-}
-
-function deferred<Value>(): Deferred<Value> {
-    let resolvePromise: (value: Value) => void = function resolveBeforeAssignment(): void {
-        throw new Error('Deferred promise was not initialized.');
-    };
-    let rejectPromise: (cause: unknown) => void = function rejectBeforeAssignment(): void {
-        throw new Error('Deferred promise was not initialized.');
-    };
-    const promise = new Promise<Value>(function assignPromiseCallbacks(resolve, reject) {
-        resolvePromise = resolve;
-        rejectPromise = reject;
-    });
-
-    return {
-        promise,
-        reject: rejectPromise,
-        resolve: resolvePromise
     };
 }
 
@@ -231,7 +212,7 @@ function sharedDependencyScenario(): SharedDependencyScenario {
 
 function slowResource(
     events: EventLog,
-    gate: Deferred<undefined>
+    gate: PromiseWithResolvers<undefined>
 ): ResourceDefinition<'slow', string, EmptyResourceDependencies> {
     return defineResource({
         name: 'slow',
@@ -466,7 +447,7 @@ const assertConcurrentAcquisition = defineCompositeAssertion({
     name: 'concurrent acquisition',
     async assert(check) {
         const events = createEventLog();
-        const gate = deferred<undefined>();
+        const gate = Promise.withResolvers<undefined>();
         const runtime = defineRuntime({
             name: 'concurrent',
             dimensions: {},

@@ -202,7 +202,7 @@ const assertNativeExhaustionArtifacts = defineCompositeAssertion({
     name: 'native exhaustion artifacts',
     assert(check, fixture: SampledProcessExhaustionFixture) {
         const artifact = fixture.result.artifacts[0];
-        if (artifact === undefined || artifact === null) {
+        if (artifact === undefined) {
             return check.defined(artifact);
         }
         const initialChecks = check.group([
@@ -222,7 +222,7 @@ const assertNativeExhaustionArtifacts = defineCompositeAssertion({
             .find(function caseFinished(event) {
                 return event.kind === 'test-end';
             });
-        if (completedEvent === undefined || completedEvent === null) {
+        if (completedEvent === undefined) {
             return check.group([ initialChecks, check.defined(completedEvent) ]);
         }
         return check.group([

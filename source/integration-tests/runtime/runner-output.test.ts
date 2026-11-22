@@ -2,6 +2,7 @@ import { execFile } from 'node:child_process';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { table, suite } from '@overkill-dev/test';
 
 import type { Config } from '../../config/config.ts';
@@ -44,6 +45,27 @@ function probeConfig(
     };
 }
 
+type CapturedRunOutputEvidence = {
+    readonly runOutputProbeResult: { readonly stdout: string; readonly stderr: string; };
+    readonly capture: 'authored' | 'buffered' | 'live';
+};
+
+const capturedRunOutput = defineCompositeAssertion({
+    name: 'captured run output',
+    assert(
+        check,
+        { runOutputProbeResult, capture }: CapturedRunOutputEvidence
+    ) {
+        return check.group([
+            check.match(runOutputProbeResult.stdout, /Run passed · 1 passed · [\d.]+ (?:µs|ms|s)$/mu),
+            check.match(runOutputProbeResult.stdout, /^ {2}1 executed · [\d.]+ (?:µs|ms|s) execution · /mu),
+            check.equal(runOutputProbeResult.stdout.includes('collection stdout'), capture === 'live'),
+            check.equal(runOutputProbeResult.stdout.includes('case stdout'), capture !== 'buffered'),
+            check.equal(runOutputProbeResult.stderr, capture === 'buffered' ? '' : 'case stderr\n')
+        ]);
+    }
+});
+
 export const testNode = suite('Runner output capture', [
     table({
         title: 'forwards output according to capture mode and execution boundary',
@@ -76,11 +98,7 @@ export const testNode = suite('Runner output capture', [
                 'probe',
                 ...capture === 'live' ? [ '--no-capture' ] : []
             ]);
-            scope.assert.match(runOutputProbeResult.stdout, /Run passed · 1 passed · [\d.]+ (?:µs|ms|s)$/mu);
-            scope.assert.match(runOutputProbeResult.stdout, /^ {2}1 executed · [\d.]+ (?:µs|ms|s) execution · /mu);
-            scope.assert.equal(runOutputProbeResult.stdout.includes('collection stdout'), capture === 'live');
-            scope.assert.equal(runOutputProbeResult.stdout.includes('case stdout'), capture !== 'buffered');
-            scope.assert.equal(runOutputProbeResult.stderr, capture === 'buffered' ? '' : 'case stderr\n');
+            scope.assert(capturedRunOutput, { runOutputProbeResult, capture });
 
             return scope.assert.collect();
         }

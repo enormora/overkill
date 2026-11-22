@@ -1,16 +1,12 @@
-import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { writeFile } from 'node:fs/promises';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { type TestScope, suite, test } from '@overkill-dev/test';
+import { runSnapshotInFixture, snapshotWire } from '../../../test-support/snapshot-fixture.ts';
 
-import {
-    runWithAttachmentContext,
-    defaultAttachmentLimits
-} from '../../../packages/resources/attachment-context.entry-point.ts';
+import { defaultAttachmentLimits } from '../../../packages/resources/attachment-context.entry-point.ts';
 import { evaluateSnapshot } from '../../../baselines/snapshot-context.ts';
 import { attachmentFixture, attachmentWork, type AttachmentFixture } from '../../../test-support/attachment-fixture.ts';
 import { snapshotEvidence } from '../../../run/snapshot-evidence.ts';
-import { runWithSnapshotRun } from '../../../run/execution-session-context.ts';
-import { runSnapshotAttempt } from '../../../run/snapshot-attempt.ts';
 import { captureSnapshot, snapshotComparisonValue } from '../../../run/snapshot-value.ts';
 import { isSnapshotExecutionError } from '../../../run/snapshot-error.ts';
 
@@ -18,19 +14,15 @@ const duplicateNames = defineCompositeAssertion({
     name: 'duplicate snapshot identities',
     async assert(check) {
         await evaluateSnapshot({ kind: 'text', name: 'é', actual: 'first' });
-        const failure = await evaluateSnapshot({ kind: 'text', name: 'é', actual: 'second' }).catch((error: unknown) =>
-            error
-        );
+        let failure: unknown = null;
+        try {
+            await evaluateSnapshot({ kind: 'text', name: 'é', actual: 'second' });
+        } catch (error) {
+            failure = error;
+        }
         return check.true(isSnapshotExecutionError(failure));
     }
 });
-
-async function runRecordedSnapshot(fixture: AttachmentFixture, body: () => Promise<void>): Promise<void> {
-    const snapshots = runSnapshotAttempt.bind(null, attachmentWork, body);
-    const ownedAttempt = fixture.execution.runAttempt.bind(null, attachmentWork, { index: 0 }, snapshots);
-    const attachedAttempt = runWithAttachmentContext.bind(null, fixture.execution.context, ownedAttempt);
-    await runWithSnapshotRun({ profile: 'integration', mode: 'update', maxBytes: 1024, entries: [] }, attachedAttempt);
-}
 
 async function recordedFileSnapshot(fixture: AttachmentFixture): Promise<void> {
     const file = `${fixture.directory}/snapshot.json`;
@@ -38,7 +30,7 @@ async function recordedFileSnapshot(fixture: AttachmentFixture): Promise<void> {
         file,
         JSON.stringify({ version: 1, name: 'response', format: 'text', payload: { kind: 'text', text: 'hello' } })
     );
-    await runRecordedSnapshot(fixture, async function recordedFile() {
+    await runSnapshotInFixture(fixture, { ...snapshotWire, mode: 'update' }, async function recordedFile() {
         await fixture.execution.context.forProducer({ kind: 'case' }).file({
             name: 'response',
             mediaType: 'application/vnd.overkill.snapshot+json'
@@ -132,7 +124,7 @@ export const testNode = suite('content snapshot boundaries', [
     test('blocks an attempt even when a duplicate-name error is caught', async function (scope) {
         const fixture = await attachmentFixture(scope.cleanup, defaultAttachmentLimits);
         await scope.assert.rejects(async function duplicateAttempt() {
-            await runRecordedSnapshot(fixture, async () => {
+            await runSnapshotInFixture(fixture, { ...snapshotWire, mode: 'update' }, async function () {
                 await scope.assert(duplicateNames);
             });
         }, { message: 'Snapshot names must be nonblank and unique within each attempt.' });

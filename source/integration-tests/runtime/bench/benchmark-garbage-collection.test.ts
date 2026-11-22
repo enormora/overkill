@@ -1,5 +1,5 @@
-import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { setTimeout as delay } from 'node:timers/promises';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { type TestScope, suite, test, table } from '@overkill-dev/test';
 
 import { createRoot, createTestPlan, execute } from '../../../packages/engine/engine.entry-point.ts';
@@ -42,7 +42,7 @@ const assertCombinedFailures = defineCompositeAssertion({
                 message: 'Benchmark garbage collection failed.'
             } ])
         ]);
-        if (measuredBenchmark(result).lifecycle === undefined || measuredBenchmark(result).lifecycle === null) {
+        if (measuredBenchmark(result).lifecycle === null) {
             return check.group([
                 initialChecks,
                 intermediateChecks,

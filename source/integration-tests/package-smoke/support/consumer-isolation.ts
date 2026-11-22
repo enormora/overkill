@@ -1,15 +1,17 @@
 import { realpath } from 'node:fs/promises';
+// eslint-disable-next-line node/no-unsupported-features/node-builtins -- Resolver hooks enforce the installed consumer boundary.
 import { registerHooks } from 'node:module';
 import { isAbsolute, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const directory = await realpath(process.env.OVERKILL_PACKAGE_SMOKE_ROOT ?? process.cwd());
+const hook = new URL(import.meta.url);
+const directory = await realpath(hook.searchParams.get('root') ?? process.cwd());
 const modules = resolve(directory, 'node_modules');
 const roots = [ directory ];
 try {
     roots.push(await realpath(modules));
 } catch (error) {
-    if (!(error instanceof Error && 'code' in error && error.code === 'ENOENT')) {
+    if (!(error instanceof Error && Object.hasOwn(error, 'code') && Reflect.get(error, 'code') === 'ENOENT')) {
         throw error;
     }
 }
@@ -25,6 +27,10 @@ function isConsumerFile(url: string): boolean {
     });
 }
 
+function isExternalToolImport(specifier: string, parentURL: string | undefined): boolean {
+    return specifier.startsWith('file:') || parentURL === undefined || !isConsumerFile(parentURL);
+}
+
 registerHooks({
     resolve(specifier, context, nextResolve) {
         const resolved = nextResolve(specifier, context);
@@ -35,7 +41,7 @@ registerHooks({
         if (dependency.includes(`${sep}node_modules${sep}@overkill-dev${sep}`)) {
             throw new Error(`Consumer resolved an uninstalled Overkill dependency: ${specifier}`);
         }
-        if (specifier.startsWith('file:') || context.parentURL === undefined || !isConsumerFile(context.parentURL)) {
+        if (isExternalToolImport(specifier, context.parentURL)) {
             return resolved;
         }
         throw new Error(`Consumer resolved an uninstalled dependency: ${specifier}`);

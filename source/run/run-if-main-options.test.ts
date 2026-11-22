@@ -13,9 +13,8 @@ import {
     defineFixedReporter,
     type FixedDefinedReporter
 } from '../test-support/reporter-definition.ts';
-import { normalizeConfig } from '../config/config.ts';
-import type { LoadedConfig } from '../config/config-loader.ts';
-import type { MicrotestProfileConfig } from '../config/types.ts';
+import { normalizeConfig, type LoadedConfig, type MicrotestProfileConfig } from '../packages/run/run.entry-point.ts';
+
 import { defaultRunEngine } from './default-run-engine.ts';
 import { directRunFacts, runConfig } from './run-if-main-facts.ts';
 import {
@@ -158,7 +157,7 @@ const assertReporterSelection = defineCompositeAssertion({
             )
         ]);
         const defaultReporter = defaultReporters[0];
-        if (defaultReporter === undefined || defaultReporter === null) {
+        if (defaultReporter === undefined) {
             return check.group([ initialChecks, check.defined(defaultReporter) ]);
         }
         return check.group([

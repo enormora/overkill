@@ -127,7 +127,7 @@ export const testNode = test('retained property', withProperties(async parent =>
             return scope.assert.collect();
         }
     }),
-    test('recorded witness replays retain the concrete input', async (scope: TestScope) => {
+    test('recorded witness replays retain the concrete input', async function (scope: TestScope) {
         const { project, file } = await retainedPropertyProject(scope.cleanup, false, 'in-process');
         await orchestrator.replayWitness({
             debug: { mode: 'off', selectors: [] },

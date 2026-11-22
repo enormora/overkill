@@ -25,7 +25,7 @@ import {
 import { withResource } from '../../../packages/test/resources.entry-point.ts';
 import { createResourceLifecycleRuntimePolicy } from '../../../run/resource-lifecycle.ts';
 
-const check: FailedCheck = {
+const failureCheck: FailedCheck = {
     kind: 'leaf',
     id: 'resource-invariant',
     source: 'assert',
@@ -84,7 +84,7 @@ function resourceObserver(kind: 'attempt' | 'lifetime'): ResourceCheckObserver<A
             },
             finalize({ interval }) {
                 if (interval.kind === kind) {
-                    context.ledger.record(interval, 'service', { kind: 'fail', check });
+                    context.ledger.record(interval, 'service', { kind: 'fail', check: failureCheck });
                 }
                 return { kind: 'complete' };
             }
@@ -215,7 +215,7 @@ const assertStandaloneFailure = defineCompositeAssertion({
         return compare.group([
             compare.true(
                 result.reason.resourceChecks().some(function retained(snapshot) {
-                    return snapshot.failures[0]?.check.summary === check.summary;
+                    return snapshot.failures[0]?.check.summary === failureCheck.summary;
                 })
             ),
             compare.true(result.reason.errors.length > 0)
@@ -305,7 +305,7 @@ export const testNode = suite('resource check outcomes', [
                         return undefined;
                     },
                     finalize({ interval }) {
-                        context.ledger.record(interval, 'target', { kind: 'fail', check });
+                        context.ledger.record(interval, 'target', { kind: 'fail', check: failureCheck });
                         return { kind: 'complete' };
                     }
                 };

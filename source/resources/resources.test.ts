@@ -1,19 +1,20 @@
-import type { CompositeAssertionReturn } from '@overkill-dev/test/assert';
-import { type CompositeCheckBuilder } from '@overkill-dev/test/assert';
-import { defineCompositeAssertion } from '@overkill-dev/test/assert';
-import { defineMacro, suite, test } from '@overkill-dev/test';
+import {
+    type CompositeAssertionReturn,
+    type CompositeCheckBuilder,
+    defineCompositeAssertion
+} from '@overkill-dev/test/assert';
+
+import { suite, test } from '@overkill-dev/test';
+import {
+    composeRuntimeContext,
+    defineResource,
+    defineRuntime,
+    defineRuntimeMatrix
+} from '../packages/resources/resources.entry-point.ts';
 
 import { resourceAttachments } from '../attachments/attachment-context.ts';
 
-import {
-    createResourcesModule,
-    isDefinedResource,
-    isDefinedRuntime,
-    isDefinedRuntimeMatrix,
-    type RuntimeDefinition,
-    type TemporaryDirectoryHandle,
-    type ResourcesModuleDependencies
-} from './resources.ts';
+import { isDefinedResource, isDefinedRuntime, isDefinedRuntimeMatrix, type RuntimeDefinition } from './resources.ts';
 
 type Database = {
     readonly query: (sql: string) => readonly string[];
@@ -21,11 +22,6 @@ type Database = {
 
 type Server = {
     readonly results: readonly string[];
-};
-
-type RecordedTemporaryDirectoryDependencies = ResourcesModuleDependencies & {
-    readonly createdPathPrefixes: readonly string[];
-    readonly removedPaths: readonly string[];
 };
 
 const disposalController = new AbortController();
@@ -39,10 +35,10 @@ function createDatabase(): Database {
     };
 }
 
-const brandedDescriptorChecks = (
+const brandedDescriptorChecks = function (
     check: CompositeCheckBuilder<'assert'>,
     descriptor: unknown
-): CompositeAssertionReturn<'assert'> => {
+): CompositeAssertionReturn<'assert'> {
     if (typeof descriptor !== 'object' || descriptor === null) {
         throw new Error('Expected object descriptor.');
     }
@@ -60,35 +56,6 @@ const assertBrandedDescriptor = defineCompositeAssertion({
     name: 'branded descriptor',
     assert: brandedDescriptorChecks
 });
-
-function createRecordedTemporaryDirectoryDependencies(): RecordedTemporaryDirectoryDependencies {
-    const createdPathPrefixes: string[] = [];
-    const removedPaths: string[] = [];
-
-    return {
-        createdPathPrefixes,
-        removedPaths,
-        temporaryDirectoryPathPrefix: '/virtual/overkill-temporary-directory-',
-        createTemporaryDirectory(pathPrefix) {
-            createdPathPrefixes.push(pathPrefix);
-
-            return `${pathPrefix}created`;
-        },
-        removeDirectory(path) {
-            removedPaths.push(path);
-        }
-    };
-}
-
-const recordedTemporaryDirectoryDependencies = createRecordedTemporaryDirectoryDependencies();
-const resourcesModule = createResourcesModule(recordedTemporaryDirectoryDependencies);
-const {
-    composeRuntimeContext,
-    createTemporaryDirectoryResource,
-    defineResource,
-    defineRuntime,
-    defineRuntimeMatrix
-} = resourcesModule;
 
 const databaseResource = defineResource({
     name: 'database',
@@ -117,7 +84,6 @@ const serverResource = defineResource({
         context.dependencies.database.query(server.results.join(','));
     }
 });
-const temporaryDirectoryResource = createTemporaryDirectoryResource('scratch');
 
 function createRuntimeVariant(node: string): RuntimeDefinition {
     return defineRuntime({
@@ -399,7 +365,7 @@ const assertRuntimeContextCompositionRejectsInvalidRuntimeScopes = defineComposi
             { runtimes: null },
             { runtimes: [] }
         ];
-        const [ firstCheck, ...remainingChecks ] = invalidContexts.map((context) => {
+        const [ firstCheck, ...remainingChecks ] = invalidContexts.map(function (context) {
             return check.throws(function composeInvalidRuntimeContext() {
                 Reflect.apply(composeRuntimeContext, undefined, [ context, runtime, { database: createDatabase() } ]);
             }, {
@@ -413,88 +379,9 @@ const assertRuntimeContextCompositionRejectsInvalidRuntimeScopes = defineComposi
     }
 });
 
-type TemporaryDirectoryResource = typeof temporaryDirectoryResource;
-
-const assertTemporaryDirectoryDescriptor = defineMacro((title: string, resource: TemporaryDirectoryResource) =>
-    test(title, (scope) => {
-        scope.assert.deepEqual(resource.dependencies, {});
-        scope.assert.equal(resource.name, 'scratch');
-        scope.assert.equal(resource.scope, 'per-case');
-        scope.assert.deepEqual(resource.requirements, []);
-        scope.assert.equal(Object.isFrozen(resource), true);
-        scope.assert(assertBrandedDescriptor, resource);
-
-        return scope.assert.collect();
-    })
-);
-
-const assertTemporaryDirectoryHandle = defineCompositeAssertion({
-    name: 'temporary directory handle',
-    assert(check, handle: TemporaryDirectoryHandle) {
-        return check.group([
-            check.equal(Object.isFrozen(handle), true),
-            check.equal(handle.path.includes('overkill-temporary-directory-'), true)
-        ]);
-    }
-});
-
-const assertTemporaryDirectoryLifecycle = defineMacro((title: string, resource: TemporaryDirectoryResource) =>
-    test(title, async (scope) => {
-        if (resource.dispose === null) {
-            throw new Error('Expected temporary directory disposal.');
-        }
-
-        const handle = await resource.acquire({
-            workload: null,
-            attachments: resourceAttachments('test'),
-            dependencies: {},
-            scenarios: {},
-            signal: disposalSignal
-        });
-
-        scope.assert(assertTemporaryDirectoryHandle, handle);
-        await resource.dispose(handle, {
-            workload: null,
-            attachments: resourceAttachments('test'),
-            dependencies: {},
-            scenarios: {},
-            signal: disposalSignal
-        });
-        scope.assert.deepEqual(recordedTemporaryDirectoryDependencies.createdPathPrefixes, [
-            '/virtual/overkill-temporary-directory-'
-        ]);
-        scope.assert.deepEqual(recordedTemporaryDirectoryDependencies.removedPaths, [
-            '/virtual/overkill-temporary-directory-created'
-        ]);
-
-        return scope.assert.collect();
-    })
-);
-
-const assertTemporaryDirectoryAcquireAbort = defineMacro((title: string, resource: TemporaryDirectoryResource) =>
-    test(title, async (scope) => {
-        const controller = new AbortController();
-
-        controller.abort();
-        await scope.assert.rejects(async function acquireAfterAbort() {
-            await resource.acquire({
-                workload: null,
-                attachments: resourceAttachments('test'),
-                dependencies: {},
-                scenarios: {},
-                signal: controller.signal
-            });
-        }, {
-            name: 'AbortError'
-        });
-
-        return scope.assert.collect();
-    })
-);
-
 export const testNode = suite('Resources', [
     suite('defineResource returns an inert frozen descriptor', [
-        test('database resource descriptor', (scope) => {
+        test('database resource descriptor', function (scope) {
             scope.assert.deepEqual(databaseResource.dependencies, {});
             scope.assert.equal(databaseResource.name, 'database');
             scope.assert.equal(databaseResource.scope, 'per-case');
@@ -507,7 +394,7 @@ export const testNode = suite('Resources', [
 
             return scope.assert.collect();
         }),
-        test('descriptor predicates', (scope) => {
+        test('descriptor predicates', function (scope) {
             const runtime = defineRuntime({
                 name: 'api',
                 dimensions: {},
@@ -520,7 +407,7 @@ export const testNode = suite('Resources', [
 
             return scope.assert.collect();
         }),
-        test('database resource callbacks', async (scope) => {
+        test('database resource callbacks', async function (scope) {
             const context = {
                 workload: null,
                 attachments: resourceAttachments('test'),
@@ -539,7 +426,7 @@ export const testNode = suite('Resources', [
 
             return scope.assert.collect();
         }),
-        test('server resource callbacks', async (scope) => {
+        test('server resource callbacks', async function (scope) {
             const database = createDatabase();
             const context = {
                 workload: null,
@@ -576,10 +463,5 @@ export const testNode = suite('Resources', [
         scope.assert(assertRuntimeMatrixInputChecks);
 
         return scope.assert.collect();
-    }),
-    suite('createTemporaryDirectoryResource uses host operations', [
-        assertTemporaryDirectoryDescriptor('temporary directory descriptor', temporaryDirectoryResource),
-        assertTemporaryDirectoryLifecycle('temporary directory lifecycle', temporaryDirectoryResource),
-        assertTemporaryDirectoryAcquireAbort('temporary directory acquire abort', temporaryDirectoryResource)
-    ])
+    })
 ]);

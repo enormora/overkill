@@ -1,7 +1,10 @@
-import type { CompositeAssertionReturn } from '@overkill-dev/test/assert';
-import { type CompositeCheckBuilder } from '@overkill-dev/test/assert';
-import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { setTimeout as sleep } from 'node:timers/promises';
+import {
+    type CompositeAssertionReturn,
+    type CompositeCheckBuilder,
+    defineCompositeAssertion
+} from '@overkill-dev/test/assert';
+
 import { suite, test } from '@overkill-dev/test';
 
 import type { PlacementPlan } from '../../../run/run-types.ts';
@@ -219,11 +222,11 @@ function capturedTask(pool: AcceptingPool, index: number): CapturedWorkerTask {
     return task;
 }
 
-const singleWorkTaskChecks = (
+const singleWorkTaskChecks = function (
     check: CompositeCheckBuilder<'assert'>,
     task: CapturedWorkerTask,
     title: string
-): CompositeAssertionReturn<'assert'> => {
+): CompositeAssertionReturn<'assert'> {
     const work = task.assignedWork[0];
     return check.group([ check.equal(task.assignedWork.length, 1), check.equal(work.case.title, title) ]);
 };

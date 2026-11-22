@@ -7,21 +7,21 @@ import {
     table as subjectTable,
     suite as subjectSuite
 } from '../packages/test/test.entry-point.ts';
-
 import {
-    readTestBodyFamily,
     type TestNode as SubjectTestNode,
+    readTestBodyFamily,
     type TestPlan,
     type TestPlanCase,
     createRoot,
     createTestPlan,
-    createWorkloadTestCase
+    createWorkloadTestCase,
+    stampTestNodeFamily
 } from '../packages/engine/engine.entry-point.ts';
 
 import { defineResource, defineRuntime, withResource, withRuntime } from '../packages/test/resources.entry-point.ts';
 
 import { unexecutedGenerator } from '../test-support/property-generator.ts';
-import { stampTestNodeFamily } from '../engine/test-node.ts';
+
 import { defaultPropertyPolicy } from '../engine/property-policy.ts';
 import { resolveTestPlanCollectionPolicy } from '../run/run-selection.ts';
 import { property, withProperties } from './property-authoring.ts';
@@ -46,9 +46,6 @@ const assertUnavailableResourceProperty = defineCompositeAssertion({
             } ])
         ]);
         const result = await createTestEngine().execute(plan);
-        if (result.perTest === undefined || result.perTest === null) {
-            return check.group([ initialChecks, check.defined(result.perTest) ]);
-        }
         return check.group([
             initialChecks,
             check.defined(result.perTest),

@@ -1,6 +1,9 @@
-import type { CompositeAssertionReturn } from '@overkill-dev/test/assert';
-import { type CompositeCheckBuilder } from '@overkill-dev/test/assert';
-import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import {
+    type CompositeAssertionReturn,
+    type CompositeCheckBuilder,
+    defineCompositeAssertion
+} from '@overkill-dev/test/assert';
+
 import { type TestScope, suite, test } from '@overkill-dev/test';
 
 import {
@@ -24,11 +27,6 @@ import {
 import type { WorkerPoolRunRuntime, WorkerPoolTaskRun } from './worker-pool-runtime.ts';
 
 const integrationPath = 'source/integration-tests/runtime/fixtures/passing.test.ts';
-const testCaseMetadata = {
-    annotations: {},
-    controls: {},
-    definitionLocations: [ { kind: 'unknown' as const } ]
-} as const;
 
 function firstCaseId(): PerTestResult['id'] {
     return {
@@ -89,13 +87,13 @@ function retriedResult(first: PerTestResult, final: PerTestResult): PerTestResul
     };
 }
 
-const conflictArtifactIdentityChecks = (
+const conflictArtifactIdentityChecks = function (
     check: CompositeCheckBuilder<'assert'>,
     runtime: WorkerPoolRunRuntime,
     result: PerTestResult
-): CompositeAssertionReturn<'assert'> => {
+): CompositeAssertionReturn<'assert'> {
     const artifact = runtime.runState.artifacts()[0];
-    if (artifact === undefined || artifact === null) {
+    if (artifact === undefined) {
         return check.defined(artifact);
     }
     return check.group([
@@ -375,10 +373,10 @@ function disposableIsolatedUnit(taskRun: WorkerPoolTaskRun): WorkerPoolTaskRun['
     };
 }
 
-const conflictChainsChecks = (
+const conflictChainsChecks = function (
     check: CompositeCheckBuilder<'assert'>,
     payload: HedgedConflictArtifactPayload
-): CompositeAssertionReturn<'assert'> => {
+): CompositeAssertionReturn<'assert'> {
     return check.group([
         check.deepEqual(
             payload.authoritative.attempts.map(function verdict(attempt) {
@@ -399,26 +397,18 @@ const assertRetriedConflict = defineCompositeAssertion({
     name: 'retried conflict',
     assert(check, runtime: WorkerPoolRunRuntime) {
         const result = flattenPerTest(runtime)[0];
-        if (result === undefined || result === null) {
+        if (result === undefined) {
             return check.defined(result);
         }
-        const initialChecks = check.defined(result);
         const artifact = runtime.runState.artifacts()[0];
-        if (artifact === undefined || artifact === null) {
-            return check.group([ initialChecks, check.defined(artifact) ]);
+        if (artifact === undefined) {
+            return check.defined(artifact);
         }
-        const intermediateChecks = check.defined(artifact);
         if (artifact.payload.kind !== 'hedged-conflict') {
             throw new Error('Expected hedged conflict evidence.');
         }
         return check.group([
-            initialChecks,
-            intermediateChecks,
-            check.deepEqual([
-                result.verdict,
-                result.retried?.finalVerdict,
-                artifact.id.attempt?.index
-            ], [
+            check.deepEqual([ result.verdict, result.retried?.finalVerdict, artifact.id.attempt?.index ], [
                 'fail',
                 'fail',
                 1
@@ -435,141 +425,103 @@ const assertRetriedConflict = defineCompositeAssertion({
     }
 });
 
-export const testNode = suite({
-    ...testCaseMetadata,
-    title: 'Worker pool hedged arbitration',
-    children: [
-        test({
-            ...testCaseMetadata,
-            title: 'hedged conflicts retain debug evidence from both placements',
-            async body(scope) {
-                const runtime = await conflictingDebugEvidence();
-                const artifacts = runtime.runState.artifacts();
-                scope.assert.deepEqual(
-                    artifacts.filter(isTestDebugArtifact).map(function placement(artifact) {
-                        return artifact.id.sequence;
-                    }),
-                    [ 1, 2 ]
-                );
-                scope.assert.equal(
-                    artifacts.some(function (artifact) {
-                        return artifact.payload.kind === 'hedged-conflict';
-                    }),
-                    true
-                );
-                scope.assert.equal(flattenPerTest(runtime)[0]?.verdict, 'fail');
-                return scope.assert.collect();
-            }
-        }),
-        test({
-            ...testCaseMetadata,
-            title: 'hedged conflicts preserve both retry chains while overriding the logical verdict',
-            async body(scope) {
-                const recovered = retriedResult(failResult(), passResult());
-                const exhausted = retriedResult(failResult(), failResult());
-                scope.assert(assertRetriedConflict, await conflictingHedgedResult(recovered, exhausted));
-                return scope.assert.collect();
-            }
-        }),
-        test({
-            ...testCaseMetadata,
-            title: 'worker-pool hedged arbitration finalizes the winner after cancelling a peer',
-            async body(scope) {
-                const { peerTask, runtime } = await cancelledHedgedPeerResult();
+export const testNode = suite('Worker pool hedged arbitration', [
+    test('hedged conflicts retain debug evidence from both placements', async function (scope) {
+        const runtime = await conflictingDebugEvidence();
+        const artifacts = runtime.runState.artifacts();
+        scope.assert.deepEqual(
+            artifacts.filter(isTestDebugArtifact).map(function placement(artifact) {
+                return artifact.id.sequence;
+            }),
+            [ 1, 2 ]
+        );
+        scope.assert.equal(
+            artifacts.some(function (artifact) {
+                return artifact.payload.kind === 'hedged-conflict';
+            }),
+            true
+        );
+        scope.assert.equal(flattenPerTest(runtime)[0]?.verdict, 'fail');
+        return scope.assert.collect();
+    }),
+    test('hedged conflicts preserve both retry chains while overriding the logical verdict', async function (scope) {
+        const recovered = retriedResult(failResult(), passResult());
+        const exhausted = retriedResult(failResult(), failResult());
+        scope.assert(assertRetriedConflict, await conflictingHedgedResult(recovered, exhausted));
+        return scope.assert.collect();
+    }),
+    test('finalizes the winner after cancelling a peer', async function (scope) {
+        const { peerTask, runtime } = await cancelledHedgedPeerResult();
 
-                scope.assert.equal(peerTask.endedByParent.read(), true);
-                scope.assert.equal(peerTask.includeArtifacts.read(), false);
-                scope.assert.equal(flattenPerTest(runtime).length, 1);
-                scope.assert.deepEqual(
-                    runtime.placementTraceEntries.slice(2).map(function toKind(entry) {
-                        return entry.kind;
-                    }),
-                    [ 'attempt-interrupted', 'hedge-resolved' ]
-                );
+        scope.assert.equal(peerTask.endedByParent.read(), true);
+        scope.assert.equal(peerTask.includeArtifacts.read(), false);
+        scope.assert.equal(flattenPerTest(runtime).length, 1);
+        scope.assert.deepEqual(
+            runtime.placementTraceEntries.slice(2).map(function toKind(entry) {
+                return entry.kind;
+            }),
+            [ 'attempt-interrupted', 'hedge-resolved' ]
+        );
 
-                return scope.assert.collect();
-            }
-        }),
-        test({
-            ...testCaseMetadata,
-            title: 'worker-pool hedged arbitration fails conflicting duplicate outcomes',
-            async body(scope: TestScope) {
-                const runtime = await conflictingHedgedResult(passResult(), failResult());
-                const result = flattenPerTest(runtime)[0];
+        return scope.assert.collect();
+    }),
+    test('fails conflicting duplicate outcomes', async function (scope: TestScope) {
+        const runtime = await conflictingHedgedResult(passResult(), failResult());
+        const result = flattenPerTest(runtime)[0];
 
-                scope.require.defined(result);
-                scope.assert.equal(result.verdict, 'fail');
-                scope.require.defined(result.outcome);
-                scope.assert.equal(result.outcome.kind, 'fail');
-                scope.assert(assertConflictArtifactIdentity, runtime, result);
-                scope.assert.deepEqual(
-                    runtime.placementTraceEntries.slice(2).map(function toKind(entry) {
-                        return entry.kind;
-                    }),
-                    [ 'hedge-conflict' ]
-                );
+        scope.require.defined(result);
+        scope.assert.equal(result.verdict, 'fail');
+        scope.require.defined(result.outcome);
+        scope.assert.equal(result.outcome.kind, 'fail');
+        scope.assert(assertConflictArtifactIdentity, runtime, result);
+        scope.assert.deepEqual(
+            runtime.placementTraceEntries.slice(2).map(function toKind(entry) {
+                return entry.kind;
+            }),
+            [ 'hedge-conflict' ]
+        );
 
-                return scope.assert.collect();
-            }
-        }),
-        test({
-            ...testCaseMetadata,
-            title: 'worker-pool hedged arbitration finalizes a lone first authority',
-            async body(scope) {
-                scope.assert.equal(flattenPerTest(await firstHedgedAuthorityResult()).length, 1);
+        return scope.assert.collect();
+    }),
+    test('finalizes a lone first authority', async function (scope) {
+        scope.assert.equal(flattenPerTest(await firstHedgedAuthorityResult()).length, 1);
 
-                return scope.assert.collect();
-            }
-        }),
-        test({
-            ...testCaseMetadata,
-            title: 'worker-pool hedged arbitration ignores conflicts without comparable results',
-            async body(scope) {
-                const runtime = await emptyHedgedConflictResult();
+        return scope.assert.collect();
+    }),
+    test('ignores conflicts without comparable results', async function (scope) {
+        const runtime = await emptyHedgedConflictResult();
 
-                scope.assert.equal(flattenPerTest(runtime).length, 0);
-                scope.assert.equal(runtime.runState.artifacts().length, 0);
+        scope.assert.equal(flattenPerTest(runtime).length, 0);
+        scope.assert.equal(runtime.runState.artifacts().length, 0);
 
-                return scope.assert.collect();
-            }
-        }),
-        test({
-            ...testCaseMetadata,
-            title: 'worker-pool hedged arbitration discards matching duplicate outcomes',
-            async body(scope) {
-                const { duplicateTask, runtime } = await matchingHedgedDuplicateResult();
+        return scope.assert.collect();
+    }),
+    test('discards matching duplicate outcomes', async function (scope) {
+        const { duplicateTask, runtime } = await matchingHedgedDuplicateResult();
 
-                scope.assert.equal(duplicateTask.includeArtifacts.read(), false);
-                scope.assert.equal(flattenPerTest(runtime).length, 1);
-                scope.assert.deepEqual(
-                    runtime.placementTraceEntries.slice(2).map(function toKind(entry) {
-                        return entry.kind;
-                    }),
-                    [ 'hedge-resolved' ]
-                );
+        scope.assert.equal(duplicateTask.includeArtifacts.read(), false);
+        scope.assert.equal(flattenPerTest(runtime).length, 1);
+        scope.assert.deepEqual(
+            runtime.placementTraceEntries.slice(2).map(function toKind(entry) {
+                return entry.kind;
+            }),
+            [ 'hedge-resolved' ]
+        );
 
-                return scope.assert.collect();
-            }
-        }),
-        test({
-            ...testCaseMetadata,
-            title: 'worker-pool hedged arbitration buffers only safe single-work units',
-            body(
-                scope: TestScope
-            ) {
-                const runtime = runtimeWithHedging();
-                const taskRun = taskRunWithLane('worker-1', runtime);
-                const duplicateWork = taskRun.unit.work[0];
+        return scope.assert.collect();
+    }),
+    test('buffers only safe single-work units', function (scope: TestScope) {
+        const runtime = runtimeWithHedging();
+        const taskRun = taskRunWithLane('worker-1', runtime);
+        const duplicateWork = taskRun.unit.work[0];
 
-                scope.require.defined(duplicateWork);
-                scope.assert.equal(unitCanUseBufferedHedging(hedgedRuntime(), taskRun.unit), false);
-                scope.assert.equal(unitCanUseBufferedHedging(runtime, reusableDisposableUnit(taskRun)), false);
-                scope.assert.equal(unitCanUseBufferedHedging(runtime, multiWorkUnit(taskRun, duplicateWork)), false);
-                scope.assert.equal(unitCanUseBufferedHedging(runtime, idempotentUnit(taskRun)), true);
-                scope.assert.equal(unitCanUseBufferedHedging(runtime, disposableIsolatedUnit(taskRun)), true);
+        scope.require.defined(duplicateWork);
+        scope.assert.equal(unitCanUseBufferedHedging(hedgedRuntime(), taskRun.unit), false);
+        scope.assert.equal(unitCanUseBufferedHedging(runtime, reusableDisposableUnit(taskRun)), false);
+        scope.assert.equal(unitCanUseBufferedHedging(runtime, multiWorkUnit(taskRun, duplicateWork)), false);
+        scope.assert.equal(unitCanUseBufferedHedging(runtime, idempotentUnit(taskRun)), true);
+        scope.assert.equal(unitCanUseBufferedHedging(runtime, disposableIsolatedUnit(taskRun)), true);
 
-                return scope.assert.collect();
-            }
-        })
-    ]
-});
+        return scope.assert.collect();
+    })
+]);

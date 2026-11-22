@@ -1,8 +1,8 @@
-import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { createHash } from 'node:crypto';
 import { mkdtemp, mkdir, rm, writeFile, readFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { table, type TestScope, suite, test } from '@overkill-dev/test';
 
 import {

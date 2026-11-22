@@ -139,7 +139,7 @@ function createRunEndFailingReporter(): RealTimeReporter {
 const assertRunEndErrorResult = defineCompositeAssertion({
     name: 'run end error result',
     assert(check, result: RunResult | null) {
-        if (result === undefined || result === null) {
+        if (result === null) {
             return check.defined(result);
         }
         return check.group([

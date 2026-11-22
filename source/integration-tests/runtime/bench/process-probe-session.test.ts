@@ -1,7 +1,7 @@
-import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { once } from 'node:events';
 import { connect, type Socket } from 'node:net';
 import { writeFile } from 'node:fs/promises';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { table, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { createProcessProbe, type ProcessProbe } from '../../../bench/process-probe-session.ts';
@@ -68,7 +68,7 @@ async function replyToSnapshot(peer: ProbePeer, report: NodeProbeReport): Promis
 const rejectActiveProbe = defineCompositeAssertion({
     name: 'disconnected active probe',
     async assert(check, peer: ProbePeer, frame: string) {
-        const rejected = check.rejects(async () => {
+        const rejected = check.rejects(async function () {
             return await peer.probe.checkpointSnapshot(peer.exited);
         }, { message: 'Node probe disconnected while its child remained active.' });
         peer.socket.write(frame);

@@ -40,7 +40,7 @@ const assertBaselineRequest = defineCompositeAssertion({
     name: 'baseline request',
     assert(check, result: CapturedCommandLineRun, verb: 'apply' | 'bootstrap' | 'diff' | 'update') {
         const [ entry ] = result.baselineExecutionRequests;
-        if (entry === undefined || entry === null) {
+        if (entry === undefined) {
             return check.defined(entry);
         }
         return check.group([

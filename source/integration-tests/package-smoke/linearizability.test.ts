@@ -1,31 +1,7 @@
-import { consumerEnvironment } from './support/consumer-environment.ts';
 import { execFile } from 'node:child_process';
 import { suite } from '@overkill-dev/test';
+import { consumerEnvironment } from './support/consumer-environment.ts';
 import { packageConsumer } from './support/package-consumer.ts';
-
-const consumerFacade = packageConsumer(
-    'packaged linearizability authoring',
-    function consumerFixture(consumerDirectory) {
-        async function execute(script: string): Promise<string> {
-            return new Promise(function executeConsumer(resolve, reject) {
-                execFile(
-                    process.execPath,
-                    [ '--input-type=module', '--eval', script ],
-                    { env: consumerEnvironment(process.env, consumerDirectory), cwd: consumerDirectory },
-                    function completed(error, stdout, stderr) {
-                        if (error === null) {
-                            resolve(stdout);
-                        } else {
-                            reject(new Error(`Linearizability package consumer failed: ${stderr}`, { cause: error }));
-                        }
-                    }
-                );
-            });
-        }
-        return { execute };
-    }
-);
-const { test } = consumerFacade;
 
 const script = `
 import { checkLinearizability, linearizability } from '@overkill-dev/linearizability';
@@ -83,6 +59,30 @@ if (repeated.summary.failed !== 1 || JSON.stringify(repeated).includes('unexpect
     throw new Error('Lane replay failed.');
 console.log('linearizability package loaded');
 `;
+
+const consumerFacade = packageConsumer(
+    'packaged linearizability authoring',
+    function consumerFixture(consumerDirectory) {
+        async function execute(source: string): Promise<string> {
+            return new Promise(function executeConsumer(resolve, reject) {
+                execFile(
+                    process.execPath,
+                    [ '--input-type=module', '--eval', source ],
+                    { env: consumerEnvironment(consumerDirectory), cwd: consumerDirectory },
+                    function completed(error, stdout, stderr) {
+                        if (error === null) {
+                            resolve(stdout);
+                        } else {
+                            reject(new Error(`Linearizability package consumer failed: ${stderr}`, { cause: error }));
+                        }
+                    }
+                );
+            });
+        }
+        return { execute };
+    }
+);
+const { test } = consumerFacade;
 
 export const testNode = suite('packaged linearizability authoring', [
     test('checks histories through the installed package', async function (scope) {

@@ -1,67 +1,21 @@
-import type { CompositeAssertionReturn } from '@overkill-dev/test/assert';
-import { type CompositeCheckBuilder } from '@overkill-dev/test/assert';
-import { defineCompositeAssertion } from '@overkill-dev/test/assert';
-import { readFile, mkdtempDisposable, writeFile } from 'node:fs/promises';
+import { mkdtempDisposable, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+
 import { suite, test } from '@overkill-dev/test';
 
 import { defineReporter } from '../../../packages/engine/engine.entry-point.ts';
 
 import { mergeResults, type MergeResultsCommand, type MergedRunRecord } from '../../../packages/run/run.entry-point.ts';
-import { mergeRecordFixture } from '../../../test-support/merge-record-fixture.ts';
+import { mergeRecordFixture, retainedMergedRecord } from '../../../test-support/merge-record-fixture.ts';
 import { defaultRunConfig } from '../../../test-support/run-command-factory.ts';
-import { mergedRecordSchema } from '../../../run/merge-results-schema.ts';
-import { compactHistorySchema } from '../../../run/compact-history-schema.ts';
 
 async function prepare(directory: string): Promise<MergeResultsCommand> {
     await writeFile(join(directory, 'first.json'), JSON.stringify(mergeRecordFixture('first', 1, 2)));
     await writeFile(join(directory, 'second.json'), JSON.stringify(mergeRecordFixture('second', 2, 3)));
     return { config: defaultRunConfig({}), cwd: directory, inputs: [ { kind: 'directory', path: '.' } ] };
 }
-const recordVersionsChecks = (
-    check: CompositeCheckBuilder<'assert'>,
-    current: MergedRunRecord
-): CompositeAssertionReturn<'assert'> => {
-    return check.group([
-        check.equal(current.version, 1),
-        ...[ 2, 3, 4, 5 ].map((version) => {
-            return check.false(mergedRecordSchema.safeParse({ ...current, version }).success);
-        })
-    ]);
-};
-
-const assertRetained = defineCompositeAssertion({
-    name: 'retained',
-    async assert(check, command: MergeResultsCommand, merged: MergedRunRecord) {
-        const retained = mergedRecordSchema.parse(JSON.parse(
-            await readFile(
-                join(command.cwd, command.config.runtimeStateDir, 'runs', `${merged.id}.json`),
-                'utf8'
-            )
-        ));
-        const initialChecksBeforeNextAction = check.group([
-            check.deepEqual(retained, merged),
-            recordVersionsChecks(check.annotated('record versions'), merged),
-            check.equal(retained.status, 'completed')
-        ]);
-        const history = compactHistorySchema.parse(JSON.parse(
-            await readFile(
-                join(command.cwd, command.config.runtimeStateDir, 'history', 'index.json'),
-                'utf8'
-            )
-        ));
-        return check.group([
-            initialChecksBeforeNextAction,
-            check.equal(
-                history.summaries.some(function aggregate(summary) {
-                    return summary.id === merged.id && !summary.replayable;
-                }),
-                true
-            )
-        ]);
-    }
-});
 const assertDiscovery = defineCompositeAssertion({
     name: 'discovery',
     async assert(check, command: MergeResultsCommand, merged: MergedRunRecord) {
@@ -86,7 +40,7 @@ export const testNode = suite('merged record sessions', [
         await using directory = await mkdtempDisposable(join(tmpdir(), 'overkill-merged-session-'));
         const command = await prepare(directory.path);
         const merged = await mergeResults(command);
-        await scope.assert(assertRetained, command, merged);
+        await scope.assert(retainedMergedRecord, command, merged);
         await scope.assert(assertDiscovery, command, merged);
         return scope.assert.collect();
     }),
@@ -114,7 +68,7 @@ export const testNode = suite('merged record sessions', [
         });
         scope.assert.deepEqual(counts, { delivered: 1, disposed: 1 });
         scope.assert.equal(merged.result.status, 'failed');
-        await scope.assert(assertRetained, command, merged);
+        await scope.assert(retainedMergedRecord, command, merged);
         return scope.assert.collect();
     })
 ]);

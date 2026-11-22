@@ -1,7 +1,8 @@
-import { defineCompositeAssertion } from '@overkill-dev/test/assert';
-import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
+import { readFile, readdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { table, suite } from '@overkill-dev/test';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import { suite, createTestFacade } from '@overkill-dev/test';
+import { testWorkspace } from '../../test-support/test-workspace.ts';
 
 import type { RunResult, CoverageRunnerError } from '../../packages/engine/engine.entry-point.ts';
 
@@ -108,7 +109,7 @@ const assertCoverageRecord = defineCompositeAssertion({
     name: 'coverage record',
     async assert(check, scenario: CoverageScenario, recorded: RecordedCoverageResult) {
         const { record, result } = recorded;
-        if (record.coverage === undefined || record.coverage === null) {
+        if (record.coverage === null) {
             return check.defined(record.coverage);
         }
         const rawFiles = await readdir(path.resolve(record.coverage.rawDataDirectory));
@@ -128,7 +129,7 @@ const assertCoverageArtifact = defineCompositeAssertion({
         const artifact = result.artifacts.find(function isCoverage(candidate) {
             return candidate.payload.kind === 'coverage';
         });
-        if (artifact === undefined || artifact === null) {
+        if (artifact === undefined) {
             return check.defined(artifact);
         }
         if (artifact.payload.kind !== 'coverage') {
@@ -148,7 +149,7 @@ const assertCoverageReportingError = defineCompositeAssertion({
             return candidate.subtype === 'coverage';
         });
         const initialChecks = check.deepEqual(result.artifacts, []);
-        if (error === undefined || error === null) {
+        if (error === undefined) {
             return check.group([ initialChecks, check.defined(error) ]);
         }
         return check.group([
@@ -163,6 +164,8 @@ const assertCoverageReportingError = defineCompositeAssertion({
     }
 });
 
+const { table } = createTestFacade({ resources: { workspace: testWorkspace } });
+
 export const testNode = suite(
     'Runner coverage sources',
     [ table({
@@ -175,37 +178,29 @@ export const testNode = suite(
         caseTitle({ model, scenario }) {
             return [ model, scenario ].map(String).join(', ');
         },
-        async test(scope) {
-            const { model, scenario } = scope.parameters;
+        async test({ resources, assert, parameters: { model, scenario } }) {
+            const recorded = await executeCoverageScenario(resources.workspace, model, scenario);
 
-            await mkdir('target', { recursive: true });
-            const directory = await mkdtemp('target/coverage-sources-integration-');
-
-            try {
-                const recorded = await executeCoverageScenario(directory, model, scenario);
-
-                await scope.assert(assertCoverageRecord, scenario, recorded);
-                const coverageOutcomeResult = recorded.result;
-                if (scenario === 'unloaded' || scenario === 'threshold') {
-                    scope.assert(assertCoverageArtifact, coverageOutcomeResult);
-                } else {
-                    scope.assert(assertCoverageReportingError, scenario, coverageOutcomeResult);
-                }
-                if (scenario === 'threshold') {
-                    const coverageOutcomeErrors = coverageOutcomeResult.runnerErrors.filter(
-                        function coverageError(candidate): candidate is CoverageRunnerError {
-                            return candidate.subtype === 'coverage';
-                        }
-                    );
-
-                    scope.assert.true(coverageOutcomeErrors.some(function thresholdFailure(error) {
-                        return error.cause.kind === 'coverage-threshold';
-                    }));
-                }
-            } finally {
-                await rm(directory, { force: true, recursive: true });
+            await assert(assertCoverageRecord, scenario, recorded);
+            const coverageOutcomeResult = recorded.result;
+            if (scenario === 'unloaded' || scenario === 'threshold') {
+                assert(assertCoverageArtifact, coverageOutcomeResult);
+            } else {
+                assert(assertCoverageReportingError, scenario, coverageOutcomeResult);
             }
-            return scope.assert.collect();
+            if (scenario === 'threshold') {
+                const coverageOutcomeErrors = coverageOutcomeResult.runnerErrors.filter(
+                    function coverageError(candidate): candidate is CoverageRunnerError {
+                        return candidate.subtype === 'coverage';
+                    }
+                );
+
+                assert.true(coverageOutcomeErrors.some(function thresholdFailure(error) {
+                    return error.cause.kind === 'coverage-threshold';
+                }));
+            }
+
+            return assert.collect();
         }
     }) ]
 );

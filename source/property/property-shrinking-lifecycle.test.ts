@@ -66,7 +66,7 @@ const assertDeadlineEvidence = defineCompositeAssertion({
     name: 'deadline evidence',
     assert(check, result: RunResult) {
         const evidence = result.perTest[0]?.property?.invocations[0];
-        if (evidence === undefined || evidence === null) {
+        if (evidence === undefined) {
             return check.defined(evidence);
         }
         return check.group([

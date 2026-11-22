@@ -4,8 +4,8 @@ import { safeParse } from '@schema-hub/zod-error-formatter';
 
 import { timingProfilePolicySchema } from './schema.ts';
 
-const assertValidationFailure = defineMacro((title: string, data: unknown, expectedIssues: readonly string[]) =>
-    test(title, (scope) => {
+const assertValidationFailure = defineMacro(function (title: string, data: unknown, expectedIssues: readonly string[]) {
+    return test(title, function (scope) {
         const result = safeParse(timingProfilePolicySchema, data);
 
         if (result.success) {
@@ -17,8 +17,8 @@ const assertValidationFailure = defineMacro((title: string, data: unknown, expec
         scope.assert.deepEqual(result.error.issues, expectedIssues);
 
         return scope.assert.collect();
-    })
-);
+    });
+});
 
 export const testNode = suite('Timing profile schema', [
     table({

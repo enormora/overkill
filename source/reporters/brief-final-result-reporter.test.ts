@@ -1,5 +1,8 @@
-import type { CompositeAssertionReturn } from '@overkill-dev/test/assert';
-import { type CompositeCheckBuilder, defineCompositeAssertion } from '@overkill-dev/test/assert';
+import {
+    type CompositeAssertionReturn,
+    type CompositeCheckBuilder,
+    defineCompositeAssertion
+} from '@overkill-dev/test/assert';
 import { suite, test, type TestScope } from '@overkill-dev/test';
 
 import { createDeterministicClock } from '@enormora/clock';
@@ -22,10 +25,10 @@ function texts(output: unknown): readonly string[] {
         : [];
 }
 
-const locatedFailureChecks = (
+const locatedFailureChecks = function (
     check: CompositeCheckBuilder<'assert'>,
     output: readonly OutputLineIntent[]
-): CompositeAssertionReturn<'assert'> => {
+): CompositeAssertionReturn<'assert'> {
     const initialChecks = check.group([
         check.equal(output.length, 4),
         check.true(output[0]?.text.startsWith('fail source/example.test.ts:7:3 ')),

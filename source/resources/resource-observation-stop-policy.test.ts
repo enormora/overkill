@@ -21,15 +21,13 @@ function finish(): void {
 const assertSharedAdmission = defineCompositeAssertion({
     name: 'shared admission',
     assert(check, session: ResourceCheckSession, kind: 'attempt' | 'lifetime') {
-        if (kind === 'attempt') {
-            return check.fromThrowable('admission remains open', () => {
+        return kind === 'attempt'
+            ? check.fromThrowable('admission remains open', function () {
                 session.assertAdmitted();
-            });
-        } else {
-            return check.throws(function () {
+            })
+            : check.throws(function () {
                 session.assertAdmitted();
             }, { message: 'Resource observation is stopped.' });
-        }
     }
 });
 export const testNode = suite('resource observation stop policy', [

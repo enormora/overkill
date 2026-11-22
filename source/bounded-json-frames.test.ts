@@ -5,8 +5,8 @@ import { defineMacro, suite, test } from '@overkill-dev/test';
 import { boundedJsonFrames } from './packages/resources/attachment-context.entry-point.ts';
 import { createJsonFrameLimiter } from './json-frame-limiter.ts';
 
-const assertRejectedWebFrame = defineMacro((title: string, chunks: readonly unknown[], message: string) =>
-    test(title, async (scope) => {
+const assertRejectedWebFrame = defineMacro(function (title: string, chunks: readonly unknown[], message: string) {
+    return test(title, async function (scope) {
         const frames = boundedJsonFrames(3, 'JSON');
         const reading = Array.fromAsync(frames.readable);
         const writer = frames.writable.getWriter();
@@ -21,8 +21,8 @@ const assertRejectedWebFrame = defineMacro((title: string, chunks: readonly unkn
         writer.releaseLock();
 
         return scope.assert.collect();
-    })
-);
+    });
+});
 
 export const testNode = suite('bounded JSON frames', [
     test('Web frames count bytes across chunks and reset at newlines', async function (scope) {

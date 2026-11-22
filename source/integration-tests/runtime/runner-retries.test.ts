@@ -1,6 +1,9 @@
-import type { CompositeAssertionReturn } from '@overkill-dev/test/assert';
-import { type CompositeCheckBuilder } from '@overkill-dev/test/assert';
-import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import {
+    type CompositeAssertionReturn,
+    type CompositeCheckBuilder,
+    defineCompositeAssertion
+} from '@overkill-dev/test/assert';
+
 import { table, suite } from '@overkill-dev/test';
 import { executionTitle } from '../../test-support/execution-profile-title.ts';
 
@@ -112,16 +115,15 @@ const assertRecoveredHistory = defineCompositeAssertion({
             check.equal(result.perTest.length, 1)
         ]);
         const first = result.perTest[0];
-        if (first === undefined || first === null) {
+        if (first === undefined) {
             return check.group([ initialChecks, check.defined(first) ]);
         }
-        const intermediateChecks = check.defined(first);
-        if (first.retried === undefined || first.retried === null) {
-            return check.group([ initialChecks, intermediateChecks, check.defined(first.retried) ]);
+
+        if (first.retried === null) {
+            return check.group([ initialChecks, check.defined(first.retried) ]);
         }
         return check.group([
             initialChecks,
-            intermediateChecks,
             check.defined(first.retried),
             check.deepEqual(first.retried, { attempts: 3, finalVerdict: 'pass' }),
             check.deepEqual(
@@ -178,14 +180,14 @@ const assertRetryEvidence = defineCompositeAssertion({
     }
 });
 
-const hardTimeoutAttributionChecks = (
+const hardTimeoutAttributionChecks = function (
     check: CompositeCheckBuilder<'assert'>,
     result: RunResult
-): CompositeAssertionReturn<'assert'> => {
+): CompositeAssertionReturn<'assert'> {
     const error = result.runnerErrors.find(function crash(candidate) {
         return candidate.subtype === 'crash';
     });
-    if (error === undefined || error === null) {
+    if (error === undefined) {
         return check.defined(error);
     }
     return check.group([ check.equal(error.attributedToAttempt?.index, 1) ]);
@@ -195,15 +197,14 @@ const assertHardTimeoutEvidence = defineCompositeAssertion({
     name: 'hard timeout evidence',
     assert(check, result: RunResult) {
         const first = result.perTest[0];
-        if (first === undefined || first === null) {
+        if (first === undefined) {
             return check.defined(first);
         }
-        const initialChecks = check.defined(first);
-        if (first.retried === undefined || first.retried === null) {
-            return check.group([ initialChecks, check.defined(first.retried) ]);
+
+        if (first.retried === null) {
+            return check.group([ check.defined(first.retried) ]);
         }
         return check.group([
-            initialChecks,
             check.defined(first.retried),
             check.equal(result.status, 'failed'),
             check.equal(result.summary.crashed, 1),
@@ -234,7 +235,7 @@ const assertHardTimeoutEvent = defineCompositeAssertion({
             .find(function finalAttempt(event) {
                 return event.completion === 'final';
             });
-        if (completedEvent === undefined || completedEvent === null) {
+        if (completedEvent === undefined) {
             return check.defined(completedEvent);
         }
         const artifacts = result.artifacts.filter(isWorkerCrash);

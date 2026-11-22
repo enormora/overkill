@@ -1,11 +1,12 @@
-import type { CompositeAssertionReturn } from '@overkill-dev/test/assert';
-import type { ParameterizedTestScope } from '@overkill-dev/test';
-import { type CompositeCheckBuilder } from '@overkill-dev/test/assert';
-import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import {
+    type CompositeAssertionReturn,
+    type CompositeCheckBuilder,
+    defineCompositeAssertion
+} from '@overkill-dev/test/assert';
 import { table, type TestScope, suite } from '@overkill-dev/test';
 
 import { runWithAttachmentContext } from '../../../attachments/attachment-context.ts';
@@ -112,38 +113,38 @@ async function runModule(
     });
 }
 
-const assertDirectEvidence = defineCompositeAssertion({
-    name: 'direct evidence',
-    assert(check, result: RunResult) {
-        const tested = result.perTest[0];
-        if (tested === undefined || tested === null) {
-            return check.defined(tested);
-        }
-        if (tested.benchmark === undefined || tested.benchmark === null) {
-            return check.defined(tested.benchmark);
-        }
-        return check.group([
-            check.partialDeepEqual(tested.benchmark, {
-                samples: 2,
-                normalization: null,
-                rawSamples: { status: 'omitted' },
-                timeline: { status: 'omitted' }
-            }),
-            check.equal(tested.benchmark.budgets.length, 1),
-            check.defined(tested.benchmark.rawSamples.reason),
-            check.equal(readBenchmarkTimeline(result, tested), null)
-        ]);
-    }
-});
-
-const cleanupFailureChecks = (
+function directModuleChecks(
     check: CompositeCheckBuilder<'assert'>,
-    tested: PerTestResult
-): CompositeAssertionReturn<'assert'> => {
-    if (tested.benchmark === undefined || tested.benchmark === null) {
+    result: RunResult
+): CompositeAssertionReturn<'assert'> {
+    const tested = result.perTest[0];
+    if (tested === undefined) {
+        return check.defined(tested);
+    }
+    if (tested.benchmark === null) {
         return check.defined(tested.benchmark);
     }
-    if (tested.outcome === undefined || tested.outcome === null) {
+    return check.group([
+        check.partialDeepEqual(tested.benchmark, {
+            samples: 2,
+            normalization: null,
+            rawSamples: { status: 'omitted' },
+            timeline: { status: 'omitted' }
+        }),
+        check.equal(tested.benchmark.budgets.length, 1),
+        check.defined(tested.benchmark.rawSamples.reason),
+        check.equal(readBenchmarkTimeline(result, tested), null)
+    ]);
+}
+
+const cleanupFailureChecks = function (
+    check: CompositeCheckBuilder<'assert'>,
+    tested: PerTestResult
+): CompositeAssertionReturn<'assert'> {
+    if (tested.benchmark === null) {
+        return check.defined(tested.benchmark);
+    }
+    if (tested.outcome === null) {
         return check.defined(tested.outcome);
     }
     return check.group([
@@ -159,7 +160,7 @@ const assertInterrupted = defineCompositeAssertion({
     name: 'interrupted',
     assert(check, result: RunResult, lifecycle: readonly string[], mode: Mode) {
         const tested = result.perTest[0];
-        if (tested === undefined || tested === null) {
+        if (tested === undefined) {
             return check.defined(tested);
         }
         const initialChecks = check.group([
@@ -168,11 +169,35 @@ const assertInterrupted = defineCompositeAssertion({
             check.equal(tested.benchmark?.status, 'incomplete'),
             check.deepEqual(lifecycle, [ 'body', 'second', 'first', 'attempt' ])
         ]);
-        if (mode === 'cleanup-failure') {
-            return check.group([ initialChecks, cleanupFailureChecks(check.annotated('cleanup failure'), tested) ]);
-        } else {
-            return check.group([ initialChecks, check.equal(tested.outcome?.kind, 'inconclusive') ]);
+        return mode === 'cleanup-failure'
+            ? check.group([ initialChecks, cleanupFailureChecks(check.annotated('cleanup failure'), tested) ])
+            : check.group([ initialChecks, check.equal(tested.outcome?.kind, 'inconclusive') ]);
+    }
+});
+
+const completionExpectations = {
+    success: { status: 'passed', decision: 'pass' },
+    'budget-failure': { status: 'failed', decision: 'fail' }
+} as const;
+const completedModuleEvidence = defineCompositeAssertion({
+    name: 'completed module measurements retain lifecycle and budget decisions',
+    assert(check, result: RunResult, lifecycle: readonly string[], mode: keyof typeof completionExpectations) {
+        const tested = result.perTest[0];
+        if (tested === undefined) {
+            return check.defined(tested);
         }
+        const expected = completionExpectations[mode];
+        const failures = mode === 'budget-failure'
+            ? [ check.partialDeepEqual(tested.outcome ?? {}, { kind: 'fail', failures: [ { kind: 'assertion' } ] }) ]
+            : [];
+        return check.group([
+            check.equal(result.status, expected.status),
+            check.deepEqual(result.runnerErrors, []),
+            directModuleChecks(check, result),
+            check.equal(tested.benchmark?.budgets[0]?.decision, expected.decision),
+            check.deepEqual(lifecycle, [ 'body', 'second', 'first', 'body', 'second', 'first', 'attempt', 'attempt' ]),
+            ...failures
+        ]);
     }
 });
 
@@ -184,7 +209,7 @@ export const testNode = suite(
         caseTitle(mode) {
             return mode;
         },
-        async test(scope: ParameterizedTestScope<(typeof modes)[number]>) {
+        async test(scope) {
             const mode = scope.parameters;
 
             const request = await moduleRequest(scope.cleanup, mode);
@@ -193,32 +218,7 @@ export const testNode = suite(
                 lifecycle.push(event);
             }, mode);
             if (mode === 'success' || mode === 'budget-failure') {
-                const completedTested = result.perTest[0];
-                scope.require.defined(completedTested);
-                scope.assert.equal(result.status, mode === 'success' ? 'passed' : 'failed');
-                scope.assert.deepEqual(result.runnerErrors, []);
-                scope.assert(assertDirectEvidence, result);
-                scope.assert.equal(
-                    completedTested.benchmark?.budgets[0]?.decision,
-                    mode === 'success' ? 'pass' : 'fail'
-                );
-                scope.assert.deepEqual(lifecycle, [
-                    'body',
-                    'second',
-                    'first',
-                    'body',
-                    'second',
-                    'first',
-                    'attempt',
-                    'attempt'
-                ]);
-                if (mode === 'budget-failure') {
-                    scope.require.defined(completedTested.outcome);
-                    scope.assert.partialDeepEqual(completedTested.outcome, {
-                        kind: 'fail',
-                        failures: [ { kind: 'assertion' } ]
-                    });
-                }
+                scope.assert(completedModuleEvidence, result, lifecycle, mode);
             } else {
                 scope.assert(assertInterrupted, result, lifecycle, mode);
             }

@@ -1,8 +1,11 @@
-import type { ParameterizedTestScope } from '@overkill-dev/test';
-import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { table, type TestScope, suite } from '@overkill-dev/test';
+import {
+    defineCompositeAssertion,
+    type CompositeAssertionReturn,
+    type CompositeCheckBuilder
+} from '@overkill-dev/test/assert';
 
 import { normalizeConfig, orchestrator, type PerTestResult } from '../../packages/run/run.entry-point.ts';
 import { createLineReporter } from '../../packages/reporter-line/reporter-line.entry-point.ts';
@@ -34,28 +37,68 @@ export const testNode = createMutationCostSuite(2, false, [${JSON.stringify(mode
 
 type CostMetrics = NonNullable<PerTestResult['benchmark']>['metrics'];
 
-const assertCostMetric = defineCompositeAssertion({
-    name: 'cost metric',
-    assert(check, reading: CostMetrics[string] | undefined) {
-        if (reading === undefined || reading === null) {
-            return check.defined(reading);
-        }
-        return check.group([
-            check.equal(reading.count, 2),
-            check.true(reading.minimum !== null && reading.minimum >= 0)
-        ]);
+function costMetricChecks(
+    check: CompositeCheckBuilder<'assert'>,
+    reading: CostMetrics[string] | undefined
+): CompositeAssertionReturn<'assert'> {
+    if (reading === undefined) {
+        return check.defined(reading);
     }
-});
+    return check.group([
+        check.equal(reading.count, 2),
+        check.true(reading.minimum !== null && reading.minimum >= 0)
+    ]);
+}
 
-const assertHostBootstrap = defineCompositeAssertion({
-    name: 'host bootstrap',
-    assert(check, metrics: CostMetrics, mode: MutationMode) {
-        const reading: CostMetrics[string] | undefined = metrics.freshHostEntryToLifecycleMicroseconds;
-        if (reading === undefined || reading === null) {
-            return check.defined(reading);
-        }
+function hostBootstrapChecks(
+    check: CompositeCheckBuilder<'assert'>,
+    metrics: CostMetrics,
+    mode: MutationMode
+): CompositeAssertionReturn<'assert'> {
+    const reading: CostMetrics[string] | undefined = metrics.freshHostEntryToLifecycleMicroseconds;
+    if (reading === undefined) {
+        return check.defined(reading);
+    }
+    return check.group([
+        check.equal(reading.count, mode.freshState || mode.processModel === 'supervised-process' ? 2 : 0)
+    ]);
+}
+
+const executionSessionPhases = [
+    'initialPlanReadyMicroseconds',
+    'subsequentPlanReadyMicroseconds',
+    'initialExecutionMicroseconds',
+    'subsequentExecutionMicroseconds',
+    'initialInvocationMicroseconds',
+    'subsequentInvocationMicroseconds',
+    'disposalMicroseconds'
+];
+const mutationCostEvidence = defineCompositeAssertion({
+    name: 'mutation measurements retain every cost phase and bootstrap sample',
+    assert(check, result: Awaited<ReturnType<typeof orchestrator.bench.run>>, mode: MutationMode) {
         return check.group([
-            check.equal(reading.count, mode.freshState || mode.processModel === 'supervised-process' ? 2 : 0)
+            check.deepEqual(result.runnerErrors, []),
+            check.equal(result.summary.passed, 3),
+            ...result.perTest.map(function measuredCosts(entry) {
+                const benchmark = entry.benchmark;
+                if (benchmark === null) {
+                    return check.defined(benchmark);
+                }
+                const session = entry.id.title.includes('execution-session');
+                const phases = session ? executionSessionPhases : [ 'campaignMicroseconds' ];
+                const bootstrap = session ? [ hostBootstrapChecks(check, benchmark.metrics, mode) ] : [];
+                return check.group([
+                    check.partialDeepEqual(benchmark, {
+                        status: 'complete',
+                        samples: 2,
+                        lifecycle: { warmup: { samples: 0 } }
+                    }),
+                    ...[ 'durationMicroseconds', 'driverStartupMilliseconds', ...phases ].map(function costPhase(name) {
+                        return costMetricChecks(check, benchmark.metrics[name]);
+                    }),
+                    ...bootstrap
+                ]);
+            })
         ]);
     }
 });
@@ -68,10 +111,10 @@ export const testNode = suite(
         caseTitle(mode) {
             return `${mode.processModel} freshState ${String(mode.freshState)}`;
         },
-        async test(scope: ParameterizedTestScope<(typeof mutationModes)[number]>) {
-            const mode = scope.parameters;
-
-            const { file, directory } = await costFixture(scope.cleanup, mode);
+        async test(
+            { cleanup, assert: assertContext, parameters: mode }
+        ) {
+            const { file, directory } = await costFixture(cleanup, mode);
             const config = normalizeConfig({
                 profiles: {
                     costs: {
@@ -89,39 +132,8 @@ export const testNode = suite(
                 engine: { kind: 'default' },
                 request: defaultRunRequest({ profile: 'costs', order: 'lexical' })
             }, { timing: null });
-            scope.assert.deepEqual(result.runnerErrors, []);
-            scope.assert.equal(result.summary.passed, 3);
-            for (const entry of result.perTest) {
-                const { benchmark } = entry;
-                scope.require.defined(benchmark);
-                scope.assert.equal(benchmark.status, 'complete');
-                scope.assert.equal(benchmark.samples, 2);
-                scope.assert.equal(benchmark.lifecycle?.warmup.samples, 0);
-                const costEvidencePhases = entry.id.title.includes('execution-session')
-                    ? [
-                        'initialPlanReadyMicroseconds',
-                        'subsequentPlanReadyMicroseconds',
-                        'initialExecutionMicroseconds',
-                        'subsequentExecutionMicroseconds',
-                        'initialInvocationMicroseconds',
-                        'subsequentInvocationMicroseconds',
-                        'disposalMicroseconds'
-                    ]
-                    : [ 'campaignMicroseconds' ];
-                for (
-                    const costEvidenceName of [
-                        'durationMicroseconds',
-                        'driverStartupMilliseconds',
-                        ...costEvidencePhases
-                    ]
-                ) {
-                    scope.assert(assertCostMetric, benchmark.metrics[costEvidenceName]);
-                }
-                if (entry.id.title.includes('execution-session')) {
-                    scope.assert(assertHostBootstrap, benchmark.metrics, mode);
-                }
-            }
-            return scope.assert.collect();
+            assertContext(mutationCostEvidence, result, mode);
+            return assertContext.collect();
         }
     }) ]
 );

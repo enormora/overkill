@@ -2,6 +2,7 @@ import { mkdtempDisposable, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { suite, test, testDouble, doubleUsage } from '@overkill-dev/test';
 
 import {
@@ -50,6 +51,21 @@ function plan(directory: string): TestPlan {
     );
 }
 
+const catalogRoundtrip = defineCompositeAssertion({
+    name: 'implementation catalogs contain data without evaluating modules',
+    assert(check, catalog: ImplementationCatalog | null) {
+        if (catalog === null) {
+            return check.defined(catalog);
+        }
+        const encoded = JSON.stringify(catalog);
+        return check.group([
+            check.false(encoded.includes('collection evaluated')),
+            check.false(encoded.includes('parseInput')),
+            check.deepEqual(implementationCatalogSchema.parse(JSON.parse(encoded)), catalog)
+        ]);
+    }
+});
+
 export const testNode = suite('portable implementation catalogs', [
     test(
         'retains non-Error parser failures and does not repeat declaration parsing',
@@ -89,12 +105,6 @@ export const testNode = suite('portable implementation catalogs', [
     test(
         'collects data-only identity without evaluating modules or admitting excluded invalid work',
         async function (scope) {
-            const fixtureUse: (catalog: ImplementationCatalog) => Promise<void> = async function inspect(catalog) {
-                const encoded = JSON.stringify(catalog);
-                scope.assert.equal(encoded.includes('collection evaluated'), false);
-                scope.assert.equal(encoded.includes('parseInput'), false);
-                scope.assert.deepEqual(implementationCatalogSchema.parse(JSON.parse(encoded)), catalog);
-            };
             await using fixtureDirectory = await mkdtempDisposable(join(tmpdir(), 'overkill-catalog-'));
             await writeFile(
                 join(fixtureDirectory.path, 'body.mjs'),
@@ -117,10 +127,7 @@ export const testNode = suite('portable implementation catalogs', [
                 [ fixtureDeclarations.get(workIdentityKey(fixtureSource.cases[0].workId)) ?? null ],
                 fixtureDirectory.path
             );
-            if (fixtureCatalog === null) {
-                throw new Error('Expected implementation catalog.');
-            }
-            await fixtureUse(fixtureCatalog);
+            scope.assert(catalogRoundtrip, fixtureCatalog);
 
             return scope.assert.collect();
         }

@@ -281,7 +281,7 @@ function singleCaseLifecycleTestPlan(body: EngineCaseBody): TestPlan {
 }
 
 export const testNode = suite('Resource wrapper scopes', [
-    test('honor runner-managed lifecycle scopes', async (scope) => {
+    test('honor runner-managed lifecycle scopes', async function (scope) {
         const recorder = createLifecycleRecorder();
         const resources = {
             caseResource: recorder.resource('caseResource', 'per-case'),
@@ -356,7 +356,7 @@ export const testNode = suite('Resource wrapper scopes', [
 
         return scope.assert.collect();
     }),
-    test('support runner-managed array projections', async (scope) => {
+    test('support runner-managed array projections', async function (scope) {
         const projectedResource = resourcesSubpath.defineResource({
             name: 'projected',
             scope: 'per-run',
@@ -392,7 +392,7 @@ export const testNode = suite('Resource wrapper scopes', [
 
         return scope.assert.collect();
     }),
-    test('reject invalid runner-managed projections', async (scope) => {
+    test('reject invalid runner-managed projections', async function (scope) {
         const projectedResource = resourcesSubpath.defineResource({
             name: 'projected',
             scope: 'per-run',

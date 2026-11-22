@@ -1,6 +1,9 @@
-import type { CompositeAssertionReturn } from '@overkill-dev/test/assert';
-import { type CompositeCheckBuilder } from '@overkill-dev/test/assert';
-import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import {
+    type CompositeAssertionReturn,
+    type CompositeCheckBuilder,
+    defineCompositeAssertion
+} from '@overkill-dev/test/assert';
+
 import { suite, test } from '@overkill-dev/test';
 
 import { createReportingContext } from '../engine/reporting-context.ts';
@@ -137,10 +140,10 @@ function exportedSpans(content: string): readonly Readonly<Record<string, unknow
     });
 }
 
-const rootSpanChecks = (
+const rootSpanChecks = function (
     check: CompositeCheckBuilder<'assert'>,
     span: Readonly<Record<string, unknown>>
-): CompositeAssertionReturn<'assert'> => {
+): CompositeAssertionReturn<'assert'> {
     return check.group([
         check.equal(span.name, 'overkill.run'),
         check.equal(span.traceId, '00000000000000000000000000000001'),
@@ -157,10 +160,10 @@ const rootSpanChecks = (
     ]);
 };
 
-const childSpanChecks = (
+const childSpanChecks = function (
     check: CompositeCheckBuilder<'assert'>,
     span: Readonly<Record<string, unknown>>
-): CompositeAssertionReturn<'assert'> => {
+): CompositeAssertionReturn<'assert'> {
     return check.group([
         check.equal(span.name, 'overkill.timing.resource.acquire'),
         check.equal(span.traceId, '00000000000000000000000000000001'),

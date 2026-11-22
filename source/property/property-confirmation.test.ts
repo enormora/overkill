@@ -11,17 +11,16 @@ const assertConfirmedRecipe = defineCompositeAssertion({
     name: 'confirmed recipe',
     assert(check, result: RunResult, phase: string) {
         const evidence = result.perTest[0]?.property?.invocations[0];
-        if (evidence === undefined || evidence === null) {
+        if (evidence === undefined) {
             return check.defined(evidence);
-        }
-        if (evidence.summary === null) {
-            return check.notNull(evidence.summary);
         }
         return check.group([
             check.equal(result.summary.failed, 1),
-            check.equal(evidence.summary.accounting.phases.confirmation.executed, 1),
-            check.equal(evidence.original?.trial?.phase, phase),
-            check.equal(evidence.shrinkStatus, 'shrink-state-unavailable'),
+            check.partialDeepEqual(evidence, {
+                summary: { accounting: { phases: { confirmation: { executed: 1 } } } },
+                original: { trial: { phase } },
+                shrinkStatus: 'shrink-state-unavailable'
+            }),
             check.notNull(evidence.confirmedWitness)
         ]);
     }

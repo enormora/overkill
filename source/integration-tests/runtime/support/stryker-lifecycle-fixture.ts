@@ -1,8 +1,8 @@
-import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import assert from 'node:assert/strict';
 import { mkdtemp, realpath, rm, writeFile, readdir, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { extname, join } from 'node:path';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import {
     DryRunStatus,
     MutantRunStatus,
@@ -224,6 +224,7 @@ export const verifyMutationLifecycle = defineCompositeAssertion({
         await assertReloads(fixture, options);
         await assertRejectedSelection(fixture, options);
         await assertCatalogDrift(fixture, options, dry);
-        return check.false((await readdir(fixture.cwd)).includes('.overkill'));
+        const files = await readdir(fixture.cwd);
+        return check.false(files.includes('.overkill'));
     }
 });

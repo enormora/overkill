@@ -254,7 +254,7 @@ const assertHedgedStraggler = defineCompositeAssertion({
         const traceEntry = runtime.placementTraceEntries.find(function isHedgeAssignment(entry) {
             return entry.kind === 'attempt-assigned' && entry.reason.kind === 'hedge';
         });
-        if (traceEntry === undefined || traceEntry === null) {
+        if (traceEntry === undefined) {
             return check.group([ initialChecks, check.defined(traceEntry) ]);
         }
         const intermediateChecks = check.group([

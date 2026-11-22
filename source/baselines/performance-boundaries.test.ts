@@ -77,7 +77,7 @@ const assertPendingProposal = defineCompositeAssertion({
     async assert(check, workflow: Awaited<ReturnType<typeof createPerformanceWorkflow>>) {
         const initialChecks = check.equal(workflow.changes.length, 1);
         const work = workflow.changes[0]?.baseline.work;
-        if (work === undefined || work === null) {
+        if (work === undefined) {
             return check.group([ initialChecks, check.defined(work) ]);
         }
         return check.group([

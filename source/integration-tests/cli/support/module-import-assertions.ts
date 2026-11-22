@@ -1,6 +1,8 @@
-import type { CompositeAssertionReturn } from '@overkill-dev/test/assert';
-import { type CompositeCheckBuilder } from '@overkill-dev/test/assert';
-import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import {
+    type CompositeAssertionReturn,
+    type CompositeCheckBuilder,
+    defineCompositeAssertion
+} from '@overkill-dev/test/assert';
 
 import { z } from 'zod/v4';
 
@@ -13,12 +15,12 @@ import { renderBenchmarkHtml } from '../../../reporters/benchmark-html-document.
 
 const childOutputSchema = z.strictObject({ pid: z.number().int().positive(), dependencyCount: z.literal(1) });
 
-const freshProcessChecks = (
+const freshProcessChecks = function (
     check: CompositeCheckBuilder<'assert'>,
     result: RunResult
-): CompositeAssertionReturn<'assert'> => {
+): CompositeAssertionReturn<'assert'> {
     const tested = result.perTest[0];
-    if (tested === undefined || tested === null) {
+    if (tested === undefined) {
         return check.defined(tested);
     }
     const entries = processEvidenceForWork(result, tested.workId).flatMap(function recordedProcesses(artifact) {
@@ -42,9 +44,10 @@ const freshProcessChecks = (
     const identifiers = observed.flatMap(function recordedPids(entry) {
         return entry.pid === null ? [] : [ entry.pid ];
     });
+    const processes = new Set(identifiers);
     return check.group([
         check.equal(identifiers.length, 3),
-        check.equal(new Set(identifiers).size, 3),
+        check.equal(processes.size, 3),
         ...observed.map(function retainedChecks(entry) {
             return entry.checks;
         }),
@@ -55,11 +58,11 @@ const freshProcessChecks = (
         })
     ]);
 };
-const samplePhasesChecks = (
+const samplePhasesChecks = function (
     check: CompositeCheckBuilder<'assert'>,
     timeline: BenchmarkTimelineReport
-): CompositeAssertionReturn<'assert'> => {
-    const [ firstCheck, ...remainingChecks ] = ([ 'warmup', 'measured' ] as const).map((phase) => {
+): CompositeAssertionReturn<'assert'> {
+    const [ firstCheck, ...remainingChecks ] = ([ 'warmup', 'measured' ] as const).map(function (phase) {
         const marks = timeline.events.filter(function prepared(event) {
             return event.phase === phase && event.name === 'prepared';
         });
@@ -87,10 +90,10 @@ const samplePhasesChecks = (
     return check.group([ firstCheck, ...remainingChecks ]);
 };
 
-const htmlTimelineChecks = (
+const htmlTimelineChecks = function (
     check: CompositeCheckBuilder<'assert'>,
     result: RunResult
-): CompositeAssertionReturn<'assert'> => {
+): CompositeAssertionReturn<'assert'> {
     const html = renderBenchmarkHtml(
         createBenchmarkHtmlReport({
             result,
@@ -105,21 +108,20 @@ const htmlTimelineChecks = (
     return check.group([ check.includes(html, 'Benchmark timelines'), check.includes(html, 'authored import') ]);
 };
 
-const timelineChecks = (
+const timelineChecks = function (
     check: CompositeCheckBuilder<'assert'>,
     result: RunResult
-): CompositeAssertionReturn<'assert'> => {
+): CompositeAssertionReturn<'assert'> {
     const tested = result.perTest[0];
-    if (tested === undefined || tested === null) {
+    if (tested === undefined) {
         return check.defined(tested);
     }
-    const initialChecksBeforeNextAction = check.defined(tested);
+
     const timeline = readBenchmarkTimeline(result, tested);
-    if (timeline === undefined || timeline === null) {
-        return check.group([ initialChecksBeforeNextAction, check.defined(timeline) ]);
+    if (timeline === null) {
+        return check.group([ check.defined(timeline) ]);
     }
     return check.group([
-        initialChecksBeforeNextAction,
         check.defined(timeline),
         samplePhasesChecks(check.annotated('sample phases'), timeline),
         check.throws(function foreignWorkload() {
@@ -163,17 +165,16 @@ export const assertFailedTimeline = defineCompositeAssertion({
     assert(check, result: RunResult) {
         const initialChecks = check.equal(result.summary.failed, 1);
         const tested = result.perTest[0];
-        if (tested === undefined || tested === null) {
+        if (tested === undefined) {
             return check.group([ initialChecks, check.defined(tested) ]);
         }
-        const intermediateChecks = check.defined(tested);
+
         const timeline = readBenchmarkTimeline(result, tested);
-        if (timeline === undefined || timeline === null) {
-            return check.group([ initialChecks, intermediateChecks, check.defined(timeline) ]);
+        if (timeline === null) {
+            return check.group([ initialChecks, check.defined(timeline) ]);
         }
         return check.group([
             initialChecks,
-            intermediateChecks,
             check.defined(timeline),
             check.true(timeline.events.some(function failed(event) {
                 return event.name === 'failed body' && event.outcome === 'failed';

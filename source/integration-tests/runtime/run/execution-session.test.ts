@@ -1,5 +1,5 @@
-import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import assert from 'node:assert/strict';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { table, suite, test } from '@overkill-dev/test';
 import {
     sessionOptions,

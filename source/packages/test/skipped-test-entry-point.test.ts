@@ -1,7 +1,10 @@
-import type { CompositeAssertionReturn } from '@overkill-dev/test/assert';
-import { type CompositeCheckBuilder } from '@overkill-dev/test/assert';
-import { defineCompositeAssertion } from '@overkill-dev/test/assert';
-import { type TestScope, suite, test } from '@overkill-dev/test';
+import {
+    type CompositeAssertionReturn,
+    type CompositeCheckBuilder,
+    defineCompositeAssertion
+} from '@overkill-dev/test/assert';
+
+import { suite, test } from '@overkill-dev/test';
 
 import {
     resolveSourceLocation,
@@ -26,10 +29,10 @@ type SkippedAuthoringExecution = {
 
 const invokeSkippedTest = skippedTest as (...parameters: readonly unknown[]) => unknown;
 
-const sourceLocationInThisFileChecks = (
+const sourceLocationInThisFileChecks = function (
     check: CompositeCheckBuilder<'assert'>,
     location: SourceLocation
-): CompositeAssertionReturn<'assert'> => {
+): CompositeAssertionReturn<'assert'> {
     if (location.kind !== 'known') {
         const initialChecks = check.equal(location.kind, 'known');
         return initialChecks;
@@ -44,9 +47,7 @@ const assertDefinitionLocationInThisFile = defineCompositeAssertion({
     name: 'definition location in this file',
     assert(check, sourceLocations: TestCase['definitionLocations']) {
         const sourceLocation = sourceLocations[0];
-        if (sourceLocation === undefined || sourceLocation === null) {
-            return check.defined(sourceLocation);
-        }
+
         const initialChecks = check.defined(sourceLocation);
         const resolvedLocation = resolveSourceLocation(sourceLocation);
         return check.group([
@@ -128,24 +129,26 @@ const assertSkippedOutcome = defineCompositeAssertion({
             check.defined(outcome),
             check.equal(outcome.kind, 'skip')
         ]);
-        if (outcome.kind === 'skip') {
-            return check.group([ initialChecksBeforeNextAction, check.equal(outcome.reason, reason) ]);
-        } else {
-            return initialChecksBeforeNextAction;
-        }
+        return outcome.kind === 'skip'
+            ? check.group([ initialChecksBeforeNextAction, check.equal(outcome.reason, reason) ])
+            : initialChecksBeforeNextAction;
     }
 });
 
-const assertFacadeSkippedData = defineCompositeAssertion({
-    name: 'facade skipped data',
-    assert(check, execution: SkippedAuthoringExecution) {
-        if (execution.plannedCase === undefined || execution.plannedCase === null) {
-            return check.defined(execution.plannedCase);
+const skippedNodeIdentity = defineCompositeAssertion({
+    name: 'neutral skipped nodes retain identity and annotations',
+    assert(check, execution: SkippedAuthoringExecution, reason: string, tags: readonly string[]) {
+        const planned = execution.plannedCase;
+        if (planned === undefined) {
+            return check.defined(planned);
         }
         return check.group([
-            check.equal(execution.plannedCase.testFamily, null),
-            check.equal(execution.plannedCase.controls.capture, 'live'),
-            check.deepEqual(execution.plannedCase.annotations.tags, [ 'facade', 'suite', 'case' ])
+            check.true(ownsTestNode(execution.testCase)),
+            check.true(ownsTestNode(execution.testNode)),
+            check.deepEqual(planned.id, { file: null, title: 'skips', params: null, suite: [ 'runtime' ] }),
+            check.deepEqual(planned.execution, { kind: 'skip', reason }),
+            check.equal(planned.testFamily, null),
+            check.deepEqual(planned.annotations.tags, tags)
         ]);
     }
 });
@@ -174,22 +177,10 @@ const assertSkippedSummary = defineCompositeAssertion({
 export const testNode = suite('Skipped test entry point', [
     test(
         '@overkill-dev/test skippedTest() creates visible skipped engine nodes',
-        async function (scope: TestScope) {
+        async function (scope) {
             const execution = await executeRootSkippedNode();
 
-            scope.assert.equal(ownsTestNode(execution.testCase), true);
-            scope.assert.equal(ownsTestNode(execution.testNode), true);
-
-            scope.require.defined(execution.plannedCase);
-            scope.assert.deepEqual(execution.plannedCase.id, {
-                file: null,
-                title: 'skips',
-                params: null,
-                suite: [ 'runtime' ]
-            });
-            scope.assert.deepEqual(execution.plannedCase.execution, { kind: 'skip', reason: 'unsupported platform' });
-            scope.assert.equal(execution.plannedCase.testFamily, null);
-            scope.assert.deepEqual(execution.plannedCase.annotations.tags, [ 'suite', 'case' ]);
+            scope.assert(skippedNodeIdentity, execution, 'unsupported platform', [ 'suite', 'case' ]);
             scope.assert(assertSkippedOutcome, execution, 'unsupported platform');
 
             scope.assert(assertDefinitionLocationInThisFile, execution.testCase.definitionLocations);
@@ -198,27 +189,23 @@ export const testNode = suite('Skipped test entry point', [
             return scope.assert.collect();
         }
     ),
-    test('@overkill-dev/test facade skippedTest() composes family test data', async function (scope: TestScope) {
+    test('@overkill-dev/test facade skippedTest() composes family test data', async function (scope) {
         const execution = await executeFacadeSkippedNode();
 
-        scope.assert.equal(ownsTestNode(execution.testCase), true);
-        scope.assert.equal(ownsTestNode(execution.testNode), true);
-
-        scope.require.defined(execution.plannedCase);
-        scope.assert.deepEqual(execution.plannedCase.id, {
-            file: null,
-            title: 'skips',
-            params: null,
-            suite: [ 'runtime' ]
-        });
-        scope.assert.deepEqual(execution.plannedCase.execution, {
-            kind: 'skip',
-            reason: 'external service unavailable'
-        });
-        scope.assert(assertFacadeSkippedData, execution);
+        scope.assert(skippedNodeIdentity, execution, 'external service unavailable', [ 'facade', 'suite', 'case' ]);
+        scope.assert.equal(execution.plannedCase?.controls.capture, 'live');
         scope.assert(assertSkippedOutcome, execution, 'external service unavailable');
-        scope.assert.equal(execution.result.summary.skipped, 1);
-        scope.assert.equal(execution.result.summary.failed, 0);
+        scope.assert(
+            defineCompositeAssertion({
+                name: '@overkill-dev/test facade skippedTest() composes family test data',
+                assert(check) {
+                    return check.group([
+                        check.equal(execution.result.summary.skipped, 1),
+                        check.equal(execution.result.summary.failed, 0)
+                    ]);
+                }
+            })
+        );
 
         return scope.assert.collect();
     }),

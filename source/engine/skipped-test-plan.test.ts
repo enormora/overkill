@@ -28,9 +28,7 @@ const assertSkippedPlan = defineCompositeAssertion({
     name: 'skipped plan',
     assert(check, testPlan: TestPlan) {
         const plannedCase = testPlan.cases[0];
-        if (plannedCase === undefined || plannedCase === null) {
-            return check.defined(plannedCase);
-        }
+
         return check.group([
             check.deepEqual(plannedCase.id, {
                 file: null,

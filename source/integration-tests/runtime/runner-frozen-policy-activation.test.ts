@@ -1,8 +1,8 @@
-import { defineCompositeAssertion } from '@overkill-dev/test/assert';
-import { mkdtemp, realpath, rm, writeFile } from 'node:fs/promises';
+import { mkdtempDisposable, realpath, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { suite, test } from '@overkill-dev/test';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import { suite, test, type TestScope } from '@overkill-dev/test';
 
 import { INSTRUMENTER_CONSTANTS } from '@stryker-mutator/api/core';
 
@@ -74,31 +74,30 @@ function restoreNamespace(namespace: string, previous: unknown): void {
     }
 }
 
+type StaticActivation = {
+    readonly namespace: string;
+    readonly coverage: Readonly<Record<string, number>>;
+    readonly runtime: unknown;
+};
+function staticActivation(cleanup: TestScope['cleanup']): StaticActivation {
+    const namespace = INSTRUMENTER_CONSTANTS.NAMESPACE;
+    const previous: unknown = Reflect.get(globalThis, namespace);
+    const coverage: Record<string, number> = {};
+    const runtime = { activeMutant: '0', mutantCoverage: { static: coverage, perTest: {} } };
+    Reflect.set(globalThis, namespace, runtime);
+    cleanup(function () {
+        restoreNamespace(namespace, previous);
+    });
+    return { namespace, coverage, runtime };
+}
 export const testNode = suite('frozen policy with static activation', [
     test('isolated initialization leaves static config coverage for execution', async function (scope) {
-        const directory = await mkdtemp(join(tmpdir(), 'overkill-static-policy-'));
-        const cwd = await realpath(directory);
-        try {
-            await createInstrumentedProject(cwd);
-
-            const rejectStaticPolicyStaticCoverage: Record<string, number> = {};
-            const rejectStaticPolicyNamespace = INSTRUMENTER_CONSTANTS.NAMESPACE;
-            const rejectStaticPolicyPrevious: unknown = Reflect.get(globalThis, rejectStaticPolicyNamespace);
-            const rejectStaticPolicyRuntime = {
-                activeMutant: '0',
-                mutantCoverage: { static: rejectStaticPolicyStaticCoverage, perTest: {} }
-            };
-            Reflect.set(globalThis, rejectStaticPolicyNamespace, rejectStaticPolicyRuntime);
-            try {
-                await scope.assert(assertStaticPolicy, cwd, rejectStaticPolicyStaticCoverage);
-                scope.assert.equal(Reflect.get(globalThis, rejectStaticPolicyNamespace), rejectStaticPolicyRuntime);
-            } finally {
-                restoreNamespace(rejectStaticPolicyNamespace, rejectStaticPolicyPrevious);
-            }
-
-            return scope.assert.collect();
-        } finally {
-            await rm(cwd, { recursive: true, force: true });
-        }
+        await using directory = await mkdtempDisposable(join(tmpdir(), 'overkill-static-policy-'));
+        const cwd = await realpath(directory.path);
+        await createInstrumentedProject(cwd);
+        const { namespace, coverage, runtime } = staticActivation(scope.cleanup);
+        await scope.assert(assertStaticPolicy, cwd, coverage);
+        scope.assert.equal(Reflect.get(globalThis, namespace), runtime);
+        return scope.assert.collect();
     })
 ]);

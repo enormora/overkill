@@ -1,6 +1,9 @@
-import type { CompositeAssertionReturn } from '@overkill-dev/test/assert';
-import { type CompositeCheckBuilder } from '@overkill-dev/test/assert';
-import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import {
+    type CompositeAssertionReturn,
+    type CompositeCheckBuilder,
+    defineCompositeAssertion
+} from '@overkill-dev/test/assert';
+
 import { suite, test } from '@overkill-dev/test';
 
 import { defaultHistoryPolicy } from '../../../config/history-policy.ts';
@@ -16,11 +19,9 @@ import {
     defaultMicrotestProfile,
     defaultRunRequest
 } from '../../../test-support/run-command-factory.ts';
-import type { NormalizedConfig } from '../../../config/types.ts';
+import type { NormalizedConfig, RunCommand, RunOrchestrator } from '../../../packages/run/run.entry-point.ts';
 import { defaultRunEngine } from '../../../run/default-run-engine.ts';
 import { createNodeRunOrchestrator } from '../../../run/run-orchestrator.ts';
-import type { RunCommand } from '../../../run/run-types.ts';
-import type { RunOrchestrator } from '../../../run/run-orchestrator-types.ts';
 
 const integrationOutputFixturePath = 'source/integration-tests/runtime/fixtures/integration-output.test.ts';
 const integrationCaptureControlsOutputFixturePath =
@@ -223,21 +224,19 @@ function integrationOutputRunCommand(
     };
 }
 
-const integrationCaseArtifactsChecks = (
+const integrationCaseArtifactsChecks = function (
     check: CompositeCheckBuilder<'assert'>,
     artifacts: readonly RunArtifact[]
-): CompositeAssertionReturn<'assert'> => {
-    const [ firstLoopCheck, ...remainingLoopChecks ] = artifacts.map((artifact) => {
+): CompositeAssertionReturn<'assert'> {
+    const [ firstLoopCheck, ...remainingLoopChecks ] = artifacts.map(function (artifact) {
         const initialChecks = check.equal(artifact.id.scope.kind, 'case');
-        if (artifact.id.scope.kind === 'case') {
-            return check.group([
+        return artifact.id.scope.kind === 'case'
+            ? check.group([
                 initialChecks,
                 check.equal(artifact.id.scope.confidence, 'active-case'),
                 check.equal(artifact.id.scope.case.title, 'captures output')
-            ]);
-        } else {
-            return initialChecks;
-        }
+            ])
+            : initialChecks;
     });
     if (firstLoopCheck === undefined) {
         throw new Error('Expected at least one recorded check.');

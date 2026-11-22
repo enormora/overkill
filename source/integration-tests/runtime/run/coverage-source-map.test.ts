@@ -1,6 +1,6 @@
-import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { suite, test, table } from '@overkill-dev/test';
 
 import { fromObject } from 'convert-source-map';

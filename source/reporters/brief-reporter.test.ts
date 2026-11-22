@@ -1,7 +1,6 @@
 import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { type TestScope, suite, test } from '@overkill-dev/test';
 
-import type { SourceLocation } from '../assertion-protocol/assertion-node-shape.ts';
 import { resolveRootTestAnnotations } from '../engine/test-data.ts';
 import { createReportingContext } from '../engine/reporting-context.ts';
 import type { OutputLineIntent, ReporterOutput } from '../engine/reporter-output.ts';
@@ -110,26 +109,11 @@ function failEvent(): Extract<ReporterEvent, { readonly kind: 'test-end'; }> {
 const assertFailureAnnotations = defineCompositeAssertion({
     name: 'failure annotations',
     assert(check, failureOutput: readonly OutputLineIntent[]) {
-        const locatedAnnotation = failureOutput[0]?.annotation;
-        const unlocatedAnnotation = failureOutput[1]?.annotation;
-        if (locatedAnnotation === undefined || locatedAnnotation === null) {
-            return check.defined(locatedAnnotation);
-        }
-        if (unlocatedAnnotation === undefined || unlocatedAnnotation === null) {
-            return check.defined(unlocatedAnnotation);
-        }
-        if (locatedAnnotation.location === null) {
-            return check.notNull(locatedAnnotation.location);
-        }
-        const location: SourceLocation = locatedAnnotation.location;
         return check.group([
-            check.deepEqual(location, {
-                column: 5,
-                file: 'source/users.test.ts',
-                kind: 'known',
-                line: 10
+            check.partialDeepEqual(failureOutput[0]?.annotation ?? {}, {
+                location: { column: 5, file: 'source/users.test.ts', kind: 'known', line: 10 }
             }),
-            check.equal(unlocatedAnnotation.location, null)
+            check.partialDeepEqual(failureOutput[1]?.annotation ?? {}, { location: null })
         ]);
     }
 });
@@ -157,19 +141,18 @@ const assertRunnerErrorOutput = defineCompositeAssertion({
             }),
             [ 'runner-error cannot collect tests' ]
         );
-        if (errorOutput[0] === undefined || errorOutput[0] === null) {
+        if (errorOutput[0] === undefined) {
             return check.group([ initialChecks, check.defined(errorOutput[0]) ]);
         }
-        const intermediateChecks = check.defined(errorOutput[0]);
+
         const runnerErrorIntent = errorOutput[0];
         if (runnerErrorIntent.annotation === null) {
-            return check.group([ initialChecks, intermediateChecks, check.notNull(runnerErrorIntent.annotation) ]);
+            return check.group([ initialChecks, check.notNull(runnerErrorIntent.annotation) ]);
         }
         const laterChecks = check.notNull(runnerErrorIntent.annotation);
         const { annotation } = runnerErrorIntent;
         return check.group([
             initialChecks,
-            intermediateChecks,
             laterChecks,
             check.equal(annotation.location, null),
             check.equal(annotation.severity, 'error'),

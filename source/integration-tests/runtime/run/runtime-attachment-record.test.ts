@@ -51,19 +51,26 @@ async function interruptRemoteWriter(): Promise<never> {
 }
 
 export const testNode = suite('Runtime attachment record', [
-    test('interrupted runs persist the final prefix and byte count of remote attachments', async (scope: TestScope) => {
-        const { resolved, dependencies, writes } = await attachmentRunFixture(scope.cleanup);
-        await scope.assert.rejects(async function runInterruptedSession() {
-            await executeWithAttachments(resolved, dependencies, interruptRemoteWriter, null);
-        }, { message: 'Run interrupted after its last attachment write.' });
-        const content = Array.from(writes.values()).at(-1);
-        scope.require.defined(content);
-        const record = interruptedRecordSchema.parse(JSON.parse(content));
-        scope.assert.equal(record.result.artifacts.length, 1);
-        const artifact = record.result.artifacts[0];
-        scope.require.defined(artifact);
-        scope.assert.deepEqual(Array.from(await readFile(path.resolve(artifact.payload.content.path))), [ 1, 2, 3 ]);
+    test(
+        'interrupted runs persist the final prefix and byte count of remote attachments',
+        async function (scope: TestScope) {
+            const { resolved, dependencies, writes } = await attachmentRunFixture(scope.cleanup);
+            await scope.assert.rejects(async function runInterruptedSession() {
+                await executeWithAttachments(resolved, dependencies, interruptRemoteWriter, null);
+            }, { message: 'Run interrupted after its last attachment write.' });
+            const content = Array.from(writes.values()).at(-1);
+            scope.require.defined(content);
+            const record = interruptedRecordSchema.parse(JSON.parse(content));
+            scope.assert.equal(record.result.artifacts.length, 1);
+            const artifact = record.result.artifacts[0];
+            scope.require.defined(artifact);
+            scope.assert.deepEqual(Array.from(await readFile(path.resolve(artifact.payload.content.path))), [
+                1,
+                2,
+                3
+            ]);
 
-        return scope.assert.collect();
-    })
+            return scope.assert.collect();
+        }
+    )
 ]);

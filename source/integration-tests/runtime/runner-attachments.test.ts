@@ -1,8 +1,11 @@
-import type { CompositeAssertionReturn } from '@overkill-dev/test/assert';
-import type { CompositeCheckBuilder } from '@overkill-dev/test/assert';
-import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
+import {
+    type CompositeAssertionReturn,
+    type CompositeCheckBuilder,
+    defineCompositeAssertion
+} from '@overkill-dev/test/assert';
+
 import { table, suite } from '@overkill-dev/test';
 import { executionTitle } from '../../test-support/execution-profile-title.ts';
 
@@ -82,9 +85,9 @@ async function runAttachmentFixture(
 const assertAttemptArtifacts = defineCompositeAssertion({
     name: 'attempt artifacts',
     async assert(check, artifacts: readonly RunArtifact[]) {
-        const [ firstLoopCheck, ...remainingLoopChecks ] = await Promise.all(artifacts.map(async (artifact) => {
+        const [ firstLoopCheck, ...remainingLoopChecks ] = await Promise.all(artifacts.map(async function (artifact) {
             const initialChecksBeforeNextAction = check.equal(artifact.id.scope.kind, 'case');
-            if (artifact.id.attempt === undefined || artifact.id.attempt === null) {
+            if (artifact.id.attempt === null) {
                 return check.group([ initialChecksBeforeNextAction, check.defined(artifact.id.attempt) ]);
             }
             const intermediateChecks = check.group([
@@ -104,9 +107,8 @@ const assertAttemptArtifacts = defineCompositeAssertion({
                         'retained after teardown'
                     )
                 ]);
-            } else {
-                return check.group([ initialChecksBeforeNextAction, intermediateChecks ]);
             }
+            return check.group([ initialChecksBeforeNextAction, intermediateChecks ]);
         }));
         if (firstLoopCheck === undefined) {
             throw new Error('Expected at least one recorded check.');
@@ -134,17 +136,17 @@ const assertReportedAttachments = defineCompositeAssertion({
         const completion = events.find(function completedCase(event) {
             return event.kind === 'test-end';
         });
-        if (completion === undefined || completion === null) {
+        if (completion === undefined) {
             return check.group([ initialChecks, check.defined(completion) ]);
         }
         return check.group([ initialChecks, check.defined(completion), check.equal(completion.artifacts.length, 7) ]);
     }
 });
 
-const witnessEvidenceChecks = async (
+const witnessEvidenceChecks = async function (
     check: CompositeCheckBuilder<'assert'>,
     artifact: RunArtifact
-): Promise<CompositeAssertionReturn<'assert'>> => {
+): Promise<CompositeAssertionReturn<'assert'>> {
     if (artifact.payload.kind !== 'runtime-attachment' || artifact.payload.content.kind !== 'file') {
         throw new Error('Expected witness file.');
     }
@@ -154,14 +156,14 @@ const witnessEvidenceChecks = async (
         check.true(artifact.payload.content.path.includes('witnesses/'))
     ]);
 };
-const failureArtifactChecks = async (
+const failureArtifactChecks = async function (
     check: CompositeCheckBuilder<'assert'>,
     artifact: RunArtifact
-): Promise<CompositeAssertionReturn<'assert'>> => {
+): Promise<CompositeAssertionReturn<'assert'>> {
     if (artifact.payload.kind !== 'runtime-attachment') {
         throw new Error('Expected failure artifact.');
     }
-    const owner = artifact.payload.name === 'attempt' || artifact.payload.name === 'lifetime'
+    const owner = [ 'attempt', 'lifetime' ].includes(artifact.payload.name)
         ? check.deepEqual(artifact.payload.content, { kind: 'json', value: { secret: 'owner-only' }, byteLength: 23 })
         : null;
     const witness = artifact.payload.content.kind === 'file' ? await witnessEvidenceChecks(check, artifact) : null;
@@ -178,9 +180,11 @@ const assertFailureEvidence = defineCompositeAssertion({
             .map(function artifactName(artifact) {
                 return artifact.payload.kind === 'runtime-attachment' ? artifact.payload.name : '';
             })
-            .toSorted((left, right) => left.localeCompare(right));
-        const observed = await Promise.all(artifacts.map(function artifactChecks(artifact) {
-            return failureArtifactChecks(check, artifact);
+            .toSorted(function (left, right) {
+                return left.localeCompare(right);
+            });
+        const observed = await Promise.all(artifacts.map(async function artifactChecks(artifact) {
+            return await failureArtifactChecks(check, artifact);
         }));
         return check.group([
             check.deepEqual(names, [

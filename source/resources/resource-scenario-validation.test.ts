@@ -17,7 +17,7 @@ function defineResourceWithScenarios(scenarios: unknown): void {
 }
 
 export const testNode = suite('Resource scenario validation', [
-    test('defineResource rejects malformed scenario slots', (scope) => {
+    test('defineResource rejects malformed scenario slots', function (scope) {
         const invalidScenarios = [
             { message: 'Resource scenarios must be an object.', scenarios: null },
             { message: 'Scenario slot "mode" is invalid.', scenarios: { mode: null } },

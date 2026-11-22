@@ -57,7 +57,7 @@ function noBudgets(): ProcessBudgets {
 const assertBreach = defineCompositeAssertion({
     name: 'breach',
     assert(check, actual: ProcessBudgetBreach | null, expected: ProcessBudgetBreach) {
-        if (actual === undefined || actual === null) {
+        if (actual === null) {
             return check.defined(actual);
         }
         return check.group([ check.deepEqual(actual, expected) ]);
@@ -105,7 +105,7 @@ function activeCaseStates(): readonly [SupervisedRunState, SupervisedRunState, S
 const assertCaseId = defineCompositeAssertion({
     name: 'case id',
     assert(check, actual: CaseId | null, expected: CaseId) {
-        if (actual === undefined || actual === null) {
+        if (actual === null) {
             return check.defined(actual);
         }
         return check.group([ check.deepEqual(actual, expected) ]);

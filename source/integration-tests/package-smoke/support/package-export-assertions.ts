@@ -1,11 +1,15 @@
-import type { CompositeAssertionReturn } from '@overkill-dev/test/assert';
-import { type CompositeCheckBuilder } from '@overkill-dev/test/assert';
-import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { readdir, readFile } from 'node:fs/promises';
+import {
+    type CompositeAssertionReturn,
+    type CompositeCheckBuilder,
+    defineCompositeAssertion
+} from '@overkill-dev/test/assert';
 
 import { z } from 'zod/v4';
+import type * as LineReporterPackage from '../../../packages/reporter-line/reporter-line.entry-point.ts';
+import { resolvePackagedExport } from './packaged-module.ts';
 
 type PackagedFilters = {
     readonly all: (filters: readonly [unknown, ...(readonly unknown[])]) => unknown;
@@ -104,20 +108,20 @@ export const assertPackagedFilters = defineCompositeAssertion({
     }
 });
 
-export const resourcesPackageRootExportChecks = (
+export const resourcesPackageRootExportChecks = function (
     check: CompositeCheckBuilder<'assert'>,
     packageExports: Readonly<Record<string, unknown>>
-): CompositeAssertionReturn<'assert'> => {
+): CompositeAssertionReturn<'assert'> {
     return check.group([ check.deepEqual(packageExports['.'], {
         import: './packages/resources/resources.entry-point.js',
         types: './packages/resources/resources.entry-point.d.ts'
     }) ]);
 };
 
-export const simulationPackageExportsChecks = (
+export const simulationPackageExportsChecks = function (
     check: CompositeCheckBuilder<'assert'>,
     packageExports: Readonly<Record<string, unknown>>
-): CompositeAssertionReturn<'assert'> => {
+): CompositeAssertionReturn<'assert'> {
     return check.group([
         check.deepEqual(packageExports['.'], {
             import: './packages/simulation/simulation.entry-point.js',
@@ -150,10 +154,10 @@ export const assertRunResourceLifecycleSubpathExport = defineCompositeAssertion(
     }
 });
 
-export const testStandardSubpathExportsChecks = (
+export const testStandardSubpathExportsChecks = function (
     check: CompositeCheckBuilder<'assert'>,
     packageExports: Readonly<Record<string, unknown>>
-): CompositeAssertionReturn<'assert'> => {
+): CompositeAssertionReturn<'assert'> {
     return check.group([
         check.deepEqual(packageExports['./config'], {
             import: './packages/test/config.entry-point.js',
@@ -232,3 +236,17 @@ export async function recordedRunId(directory: string, file: string): Promise<st
     }
     throw new Error('Expected a completed recorded run.');
 }
+
+const { createLineProgressReporter, createLineTreeReporter } = await import(
+    await resolvePackagedExport('@overkill-dev/reporter-line')
+) as typeof LineReporterPackage;
+
+export const assertLineReporterVariants = defineCompositeAssertion({
+    name: 'line reporter variants',
+    assert(check) {
+        return check.group([
+            check.equal(typeof createLineProgressReporter, 'function'),
+            check.equal(typeof createLineTreeReporter, 'function')
+        ]);
+    }
+});

@@ -1,6 +1,6 @@
-import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { join } from 'node:path';
 import { readdir, readFile } from 'node:fs/promises';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { suite, test } from '@overkill-dev/test';
 
 import { frozenTypeProject } from '../../test-support/frozen-type-project.ts';
@@ -45,7 +45,7 @@ const assertEvidence = defineCompositeAssertion({
                 [ 'Imported', true, true ],
                 [ 'Self', true, true ]
             ] as const)
-                .map(([ name, forward, reverse ]) => {
+                .map(function ([ name, forward, reverse ]) {
                     const observation = requireEvidence(evidence, name);
                     return check.group([
                         check.equal(observation.forward, forward),

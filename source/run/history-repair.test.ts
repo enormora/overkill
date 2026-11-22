@@ -17,11 +17,11 @@ const assertPrunedHistory = defineCompositeAssertion({
     name: 'pruned history',
     async assert(check, store: HistoryStorage) {
         const index = await readCompactHistory(store, directory);
-        if (index === undefined || index === null) {
+        if (index === null) {
             return check.defined(index);
         }
         const summary = index.summaries[0];
-        if (summary === undefined || summary === null) {
+        if (summary === undefined) {
             return check.defined(summary);
         }
         return check.group([

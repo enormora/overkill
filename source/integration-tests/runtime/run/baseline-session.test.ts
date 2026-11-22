@@ -22,8 +22,20 @@ const assertBlockedPublication = defineCompositeAssertion({
         ]);
     }
 });
+const partialPublicationEvidence = defineCompositeAssertion({
+    name: 'retains completed writes after a later I/O failure',
+    assert(check, result: RunResult) {
+        const report = readOrdinaryBaselineReport(result);
+        return check.group([
+            check.equal(result.status, 'failed'),
+            check.equal(result.runnerErrors[0]?.subtype, 'artifact'),
+            check.equal(report?.writeOutcome.kind, 'failed'),
+            check.equal(report?.writeOutcome.kind === 'failed' ? report.writeOutcome.writtenChanges.length : null, 1)
+        ]);
+    }
+});
 export const testNode = suite('ordinary baseline publication', [
-    test('retains completed writes after a later I/O failure', async function (scope: TestScope) {
+    test('retains completed writes after a later I/O failure', async function (scope) {
         const fixture = await sessionFixture(scope.cleanup);
         const session = createOrdinaryBaselineSession({
             maxBytes: 65_536,
@@ -59,14 +71,7 @@ export const testNode = suite('ordinary baseline publication', [
         });
         const result = await session.finalize(fixture.result);
 
-        const partialPublicationReport = readOrdinaryBaselineReport(result);
-        scope.require.defined(partialPublicationReport);
-        scope.assert.equal(result.status, 'failed');
-        scope.assert.equal(result.runnerErrors[0]?.subtype, 'artifact');
-        scope.assert.equal(partialPublicationReport.writeOutcome.kind, 'failed');
-        if (partialPublicationReport.writeOutcome.kind === 'failed') {
-            scope.assert.equal(partialPublicationReport.writeOutcome.writtenChanges.length, 1);
-        }
+        scope.assert(partialPublicationEvidence, result);
 
         const entries = await fixture.store.list();
         scope.assert.deepEqual(

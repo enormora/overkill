@@ -106,7 +106,7 @@ function reorderedCacheNode(node: ResourceCacheIdentityNode): ResourceCacheIdent
 }
 
 export const testNode = suite('Resource lifecycle boundaries', [
-    test('ignores unknown resource summaries and deduplicates shared dependencies', (scope: TestScope) => {
+    test('ignores unknown resource summaries and deduplicates shared dependencies', function (scope: TestScope) {
         const source = scenarioCase('case', 'per-run', 'primary');
         const original = source.resourceAttachments.resourceGraph[0];
         scope.require.defined(original);
@@ -128,7 +128,7 @@ export const testNode = suite('Resource lifecycle boundaries', [
 
         return scope.assert.collect();
     }),
-    test('selects the default runtime matrix variant and rejects empty matrices', (scope: TestScope) => {
+    test('selects the default runtime matrix variant and rejects empty matrices', function (scope: TestScope) {
         const source = scenarioCase('case', 'per-run', 'primary');
         const runtime = source.resourceAttachments.runtimeGraphs[0];
         scope.require.defined(runtime);
@@ -158,7 +158,7 @@ export const testNode = suite('Resource lifecycle boundaries', [
 
         return scope.assert.collect();
     }),
-    test('scenario timing controls reusable lifecycle cache identities', (scope) => {
+    test('scenario timing controls reusable lifecycle cache identities', function (scope) {
         const first = scenarioCase('first', 'per-file', 'primary');
         const second = scenarioCase('second', 'per-file', 'replica');
 
@@ -194,7 +194,7 @@ export const testNode = suite('Resource lifecycle boundaries', [
 
         return scope.assert.collect();
     }),
-    test('cache identities omit empty state and traverse resource descriptors', (scope) => {
+    test('cache identities omit empty state and traverse resource descriptors', function (scope) {
         const empty: ResourceCacheIdentityNode = { workload: null, dependencies: [], scenarios: [] };
         const emptyDependency: ResourceCacheIdentityNode = {
             workload: null,
@@ -213,12 +213,11 @@ export const testNode = suite('Resource lifecycle boundaries', [
             },
             dispose: null
         });
-        const replica = bindResourceScenarios(database, { database: 'replica' });
         const server = defineResource({
             name: 'identity-server',
             scope: 'per-case',
             requirements: [],
-            dependencies: { database: replica },
+            dependencies: { database: bindResourceScenarios(database, { database: 'replica' }) },
             acquire(context) {
                 return context.dependencies.database;
             },

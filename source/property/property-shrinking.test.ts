@@ -26,8 +26,8 @@ const assertOriginalTarget = defineCompositeAssertion({
         }
         const failure = outcome.failures[0];
         const intermediateChecks = check.equal(failure.kind, 'assertion');
-        if (failure.kind === 'assertion') {
-            return check.group([
+        return failure.kind === 'assertion'
+            ? check.group([
                 initialChecks,
                 intermediateChecks,
                 check.equal(
@@ -37,10 +37,8 @@ const assertOriginalTarget = defineCompositeAssertion({
                     1
                 ),
                 check.equal(failure.checks[0].summary, 'original target')
-            ]);
-        } else {
-            return check.group([ initialChecks, intermediateChecks ]);
-        }
+            ])
+            : check.group([ initialChecks, intermediateChecks ]);
     }
 });
 

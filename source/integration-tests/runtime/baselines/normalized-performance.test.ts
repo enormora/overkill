@@ -49,7 +49,7 @@ const saveNormalizedExpectation = defineCompositeAssertion({
             check.equal(evaluation.event.verdict, 'pass')
         ]);
         const change = saving.changes[0];
-        if (change === undefined || change === null) {
+        if (change === undefined) {
             return check.group([ initialChecks, check.defined(change) ]);
         }
         const intermediateChecks = check.group([
@@ -71,6 +71,28 @@ async function savedFastMachine(): Promise<FastMachineFixture> {
     const saving = await workflow(store, 'fast-mac', 'update');
     return { store, fast, saving };
 }
+const unchangedMachineSnapshot = defineCompositeAssertion({
+    name: 'retains the original snapshot on slower hardware',
+    async assert(check, store: PerformanceBaselineStore, slow: RunResult) {
+        const comparing = await workflow(store, 'slow-arm-runner', 'none');
+        const evaluation = comparing.evaluate(completedBenchmark(slow));
+        const initial = check.group([
+            check.deepEqual(evaluation.errors, []),
+            check.equal(evaluation.event.verdict, 'pass')
+        ]);
+        const updating = await workflow(store, 'slow-arm-runner', 'update');
+        updating.evaluate(completedBenchmark(slow));
+        return check.group([
+            initial,
+            check.deepEqual(
+                updating.changes.map(function (change) {
+                    return { kind: change.kind, value: change.baseline.expected.value };
+                }),
+                []
+            )
+        ]);
+    }
+});
 export const testNode = suite('portable normalized performance expectations', [
     test('reuses a fast-machine snapshot on slower hardware without rewriting it', async function (scope) {
         const { store, fast, saving } = await savedFastMachine();
@@ -78,18 +100,7 @@ export const testNode = suite('portable normalized performance expectations', [
         await scope.assert(saveNormalizedExpectation, saving, fast);
         const slow = await recordedMachine(400, 'slow-arm-runner', 4000);
         scope.assert.deepEqual(slow.completionErrors, []);
-        const comparing = await workflow(store, 'slow-arm-runner', 'none');
-        const evaluation = comparing.evaluate(completedBenchmark(slow));
-        scope.assert.deepEqual(evaluation.errors, []);
-        scope.assert.equal(evaluation.event.verdict, 'pass');
-        const updating = await workflow(store, 'slow-arm-runner', 'update');
-        updating.evaluate(completedBenchmark(slow));
-        scope.assert.deepEqual(
-            updating.changes.map(function changed(change) {
-                return { kind: change.kind, value: change.baseline.expected.value };
-            }),
-            []
-        );
+        await scope.assert(unchangedMachineSnapshot, store, slow);
         return scope.assert.collect();
     }),
     test('detects a snapshot regression after accounting for slower hardware', async function (scope) {
@@ -100,9 +111,18 @@ export const testNode = suite('portable normalized performance expectations', [
         scope.assert.deepEqual(slow.completionErrors, []);
         const comparing = await workflow(store, 'slow-arm-runner', 'none');
         const evaluation = comparing.evaluate(completedBenchmark(slow));
-        scope.assert.deepEqual(evaluation.errors, []);
-        scope.assert.equal(slow.status, 'passed');
-        scope.assert.equal(evaluation.event.verdict, 'fail');
+        scope.assert(
+            defineCompositeAssertion({
+                name: 'detects a snapshot regression after accounting for slower hardware',
+                assert(check) {
+                    return check.group([
+                        check.deepEqual(evaluation.errors, []),
+                        check.equal(slow.status, 'passed'),
+                        check.equal(evaluation.event.verdict, 'fail')
+                    ]);
+                }
+            })
+        );
         return scope.assert.collect();
     })
 ]);

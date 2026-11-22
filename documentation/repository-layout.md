@@ -48,7 +48,9 @@ the subject.
 
 Package smoke packs the current build once with Packtory. Per-case resources
 create consumers under `target/package-smoke`. Runtime resolution and compiler
-checks reject dependencies found in ancestor installations.
+checks reject dependencies found in ancestor installations. Smoke children receive
+a minimal environment with the current Node executable on `PATH`. Add environment
+inputs explicitly when a consumer needs them.
 
 ## Mutation validation
 

@@ -1,5 +1,5 @@
 import { defineCompositeAssertion } from '@overkill-dev/test/assert';
-import { suite, test } from '@overkill-dev/test';
+import { suite, table, test } from '@overkill-dev/test';
 
 import { Random, configureGlobal, readConfigureGlobal, resetConfigureGlobal } from 'fast-check';
 import { xoroshiro128plus } from 'pure-rand/generator/xoroshiro128plus';
@@ -81,6 +81,36 @@ const assertGraphLinks = defineCompositeAssertion({
 
 type StatefulInput = { readonly bytes: Uint8Array; readonly branch: boolean; };
 
+const statefulRecursiveGenerator = gen.recursive<StatefulInput>({
+    leaf: gen.bytes({ minLength: 1, maxLength: 1 }).map<StatefulInput>(function leaf(bytes) {
+        return { bytes, branch: false };
+    }),
+    branch() {
+        const bytes = Uint8Array.of(1);
+        return gen.constant(null).map<StatefulInput>(function branchState() {
+            return { bytes, branch: true };
+        });
+    },
+    maxDepth: 1
+});
+
+function statefulCandidate(seed: number): GeneratedInput<StatefulInput> {
+    return generateInput(
+        statefulRecursiveGenerator,
+        new Random(xoroshiro128plus(seed)),
+        undefined,
+        generatorContext(1, 1, 1000)
+    );
+}
+const freshRecursiveBytes = defineCompositeAssertion({
+    name: 'reconstructs the original recursive bytes after mutation',
+    assert(check, retained: GeneratedInput<StatefulInput>) {
+        const first = retained.reconstruct();
+        const expected = Array.from(first.bytes);
+        first.bytes.fill(255);
+        return check.deepEqual(Array.from(retained.reconstruct().bytes), expected);
+    }
+});
 export const testNode = suite('generator reconstruction', [
     test('isolates generation and reconstruction from backend global sizing defaults', function (scope) {
         const previous = readConfigureGlobal();
@@ -102,16 +132,25 @@ export const testNode = suite('generator reconstruction', [
         );
         const expected = root.reconstruct();
         configureGlobal({ baseSize: 'large', defaultSizeToMaxWhenMaxSpecified: true });
-        scope.assert.deepEqual(root.reconstruct(), expected);
-        scope.assert.deepEqual(
-            generateInput(
-                generator,
-                new Random(xoroshiro128plus(42)),
-                undefined,
-                generatorContext(100, 3, 100_000)
-            )
-                .reconstruct(),
-            expected
+        scope.assert(
+            defineCompositeAssertion({
+                name: 'isolates generation and reconstruction from backend global sizing defaults',
+                assert(check) {
+                    return check.group([
+                        check.deepEqual(root.reconstruct(), expected),
+                        check.deepEqual(
+                            generateInput(
+                                generator,
+                                new Random(xoroshiro128plus(42)),
+                                undefined,
+                                generatorContext(100, 3, 100_000)
+                            )
+                                .reconstruct(),
+                            expected
+                        )
+                    ]);
+                }
+            })
         );
         return scope.assert.collect();
     }),
@@ -135,8 +174,17 @@ export const testNode = suite('generator reconstruction', [
         for (const retained of [ root, ...descendants ]) {
             scope.assert(assertFreshClass, retained);
         }
-        scope.assert.equal(descendants.length > 3, true);
-        scope.assert.equal(root.reconstruct().read() !== -1, true);
+        scope.assert(
+            defineCompositeAssertion({
+                name: 'reconstructs dependent custom classes without sharing mutable source graphs',
+                assert(check) {
+                    return check.group([
+                        check.equal(descendants.length > 3, true),
+                        check.equal(root.reconstruct().read() !== -1, true)
+                    ]);
+                }
+            })
+        );
         return scope.assert.collect();
     }),
     test('preserves shared backing stores and collection identities within fresh graphs', function (scope) {
@@ -189,40 +237,43 @@ export const testNode = suite('generator reconstruction', [
         const first = retained.reconstruct();
         first.map.clear();
         first.set.clear();
-        scope.assert.deepEqual(retained.reconstruct().map, new Map([ [ 'key', 1 ] ]));
-        scope.assert.deepEqual(retained.reconstruct().set, new Set([ 1 ]));
+        scope.assert(
+            defineCompositeAssertion({
+                name: 'isolates mutable Map and Set containers between reconstructions',
+                assert(check) {
+                    return check.group([
+                        check.deepEqual(retained.reconstruct().map, new Map([ [ 'key', 1 ] ])),
+                        check.deepEqual(retained.reconstruct().set, new Set([ 1 ]))
+                    ]);
+                }
+            })
+        );
         return scope.assert.collect();
     }),
-    test('rebuilds mutable state captured during recursive domain construction', function (scope) {
-        const generator = gen.recursive<StatefulInput>({
-            leaf: gen.bytes({ minLength: 1, maxLength: 1 }).map<StatefulInput>(function leaf(bytes) {
-                return { bytes, branch: false };
-            }),
-            branch() {
-                const bytes = Uint8Array.of(1);
-                return gen.constant(null).map<StatefulInput>(function branchState() {
-                    return { bytes, branch: true };
-                });
-            },
-            maxDepth: 1
-        });
-        let expanded = 0;
-        for (let seed = 0; seed < 10; seed += 1) {
-            const retained = generateInput(
-                generator,
-                new Random(xoroshiro128plus(seed)),
-                undefined,
-                generatorContext(1, 1, 1000)
-            );
-
-            const first = retained.reconstruct();
-            const expected = Array.from(first.bytes);
-            first.bytes.fill(255);
-            const fresh = retained.reconstruct();
-            scope.assert.deepEqual(Array.from(fresh.bytes), expected);
-            expanded += Number(fresh.branch);
+    table({
+        title: 'reconstructs fresh mutable state in recursive branches',
+        cases: Array.from({ length: 10 }, function (_value, seed) {
+            return seed;
+        }),
+        caseTitle(seed) {
+            return `seed ${seed}`;
+        },
+        test({ assert, parameters: seed }) {
+            assert(freshRecursiveBytes, statefulCandidate(seed));
+            return assert.collect();
         }
-        scope.assert.equal(expanded > 0, true);
+    }),
+    test('explores mutable recursive branches', function (scope) {
+        scope.assert.equal(
+            Array
+                .from({ length: 10 }, function (_value, seed) {
+                    return seed;
+                })
+                .some(function (seed) {
+                    return statefulCandidate(seed).reconstruct().branch;
+                }),
+            true
+        );
         return scope.assert.collect();
     }),
     test('repeats the same shrink sequence for equal retained contexts', function (scope) {

@@ -2,11 +2,15 @@ import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { type TestScope, suite, test } from '@overkill-dev/test';
 
 import { canonicalJson } from '../canonical-identity.ts';
-import type { MeasurementEvidence } from '../engine/measurement-evidence.ts';
-
-import { type TestCase, createRoot, createTestPlan, execute } from '../packages/engine/engine.entry-point.ts';
+import {
+    type MeasurementEvidence,
+    createRoot,
+    createTestPlan,
+    execute
+} from '../packages/engine/engine.entry-point.ts';
 
 import {
+    type TestCase,
     benchmark,
     workload,
     rawMeasurement,
@@ -14,11 +18,14 @@ import {
     wallClockMeasurement,
     defaultSamplingPolicy,
     measurementStrategy,
-    threadCpuCollector
+    threadCpuCollector,
+    type MeasurementTarget
 } from '../packages/bench/bench.entry-point.ts';
+
 import { benchmarkResultSchema } from '../run/benchmark-result-schema.ts';
 import { createMeasurementSample } from './measurement-region.ts';
-import { defaultMeasurementTarget, readMeasurementTarget, type MeasurementTarget } from './measurement-target.ts';
+import { defaultMeasurementTarget, readMeasurementTarget } from './measurement-target.ts';
+
 import { resolveCalibratedMeasurement } from './calibrated-measurement.ts';
 import { currentMeasurementContext } from './measurement-context.ts';
 

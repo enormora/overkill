@@ -166,10 +166,10 @@ const assertWarmAffinitySelection = defineCompositeAssertion({
         const trace = warmAffinityTraceEntry(runtime.placementTraceEntries.find(function isWarmSelection(entry) {
             return entry.kind === 'warm-lane-affinity-selected';
         }));
-        if (baselineUnit === undefined || baselineUnit === null) {
+        if (baselineUnit === undefined) {
             return check.defined(baselineUnit);
         }
-        if (selectedUnit === undefined || selectedUnit === null) {
+        if (selectedUnit === undefined) {
             return check.defined(selectedUnit);
         }
         return check.group([

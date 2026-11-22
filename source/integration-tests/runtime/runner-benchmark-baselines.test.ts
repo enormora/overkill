@@ -1,7 +1,10 @@
-import type { CompositeAssertionReturn } from '@overkill-dev/test/assert';
-import { type CompositeCheckBuilder } from '@overkill-dev/test/assert';
-import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { posix as path } from 'node:path';
+import {
+    type CompositeAssertionReturn,
+    type CompositeCheckBuilder,
+    defineCompositeAssertion
+} from '@overkill-dev/test/assert';
+
 import { type TestScope, suite, test } from '@overkill-dev/test';
 
 import {
@@ -18,11 +21,11 @@ import {
 } from '../../packages/run/run.entry-point.ts';
 import { createPerformanceBaselineStore } from '../../baselines/performance-store.ts';
 
-const successfulWriteChecks = (
+const successfulWriteChecks = function (
     check: CompositeCheckBuilder<'assert'>,
     result: BenchmarkBaselineRunResult,
     count: number
-): CompositeAssertionReturn<'assert'> => {
+): CompositeAssertionReturn<'assert'> {
     return check.group([
         check.equal(result.result.status, 'passed'),
         check.deepEqual(result.result.runnerErrors, []),
@@ -35,11 +38,11 @@ const assertSuccessfulWrite = defineCompositeAssertion({
     assert: successfulWriteChecks
 });
 
-const bootstrapAndUpdateChecks = async (
+const bootstrapAndUpdateChecks = async function (
     check: CompositeCheckBuilder<'assert'>,
     fixtureData: BaselineFixture,
     original: readonly string[]
-): Promise<CompositeAssertionReturn<'assert'>> => {
+): Promise<CompositeAssertionReturn<'assert'>> {
     const { command } = fixtureData;
     const bootstrap = await orchestrator.bench.baseline.bootstrap(command, { timing: null });
     return check.group([
@@ -62,7 +65,7 @@ async function addStaleBaselines(
     store: Awaited<ReturnType<typeof createPerformanceBaselineStore>>
 ): Promise<void> {
     const [ entry ] = await store.list();
-    if (entry === undefined || entry === null) {
+    if (entry === undefined) {
         throw new Error('Expected entry to satisfy defined.');
     }
     const stale = { ...entry.baseline, adapter: 'retired' };
@@ -102,12 +105,12 @@ const assertFilteredInventory = defineCompositeAssertion({
     }
 });
 
-const staleDiffAndApplyChecks = async (
+const staleDiffAndApplyChecks = async function (
     check: CompositeCheckBuilder<'assert'>,
     fixtureData: BaselineFixture,
     original: readonly string[],
     store: Awaited<ReturnType<typeof createPerformanceBaselineStore>>
-): Promise<CompositeAssertionReturn<'assert'>> => {
+): Promise<CompositeAssertionReturn<'assert'>> {
     const { command } = fixtureData;
     const diff = await orchestrator.bench.baseline.diff(command, { timing: null });
     const initialChecks = check.group([
@@ -128,10 +131,10 @@ const staleDiffAndApplyChecks = async (
     return check.group([ initialChecks, check.equal(remaining.length, 4) ]);
 };
 
-const existingWorkflowChecks = async (
+const existingWorkflowChecks = async function (
     check: CompositeCheckBuilder<'assert'>,
     fixtureData: BaselineFixture
-): Promise<CompositeAssertionReturn<'assert'>> => {
+): Promise<CompositeAssertionReturn<'assert'>> {
     const { command } = fixtureData;
     const original = await readBaselineContents(fixtureData);
     const compared = await orchestrator.bench.run(command, { timing: null });
@@ -213,7 +216,7 @@ export const testNode = suite('benchmark baseline commands', [
             return scope.assert.collect();
         }
     ),
-    test('cleanup requires a complete inventory and preserves other machine classes', async (scope) => {
+    test('cleanup requires a complete inventory and preserves other machine classes', async function (scope) {
         const fixtureData = await createBenchmarkBaselineFixture(scope.cleanup, {
             processModel: 'supervised-process',
             maxConcurrency: 1,

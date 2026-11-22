@@ -194,7 +194,7 @@ function collectionRuntime(
 
 function timeoutCallback(callbacks: readonly (() => void)[]): () => void {
     const callback = callbacks.at(-1);
-    if (callback === undefined || callback === null) {
+    if (callback === undefined) {
         throw new Error('Expected callback to satisfy defined.');
     }
 

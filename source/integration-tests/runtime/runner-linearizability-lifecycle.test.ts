@@ -1,6 +1,7 @@
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { table, suite } from '@overkill-dev/test';
+import { type RunnerResult, orchestrator } from '../../packages/run/run.entry-point.ts';
 
-import { orchestrator } from '../../packages/run/run.entry-point.ts';
 import { replayProject, writeReplayCase, replayPropertyUrl } from '../../test-support/replay-project-fixture.ts';
 
 const linearizabilityEntryPoint = new URL(
@@ -9,6 +10,17 @@ const linearizabilityEntryPoint = new URL(
 );
 const linearizabilityUrl = linearizabilityEntryPoint.href;
 
+const drainedLinearizabilityLanes = defineCompositeAssertion({
+    name: 'drained linearizability lanes',
+    assert(check, result: RunnerResult) {
+        return check.group([
+            check.equal(result.summary.crashed, 0),
+            check.false(JSON.stringify(result).includes('cleanup before drain')),
+            check.false(JSON.stringify(result).includes('admitted after cancellation'))
+        ]);
+    }
+});
+
 export const testNode = suite('linearizability supervision', [
     table({
         title: 'drains cooperative lanes on interruption',
@@ -16,10 +28,8 @@ export const testNode = suite('linearizability supervision', [
         caseTitle(reason) {
             return reason;
         },
-        async test(scope) {
-            const reason = scope.parameters;
-
-            const project = await replayProject(scope.cleanup, {
+        async test({ cleanup, assert, parameters: reason }) {
+            const project = await replayProject(cleanup, {
                 testFamily: 'property',
                 files: { include: [ 'case.test.ts' ] },
                 execution: { processModel: 'supervised-process', scheduling: 'serial' },
@@ -61,21 +71,19 @@ export const testNode = suite('linearizability supervision', [
             );
             const result = await orchestrator.run(project.command);
 
-            scope.assert.equal(result.summary.crashed, 0);
-            scope.assert.false(JSON.stringify(result).includes('cleanup before drain'));
-            scope.assert.false(JSON.stringify(result).includes('admitted after cancellation'));
+            assert(drainedLinearizabilityLanes, result);
             if (reason === 'control') {
-                scope.assert.equal(result.summary.inconclusive, 1, { message: JSON.stringify(result) });
+                assert.equal(result.summary.inconclusive, 1, { message: JSON.stringify(result) });
             } else if (reason === 'permission') {
-                scope.assert.true(result.runnerErrors.some(function permission(error) {
+                assert.true(result.runnerErrors.some(function permission(error) {
                     return error.subtype === 'permission';
                 }));
             } else {
-                scope.assert.equal(result.summary.failed, 1);
-                scope.assert.includes(JSON.stringify(result.perTest), 'timeout');
+                assert.equal(result.summary.failed, 1);
+                assert.includes(JSON.stringify(result.perTest), 'timeout');
             }
 
-            return scope.assert.collect();
+            return assert.collect();
         }
     }),
     table({

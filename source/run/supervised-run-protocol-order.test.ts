@@ -1,4 +1,4 @@
-import type { ParameterizedTestScope } from '@overkill-dev/test';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { table, suite, test } from '@overkill-dev/test';
 
 import type { RunResult } from '../packages/engine/engine.entry-point.ts';
@@ -124,6 +124,23 @@ async function executeProtocolPhase(phase: Phase): Promise<RunResult> {
     );
 }
 
+const protocolFailure = defineCompositeAssertion({
+    name: 'attributes protocol violations to the correct phase',
+    assert(check, completed: Awaited<ReturnType<typeof executeProtocolPhase>>, phase: (typeof phases)[number]) {
+        const error = completed.runnerErrors[0];
+        if (error === undefined) {
+            return check.defined(error);
+        }
+        const failure = check.group([
+            check.equal(completed.status, 'failed'),
+            check.equal(error.subtype, phase === 'collection-error' ? 'loader' : 'runtime-policy'),
+            check.equal(error.attributedTo, null)
+        ]);
+        return phase === 'active-attempt'
+            ? check.group([ failure, check.equal(completed.perTest[0]?.verdict, 'crashed') ])
+            : failure;
+    }
+});
 export const testNode = suite('supervised child protocol order', [
     table({
         title: 'validates messages during each protocol phase',
@@ -131,25 +148,14 @@ export const testNode = suite('supervised child protocol order', [
         caseTitle(phase) {
             return phase;
         },
-        async test(scope: ParameterizedTestScope<(typeof phases)[number]>) {
+        async test(scope) {
             const phase = scope.parameters;
             if (phase === 'before-collection') {
                 await scope.assert.rejects(async function rejectPrematureResult() {
                     return await executeProtocolPhase(phase);
                 }, { message: 'Invalid supervised child IPC lifecycle.' });
             } else {
-                const protocolOrderCompleted = await executeProtocolPhase(phase);
-                scope.assert.equal(protocolOrderCompleted.status, 'failed');
-                const protocolOrderError = protocolOrderCompleted.runnerErrors[0];
-                scope.require.defined(protocolOrderError);
-                scope.assert.equal(
-                    protocolOrderError.subtype,
-                    phase === 'collection-error' ? 'loader' : 'runtime-policy'
-                );
-                scope.assert.equal(protocolOrderError.attributedTo, null);
-                if (phase === 'active-attempt') {
-                    scope.assert.equal(protocolOrderCompleted.perTest[0]?.verdict, 'crashed');
-                }
+                scope.assert(protocolFailure, await executeProtocolPhase(phase), phase);
             }
 
             return scope.assert.collect();
@@ -157,8 +163,17 @@ export const testNode = suite('supervised child protocol order', [
     }),
     test('collection timings remain valid when parent timing collection is absent', async function (scope) {
         const completed = await executeProtocolPhase('collection-timing');
-        scope.assert.equal(completed.status, 'passed');
-        scope.assert.deepEqual(completed.runnerErrors, []);
+        scope.assert(
+            defineCompositeAssertion({
+                name: 'collection timings remain valid when parent timing collection is absent',
+                assert(check) {
+                    return check.group([
+                        check.equal(completed.status, 'passed'),
+                        check.deepEqual(completed.runnerErrors, [])
+                    ]);
+                }
+            })
+        );
         return scope.assert.collect();
     })
 ]);

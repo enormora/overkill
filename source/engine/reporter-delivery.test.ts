@@ -1,6 +1,9 @@
-import type { CompositeAssertionReturn } from '@overkill-dev/test/assert';
-import { type CompositeCheckBuilder } from '@overkill-dev/test/assert';
-import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import {
+    type CompositeAssertionReturn,
+    type CompositeCheckBuilder,
+    defineCompositeAssertion
+} from '@overkill-dev/test/assert';
+
 import { suite, test } from '@overkill-dev/test';
 
 import { createDeterministicClock, type DeterministicClock } from '@enormora/clock';
@@ -109,11 +112,11 @@ function resultRunnerErrorMessages(result: RunResult): readonly string[] {
     });
 }
 
-const emptyRunnerErrorsChecks = (
+const emptyRunnerErrorsChecks = function (
     check: CompositeCheckBuilder<'assert'>,
     result: RunResult | null
-): CompositeAssertionReturn<'assert'> => {
-    if (result === undefined || result === null) {
+): CompositeAssertionReturn<'assert'> {
+    if (result === null) {
         return check.defined(result);
     }
     return check.group([ check.deepEqual(result.runnerErrors, []) ]);

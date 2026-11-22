@@ -5,8 +5,9 @@ import { attachmentFixture, attachmentWork as work } from '../../../test-support
 
 const metadata = { mediaType: 'application/json', name: 'evidence' };
 
-export const testNode =
-    test('file read errors retain incomplete evidence and fail the owning attempt', async (scope: TestScope) => {
+export const testNode = test(
+    'file read errors retain incomplete evidence and fail the owning attempt',
+    async function (scope: TestScope) {
         const { execution, store, directory } = await attachmentFixture(scope.cleanup, defaultAttachmentLimits);
         await execution.runAttempt(work, { index: 0 }, async function copyMissingSource() {
             await scope.assert.rejects(async function missingFile() {
@@ -23,4 +24,5 @@ export const testNode =
         scope.assert.equal(content.byteLength, 0);
 
         return scope.assert.collect();
-    });
+    }
+);

@@ -1,9 +1,9 @@
-import { defineCompositeAssertion } from '@overkill-dev/test/assert';
-import { mkdtemp, rm, mkdir } from 'node:fs/promises';
-import os from 'node:os';
+import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
-import { suite, test } from '@overkill-dev/test';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import { suite, createTestFacade } from '@overkill-dev/test';
+import { testWorkspace } from '../../../test-support/test-workspace.ts';
 
 import { defaultHistoryPolicy } from '../../../config/history-policy.ts';
 import { createNodeHistoryStorage } from '../../../run/node-history-storage.ts';
@@ -54,74 +54,75 @@ const assertRecordEnumeration = defineCompositeAssertion({
     }
 });
 
+async function holdHistoryLock(store: HistoryStorage): Promise<() => Promise<void>> {
+    const entered = Promise.withResolvers<undefined>();
+    const finished = Promise.withResolvers<undefined>();
+    const holding = store.withLock(async function holdLock() {
+        entered.resolve(undefined);
+        await finished.promise;
+    });
+    await entered.promise;
+    return async function releaseLock() {
+        finished.resolve(undefined);
+        await holding;
+    };
+}
+
+const { test } = createTestFacade({ resources: { workspace: testWorkspace } });
+
 export const testNode = suite('history locking', [
     test('failed lease acquisition removes its provisional ownership metadata', async function (scope) {
-        const directory = await mkdtemp(path.join(os.tmpdir(), 'overkill-history-'));
+        const directory = scope.resources.workspace;
         const store = createNodeHistoryStorage(directory, defaultHistoryPolicy);
-        try {
-            await mkdir(path.join(directory, 'active-runs', 'collision.json.lease'), { recursive: true });
-            await scope.assert.rejects(async function () {
-                return store.beginRun('collision');
-            }, { message: 'Lock file is already being held' });
-            scope.assert.equal(await store.read(path.join(directory, 'active-runs', 'collision.json')), null);
-        } finally {
-            await rm(directory, { recursive: true, force: true });
-        }
+
+        await mkdir(path.join(directory, 'active-runs', 'collision.json.lease'), { recursive: true });
+        await scope.assert.rejects(async function () {
+            return store.beginRun('collision');
+        }, { message: 'Lock file is already being held' });
+        scope.assert.equal(await store.read(path.join(directory, 'active-runs', 'collision.json')), null);
+
         return scope.assert.collect();
     }),
 
     test('independent stores serialize read-modify-write operations', async function (scope) {
-        const directory = await mkdtemp(path.join(os.tmpdir(), 'overkill-history-'));
+        const directory = scope.resources.workspace;
         const first = createNodeHistoryStorage(directory, defaultHistoryPolicy);
         const second = createNodeHistoryStorage(directory, defaultHistoryPolicy);
         const filePath = path.join(directory, 'counter.json');
-        try {
-            await Promise.all([ incrementCounter(first, filePath), incrementCounter(second, filePath) ]);
-            scope.assert.equal(await first.read(filePath), '2');
-        } finally {
-            await rm(directory, { recursive: true, force: true });
-        }
+
+        await Promise.all([ incrementCounter(first, filePath), incrementCounter(second, filePath) ]);
+        scope.assert.equal(await first.read(filePath), '2');
+
         return scope.assert.collect();
     }),
     test(
         'enumeration distinguishes absent directories, record files, and IO failures',
         async function (scope) {
-            const directory = await mkdtemp(path.join(os.tmpdir(), 'overkill-history-'));
+            const directory = scope.resources.workspace;
             const store = createNodeHistoryStorage(directory, defaultHistoryPolicy);
-            try {
-                await scope.assert(assertRecordEnumeration, store, directory);
-            } finally {
-                await rm(directory, { recursive: true, force: true });
-            }
+
+            await scope.assert(assertRecordEnumeration, store, directory);
+
             return scope.assert.collect();
         }
     ),
     test('contention times out and a rejected operation releases its lock', async function (scope) {
-        const directory = await mkdtemp(path.join(os.tmpdir(), 'overkill-history-'));
+        const directory = scope.resources.workspace;
         const store = createNodeHistoryStorage(directory, { ...defaultHistoryPolicy, lockTimeoutMilliseconds: 0 });
-        try {
-            const contentionTimeoutEntered = Promise.withResolvers<undefined>();
-            const contentionTimeoutFinish = Promise.withResolvers<undefined>();
-            const contentionTimeoutHolding = store.withLock(async function holdLock() {
-                contentionTimeoutEntered.resolve(undefined);
-                await contentionTimeoutFinish.promise;
-            });
-            await contentionTimeoutEntered.promise;
-            try {
-                await scope.assert.rejects(async function lockAlreadyHeld() {
-                    await store.withLock(async function () {
-                        return undefined;
-                    });
-                }, { message: /already being held/ });
-            } finally {
-                contentionTimeoutFinish.resolve(undefined);
-                await contentionTimeoutHolding;
-            }
 
-            await scope.assert(assertReleaseOnFailure, store);
+        const release = await holdHistoryLock(store);
+        try {
+            await scope.assert.rejects(async function lockAlreadyHeld() {
+                await store.withLock(async function () {
+                    return undefined;
+                });
+            }, { message: /already being held/ });
         } finally {
-            await rm(directory, { recursive: true, force: true });
+            await release();
         }
+
+        await scope.assert(assertReleaseOnFailure, store);
+
         return scope.assert.collect();
     })
 ]);

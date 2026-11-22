@@ -1,7 +1,7 @@
-import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { spawn } from 'node:child_process';
 import type { Readable } from 'node:stream';
 import { setImmediate as scheduleImmediate } from 'node:timers';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { suite, test } from '@overkill-dev/test';
 
 import { createTestEngine } from '../../../test-support/create-test-engine.ts';

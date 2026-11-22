@@ -28,11 +28,11 @@ export function storedSnapshot(input: SnapshotInput): SnapshotRun['entries'][num
     };
 }
 
-export async function recordSnapshotAttempt<Value>(
+export async function runSnapshotInFixture<Value>(
+    fixture: AttachmentFixture,
     wire: SnapshotRun,
     body: () => Promise<Value>
-): Promise<RecordedSnapshot<Value>> {
-    const fixture = inlineAttachmentFixture(defaultAttachmentLimits, [ attachmentWork ]);
+): Promise<Value> {
     async function capture(): Promise<Value> {
         return await runSnapshotAttempt(attachmentWork, body);
     }
@@ -42,7 +42,15 @@ export async function recordSnapshotAttempt<Value>(
     async function attach(): Promise<Value> {
         return await runWithAttachmentContext(fixture.execution.context, ownAttempt);
     }
-    const value = await runWithSnapshotRun(wire, attach);
+    return await runWithSnapshotRun(wire, attach);
+}
+
+export async function recordSnapshotAttempt<Value>(
+    wire: SnapshotRun,
+    body: () => Promise<Value>
+): Promise<RecordedSnapshot<Value>> {
+    const fixture = inlineAttachmentFixture(defaultAttachmentLimits, [ attachmentWork ]);
+    const value = await runSnapshotInFixture(fixture, wire, body);
     return { value, artifacts: fixture.store.artifacts() };
 }
 

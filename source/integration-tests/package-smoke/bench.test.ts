@@ -1,34 +1,18 @@
-import type { CompositeAssertionReturn } from '@overkill-dev/test/assert';
-import { type CompositeCheckBuilder } from '@overkill-dev/test/assert';
-import { consumerEnvironment } from './support/consumer-environment.ts';
-import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { execFile } from 'node:child_process';
 import { cp, mkdir, mkdtemp, readFile, readdir, writeFile } from 'node:fs/promises';
 
 import path from 'node:path';
+import {
+    defineCompositeAssertion,
+    type CompositeCheckBuilder,
+    type CompositeAssertionReturn
+} from '@overkill-dev/test/assert';
+
 import { suite } from '@overkill-dev/test';
-import { packageConsumer } from './support/package-consumer.ts';
-
-const consumerFacade = packageConsumer('Installed benchmark API', function consumerFixture(consumerDirectory) {
-    async function createStandardBenchConsumer(): Promise<string> {
-        const consumerFolder = await mkdtemp(path.join(consumerDirectory, 'overkill-standard-bench-'));
-        const packageScopeFolder = path.join(consumerFolder, 'node_modules/@overkill-dev');
-
-        await mkdir(packageScopeFolder, { recursive: true });
-        await cp(
-            path.join(consumerDirectory, 'node_modules/@overkill-dev/test'),
-            path.join(packageScopeFolder, 'test'),
-            { recursive: true }
-        );
-        await writeFile(path.join(consumerFolder, 'overkill.config.mjs'), standardBenchConsumerConfigScript);
-        await writeFile(path.join(consumerFolder, 'bench.test.mjs'), standardBenchConsumerScript);
-        return consumerFolder;
-    }
-    return { createStandardBenchConsumer, consumerDirectory };
-});
-const { table, test } = consumerFacade;
 
 import { z } from 'zod/v4';
+import { consumerEnvironment } from './support/consumer-environment.ts';
+import { packageConsumer } from './support/package-consumer.ts';
 
 import { normalizedBenchConfigScript, normalizedBenchFixtureScript } from './support/normalization-scripts.ts';
 import {
@@ -49,7 +33,7 @@ type ScriptOutput = {
 async function executeNode(nodeArguments: readonly string[], cwd: string): Promise<ScriptOutput> {
     return await new Promise(function executeScript(resolve, reject) {
         execFile(process.execPath, Array.from(nodeArguments), {
-            env: consumerEnvironment(process.env, cwd),
+            env: consumerEnvironment(cwd),
             cwd,
             encoding: 'utf8'
         }, function collectResult(error, stdout, stderr) {
@@ -86,10 +70,10 @@ async function useFasterCalibrationReference(consumerFolder: string): Promise<vo
     });
     await writeFile(filename, JSON.stringify({ ...reference, snapshot: { ...reference.snapshot, samples } }));
 }
-const successfulCommandChecks = (
+const successfulCommandChecks = function (
     check: CompositeCheckBuilder<'assert'>,
     result: ScriptOutput
-): CompositeAssertionReturn<'assert'> => {
+): CompositeAssertionReturn<'assert'> {
     return check.group([ check.equal(result.exitCode, 0), check.equal(result.stderr, '') ]);
 };
 const assertSuccessfulCommand = defineCompositeAssertion({
@@ -133,6 +117,25 @@ const assertUncapturedCommands = defineCompositeAssertion({
     }
 });
 
+const consumerFacade = packageConsumer('Installed benchmark API', function consumerFixture(consumerDirectory) {
+    async function createStandardBenchConsumer(): Promise<string> {
+        const consumerFolder = await mkdtemp(path.join(consumerDirectory, 'overkill-standard-bench-'));
+        const packageScopeFolder = path.join(consumerFolder, 'node_modules/@overkill-dev');
+
+        await mkdir(packageScopeFolder, { recursive: true });
+        await cp(
+            path.join(consumerDirectory, 'node_modules/@overkill-dev/test'),
+            path.join(packageScopeFolder, 'test'),
+            { recursive: true }
+        );
+        await writeFile(path.join(consumerFolder, 'overkill.config.mjs'), standardBenchConsumerConfigScript);
+        await writeFile(path.join(consumerFolder, 'bench.test.mjs'), standardBenchConsumerScript);
+        return consumerFolder;
+    }
+    return { createStandardBenchConsumer, consumerDirectory };
+});
+const { table, test } = consumerFacade;
+
 export const testNode = suite('Installed benchmark API', [
     test(
         'standard-only installation captures and normalizes declared calibration resources',
@@ -140,8 +143,10 @@ export const testNode = suite('Installed benchmark API', [
             const { createStandardBenchConsumer } = scope.resources.consumer;
 
             const consumerFolder = await createStandardBenchConsumer();
-            await writeFile(path.join(consumerFolder, 'overkill.config.js'), normalizedBenchConfigScript);
-            await writeFile(path.join(consumerFolder, 'normalization.bench.mjs'), normalizedBenchFixtureScript);
+            await Promise.all([
+                writeFile(path.join(consumerFolder, 'overkill.config.js'), normalizedBenchConfigScript),
+                writeFile(path.join(consumerFolder, 'normalization.bench.mjs'), normalizedBenchFixtureScript)
+            ]);
             const binary = path.join(
                 consumerFolder,
                 'node_modules/@overkill-dev/test/packages/test/overkill.entry-point.js'
@@ -282,8 +287,14 @@ export const testNode = suite('Installed benchmark API', [
                     'startup.bench.mjs'
                 ], consumerFolder);
 
-                scope.assert.equal(result.exitCode, 0);
-                scope.assert.equal(result.stderr, '');
+                scope.assert(
+                    defineCompositeAssertion({
+                        name: 'standard-only installation selects bench profiles and executes the shared runner flow',
+                        assert(check) {
+                            return check.group([ check.equal(result.exitCode, 0), check.equal(result.stderr, '') ]);
+                        }
+                    })
+                );
                 scope.assert.includes(result.stdout, 'parameterized');
             }
 

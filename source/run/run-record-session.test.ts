@@ -1,6 +1,4 @@
 import { defineCompositeAssertion } from '@overkill-dev/test/assert';
-import { randomBytes } from 'node:crypto';
-import { promisify } from 'node:util';
 import { doubleUsage, rule, suite, test, testDouble } from '@overkill-dev/test';
 
 import { withExecutionObservation } from '../engine/execution-observation.ts';
@@ -8,6 +6,7 @@ import { fakeWorkerPoolRuntimeDependencies } from '../test-support/worker-pool-r
 import {
     type RecordSessionSnapshot,
     recordFixture,
+    drawEntropy,
     recordFixtureWithPersistenceProbes,
     recordUnresolvedSeed,
     recordId,
@@ -21,17 +20,11 @@ import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { createRuntimeCapabilityPolicy } from './capability-policy.ts';
 
 const recordingEnvironment = {};
-const drawEntropy = promisify(function requestEntropy(
-    size: number,
-    complete: (error: Error | null, bytes: Uint8Array) => void
-): void {
-    randomBytes(size, complete);
-});
 
 const assertStartedRecord = defineCompositeAssertion({
     name: 'started record',
     assert(check, record: RecordSessionSnapshot | undefined, recordPath: string) {
-        if (record === undefined || record === null) {
+        if (record === undefined) {
             return check.defined(record);
         }
         return check.group([
@@ -56,7 +49,7 @@ const assertStartedRecord = defineCompositeAssertion({
 const assertCompletedRecord = defineCompositeAssertion({
     name: 'completed record',
     assert(check, record: RecordSessionSnapshot | undefined, result: RunResult) {
-        if (record === undefined || record === null) {
+        if (record === undefined) {
             return check.defined(record);
         }
         return check.group([
@@ -71,10 +64,10 @@ const assertCompletedRecord = defineCompositeAssertion({
 const assertInterruptedRecord = defineCompositeAssertion({
     name: 'interrupted record',
     assert(check, record: RecordSessionSnapshot | undefined) {
-        if (record === undefined || record === null) {
+        if (record === undefined) {
             return check.defined(record);
         }
-        if (record.result === undefined || record.result === null) {
+        if (record.result === null) {
             return check.defined(record.result);
         }
         return check.group([

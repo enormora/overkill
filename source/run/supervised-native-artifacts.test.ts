@@ -83,11 +83,11 @@ function nativeCompletion(failure: BoundaryFailure): RunResult {
 function bindNativeCatalog(runtime: SupervisedRunRuntime): void {
     const plan = createCollectedPlan();
     const file = plan.files[0];
-    if (file === undefined || file === null) {
+    if (file === undefined) {
         throw new Error('Expected file to satisfy defined.');
     }
     const testCase = file.cases[0];
-    if (testCase === undefined || testCase === null) {
+    if (testCase === undefined) {
         throw new Error('Expected testCase to satisfy defined.');
     }
     runtime.collectedPlan.write({

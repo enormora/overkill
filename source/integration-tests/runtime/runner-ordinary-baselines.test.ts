@@ -1,14 +1,19 @@
-import type { CompositeAssertionReturn } from '@overkill-dev/test/assert';
-import { type CompositeCheckBuilder } from '@overkill-dev/test/assert';
-import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { execFile } from 'node:child_process';
 import { deserialize } from 'node:v8';
 import { fileURLToPath } from 'node:url';
+import {
+    type CompositeAssertionReturn,
+    type CompositeCheckBuilder,
+    defineCompositeAssertion
+} from '@overkill-dev/test/assert';
+
 import { table, suite, test } from '@overkill-dev/test';
+import type { OrdinaryBaselineEntry } from '../../run/baseline-record.ts';
 
 import { orchestrator, type BaselineRunResult } from '../../packages/run/run.entry-point.ts';
 import {
     createOrdinaryBaselineFixture,
+    matchingSavedBaselines,
     ordinaryBaselineFixtureFile as fixture,
     type OrdinaryBaselineFixture
 } from '../../test-support/ordinary-baseline-fixture.ts';
@@ -16,11 +21,11 @@ import type { OrdinaryBaselineStore } from '../../run/baseline-store.ts';
 import type { CoveredBaselineResult } from './support/baseline-coverage-subject.ts';
 
 type BaselineEntries = Awaited<ReturnType<OrdinaryBaselineFixture['entries']>>;
-const writtenChecks = (
+const writtenChecks = function (
     check: CompositeCheckBuilder<'assert'>,
     result: BaselineRunResult,
     changes: number
-): CompositeAssertionReturn<'assert'> => {
+): CompositeAssertionReturn<'assert'> {
     return check.group([
         check.equal(result.result.status, 'passed'),
         check.deepEqual(result.result.runnerErrors, []),
@@ -63,7 +68,7 @@ async function seedStaleEntries(data: OrdinaryBaselineFixture): Promise<Ordinary
     const store = await data.store();
     const entries = await store.list();
     const [ entry ] = entries;
-    if (entry === undefined || entry === null) {
+    if (entry === undefined) {
         throw new Error('Expected entry to satisfy defined.');
     }
     for (
@@ -137,13 +142,58 @@ async function coveredBaselines(directory: string): Promise<CoveredBaselineResul
     return deserialize(Buffer.from(output, 'base64')) as CoveredBaselineResult;
 }
 
+type ListedOrdinaryBaselinesEvidence = {
+    readonly diskOnlyListEntries: readonly OrdinaryBaselineEntry[];
+    readonly data: OrdinaryBaselineFixture;
+    readonly diskOnlyListObserved: number;
+};
+
+const listedOrdinaryBaselines = defineCompositeAssertion({
+    name: 'listed ordinary baselines',
+    assert(
+        check,
+        { diskOnlyListEntries, data, diskOnlyListObserved }: ListedOrdinaryBaselinesEvidence
+    ) {
+        return check.group([
+            check.equal(diskOnlyListEntries.length, 2),
+            check.equal(data.observations(), diskOnlyListObserved)
+        ]);
+    }
+});
+
+const bootstrapBaselines = defineCompositeAssertion({
+    name: 'bootstraps both missing baselines',
+    async assert(check, data: OrdinaryBaselineFixture) {
+        const missing = await orchestrator.run(data.command, { timing: null });
+        const initial = check.equal(missing.summary.failed, 2);
+        return check.group([
+            initial,
+            writtenChecks(check, await orchestrator.baseline.bootstrap(data.command, { timing: null }), 2)
+        ]);
+    }
+});
 export const testNode = suite('ordinary baseline workflows', [
     test('reconciles ordinary baselines under in-process coverage', async function (scope) {
         const data = await createOrdinaryBaselineFixture(scope.cleanup, 'in-process', 'text');
         const result = await coveredBaselines(data.directory);
         scope.assert(assertWritten, result.updated, 2);
-        scope.assert.equal(result.compared.summary.failed, 2);
-        scope.assert.deepEqual(result.retained, result.original);
+        scope.assert(
+            defineCompositeAssertion({
+                name: 'reconciles ordinary baselines under in-process coverage',
+                assert(check) {
+                    return check.group([
+                        check.equal(
+                            result
+                                .compared
+                                .summary
+                                .failed,
+                            2
+                        ),
+                        check.deepEqual(result.retained, result.original)
+                    ]);
+                }
+            })
+        );
         return scope.assert.collect();
     }),
     table({
@@ -152,32 +202,24 @@ export const testNode = suite('ordinary baseline workflows', [
         caseTitle(execution) {
             return execution;
         },
-        async test(scope) {
-            const execution = scope.parameters;
-
+        async test({ cleanup, assert, parameters: execution }) {
             const data = await createOrdinaryBaselineFixture(
-                scope.cleanup,
+                cleanup,
                 execution,
                 execution === 'in-process' ? 'text' : 'binary'
             );
 
-            const establishBaselinesMissing = await orchestrator.run(data.command, { timing: null });
-            scope.assert.equal(establishBaselinesMissing.summary.failed, 2);
-            scope.assert(assertWritten, await orchestrator.baseline.bootstrap(data.command, { timing: null }), 2);
-            const establishBaselinesCompared = await orchestrator.run(data.command, { timing: null });
-            scope.assert.equal(establishBaselinesCompared.status, 'passed');
+            await assert(bootstrapBaselines, data);
+            await assert(matchingSavedBaselines, data.command);
 
             const diskOnlyListObserved = data.observations();
             const diskOnlyListEntries = await data.entries();
-            scope.assert.equal(diskOnlyListEntries.length, 2);
-            scope.assert.equal(data.observations(), diskOnlyListObserved);
-            const original = diskOnlyListEntries;
+            assert(listedOrdinaryBaselines, { diskOnlyListEntries, data, diskOnlyListObserved });
 
-            await scope.assert(assertReadOnlyChanges, data, original);
-            scope.assert(assertWritten, await orchestrator.baseline.update(data.command, { timing: null }), 2);
-            const compared = await orchestrator.run(data.command, { timing: null });
-            scope.assert.equal(compared.status, 'passed');
-            return scope.assert.collect();
+            await assert(assertReadOnlyChanges, data, diskOnlyListEntries);
+            assert(assertWritten, await orchestrator.baseline.update(data.command, { timing: null }), 2);
+            await assert(matchingSavedBaselines, data.command);
+            return assert.collect();
         }
     }),
     test(

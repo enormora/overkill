@@ -1,9 +1,12 @@
-import type { CompositeAssertionReturn } from '@overkill-dev/test/assert';
-import { type CompositeCheckBuilder } from '@overkill-dev/test/assert';
-import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { mkdir, mkdtemp, readdir, realpath, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { extname, join } from 'node:path';
+import {
+    type CompositeAssertionReturn,
+    type CompositeCheckBuilder,
+    defineCompositeAssertion
+} from '@overkill-dev/test/assert';
+
 import { table, suite, test } from '@overkill-dev/test';
 
 import { createPlainOutputRenderer, type RunResult } from '../../packages/engine/engine.entry-point.ts';
@@ -102,11 +105,11 @@ function invocation(policy: FrozenMicrotestPolicy): FrozenRunCommand {
     } as const;
 }
 
-const rejectedCollectionChecks = (
+const rejectedCollectionChecks = function (
     check: CompositeCheckBuilder<'assert'>,
     result: RunResult,
     expected: RejectedImport
-): CompositeAssertionReturn<'assert'> => {
+): CompositeAssertionReturn<'assert'> {
     const { diagnostic, protectedFile, processModel } = expected;
     const initialChecksBeforeNextAction = check.partialDeepEqual(result, {
         status: 'failed',
@@ -119,7 +122,7 @@ const rejectedCollectionChecks = (
             return error.subtype === 'permission';
         })
     ) {
-        const [ firstLoopCheck, ...remainingLoopChecks ] = result.runnerErrors.map((error) => {
+        const [ firstLoopCheck, ...remainingLoopChecks ] = result.runnerErrors.map(function (error) {
             return check.partialDeepEqual(error, {
                 subtype: 'permission',
                 attributedTo: null,
@@ -148,17 +151,15 @@ const rejectedCollectionChecks = (
             .join('\n'),
         diagnostic
     );
-    if (processModel === 'in-process') {
-        return check.group([
+    return processModel === 'in-process'
+        ? check.group([
             initialChecksBeforeNextAction,
             intermediateChecks,
             check.true(result.runnerErrors.some(function originalNeverEvaluated(error) {
                 return error.cause instanceof Error && error.cause.message.includes('Module import escapes');
             }))
-        ]);
-    } else {
-        return check.group([ initialChecksBeforeNextAction, intermediateChecks ]);
-    }
+        ])
+        : check.group([ initialChecksBeforeNextAction, intermediateChecks ]);
 };
 
 const assertRejectedImport = defineCompositeAssertion({

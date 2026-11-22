@@ -1,9 +1,10 @@
 import { writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { type TestScope, suite, test } from '@overkill-dev/test';
+import { type RunnerResult, orchestrator, type ReplayRunCommand } from '../../packages/run/run.entry-point.ts';
 import { defineReporter } from '../../packages/engine/engine.entry-point.ts';
 
-import { orchestrator, type ReplayRunCommand } from '../../packages/run/run.entry-point.ts';
 import type { ReplayRunRecord } from '../../run/replay-record-types.ts';
 import {
     replayProject,
@@ -46,8 +47,21 @@ async function replaceRecord(saved: RecordedProject, value: unknown): Promise<vo
     );
 }
 
+type CancelledWorkerReplayEvidence = { readonly controller: AbortController; readonly result: RunnerResult; };
+
+const cancelledWorkerReplay = defineCompositeAssertion({
+    name: 'cancelled worker replay',
+    assert(check, { controller, result }: CancelledWorkerReplayEvidence) {
+        return check.group([
+            check.true(controller.signal.aborted),
+            check.equal(result.status, 'failed'),
+            check.includes(JSON.stringify(result.runnerErrors), 'Replay was cancelled')
+        ]);
+    }
+});
+
 export const testNode = suite('replay compatibility and cancellation', [
-    test('rejects incompatible records before importing source', async (scope) => {
+    test('rejects incompatible records before importing source', async function (scope) {
         const saved = await recordedProject(scope.cleanup, false);
         scope.assert.equal(saved.original.status, 'passed', { message: JSON.stringify(saved.original.runnerErrors) });
         await writeReplayCase(saved.project, "throw new Error('Imported incompatible replay.');");
@@ -71,7 +85,7 @@ export const testNode = suite('replay compatibility and cancellation', [
 
         return scope.assert.collect();
     }),
-    test('reports interrupted and cross-major replay diagnostics', async (scope) => {
+    test('reports interrupted and cross-major replay diagnostics', async function (scope) {
         const saved = await recordedProject(scope.cleanup, false);
         scope.assert.equal(saved.original.status, 'passed', { message: JSON.stringify(saved.original.runnerErrors) });
         await replaceRecord(saved, {
@@ -86,7 +100,7 @@ export const testNode = suite('replay compatibility and cancellation', [
 
         return scope.assert.collect();
     }),
-    test('cancels an active worker replay', async (scope) => {
+    test('cancels an active worker replay', async function (scope) {
         const saved = await recordedProject(scope.cleanup, true);
         scope.assert.equal(saved.original.status, 'passed', { message: JSON.stringify(saved.original.runnerErrors) });
         await writeReplayCase(
@@ -118,9 +132,7 @@ export const testNode=test('retained case',async scope=>{
             config: { ...command.config, reporters: [ reporter ] },
             signal: controller.signal
         });
-        scope.assert.true(controller.signal.aborted);
-        scope.assert.equal(result.status, 'failed');
-        scope.assert.includes(JSON.stringify(result.runnerErrors), 'Replay was cancelled');
+        scope.assert(cancelledWorkerReplay, { controller, result });
 
         return scope.assert.collect();
     })

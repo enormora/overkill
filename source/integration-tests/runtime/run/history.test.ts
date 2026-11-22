@@ -1,7 +1,7 @@
-import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { mkdtemp, rm, mkdir, writeFile, readFile, symlink } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { suite, test } from '@overkill-dev/test';
 
 import { defaultHistoryPolicy } from '../../../config/history-policy.ts';

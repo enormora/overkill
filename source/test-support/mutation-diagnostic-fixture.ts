@@ -1,7 +1,7 @@
-import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { createClock } from '@enormora/clock';
 import type { TestScope } from '@overkill-dev/test';
 import {
@@ -106,7 +106,7 @@ export const assertMutationDiagnosticDocuments = defineCompositeAssertion({
     assert(check, context: MutationDiagnosticContext, documents: readonly string[]) {
         return check.group([
             check.equal(documents.length, repeatedInvocationCount),
-            ...documents.map((document) => {
+            ...documents.map(function (document) {
                 return check.group([
                     check.includes(document, '"mutant": "../mutant"'),
                     check.includes(document, '"truncated": true'),

@@ -1,4 +1,5 @@
 import { mkdir, mkdtemp, rm } from 'node:fs/promises';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import type { TestScope } from '@overkill-dev/test';
 import {
     defineBaselineAdapter,
@@ -151,3 +152,18 @@ export async function createOrdinaryBaselineFixture(
     });
     return await ordinaryBaselineProject(directory, execution, payloadKind);
 }
+
+export const matchingSavedBaselines = defineCompositeAssertion({
+    name: 'matches the saved baselines',
+    async assert(check, command: RunCommand) {
+        const compared = await orchestrator.run(command, { timing: null });
+        return check.equal(compared.status, 'passed');
+    }
+});
+export const successfulBaselineUpdate = defineCompositeAssertion({
+    name: 'completes the baseline update',
+    async assert(check, command: RunCommand) {
+        const updated = await orchestrator.baseline.update(command, { timing: null });
+        return check.equal(updated.result.status, 'passed');
+    }
+});

@@ -69,7 +69,7 @@ export function requireEngineNarrowingReference<Actual, Narrowed extends Actual,
 
 export function subjectAssertion<Arguments extends readonly unknown[], Result extends EngineResult>(
     reference: EngineCompositeReference<Arguments, Result>
-): PublishedCompositeReference<Arguments, ResultForPublished<Result>> {
+): CompatibleCompositeReference<Arguments, Result, ResultForPublished<Result>> {
     requirePublishedCompositeReference(reference);
     return reference;
 }

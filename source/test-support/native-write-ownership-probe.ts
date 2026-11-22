@@ -1,5 +1,5 @@
-import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { AsyncResource } from 'node:async_hooks';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { suite, table, test } from '@overkill-dev/test';
 import { activeResourceLeakError, createAsyncLeakMonitor } from '../engine/async-leak-diagnostics.ts';
 import { withRunnerInfrastructure } from '../execution-ownership.ts';
@@ -67,8 +67,15 @@ export const nativeWriteOwnershipTestNode = suite('native write ownership', [
                 });
                 resources.push('SimpleWriteWrap');
             });
-            scope.assert.deepEqual(observed.baseline, infrastructure ? [ 'SimpleWriteWrap' ] : []);
-            scope.assert.deepEqual(observed.ambiguousResources, []);
+            scope.assert(defineCompositeAssertion({
+                name: 'native write ownership',
+                assert(check) {
+                    return check.group([
+                        check.deepEqual(observed.baseline, infrastructure ? [ 'SimpleWriteWrap' ] : []),
+                        check.deepEqual(observed.ambiguousResources, [])
+                    ]);
+                }
+            }));
             const error = activeResourceLeakError({
                 after: resources,
                 before: observed.baseline,
@@ -123,8 +130,7 @@ export const nativeWriteOwnershipTestNode = suite('native write ownership', [
         }
     }),
     test('tracks native writes through completion without masking a later owned write', async function (scope) {
-        const monitor = createAsyncLeakMonitor();
-        scope.cleanup(monitor.stop);
+        scope.cleanup(createAsyncLeakMonitor().stop);
         const probe = await createNativeWriteProbe(scope.cleanup);
         const observed = await observeCaseResourceOwners(process.getActiveResourcesInfo, async function enqueueWrite() {
             return { writing: withRunnerInfrastructure(probe.write) };

@@ -33,7 +33,7 @@ async function storedFixture(cleanup: TestScope['cleanup']): Promise<StoredFixtu
     });
     await store.apply({ kind: 'create', baseline: storedBaseline });
     const [ entry ] = await store.list();
-    if (entry === undefined || entry === null) {
+    if (entry === undefined) {
         throw new Error('Expected fixture entry.');
     }
     return { data, store, file: entry.path };

@@ -1,7 +1,8 @@
-import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { readFile, readdir, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { table, type TestScope, suite } from '@overkill-dev/test';
+import type { RunnerResult } from '../../packages/run/run.entry-point.ts';
 
 import type { ReplayRunRecord } from '../../run/replay-record-types.ts';
 import {
@@ -58,7 +59,7 @@ const assertCoverageRecords = defineCompositeAssertion({
         const replayed = records.find(function fresh(record) {
             return record.id !== source.id && record.identities.length === source.identities.length;
         });
-        if (replayed === undefined || replayed === null) {
+        if (replayed === undefined) {
             return check.defined(replayed);
         }
         const raw = await readdir(path.join(project.cwd, '.overkill', 'runs', replayed.id, 'coverage', 'raw'));
@@ -68,6 +69,26 @@ const assertCoverageRecords = defineCompositeAssertion({
                 await readFile(path.join(project.cwd, '.overkill', 'runs', `${source.id}.json`), 'utf8'),
                 retained
             )
+        ]);
+    }
+});
+
+type ReplayedCoverageOutcomeEvidence = {
+    readonly verifyCoverageReplayResult: RunnerResult;
+    readonly source: ReplayRunRecord;
+    readonly empty: boolean;
+};
+
+const replayedCoverageOutcome = defineCompositeAssertion({
+    name: 'replayed coverage outcome',
+    assert(
+        check,
+        { verifyCoverageReplayResult, source, empty }: ReplayedCoverageOutcomeEvidence
+    ) {
+        return check.group([
+            check.deepEqual(verifyCoverageReplayResult.runnerErrors, []),
+            check.equal(verifyCoverageReplayResult.planStatus, source.result?.planStatus),
+            check.equal(verifyCoverageReplayResult.status, empty ? 'failed' : 'passed')
         ]);
     }
 });
@@ -82,10 +103,9 @@ export const testNode = suite(
                 ? 'records coverage for empty replay without source imports'
                 : 'records fresh coverage artifacts';
         },
-        async test(scope) {
-            const empty = scope.parameters;
-            const { project, source, original } = await recordedCoverageProject(scope.cleanup, empty);
-            scope.assert.equal(original.status, 'passed');
+        async test({ cleanup, assert, parameters: empty }) {
+            const { project, source, original } = await recordedCoverageProject(cleanup, empty);
+            assert.equal(original.status, 'passed');
             const verifyCoverageReplaySourceFile = path.join(project.cwd, '.overkill', 'runs', `${source.id}.json`);
             const verifyCoverageReplayRetained = await readFile(verifyCoverageReplaySourceFile, 'utf8');
             if (empty) {
@@ -98,12 +118,10 @@ export const testNode = suite(
                 signal: null,
                 runId: source.id
             });
-            scope.assert.deepEqual(verifyCoverageReplayResult.runnerErrors, []);
-            scope.assert.equal(verifyCoverageReplayResult.planStatus, source.result?.planStatus);
-            scope.assert.equal(verifyCoverageReplayResult.status, empty ? 'failed' : 'passed');
-            await scope.assert(assertCoverageRecords, project, source, verifyCoverageReplayRetained);
+            assert(replayedCoverageOutcome, { verifyCoverageReplayResult, source, empty });
+            await assert(assertCoverageRecords, project, source, verifyCoverageReplayRetained);
 
-            return scope.assert.collect();
+            return assert.collect();
         }
     }) ]
 );

@@ -1,11 +1,10 @@
-import type { ParameterizedTestScope } from '@overkill-dev/test';
-import { defineCompositeAssertion } from '@overkill-dev/test/assert';
-import { writeFile } from 'node:fs/promises';
-import path from 'node:path';
 import { table, suite } from '@overkill-dev/test';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import { checkedInCorpusChecks, capturedPropertyFailure } from '../../test-support/property-evidence-assertions.ts';
 
 import { orchestrator } from '../../packages/run/run.entry-point.ts';
 import {
+    captureReplayWitness,
     type ReplayProject,
     replayProject,
     writeReplayCase,
@@ -84,20 +83,7 @@ const verifyCorpus = defineCompositeAssertion({
             check.equal(result.summary.failed, 1),
             check.deepEqual(result.runnerErrors, [])
         ]);
-        const evidence = result.perTest[0]?.property?.invocations[0];
-        if (evidence === undefined || evidence === null) {
-            return check.group([ initialChecks, check.defined(evidence) ]);
-        }
-        const intermediateChecks = check.defined(evidence);
-        if (evidence.summary === undefined || evidence.summary === null) {
-            return check.group([ initialChecks, intermediateChecks, check.defined(evidence.summary) ]);
-        }
-        return check.group([
-            initialChecks,
-            intermediateChecks,
-            check.defined(evidence.summary),
-            check.true(evidence.summary.accounting.phases['checked-in-corpus'].executed > 0)
-        ]);
+        return check.group([ initialChecks, checkedInCorpusChecks(check, result) ]);
     }
 });
 
@@ -137,9 +123,7 @@ export const testNode = suite(
             return [ processModel, nested ? 'nested' : 'direct' ].map(String).join(', ');
         },
         async test(
-            scope: ParameterizedTestScope<
-                { readonly processModel: 'in-process' | 'supervised-process'; readonly nested: boolean; }
-            >
+            scope
         ) {
             const { processModel, nested } = scope.parameters;
 
@@ -151,21 +135,18 @@ export const testNode = suite(
                 timeouts: { collectionMilliseconds: 30_000, softMilliseconds: 5000, hardMilliseconds: 10_000 }
             });
 
-            await writeReplayCase(project, differentialSource(nested, 'capture'));
-            const captureWitnessCaptured = await orchestrator.run(project.command);
-            scope.assert.equal(captureWitnessCaptured.summary.failed, 1);
-            scope.assert.deepEqual(captureWitnessCaptured.runnerErrors, []);
-            const captureWitnessWitness = captureWitnessCaptured.perTest[0]?.property?.invocations[0]?.confirmedWitness;
-            scope.require.defined(captureWitnessWitness);
-            const captureWitnessFile = path.join(project.cwd, 'differential.witness.json');
-            await writeFile(captureWitnessFile, JSON.stringify(captureWitnessWitness));
-            const file = captureWitnessFile;
+            const captured = await captureReplayWitness(
+                project,
+                differentialSource(nested, 'capture'),
+                'differential.witness.json'
+            );
+            scope.assert(capturedPropertyFailure, captured.result);
 
             await writeReplayCase(project, differentialSource(nested, 'replay'));
-            await scope.assert(verifyCorpus, project, file);
-            await scope.assert(verifyReplay, project, file, false);
+            await scope.assert(verifyCorpus, project, captured.file);
+            await scope.assert(verifyReplay, project, captured.file, false);
             await writeReplayCase(project, differentialSource(nested, 'fixed'));
-            await scope.assert(verifyReplay, project, file, true);
+            await scope.assert(verifyReplay, project, captured.file, true);
             return scope.assert.collect();
         }
     }) ]

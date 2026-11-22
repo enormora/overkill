@@ -24,7 +24,7 @@ async function preparationInput(cleanup: TestScope['cleanup']): Promise<Preparat
         }
     });
     const profile = config.profiles.integration;
-    if (profile === undefined || profile === null) {
+    if (profile === undefined) {
         throw new Error('Expected fixture profile.');
     }
     if (profile.testFamily !== 'integration') {

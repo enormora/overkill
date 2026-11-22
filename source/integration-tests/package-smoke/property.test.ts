@@ -1,28 +1,13 @@
-import { consumerCompilerTypes, consumerTypeDiagnostics } from './support/consumer-types.ts';
-import { consumerEnvironment } from './support/consumer-environment.ts';
 import { execFile } from 'node:child_process';
 import { cp, mkdir, mkdtemp, writeFile } from 'node:fs/promises';
 
 import path from 'node:path';
 import { suite } from '@overkill-dev/test';
+import { createProgram, ModuleKind, ScriptTarget } from 'typescript';
 import { packageConsumer } from './support/package-consumer.ts';
 
-const consumerFacade = packageConsumer('packaged property authoring', function consumerFixture(consumerDirectory) {
-    async function standardConsumer(): Promise<string> {
-        const directory = await mkdtemp(path.join(consumerDirectory, 'overkill-property-consumer-'));
-
-        const packages = path.join(directory, 'node_modules/@overkill-dev');
-        await mkdir(packages, { recursive: true });
-        await cp(path.join(consumerDirectory, 'node_modules/@overkill-dev/test'), path.join(packages, 'test'), {
-            recursive: true
-        });
-        return directory;
-    }
-    return { consumerDirectory, standardConsumer };
-});
-const { test } = consumerFacade;
-
-import { createProgram, ModuleKind, ScriptTarget } from 'typescript';
+import { consumerEnvironment } from './support/consumer-environment.ts';
+import { consumerCompilerTypes, consumerTypeDiagnostics } from './support/consumer-types.ts';
 
 import {
     microtestLoadBoundaryScript,
@@ -41,7 +26,7 @@ async function runNode(argumentsList: readonly string[], cwd: string): Promise<S
         execFile(
             process.execPath,
             Array.from(argumentsList),
-            { env: consumerEnvironment(process.env, cwd), cwd, encoding: 'utf8' },
+            { env: consumerEnvironment(cwd), cwd, encoding: 'utf8' },
             function (error, stdout, stderr) {
                 if (error === null) {
                     resolve({ code: 0, stdout, stderr });
@@ -54,6 +39,21 @@ async function runNode(argumentsList: readonly string[], cwd: string): Promise<S
         );
     });
 }
+
+const consumerFacade = packageConsumer('packaged property authoring', function consumerFixture(consumerDirectory) {
+    async function standardConsumer(): Promise<string> {
+        const directory = await mkdtemp(path.join(consumerDirectory, 'overkill-property-consumer-'));
+
+        const packages = path.join(directory, 'node_modules/@overkill-dev');
+        await mkdir(packages, { recursive: true });
+        await cp(path.join(consumerDirectory, 'node_modules/@overkill-dev/test'), path.join(packages, 'test'), {
+            recursive: true
+        });
+        return directory;
+    }
+    return { consumerDirectory, standardConsumer };
+});
+const { test } = consumerFacade;
 
 export const testNode = suite('packaged property authoring', [
     test('packaged witness replay preserves lifecycle and input graphs', async function (scope) {
@@ -94,9 +94,7 @@ export const testNode = suite('packaged property authoring', [
             types: [ 'node' ]
         });
         scope.assert.deepEqual(
-            (await consumerTypeDiagnostics(program, consumerDirectory)).map(function diagnosticText(diagnostic) {
-                return diagnostic.messageText;
-            }),
+            await consumerTypeDiagnostics(program, consumerDirectory),
             []
         );
         return scope.assert.collect();

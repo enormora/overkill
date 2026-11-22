@@ -1,11 +1,17 @@
 import { execFile } from 'node:child_process';
-import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { TestScope } from '@overkill-dev/test';
+import {
+    orchestrator,
+    normalizeConfig,
+    type ProjectProfileConfig,
+    type RunCommand
+} from '../packages/run/run.entry-point.ts';
+import type { RunResult } from '../packages/engine/engine.entry-point.ts';
 import type { ReplayRunRecord } from '../run/replay-record-types.ts';
-import { normalizeConfig, type ProjectProfileConfig, type RunCommand } from '../packages/run/run.entry-point.ts';
+
 import { replayRecordSchema } from '../run/replay-record-schema.ts';
 import { defaultRunRequest } from './run-command-factory.ts';
 
@@ -21,7 +27,8 @@ export async function replayProject(
     cleanup: TestScope['cleanup'],
     profile: ProjectProfileConfig
 ): Promise<ReplayProject> {
-    const cwd = await mkdtemp(path.join(tmpdir(), 'overkill-replay-'));
+    await mkdir('target', { recursive: true });
+    const cwd = await mkdtemp(path.join(process.cwd(), 'target/replay-'));
     cleanup(async function removeProject() {
         await rm(cwd, { recursive: true, force: true });
     });
@@ -88,4 +95,20 @@ export function replayPassingCase(title: string, passed: boolean): string {
 export const testNode = test(${JSON.stringify(title)}, scope => {
     scope.assert.equal(${String(passed)}, true); return scope.assert.collect();
 });`;
+}
+
+export async function captureReplayWitness(
+    project: ReplayProject,
+    source: string,
+    name: string
+): Promise<{ readonly result: RunResult; readonly file: string; }> {
+    await writeReplayCase(project, source);
+    const result = await orchestrator.run(project.command);
+    const witness = result.perTest[0]?.property?.invocations[0]?.confirmedWitness;
+    if (witness === undefined || witness === null) {
+        throw new Error('Expected a confirmed replay witness.');
+    }
+    const file = path.join(project.cwd, name);
+    await writeFile(file, JSON.stringify(witness));
+    return { result, file };
 }

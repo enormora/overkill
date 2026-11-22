@@ -1,7 +1,7 @@
-import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { createServer, type Server, type Socket } from 'node:net';
 import { randomUUID } from 'node:crypto';
 import { once } from 'node:events';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { defineMacro, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { createDefaultWorkId } from '../../../engine/identity.ts';
@@ -81,8 +81,8 @@ async function ownerChannel(cleanup: TestScope['cleanup']): Promise<OwnerChannel
 function ownerFor(token: string): ResourceCheckSnapshot['owner'] {
     return { run: token, id: 'owner', scope: 'per-run' };
 }
-const assertFinalizationError = defineMacro((title: string, failure: unknown, message: string) =>
-    test(title, async (scope) => {
+const assertFinalizationError = defineMacro(function (title: string, failure: unknown, message: string) {
+    return test(title, async function (scope) {
         const peer = await ownerChannel(scope.cleanup);
         const owner = ownerFor(peer.endpoint.token);
         peer.client.delivery.register(owner, 'service', [ work ], async function cannotFinalize() {
@@ -93,8 +93,8 @@ const assertFinalizationError = defineMacro((title: string, failure: unknown, me
         scope.assert.deepEqual(response.errors, [ message ]);
 
         return scope.assert.collect();
-    })
-);
+    });
+});
 const rejectLostRequest = defineCompositeAssertion({
     name: 'reject lost request',
     async assert(check, pending: Promise<unknown>) {

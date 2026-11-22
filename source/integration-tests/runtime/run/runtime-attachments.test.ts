@@ -1,6 +1,6 @@
-import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { suite, test, type TestScope } from '@overkill-dev/test';
 
 import { attachmentFixture, attachmentWork as work } from '../../../test-support/attachment-fixture.ts';
@@ -38,7 +38,7 @@ const assertInvalidJson = defineCompositeAssertion({
             { value: undefined },
             Array.from({ length: 1 })
         ]
-            .map((invalid) => {
+            .map(function (invalid) {
                 return check.throws(function rejectInvalidJson() {
                     snapshotJson(invalid, 1024);
                 }, { name: 'TypeError' });

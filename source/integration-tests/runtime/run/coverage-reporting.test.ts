@@ -1,10 +1,13 @@
-import type { CompositeAssertionReturn } from '@overkill-dev/test/assert';
-import { type CompositeCheckBuilder } from '@overkill-dev/test/assert';
-import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import {
+    defineCompositeAssertion,
+    type CompositeCheckBuilder,
+    type CompositeAssertionReturn
+} from '@overkill-dev/test/assert';
+
 import { suite, test } from '@overkill-dev/test';
 
 import type { V8CoverageEntry } from 'monocart-coverage-reports';
@@ -50,10 +53,10 @@ async function writeRawCoverage(rawDataDirectory: string, source: string): Promi
     );
 }
 
-const configuredReportFilesChecks = async (
+const configuredReportFilesChecks = async function (
     check: CompositeCheckBuilder<'assert'>,
     report: Awaited<ReturnType<typeof generateCoverageReports>>
-): Promise<CompositeAssertionReturn<'assert'>> => {
+): Promise<CompositeAssertionReturn<'assert'>> {
     const reportFiles = await Promise.all(report.reports.map(async function reportFile(file) {
         return await stat(file.path);
     }));

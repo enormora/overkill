@@ -1,6 +1,10 @@
 import { type TestScope, suite, test } from '@overkill-dev/test';
 
-import { benchmarkHtmlFixture, benchmarkSampleFixture } from '../test-support/benchmark-html-fixture.ts';
+import {
+    benchmarkHtmlFixture,
+    benchmarkBudgetFixture,
+    benchmarkSampleFixture
+} from '../test-support/benchmark-html-fixture.ts';
 import { runResultSchema } from '../run/run-result-schema.ts';
 import { readBenchmarkSamples } from '../bench/benchmark-sample-report.ts';
 import { createProcessEvidenceReader, processEvidenceMediaType } from '../bench/process-evidence-query.ts';
@@ -25,20 +29,12 @@ function retainedAttachment(result: RunResult): RuntimeAttachmentArtifact {
     return artifact as RuntimeAttachmentArtifact;
 }
 function retainedFixture(): RetainedFixture {
-    const result = benchmarkHtmlFixture('retention');
-    const testResult = result.perTest[0];
-    if (testResult === undefined || testResult === null) {
-        throw new Error('Expected testResult to satisfy defined.');
-    }
-    const { benchmark } = testResult;
-    if (benchmark === undefined || benchmark === null) {
-        throw new Error('Expected benchmark to satisfy defined.');
-    }
+    const { result, measured, benchmark } = benchmarkBudgetFixture('retention');
     const provenance = benchmark.metrics.latency?.provenance;
-    if (provenance === undefined || provenance === null) {
+    if (provenance === undefined) {
         throw new Error('Expected provenance to satisfy defined.');
     }
-    return { result, measured: { ...testResult, benchmark }, artifact: retainedAttachment(result), provenance };
+    return { result, measured, artifact: retainedAttachment(result), provenance };
 }
 
 function replaceSamples(

@@ -1,6 +1,9 @@
-import type { CompositeAssertionReturn } from '@overkill-dev/test/assert';
-import { type CompositeCheckBuilder, defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { writeFile } from 'node:fs/promises';
+import {
+    type CompositeAssertionReturn,
+    type CompositeCheckBuilder,
+    defineCompositeAssertion
+} from '@overkill-dev/test/assert';
 import { suite, test } from '@overkill-dev/test';
 
 import type { CommandLineBenchmarkCommands } from '../../packages/run/command-line.entry-point.ts';
@@ -31,11 +34,11 @@ const request = { configPath: null, cwd: process.cwd(), runRequest: { ...default
 const listRequest = { configPath: null, cwd: process.cwd(), listRequest: { paths: [], profile: null } };
 const execution = { processModel: 'supervised-process', maxConcurrency: 1, scheduling: 'serial' } as const;
 
-const existingDiffChecks = async (
+const existingDiffChecks = async function (
     check: CompositeCheckBuilder<'assert'>,
     fixture: BaselineFixture,
     commands: CommandLineBenchmarkCommands
-): Promise<CompositeAssertionReturn<'assert'>> => {
+): Promise<CompositeAssertionReturn<'assert'>> {
     const unchanged = await commands.baseline.diff(request);
     const initialChecks = check.group([
         check.equal(unchanged.exitCode, 0),
@@ -72,10 +75,10 @@ const assertDiffExitCodes = defineCompositeAssertion({
     }
 });
 
-const invalidListChecks = async (
+const invalidListChecks = async function (
     check: CompositeCheckBuilder<'assert'>,
     commands: CommandLineBenchmarkCommands
-): Promise<CompositeAssertionReturn<'assert'>> => {
+): Promise<CompositeAssertionReturn<'assert'>> {
     const invalid = await commands.baseline.list(listRequest);
     const initialChecks = check.group([
         check.equal(invalid.exitCode, 2),
@@ -100,16 +103,12 @@ const assertListExitCodes = defineCompositeAssertion({
             request: { paths: [], profile: 'startup' }
         });
         const [ entry ] = entries;
-        if (entry === undefined || entry === null) {
+        if (entry === undefined) {
             return check.group([ initialChecks, check.defined(entry) ]);
         }
-        const intermediateChecks = check.defined(entry);
+
         await writeFile(entry.path, '{');
-        return check.group([
-            initialChecks,
-            intermediateChecks,
-            await invalidListChecks(check.annotated('invalid list'), commands)
-        ]);
+        return check.group([ initialChecks, await invalidListChecks(check.annotated('invalid list'), commands) ]);
     }
 });
 

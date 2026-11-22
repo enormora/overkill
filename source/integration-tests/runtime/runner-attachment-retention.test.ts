@@ -1,8 +1,11 @@
-import type { CompositeAssertionReturn } from '@overkill-dev/test/assert';
-import { type CompositeCheckBuilder } from '@overkill-dev/test/assert';
-import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
+import {
+    type CompositeAssertionReturn,
+    type CompositeCheckBuilder,
+    defineCompositeAssertion
+} from '@overkill-dev/test/assert';
+
 import { table, suite, test, type TestScope } from '@overkill-dev/test';
 
 import { z } from 'zod/v4';
@@ -45,11 +48,11 @@ async function retentionRun(title: string, policy: RetryArtifactPolicy, stateDir
         })
     });
 }
-const retainedRetryFilesChecks = async (
+const retainedRetryFilesChecks = async function (
     check: CompositeCheckBuilder<'assert'>,
     attachments: RunResult['artifacts']
-): Promise<CompositeAssertionReturn<'assert'>> => {
-    const [ firstCheck, ...remainingChecks ] = await Promise.all(attachments.map(async (artifact) => {
+): Promise<CompositeAssertionReturn<'assert'>> {
+    const [ firstCheck, ...remainingChecks ] = await Promise.all(attachments.map(async function (artifact) {
         if (artifact.payload.kind !== 'runtime-attachment' || artifact.payload.content.kind !== 'file') {
             throw new Error('Expected binary attachment.');
         }
@@ -69,11 +72,11 @@ const retainedRetryFilesChecks = async (
     return check.group([ firstCheck, ...remainingChecks ]);
 };
 
-const completedRecordChecks = async (
+const completedRecordChecks = async function (
     check: CompositeCheckBuilder<'assert'>,
     stateDirectory: string,
     artifacts: RunResult['artifacts']
-): Promise<CompositeAssertionReturn<'assert'>> => {
+): Promise<CompositeAssertionReturn<'assert'>> {
     const entries = await readdir(path.join(stateDirectory, 'runs'));
     const records = entries.filter(function record(name) {
         return name.endsWith('.json');
@@ -83,7 +86,7 @@ const completedRecordChecks = async (
             return left.localeCompare(right);
         })
         .at(-1);
-    if (current === undefined || current === null) {
+    if (current === undefined) {
         return check.defined(current);
     }
     const record: unknown = JSON.parse(await readFile(path.join(stateDirectory, 'runs', current), 'utf8'));

@@ -1,6 +1,5 @@
 import os from 'node:os';
-import { mock } from 'node:test';
-import { suite, test } from '@overkill-dev/test';
+import { suite, test, testDouble } from '@overkill-dev/test';
 
 import type { HostReading } from '../bench/benchmark-host-snapshot.ts';
 import { benchmarkHostSnapshot } from '../test-support/benchmark-host-snapshot.ts';
@@ -15,25 +14,19 @@ import { hostProcessMetrics, readHostProcessWindow } from './benchmark-host-proc
 import { parseLinuxPressure } from './benchmark-host-platform.ts';
 
 function invalidNativeCapacity(): ReturnType<typeof readBenchmarkHostCapacity> {
-    const cpu = mock.method(os, 'cpus', function () {
-        return [];
+    const original = Object.getOwnPropertyDescriptors(os);
+    const originalConstraint = Object.getOwnPropertyDescriptors(process).constrainedMemory;
+    Object.defineProperties(os, {
+        cpus: { ...original.cpus, value: testDouble.returns([]) },
+        totalmem: { ...original.totalmem, value: testDouble.returns(0) },
+        loadavg: { ...original.loadavg, value: testDouble.returns([ Number.NaN, 0, 0 ]) }
     });
-    const memory = mock.method(os, 'totalmem', function () {
-        return 0;
-    });
-    const load = mock.method(os, 'loadavg', function () {
-        return [ Number.NaN, 0, 0 ];
-    });
-    const constraint = mock.method(process, 'constrainedMemory', function () {
-        return 0;
-    });
+    Object.defineProperty(process, 'constrainedMemory', { ...originalConstraint, value: testDouble.returns(0) });
     try {
         return readBenchmarkHostCapacity();
     } finally {
-        cpu.mock.restore();
-        memory.mock.restore();
-        load.mock.restore();
-        constraint.mock.restore();
+        Object.defineProperties(os, { cpus: original.cpus, totalmem: original.totalmem, loadavg: original.loadavg });
+        Object.defineProperty(process, 'constrainedMemory', originalConstraint);
     }
 }
 
@@ -43,14 +36,15 @@ type WindowsHostEvidence = {
 };
 
 function windowsHostEvidence(): WindowsHostEvidence {
-    const platform = mock.property(process, 'platform', 'win32');
+    const originalPlatform = Object.getOwnPropertyDescriptors(process).platform;
+    Object.defineProperty(process, 'platform', { ...originalPlatform, value: 'win32' });
     try {
         return {
             capacity: readBenchmarkHostCapacity(),
             metrics: hostProcessMetrics(readHostProcessWindow(), readHostProcessWindow())
         };
     } finally {
-        platform.mock.restore();
+        Object.defineProperty(process, 'platform', originalPlatform);
     }
 }
 

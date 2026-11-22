@@ -1,6 +1,6 @@
-import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { execFile } from 'node:child_process';
 import { createServer } from 'node:http';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { table, suite, test, type TestScope } from '@overkill-dev/test';
 
 import { createLocalHttpServiceResource, startResources } from '../../../packages/resources/resources.entry-point.ts';
@@ -31,7 +31,7 @@ const assertRequestIdentity = defineCompositeAssertion({
     name: 'request identity',
     assert(check, requests: HttpRequestAttribution, owner: TranscriptScope, client: Readonly<Record<string, unknown>>) {
         const request = requests.take('GET /');
-        if (request === undefined || request === null) {
+        if (request === null) {
             return check.defined(request);
         }
         return check.group([
@@ -42,7 +42,7 @@ const assertRequestIdentity = defineCompositeAssertion({
 });
 
 export const testNode = suite('Local HTTP failure attribution', [
-    test('identical overlapping requests in one attempt preserve their client identities', (scope) => {
+    test('identical overlapping requests in one attempt preserve their client identities', function (scope) {
         const requests = createHttpRequestAttribution();
         const owner = { case: 'same attempt' };
         const first = { client: 'first' };
@@ -55,7 +55,7 @@ export const testNode = suite('Local HTTP failure attribution', [
 
         return scope.assert.collect();
     }),
-    test('overlapping request signatures never borrow another case scope', (scope: TestScope) => {
+    test('overlapping request signatures never borrow another case scope', function (scope: TestScope) {
         const requests = createHttpRequestAttribution();
         requests.remember('GET /', { case: 'first' }, { client: 'first' });
         requests.remember('GET /', { case: 'second' }, { client: 'second' });
@@ -63,29 +63,33 @@ export const testNode = suite('Local HTTP failure attribution', [
         const second = requests.take('GET /');
         scope.require.defined(first);
         scope.require.defined(second);
-        scope.assert.deepEqual(first, { scope: null, undiciRequest: null });
-        scope.assert.deepEqual(second, { scope: null, undiciRequest: null });
+        scope.assert(
+            defineCompositeAssertion({
+                name: 'overlapping request signatures never borrow another case scope',
+                assert(check) {
+                    return check.group([
+                        check.deepEqual(first, { scope: null, undiciRequest: null }),
+                        check.deepEqual(second, { scope: null, undiciRequest: null })
+                    ]);
+                }
+            })
+        );
         scope.assert.equal(requests.take('GET /'), null);
 
         return scope.assert.collect();
     }),
     table({
         title: 'unmatched requests keep their resource lifetime attribution',
-        cases: [ 'per-case', 'shared-per-worker' ],
+        cases: [ 'per-case', 'shared-per-worker' ] as const,
         caseTitle(lifetime) {
             return lifetime;
         },
-        async test(scope) {
-            const lifetime = scope.parameters;
-
-            const uncorrelatedScopeLifetime: 'per-case' | 'shared-per-worker' = lifetime === 'per-case'
-                ? 'per-case'
-                : 'shared-per-worker';
+        async test({ assert, cleanup, parameters: lifetime }) {
             const uncorrelatedScopeController = new AbortController();
             const uncorrelatedScopeAcquisition = Object.freeze({ phase: 'acquisition' });
             const uncorrelatedScopeResource = createLocalHttpServiceResource({
                 name: 'api',
-                scope: uncorrelatedScopeLifetime,
+                scope: lifetime,
                 requirements: [],
                 dependencies: {},
                 address: { kind: 'loopback', port: 0 },
@@ -110,23 +114,22 @@ export const testNode = suite('Local HTTP failure attribution', [
                     });
                 }
             );
-            scope.cleanup(async function disposeServer() {
+            cleanup(async function disposeServer() {
                 await uncorrelatedScopeSession.disposeOnce({ signal: uncorrelatedScopeController.signal });
             });
             const uncorrelatedScopeCaptured: (TranscriptScope | null)[] = [];
-            const uncorrelatedScopeStop = observeTranscriptEntries(
+            cleanup(observeTranscriptEntries(
                 uncorrelatedScopeSession.context.api.transcript,
                 function recordScope(_entry, owner) {
                     uncorrelatedScopeCaptured.push(owner);
                 }
-            );
-            scope.cleanup(uncorrelatedScopeStop);
+            ));
             await fetchFromExternalProcess(uncorrelatedScopeSession.context.api.baseUrl);
-            scope.assert.deepEqual(uncorrelatedScopeCaptured, [
-                uncorrelatedScopeLifetime === 'per-case' ? uncorrelatedScopeAcquisition : null
+            assert.deepEqual(uncorrelatedScopeCaptured, [
+                lifetime === 'per-case' ? uncorrelatedScopeAcquisition : null
             ]);
 
-            return scope.assert.collect();
+            return assert.collect();
         }
     })
 ]);

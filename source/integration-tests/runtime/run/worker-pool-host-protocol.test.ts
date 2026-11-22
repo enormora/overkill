@@ -47,7 +47,7 @@ function workerPoolCommand(): WorkerPoolCommand {
 }
 
 export const testNode = suite('worker host entrypoint integration', [
-    test('worker-pool host entrypoint dispatches host commands', async (scope) => {
+    test('worker-pool host entrypoint dispatches host commands', async function (scope) {
         const commands = [
             childProcessEnvelope('other', { kind: 'destroy' }),
             ...[

@@ -1,6 +1,9 @@
-import type { CompositeAssertionReturn } from '@overkill-dev/test/assert';
-import { type CompositeCheckBuilder, defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { mkdir, readFile, rename } from 'node:fs/promises';
+import {
+    type CompositeAssertionReturn,
+    type CompositeCheckBuilder,
+    defineCompositeAssertion
+} from '@overkill-dev/test/assert';
 import { defineMacro, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { defineReporter, type DefinedReporter, type PerTestResult } from '../../packages/engine/engine.entry-point.ts';
@@ -35,8 +38,8 @@ function withAdapters(command: RunCommand, adapters: readonly PerformanceBaselin
     };
 }
 
-const assertObservationFailure = defineMacro((title: string) =>
-    test(title, async (scope) => {
+const assertObservationFailure = defineMacro(function (title: string) {
+    return test(title, async function (scope) {
         const fixture = await createBenchmarkBaselineFixture(scope.cleanup, execution);
         const adapter = durationAdapter(function () {
             return 0;
@@ -57,8 +60,8 @@ const assertObservationFailure = defineMacro((title: string) =>
         scope.assert.deepEqual(await readBaselineContents(fixture), []);
 
         return scope.assert.collect();
-    })
-);
+    });
+});
 
 function withAdditionalMetric(command: RunCommand): RunCommand {
     const profile = command.config.profiles.startup;
@@ -103,20 +106,20 @@ async function baselinePaths(fixture: BaselineFixture): Promise<BaselinePaths> {
     const second = entries.find(function (entry) {
         return entry.baseline.work.case.title === 'second';
     });
-    if (first === undefined || first === null) {
+    if (first === undefined) {
         throw new Error('Expected first to satisfy defined.');
     }
-    if (second === undefined || second === null) {
+    if (second === undefined) {
         throw new Error('Expected second to satisfy defined.');
     }
     return { first: first.path, second: second.path };
 }
 
-const partialContentsChecks = async (
+const partialContentsChecks = async function (
     check: CompositeCheckBuilder<'assert'>,
     first: string,
     second: string
-): Promise<CompositeAssertionReturn<'assert'>> => {
+): Promise<CompositeAssertionReturn<'assert'>> {
     const changed: unknown = JSON.parse(await readFile(first, 'utf8'));
     const initialChecks = check.partialDeepEqual(changed, { expected: { value: 110 } });
     const preserved: unknown = JSON.parse(await readFile(`${second}.backup`, 'utf8'));
@@ -216,8 +219,8 @@ function commandWithFailingCase(command: RunCommand, failedCase: FailingBenchmar
     };
 }
 
-const assertFailedCaseBlocksWrites = defineMacro((title: string) =>
-    test(title, async (scope) => {
+const assertFailedCaseBlocksWrites = defineMacro(function (title: string) {
+    return test(title, async function (scope) {
         const fixture = await createBenchmarkBaselineFixture(scope.cleanup, execution);
         const result = await orchestrator.bench.baseline.update(
             commandWithFailingCase(fixture.command, {
@@ -233,14 +236,14 @@ const assertFailedCaseBlocksWrites = defineMacro((title: string) =>
         scope.assert.deepEqual(await readBaselineContents(fixture), []);
 
         return scope.assert.collect();
-    })
-);
+    });
+});
 
 const assertCleanupGcEvidence = defineCompositeAssertion({
     name: 'cleanup gc evidence',
     assert(check, failed: PerTestResult) {
         const measured = failed.benchmark;
-        if (measured === undefined || measured === null) {
+        if (measured === null) {
             return check.defined(measured);
         }
         const initialChecks = check.group([
@@ -249,7 +252,7 @@ const assertCleanupGcEvidence = defineCompositeAssertion({
             check.equal(measured.status, 'incomplete')
         ]);
         const { lifecycle } = measured;
-        if (lifecycle === undefined || lifecycle === null) {
+        if (lifecycle === null) {
             return check.group([ initialChecks, check.defined(lifecycle) ]);
         }
         return check.group([
@@ -262,8 +265,8 @@ const assertCleanupGcEvidence = defineCompositeAssertion({
     }
 });
 
-const assertSampleCleanupBlocksWrites = defineMacro((title: string) =>
-    test(title, async (scope: TestScope) => {
+const assertSampleCleanupBlocksWrites = defineMacro(function (title: string) {
+    return test(title, async function (scope: TestScope) {
         const fixture = await createBenchmarkBaselineFixture(scope.cleanup, execution);
         const result = await orchestrator.bench.baseline.update(
             commandWithFailingCase(fixture.command, {
@@ -283,13 +286,13 @@ const assertSampleCleanupBlocksWrites = defineMacro((title: string) =>
         scope.assert.deepEqual(await readBaselineContents(fixture), []);
 
         return scope.assert.collect();
-    })
-);
+    });
+});
 
 export const testNode = suite('benchmark baseline failure boundaries', [
     assertSampleCleanupBlocksWrites('sample cleanup failures retain readings and block pending creates'),
     assertFailedCaseBlocksWrites('case assertion failures block pending creates'),
-    test('calibration process failures block writes before benchmark execution', async (scope) => {
+    test('calibration process failures block writes before benchmark execution', async function (scope) {
         const fixture = await createBenchmarkBaselineFixture(scope.cleanup, execution);
         const command = diskOnlyCommand(fixture.command);
         const result = await orchestrator.bench.baseline.update({
@@ -303,7 +306,7 @@ export const testNode = suite('benchmark baseline failure boundaries', [
 
         return scope.assert.collect();
     }),
-    test('late reporter failures preserve completed baseline writes', async (scope) => {
+    test('late reporter failures preserve completed baseline writes', async function (scope) {
         const fixture = await createBenchmarkBaselineFixture(scope.cleanup, execution);
         const reporter = defineReporter(function () {
             return {
@@ -329,7 +332,7 @@ export const testNode = suite('benchmark baseline failure boundaries', [
         return scope.assert.collect();
     }),
     assertObservationFailure('missing observations block all pending writes with case attribution'),
-    test('bootstrap mismatches block creation of unrelated missing metrics', async (scope) => {
+    test('bootstrap mismatches block creation of unrelated missing metrics', async function (scope) {
         const fixture = await createBenchmarkBaselineFixture(scope.cleanup, execution);
         await orchestrator.bench.baseline.update(fixture.command, { timing: null });
         const original = await readBaselineContents(fixture);
@@ -350,7 +353,7 @@ export const testNode = suite('benchmark baseline failure boundaries', [
         await scope.assert(assertPartialWrite, fixture);
         return scope.assert.collect();
     }),
-    test('listing reads persisted identities without collection or calibration', async (scope) => {
+    test('listing reads persisted identities without collection or calibration', async function (scope) {
         const fixture = await createBenchmarkBaselineFixture(scope.cleanup, execution);
         await orchestrator.bench.baseline.update(fixture.command, { timing: null });
         const { config } = diskOnlyCommand(fixture.command);

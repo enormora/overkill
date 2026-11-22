@@ -1,20 +1,21 @@
 import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { type TestScope, suite, test } from '@overkill-dev/test';
+import { captureTimeline, authoredEvents } from '../test-support/benchmark-timeline-fixture.ts';
 
-import { inlineAttachmentFixture, attachmentWork, type AttachmentFixture } from '../test-support/attachment-fixture.ts';
-import { defaultAttachmentLimits, type AttachmentLimits } from '../engine/runtime-attachment.ts';
-import { runWithAttachmentExecution } from '../run/resource-lifecycle-state.ts';
 import {
     wallClockMeasurement,
     cpuCalibration,
     moduleMeasurement,
-    type BenchmarkTimelineEvent
-} from '../packages/bench/bench.entry-point.ts';
-import { timelineMeasurement, measurementTimelinePolicy } from './timeline-measurement.ts';
+    timelineMeasurement,
+    rawMeasurement,
+    calibratedMeasurement
+} from '../packages/test/bench.entry-point.ts';
+
+import { measurementTimelinePolicy } from './timeline-measurement.ts';
 import { withBenchmarkTimeline } from './timeline-execution.ts';
 import { sampleTimeline, timelineContext } from './timeline-context.ts';
-import { rawMeasurement, calibratedMeasurement, resolveCalibratedMeasurement } from './calibrated-measurement.ts';
-import { benchmarkTimelineReportSchema } from './timeline-schema.ts';
+
+import { resolveCalibratedMeasurement } from './calibrated-measurement.ts';
 
 const recordAuthoredEvents = defineCompositeAssertion({
     name: 'record authored events',
@@ -52,32 +53,6 @@ const recordAuthoredEvents = defineCompositeAssertion({
     }
 });
 
-async function captureTimeline(
-    limits: AttachmentLimits,
-    operation: () => Promise<void>
-): Promise<AttachmentFixture> {
-    const fixture = inlineAttachmentFixture(limits, [ attachmentWork ]);
-    await runWithAttachmentExecution(fixture.execution, async function ownedRun() {
-        await fixture.execution.runAttempt(attachmentWork, { index: 0 }, async function attempt() {
-            await withBenchmarkTimeline(
-                timelineMeasurement(wallClockMeasurement(), { maximumEvents: 4096 }),
-                operation
-            );
-        });
-    });
-    return fixture;
-}
-
-function authoredEvents(fixture: AttachmentFixture): readonly BenchmarkTimelineEvent[] {
-    const content = fixture.store.artifacts()[0]?.payload.content;
-    if (content?.kind !== 'json') {
-        throw new Error('Expected timeline evidence.');
-    }
-    return benchmarkTimelineReportSchema.parse(content.value).events.filter(function authored(event) {
-        return event.source === 'authored';
-    });
-}
-
 export const testNode = suite('benchmark timelines', [
     test('keeps authored operations synchronous and inert without capture', function (scope) {
         sampleTimeline.mark('disabled');
@@ -90,7 +65,7 @@ export const testNode = suite('benchmark timelines', [
         return scope.assert.collect();
     }),
     test('retains authored failures, synchronous values, and overlapping spans', async function (scope) {
-        const fixture = await captureTimeline(defaultAttachmentLimits, async function recordTimeline() {
+        const fixture = await captureTimeline({}, async function recordTimeline() {
             await scope.assert(recordAuthoredEvents);
         });
         scope.assert.partialDeepEqual(authoredEvents(fixture), [
@@ -129,7 +104,6 @@ export const testNode = suite('benchmark timelines', [
     }),
     test('reports event and attachment byte omissions without breaking execution', async function (scope: TestScope) {
         const fixture = await captureTimeline({
-            ...defaultAttachmentLimits,
             maxInlineBytes: 1,
             maxArtifactBytes: 1
         }, async function () {

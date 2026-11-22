@@ -1,9 +1,15 @@
-import type { CompositeAssertionReturn } from '@overkill-dev/test/assert';
-import { engineCasePassedChecks } from '../../../../test-support/create-test-engine.ts';
-import { type CompositeCheckBuilder } from '@overkill-dev/test/assert';
-import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import {
+    type CompositeAssertionReturn,
+    type CompositeCheckBuilder,
+    defineCompositeAssertion
+} from '@overkill-dev/test/assert';
+
 import { suite, test } from '@overkill-dev/test';
-import { type EngineCaseBody, executeEngineCase } from '../../../../test-support/create-test-engine.ts';
+import {
+    engineCasePassedChecks,
+    type EngineCaseBody,
+    executeEngineCase
+} from '../../../../test-support/create-test-engine.ts';
 
 import {
     readTestBodyResourceAttachments,
@@ -28,7 +34,6 @@ import {
 
 const invokeWithResource = resourcesSubpath.withResource as (...parameters: readonly unknown[]) => unknown;
 const invokeWithResources = resourcesSubpath.withResources as (...parameters: readonly unknown[]) => unknown;
-const invokeWithRuntime = resourcesSubpath.withRuntime as (...parameters: readonly unknown[]) => unknown;
 
 type BoundaryRow = {
     readonly value: number;
@@ -36,7 +41,6 @@ type BoundaryRow = {
 type NamedResourceDescriptor = {
     readonly name: string;
 };
-type NamedRuntimeDescriptor = resourcesSubpath.RuntimeDefinition;
 type CycleDependencies = {
     readonly self: resourcesSubpath.ResourceDefinition<'cycle', string, CycleDependencies>;
 };
@@ -128,7 +132,9 @@ const assertAssertSubpath = defineCompositeAssertion({
     }
 });
 
-const resourcesSubpathExportsChecks = (check: CompositeCheckBuilder<'assert'>): CompositeAssertionReturn<'assert'> => {
+const resourcesSubpathExportsChecks = function (
+    check: CompositeCheckBuilder<'assert'>
+): CompositeAssertionReturn<'assert'> {
     return check.group([
         check.deepEqual(sortedKeys(resourcesSubpath), [
             'composeRuntimeContext',
@@ -168,14 +174,14 @@ function testPlanForChildren(children: RootOptions['children']): TestPlan {
     }));
 }
 
-const integrationRuntimeAuthoringChecks = (
+const integrationRuntimeAuthoringChecks = function (
     check: CompositeCheckBuilder<'assert'>,
     body: resourcesSubpath.RuntimeWrappedTestBody,
     tableBody: resourcesSubpath.RuntimeWrappedTestBody<
         resourcesSubpath.RuntimeGraph,
         RuntimeRowInput
     >
-): CompositeAssertionReturn<'assert'> => {
+): CompositeAssertionReturn<'assert'> {
     const facade = createTestFacade();
     const runtimeTable = facade.table({
         cases: [ { value: 1 }, { value: 2 } ],
@@ -188,26 +194,24 @@ const integrationRuntimeAuthoringChecks = (
     ]);
 };
 
-const microtestCaseRuntimeMetadataChecks = (
+const microtestCaseRuntimeMetadataChecks = function (
     check: CompositeCheckBuilder<'assert'>,
     body: resourcesSubpath.RuntimeWrappedTestBody
-): CompositeAssertionReturn<'assert'> => {
+): CompositeAssertionReturn<'assert'> {
     const microtestCase = subjectTest('uses database', body);
     const microtestCasePlan = testPlanForChildren([ microtestCase ]);
     const plannedCase = microtestCasePlan.discoveredCases[0];
-    if (plannedCase === undefined || plannedCase === null) {
-        return check.defined(plannedCase);
-    }
+
     return check.group([ check.deepEqual(plannedCase.resourceAttachments, readTestBodyResourceAttachments(body)) ]);
 };
 
-const microtestTableRuntimeMetadataChecks = (
+const microtestTableRuntimeMetadataChecks = function (
     check: CompositeCheckBuilder<'assert'>,
     tableBody: resourcesSubpath.RuntimeWrappedTestBody<
         resourcesSubpath.RuntimeGraph,
         RuntimeRowInput
     >
-): CompositeAssertionReturn<'assert'> => {
+): CompositeAssertionReturn<'assert'> {
     const microtestTable = table({
         cases: [ { value: 1 }, { value: 2 } ],
         test: tableBody,
@@ -216,10 +220,8 @@ const microtestTableRuntimeMetadataChecks = (
     const microtestTablePlan = testPlanForChildren([ microtestTable ]);
     const firstTableCase = microtestTablePlan.discoveredCases[0];
     const secondTableCase = microtestTablePlan.discoveredCases[1];
-    if (firstTableCase === undefined || firstTableCase === null) {
-        return check.defined(firstTableCase);
-    }
-    if (secondTableCase === undefined || secondTableCase === null) {
+
+    if (secondTableCase === undefined) {
         return check.defined(secondTableCase);
     }
     return check.group([
@@ -228,14 +230,14 @@ const microtestTableRuntimeMetadataChecks = (
     ]);
 };
 
-const runtimeAuthoringMetadataChecks = (
+const runtimeAuthoringMetadataChecks = function (
     check: CompositeCheckBuilder<'assert'>,
     body: resourcesSubpath.RuntimeWrappedTestBody,
     tableBody: resourcesSubpath.RuntimeWrappedTestBody<
         resourcesSubpath.RuntimeGraph,
         RuntimeRowInput
     >
-): CompositeAssertionReturn<'assert'> => {
+): CompositeAssertionReturn<'assert'> {
     return check.group([
         integrationRuntimeAuthoringChecks(check.annotated('integration runtime authoring'), body, tableBody),
         microtestCaseRuntimeMetadataChecks(check.annotated('microtest case runtime metadata'), body),
@@ -243,10 +245,10 @@ const runtimeAuthoringMetadataChecks = (
     ]);
 };
 
-const macroRuntimeMetadataChecks = (
+const macroRuntimeMetadataChecks = function (
     check: CompositeCheckBuilder<'assert'>,
     runtime: resourcesSubpath.RuntimeGraph
-): CompositeAssertionReturn<'assert'> => {
+): CompositeAssertionReturn<'assert'> {
     const runtimeMacro = defineSubjectMacro(function createRuntimeCase(title: string) {
         return subjectTest(
             title,
@@ -257,11 +259,9 @@ const macroRuntimeMetadataChecks = (
     });
     const testCase = runtimeMacro('uses runtime');
     const plannedCase = testPlanForChildren([ testCase ]).discoveredCases[0];
-    if (plannedCase === undefined || plannedCase === null) {
-        return check.defined(plannedCase);
-    }
+
     const runtimeGraph = plannedCase.resourceAttachments.runtimeGraphs[0];
-    if (runtimeGraph === undefined || runtimeGraph === null) {
+    if (runtimeGraph === undefined) {
         return check.defined(runtimeGraph);
     }
     return check.group([
@@ -275,12 +275,12 @@ const macroRuntimeMetadataChecks = (
     ]);
 };
 
-const resourceDescriptorsChecks = (
+const resourceDescriptorsChecks = function (
     check: CompositeCheckBuilder<'assert'>,
     database: NamedResourceDescriptor,
-    runtime: NamedRuntimeDescriptor,
+    runtime: resourcesSubpath.RuntimeDefinition,
     temporaryDirectory: NamedResourceDescriptor
-): CompositeAssertionReturn<'assert'> => {
+): CompositeAssertionReturn<'assert'> {
     return check.group([
         check.equal(database.name, 'database'),
         check.equal(runtime.id.name, 'api'),
@@ -304,10 +304,10 @@ function expectedLocalResource(
     };
 }
 
-const runtimeAttachmentsChecks = (
+const runtimeAttachmentsChecks = function (
     check: CompositeCheckBuilder<'assert'>,
     body: resourcesSubpath.RuntimeWrappedTestBody
-): CompositeAssertionReturn<'assert'> => {
+): CompositeAssertionReturn<'assert'> {
     return check.group([ check.deepEqual(readTestBodyResourceAttachments(body), {
         directResources: [],
         resourceGraph: [
@@ -326,10 +326,10 @@ const runtimeAttachmentsChecks = (
     }) ]);
 };
 
-const directResourceAttachmentsChecks = (
+const directResourceAttachmentsChecks = function (
     check: CompositeCheckBuilder<'assert'>,
     body: resourcesSubpath.ResourceWrappedTestBody
-): CompositeAssertionReturn<'assert'> => {
+): CompositeAssertionReturn<'assert'> {
     return check.group([ check.deepEqual(readTestBodyResourceAttachments(body), {
         directResources: [ { key: 'scratch', resourceName: 'scratch' } ],
         resourceGraph: [ expectedLocalResource('scratch', []) ],
@@ -375,7 +375,7 @@ const assertResourceWrapperValidation = defineCompositeAssertion({
                 invokeWithResource({ name: 'invalid' }, body());
             }, { message: 'withResource() requires resource descriptors.' }),
             check.throws(function rejectInvalidRuntime() {
-                invokeWithRuntime({ name: 'invalid' }, body());
+                Reflect.apply(resourcesSubpath.withRuntime, undefined, [ { name: 'invalid' }, body() ]);
             }, { message: 'withRuntime() requires a runtime descriptor.' }),
             check.throws(function rejectEmptyResources() {
                 invokeWithResources({}, body());
@@ -459,7 +459,7 @@ export const testNode = suite('Standard distribution entry points', [
 
         return scope.assert.collect();
     }),
-    test('@overkill-dev/test/reporters exposes current built-in factories', async (scope) => {
+    test('@overkill-dev/test/reporters exposes current built-in factories', async function (scope) {
         scope.assert.deepEqual(sortedKeys(reportersSubpath), [
             'createBenchmarkHtmlReporter',
             'createBriefFinalResultReporter',
@@ -487,7 +487,7 @@ export const testNode = suite('Standard distribution entry points', [
 
         return scope.assert.collect();
     }),
-    test('@overkill-dev/test/resources re-exports resource descriptors', async (scope) => {
+    test('@overkill-dev/test/resources re-exports resource descriptors', async function (scope) {
         const database = resourcesSubpath.defineResource({
             name: 'database',
             scope: 'per-case',

@@ -1,4 +1,5 @@
-import { table, suite, test, type TestScope } from '@overkill-dev/test';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import { testDouble, table, suite, test, type TestScope } from '@overkill-dev/test';
 
 import { inlineAttachmentFixture, attachmentWork as work } from '../test-support/attachment-fixture.ts';
 import { defaultAttachmentLimits } from '../engine/runtime-attachment.ts';
@@ -19,7 +20,7 @@ function rejectJsonReflection(cause: unknown): never {
 }
 
 export const testNode = suite('Runtime attachment failure', [
-    test('reported operation errors are consumed before final collection', async (scope: TestScope) => {
+    test('reported operation errors are consumed before final collection', async function (scope: TestScope) {
         const { execution } = inlineAttachmentFixture(defaultAttachmentLimits, [ work ]);
         let failure: unknown = null;
         try {
@@ -28,12 +29,21 @@ export const testNode = suite('Runtime attachment failure', [
             failure = error;
         }
         scope.require.instanceOf(failure, AttachmentOperationError);
-        scope.assert.equal(failure.runnerError(work.case, work).subtype, 'artifact');
-        scope.assert.deepEqual(await execution.finish(), []);
+        await scope.assert(
+            defineCompositeAssertion({
+                name: 'reported operation errors are consumed before final collection',
+                async assert(check) {
+                    return check.group([
+                        check.equal(failure.runnerError(work.case, work).subtype, 'artifact'),
+                        check.deepEqual(await execution.finish(), [])
+                    ]);
+                }
+            })
+        );
 
         return scope.assert.collect();
     }),
-    test('closing a run invalidates its active attempt capability', async (scope) => {
+    test('closing a run invalidates its active attempt capability', async function (scope) {
         const { execution } = inlineAttachmentFixture(defaultAttachmentLimits, [ work ]);
         await execution.runAttempt(work, { index: 0 }, async function closeRunInsideAttempt() {
             await execution.finish();
@@ -42,12 +52,25 @@ export const testNode = suite('Runtime attachment failure', [
             }, { message: 'Attachment escaped its integration run.' });
         });
         const errors = execution.takeErrors({ kind: 'run' });
-        scope.assert.equal(errors[0]?.attributedToAttempt, null);
-        scope.assert.equal(errors[0]?.subtype, 'attribution-drift');
+        scope.assert(
+            defineCompositeAssertion({
+                name: 'closing a run invalidates its active attempt capability',
+                assert(check) {
+                    return check.group([
+                        check.equal(errors[0]?.attributedToAttempt, null),
+                        check
+                            .equal(
+                                errors[0]?.subtype,
+                                'attribution-drift'
+                            )
+                    ]);
+                }
+            })
+        );
 
         return scope.assert.collect();
     }),
-    test('JSON reflection failures become attributed attachment errors', async (scope) => {
+    test('JSON reflection failures become attributed attachment errors', async function (scope) {
         const { execution } = inlineAttachmentFixture(defaultAttachmentLimits, [ work ]);
         const value = new Proxy({}, {
             ownKeys() {
@@ -58,12 +81,18 @@ export const testNode = suite('Runtime attachment failure', [
             await execution.context.forProducer({ kind: 'case' }).json(metadata, value);
         }, { message: 'Invalid JSON attachment.' });
         const errors = await execution.finish();
-        scope.assert.equal(errors.length, 1);
-        scope.assert.equal(errors[0]?.subtype, 'artifact');
+        scope.assert(
+            defineCompositeAssertion({
+                name: 'JSON reflection failures become attributed attachment errors',
+                assert(check) {
+                    return check.group([ check.equal(errors.length, 1), check.equal(errors[0]?.subtype, 'artifact') ]);
+                }
+            })
+        );
 
         return scope.assert.collect();
     }),
-    test('invalid protocol replies fail instead of accepting missing artifacts', async (scope) => {
+    test('invalid protocol replies fail instead of accepting missing artifacts', async function (scope) {
         const execution = createAttachmentExecution(async function invalidReply() {
             return { kind: 'written' };
         }, { ...defaultAttachmentLimits, maxInlineBytes: 1024 });
@@ -92,26 +121,34 @@ export const testNode = suite('Runtime attachment failure', [
         },
         async test(scope) {
             const [ cause, message ] = scope.parameters;
-            const transportFailureExecution = createAttachmentExecution(async function disconnectedTransport() {
-                throw cause;
-            }, { ...defaultAttachmentLimits, maxInlineBytes: 1024 });
+            const transportFailureExecution = createAttachmentExecution(testDouble.throws(cause), {
+                ...defaultAttachmentLimits,
+                maxInlineBytes: 1024
+            });
             await transportFailureExecution.runAttempt(work, { index: 1 }, async function rejectTransport() {
                 await scope.assert.rejects(async function openFailedTransport() {
                     await transportFailureExecution.context.forProducer({ kind: 'case' }).open(metadata);
-                }, { message: message });
+                }, { message });
             });
             const transportFailureErrors = transportFailureExecution.takeErrors({
                 kind: 'case',
                 work,
                 attempt: { index: 1 }
             });
-            scope.assert.equal(transportFailureErrors.length, 1);
-            scope.assert.equal(transportFailureErrors[0]?.attributedToAttempt?.index, 1);
+            scope.assert(defineCompositeAssertion({
+                name: 'Runtime attachment failure',
+                assert(check) {
+                    return check.group([
+                        check.equal(transportFailureErrors.length, 1),
+                        check.equal(transportFailureErrors[0]?.attributedToAttempt?.index, 1)
+                    ]);
+                }
+            }));
 
             return scope.assert.collect();
         }
     }),
-    test('consumed errors preserve attempt attribution and drift remains run owned', async (scope) => {
+    test('consumed errors preserve attempt attribution and drift remains run owned', async function (scope) {
         const { execution } = inlineAttachmentFixture(defaultAttachmentLimits, [ work ]);
         await execution.runAttempt(work, { index: 2 }, async function reportCaughtError() {
             const failed = createAttachmentFailure({
@@ -120,8 +157,17 @@ export const testNode = suite('Runtime attachment failure', [
                 message: 'failed',
                 reason: 'write-error'
             }, 'branch');
-            scope.assert.equal(failed.runnerError(work.case, work).attributedToAttempt?.index, 2);
-            scope.assert.equal(failed.take(), null);
+            scope.assert(
+                defineCompositeAssertion({
+                    name: 'consumed errors preserve attempt attribution and drift remains run owned',
+                    assert(check) {
+                        return check.group([
+                            check.equal(failed.runnerError(work.case, work).attributedToAttempt?.index, 2),
+                            check.equal(failed.take(), null)
+                        ]);
+                    }
+                })
+            );
         });
         const drift = createAttachmentFailure({
             owner: { kind: 'case', work, attempt: { index: 2 } },
@@ -130,20 +176,29 @@ export const testNode = suite('Runtime attachment failure', [
             reason: 'expired-attempt'
         }, null);
         const error = drift.runnerError(work.case, work);
-        scope.assert.equal(error.attributedTo, null);
-        scope.assert.equal(error.attributedToWork, null);
-        scope.assert.equal(error.attributedToAttempt, null);
+        scope.assert(
+            defineCompositeAssertion({
+                name: 'consumed errors preserve attempt attribution and drift remains run owned',
+                assert(check) {
+                    return check.group([
+                        check.equal(error.attributedTo, null),
+                        check.equal(error.attributedToWork, null),
+                        check.equal(error.attributedToAttempt, null)
+                    ]);
+                }
+            })
+        );
 
         return scope.assert.collect();
     }),
-    test('failure identity rejects malformed causes and deduplicates retained errors', (scope: TestScope) => {
-        const failure = createAttachmentFailure({
+    test('failure identity rejects malformed causes and deduplicates retained errors', function (scope: TestScope) {
+        const error = createAttachmentFailure({
             owner: { kind: 'run' },
             drift: false,
             message: 'failed',
             reason: 'transport'
-        }, 'branch');
-        const error = failure.take();
+        }, 'branch')
+            .take();
         scope.require.defined(error);
         scope.assert.equal(attachmentFailureBranch(error), 'branch');
         const invalidCauses = [

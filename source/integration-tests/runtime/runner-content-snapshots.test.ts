@@ -1,7 +1,10 @@
-import type { CompositeAssertionReturn } from '@overkill-dev/test/assert';
-import { type CompositeCheckBuilder, defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { mkdir, mkdtemp, rm } from 'node:fs/promises';
-import { defineMacro, type TestScope, suite, test } from '@overkill-dev/test';
+import {
+    type CompositeAssertionReturn,
+    type CompositeCheckBuilder,
+    defineCompositeAssertion
+} from '@overkill-dev/test/assert';
+import { defineMacro, type TestScope, suite, table, test } from '@overkill-dev/test';
 
 import { normalizeConfig, orchestrator, type RunCommand } from '../../packages/run/run.entry-point.ts';
 import { defaultRunRequest } from '../../test-support/run-command-factory.ts';
@@ -65,10 +68,10 @@ const establishSnapshots = defineCompositeAssertion({
     }
 });
 
-const verifyReadOnlyMismatchChecks = async (
+const verifyReadOnlyMismatchChecks = async function (
     check: CompositeCheckBuilder<'assert'>,
     fixture: SnapshotFixture
-): Promise<CompositeAssertionReturn<'assert'>> => {
+): Promise<CompositeAssertionReturn<'assert'>> {
     const before = await fixture.store.list();
     const changed = await orchestrator.run(fixture.command, { timing: null });
     const initialChecks = check.equal(changed.status, 'failed');
@@ -93,10 +96,10 @@ const updateChangedSnapshot = defineCompositeAssertion({
         const entry = entries.find(function textSnapshot(candidate) {
             return candidate.baseline.comparisonContext.name === 'response';
         });
-        if (entry === undefined || entry === null) {
+        if (entry === undefined) {
             return check.defined(entry);
         }
-        const initialChecks = check.defined(entry);
+
         await fixture.store.apply({
             kind: 'update',
             previous: entry.baseline,
@@ -111,7 +114,6 @@ const updateChangedSnapshot = defineCompositeAssertion({
         );
         const updated = await orchestrator.baseline.update(fixture.command, { timing: null });
         return check.group([
-            initialChecks,
             intermediateChecks,
             check.equal(
                 updated
@@ -124,60 +126,74 @@ const updateChangedSnapshot = defineCompositeAssertion({
     }
 });
 
+async function retireSnapshotName(fixture: SnapshotFixture): Promise<void> {
+    const [ entry ] = await fixture.store.list();
+    if (entry === undefined) {
+        throw new Error('Expected the saved snapshot.');
+    }
+
+    await fixture.store.apply({
+        kind: 'create',
+        baseline: {
+            ...entry.baseline,
+            comparisonContext: { ...entry.baseline.comparisonContext, name: 'removed-name' }
+        }
+    });
+}
+
 const reconcileSnapshotNames = defineCompositeAssertion({
     name: 'reconcile snapshot names',
     async assert(check, fixture: SnapshotFixture) {
-        const [ entry ] = await fixture.store.list();
-        if (entry === undefined || entry === null) {
-            return check.defined(entry);
-        }
-        const initialChecks = check.defined(entry);
-        await fixture.store.apply({
-            kind: 'create',
-            baseline: {
-                ...entry.baseline,
-                comparisonContext: { ...entry.baseline.comparisonContext, name: 'removed-name' }
-            }
-        });
+        await retireSnapshotName(fixture);
         const filtered = { ...fixture.command, request: { ...fixture.command.request, paths: [ fixtureFile ] } };
         const preserved = await orchestrator.baseline.apply(filtered, { timing: null });
         const intermediateChecks = check.equal(preserved.changes.length, 0);
         const preview = await orchestrator.baseline.diff(fixture.command, { timing: null });
         const laterChecks = check.equal(preview.changes[0]?.kind, 'remove');
         const applied = await orchestrator.baseline.apply(fixture.command, { timing: null });
-        return check.group([ initialChecks, intermediateChecks, laterChecks, check.equal(applied.changes.length, 1) ]);
+        return check.group([ intermediateChecks, laterChecks, check.equal(applied.changes.length, 1) ]);
     }
 });
 
-const rejectInvalidSnapshot = defineMacro((title: string) =>
-    test(title, async (scope) => {
+const rejectInvalidSnapshot = defineMacro(function (title: string) {
+    return test(title, async function (scope) {
         const fixture = await createSnapshotFixture(
             scope.cleanup,
             'supervised-process',
             'source/integration-tests/runtime/fixtures/invalid-content-snapshot.test.ts'
         );
         const result = await orchestrator.baseline.update(fixture.command, { timing: null });
-        scope.assert.equal(result.result.status, 'failed');
-        scope.assert.equal(result.writeOutcome.kind, 'blocked');
-        scope.assert.equal(result.changes.length, 1);
-        scope.assert.true(result.result.runnerErrors.some(function artifactFailure(error) {
-            return error.subtype === 'artifact' && error.attributedTo?.title === 'duplicate snapshot names';
+        await scope.assert(defineCompositeAssertion({
+            name: 'blocks snapshot publication after a caught infrastructure failure',
+            async assert(check) {
+                return check.group([
+                    check.equal(result.result.status, 'failed'),
+                    check.equal(result.writeOutcome.kind, 'blocked'),
+                    check.equal(result.changes.length, 1),
+                    check.true(result.result.runnerErrors.some(function artifactFailure(error) {
+                        return error.subtype === 'artifact' && error.attributedTo?.title === 'duplicate snapshot names';
+                    })),
+                    check.deepEqual(await fixture.store.list(), [])
+                ]);
+            }
         }));
-        scope.assert.deepEqual(await fixture.store.list(), []);
 
         return scope.assert.collect();
-    })
-);
+    });
+});
 
 export const testNode = suite('content snapshot workflow', [
-    ...Array.from([ 'supervised-process', 'worker-pool' ] as const, function executionMode(processModel) {
-        return test(`compares and updates snapshots with ${processModel}`, async function (scope) {
-            const fixture = await createSnapshotFixture(scope.cleanup, processModel, fixtureFile);
+    table({
+        title: 'compares and updates snapshots across process boundaries',
+        cases: [ 'supervised-process', 'worker-pool' ] as const,
+        caseTitle: String,
+        async test(scope) {
+            const fixture = await createSnapshotFixture(scope.cleanup, scope.parameters, fixtureFile);
             await scope.assert(establishSnapshots, fixture);
             await scope.assert(updateChangedSnapshot, fixture);
             await scope.assert(reconcileSnapshotNames, fixture);
             return scope.assert.collect();
-        });
+        }
     }),
     rejectInvalidSnapshot('blocks publication after a caught snapshot infrastructure failure')
 ]);

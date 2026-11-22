@@ -1,6 +1,9 @@
-import type { CompositeAssertionReturn } from '@overkill-dev/test/assert';
-import { type CompositeCheckBuilder } from '@overkill-dev/test/assert';
-import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import {
+    type CompositeAssertionReturn,
+    type CompositeCheckBuilder,
+    defineCompositeAssertion
+} from '@overkill-dev/test/assert';
+
 import { table, type TestScope, suite, test } from '@overkill-dev/test';
 
 import type { WorkId } from '../packages/engine/engine.entry-point.ts';
@@ -191,25 +194,23 @@ function preparationRuntime(
         }
     };
 }
-const preparationResponseChecks = (
+const preparationResponseChecks = function (
     check: CompositeCheckBuilder<'assert'>,
     reply: WorkerPoolPreparationReply,
     failed: boolean
-): CompositeAssertionReturn<'assert'> => {
+): CompositeAssertionReturn<'assert'> {
     const initialChecks = check.group([
         check.equal(reply.kind, 'resource-artifacts-prepared'),
         check.equal(reply.request, 'request-2')
     ]);
-    if (failed) {
-        return check.group([
+    return failed
+        ? check.group([
             initialChecks,
             check.equal(reply.runnerErrors.length, 1),
             check.equal(reply.runnerErrors[0]?.subtype, 'artifact'),
             check.equal(reply.runnerErrors[0]?.attributedToAttempt?.index, 2)
-        ]);
-    } else {
-        return check.group([ initialChecks, check.deepEqual(reply.runnerErrors, []) ]);
-    }
+        ])
+        : check.group([ initialChecks, check.deepEqual(reply.runnerErrors, []) ]);
 };
 
 type PreparationExchange = {
@@ -244,9 +245,6 @@ async function collectPreparationReply(
     });
     cleanup(channel.close);
     const work = taskRun.members[0].unit.work[0];
-    if (work === undefined) {
-        throw new Error('Expected preparation work.');
-    }
     return await exchangePreparationMessages(channel, work, received);
 }
 const assertPreparationReply = defineCompositeAssertion({

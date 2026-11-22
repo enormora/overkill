@@ -130,16 +130,15 @@ const assertRecoveredCase = defineCompositeAssertion({
             check.equal(result.perTest.length, 1)
         ]);
         const first = result.perTest[0];
-        if (first === undefined || first === null) {
+        if (first === undefined) {
             return check.group([ initialChecks, check.defined(first) ]);
         }
-        const intermediateChecks = check.defined(first);
-        if (first.retried === undefined || first.retried === null) {
-            return check.group([ initialChecks, intermediateChecks, check.defined(first.retried) ]);
+
+        if (first.retried === null) {
+            return check.group([ initialChecks, check.defined(first.retried) ]);
         }
         return check.group([
             initialChecks,
-            intermediateChecks,
             check.defined(first.retried),
             check.deepEqual(first.retried, { attempts: 2, finalVerdict: 'pass' }),
             check.deepEqual(
@@ -240,19 +239,18 @@ const assertCompletionFailure = defineCompositeAssertion({
     name: 'completion failure',
     assert(check, result: RunResult) {
         const first = result.perTest[0];
-        if (first === undefined || first === null) {
+        if (first === undefined) {
             return check.defined(first);
         }
         const error = result.runnerErrors[0];
-        if (error === undefined || error === null) {
+        if (error === undefined) {
             return check.defined(error);
         }
         return check.group([
             check.equal(result.summary.runtimePolicy, 1),
-            check.equal(first.outcome, null),
-            check.equal(first.attempts.at(-1)?.outcome?.kind, 'pass'),
-            check.equal(first.retried?.finalVerdict, 'runtime-policy'),
-            check.equal(error.attributedToAttempt?.index, 1)
+            check.partialDeepEqual(first, { outcome: null, retried: { finalVerdict: 'runtime-policy' } }),
+            check.partialDeepEqual(first.attempts.at(-1) ?? {}, { outcome: { kind: 'pass' } }),
+            check.partialDeepEqual(error, { attributedToAttempt: { index: 1 } })
         ]);
     }
 });

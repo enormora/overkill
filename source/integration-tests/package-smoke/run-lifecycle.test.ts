@@ -1,32 +1,12 @@
-import { consumerCompilerTypes, consumerTypeDiagnostics } from './support/consumer-types.ts';
-import { consumerEnvironment } from './support/consumer-environment.ts';
 import { execFile } from 'node:child_process';
 import { writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { suite } from '@overkill-dev/test';
+import { createProgram, ModuleKind, ScriptTarget } from 'typescript';
 import { packageConsumer } from './support/package-consumer.ts';
 
-const consumerFacade = packageConsumer('packaged public runner lifecycle', function consumerFixture(consumerDirectory) {
-    async function executeLifecycleScript(): Promise<string> {
-        return new Promise(function launchConsumer(resolve, reject) {
-            execFile(process.execPath, [ '--input-type=module', '--eval', lifecycleScript ], {
-                env: consumerEnvironment(process.env, consumerDirectory),
-                cwd: consumerDirectory,
-                timeout: 30_000
-            }, function collectOutput(error, stdout) {
-                if (error instanceof Error) {
-                    reject(error);
-                } else {
-                    resolve(stdout);
-                }
-            });
-        });
-    }
-    return { consumerDirectory, executeLifecycleScript };
-});
-const { test } = consumerFacade;
-
-import { createProgram, ModuleKind, ScriptTarget } from 'typescript';
+import { consumerEnvironment } from './support/consumer-environment.ts';
+import { consumerCompilerTypes, consumerTypeDiagnostics } from './support/consumer-types.ts';
 
 const lifecycleScript = `
 import assert from 'node:assert/strict';
@@ -177,6 +157,26 @@ try {
 }
 `;
 
+const consumerFacade = packageConsumer('packaged public runner lifecycle', function consumerFixture(consumerDirectory) {
+    async function executeLifecycleScript(): Promise<string> {
+        return new Promise(function launchConsumer(resolve, reject) {
+            execFile(process.execPath, [ '--input-type=module', '--eval', lifecycleScript ], {
+                env: consumerEnvironment(consumerDirectory),
+                cwd: consumerDirectory,
+                timeout: 30_000
+            }, function collectOutput(error, stdout) {
+                if (error instanceof Error) {
+                    reject(error);
+                } else {
+                    resolve(stdout);
+                }
+            });
+        });
+    }
+    return { consumerDirectory, executeLifecycleScript };
+});
+const { test } = consumerFacade;
+
 export const testNode = suite('packaged public runner lifecycle', [
     test(
         'published runner accepts engine nodes, reporters, and renderers without type aliases',
@@ -210,9 +210,7 @@ export const testNode = suite('packaged public runner lifecycle', [
                 types: [ 'node' ]
             });
             scope.assert.deepEqual(
-                (await consumerTypeDiagnostics(program, consumerDirectory)).map(function diagnosticText(diagnostic) {
-                    return diagnostic.messageText;
-                }),
+                await consumerTypeDiagnostics(program, consumerDirectory),
                 []
             );
             return scope.assert.collect();

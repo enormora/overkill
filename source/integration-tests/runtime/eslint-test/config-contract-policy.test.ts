@@ -46,7 +46,7 @@ const cases: readonly ContractCase[] = [
     }
 ];
 function execution(signal: AbortSignal): ConfigExecution {
-    return { context: { root: '/project', signal: signal }, materialized: false, configs: [] };
+    return { context: { root: '/project', signal }, materialized: false, configs: [] };
 }
 export const testNode = suite('ESLint config contract policy', [
     table({

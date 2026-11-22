@@ -1,6 +1,9 @@
-import type { CompositeAssertionReturn } from '@overkill-dev/test/assert';
-import { type CompositeCheckBuilder } from '@overkill-dev/test/assert';
-import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import {
+    type CompositeAssertionReturn,
+    type CompositeCheckBuilder,
+    defineCompositeAssertion
+} from '@overkill-dev/test/assert';
+
 import { suite, test } from '@overkill-dev/test';
 
 import {
@@ -21,7 +24,7 @@ const nonErrorCapture: TranscriptCaptureErrorEntry = [
     { message: 'broken', source: 'custom' }
 ];
 
-const recordedBodiesChecks = (check: CompositeCheckBuilder<'assert'>): CompositeAssertionReturn<'assert'> => {
+const recordedBodiesChecks = function (check: CompositeCheckBuilder<'assert'>): CompositeAssertionReturn<'assert'> {
     return check.group([
         check.deepEqual(recordedHttpBody(null), { kind: 'absent' }),
         check.deepEqual(recordedHttpBody(new Uint8Array()), { kind: 'absent' }),
@@ -40,10 +43,10 @@ const recordedBodiesChecks = (check: CompositeCheckBuilder<'assert'>): Composite
     ]);
 };
 
-const emptyTranscriptViewChecks = (
+const emptyTranscriptViewChecks = function (
     check: CompositeCheckBuilder<'assert'>,
     transcript: TranscriptView
-): CompositeAssertionReturn<'assert'> => {
+): CompositeAssertionReturn<'assert'> {
     return check.group([
         check.equal(isTranscriptView(transcript), true),
         check.equal(isTranscriptView({ entries: [] }), false),
@@ -61,7 +64,7 @@ const assertTranscriptPrimitives = defineCompositeAssertion({
         const recorder = createHttpTranscriptRecorder<null>();
         const captureError = captureErrorHttpTranscript('broken').firstEntry;
         recorder.recordCaptureError('node-http', 'broken', null);
-        if (captureError === undefined || captureError === null) {
+        if (captureError === null) {
             return check.defined(captureError);
         }
         return check.group([

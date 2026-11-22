@@ -16,7 +16,7 @@ const producer = { kind: 'case' } as const;
 const assertPreparedOwner = defineCompositeAssertion({
     name: 'prepared owner',
     assert(check, operation: AttachmentOperation | undefined) {
-        if (operation === undefined || operation === null) {
+        if (operation === undefined) {
             return check.defined(operation);
         }
         if (operation.kind !== 'prepare') {

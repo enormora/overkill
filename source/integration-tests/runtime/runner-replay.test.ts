@@ -1,7 +1,10 @@
-import type { CompositeAssertionReturn } from '@overkill-dev/test/assert';
-import { type CompositeCheckBuilder, defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { readFile, writeFile, unlink } from 'node:fs/promises';
 import path from 'node:path';
+import {
+    type CompositeAssertionReturn,
+    type CompositeCheckBuilder,
+    defineCompositeAssertion
+} from '@overkill-dev/test/assert';
 import { table, type TestScope, suite, test } from '@overkill-dev/test';
 
 import type { ReplayRunRecord } from '../../run/replay-record-types.ts';
@@ -32,12 +35,12 @@ const executeOriginal = defineCompositeAssertion({
         return check.equal(result.code, 0);
     }
 });
-const retainedReplayChecks = async (
+const retainedReplayChecks = async function (
     check: CompositeCheckBuilder<'assert'>,
     project: ReplayProject,
     file: string,
     retained: string
-): Promise<CompositeAssertionReturn<'assert'>> => {
+): Promise<CompositeAssertionReturn<'assert'>> {
     const initialChecks = check.equal(await readFile(file, 'utf8'), retained);
     const records = await replayRecords(project);
     return check.group([ initialChecks, check.equal(records.length, 2) ]);
@@ -47,16 +50,15 @@ const verifyReplay = defineCompositeAssertion({
     name: 'verify replay',
     async assert(check, project: ReplayProject) {
         const [ original ] = await replayRecords(project);
-        if (original === undefined || original === null) {
+        if (original === undefined) {
             return check.defined(original);
         }
-        const initialChecks = check.defined(original);
+
         const file = path.join(project.cwd, '.overkill', 'runs', `${original.id}.json`);
         const retained = await readFile(file, 'utf8');
         await writeReplayCase(project, replayPassingCase('retained case', false));
         const result = await orchestrator.replay(replayInput(project, original.id));
         return check.group([
-            initialChecks,
             check.equal(result.summary.failed, 1),
             check.deepEqual(result.runnerErrors, []),
             await retainedReplayChecks(check.annotated('retained replay'), project, file, retained)
@@ -74,7 +76,7 @@ async function recordedEmptyProject(
     const original = records.find(function empty(record) {
         return record.identities.length === 0;
     });
-    if (original === undefined || original === null) {
+    if (original === undefined) {
         throw new Error('Expected fixture original.');
     }
     return { project, original };
@@ -97,7 +99,7 @@ export const testNode = suite('replay public execution boundaries', [
             return scope.assert.collect();
         }
     }),
-    test('empty replay requires no surviving source modules', async (scope) => {
+    test('empty replay requires no surviving source modules', async function (scope) {
         const { project, original } = await recordedEmptyProject(scope.cleanup);
         await unlink(path.join(project.cwd, 'case.test.ts'));
         const result = await orchestrator.replay(replayInput(project, original.id));
@@ -119,7 +121,7 @@ export const testNode = suite('replay public execution boundaries', [
         await scope.assert(verifyReplay, project);
         return scope.assert.collect();
     }),
-    test('rejects inconsistent records before importing code', async (scope: TestScope) => {
+    test('rejects inconsistent records before importing code', async function (scope: TestScope) {
         const project = await replayProject(scope.cleanup, replayProfile('in-process'));
         await writeReplayCase(project, replayPassingCase('retained case', true));
         await orchestrator.run(project.command);

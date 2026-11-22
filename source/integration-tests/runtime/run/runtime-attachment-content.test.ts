@@ -1,5 +1,5 @@
-import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { readFile } from 'node:fs/promises';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { test, suite } from '@overkill-dev/test';
 
 import { defaultAttachmentLimits } from '../../../engine/runtime-attachment.ts';
@@ -28,7 +28,7 @@ const assertClosedFile = defineCompositeAssertion({
 });
 
 export const testNode = suite('Runtime attachment content', [
-    test('keeps text completion stable across repeated finalization', async (scope) => {
+    test('keeps text completion stable across repeated finalization', async function (scope) {
         const { directory } = await attachmentFixture(scope.cleanup, defaultAttachmentLimits);
         const retention = await createAttachmentRetention('text', process.cwd(), `${directory}/log`, 10);
         await retention.retain(Buffer.from('ready'), 10);
@@ -43,7 +43,7 @@ export const testNode = suite('Runtime attachment content', [
 
         return scope.assert.collect();
     }),
-    test('bounds incomplete JSON and canonical expansion', async (scope) => {
+    test('bounds incomplete JSON and canonical expansion', async function (scope) {
         const { directory } = await attachmentFixture(scope.cleanup, defaultAttachmentLimits);
         const interrupted = await createAttachmentRetention('json', process.cwd(), `${directory}/json`, 10);
         await interrupted.retain(Buffer.from('{'), 10);
@@ -56,7 +56,7 @@ export const testNode = suite('Runtime attachment content', [
 
         return scope.assert.collect();
     }),
-    test('closes binary files while retaining truncation', async (scope) => {
+    test('closes binary files while retaining truncation', async function (scope) {
         const { directory } = await attachmentFixture(scope.cleanup, defaultAttachmentLimits);
         const filePath = `${directory}/screenshot.bin`;
         const retention = await createAttachmentRetention('binary', process.cwd(), filePath, 10);

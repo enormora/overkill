@@ -1,5 +1,9 @@
-import type { CompositeAssertionReference, CompositeAssertionReturn } from '@overkill-dev/test/assert';
-import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import {
+    type CompositeAssertionReference,
+    type CompositeAssertionReturn,
+    defineCompositeAssertion
+} from '@overkill-dev/test/assert';
+
 import { defineMacro, test, suite } from '@overkill-dev/test';
 
 import {

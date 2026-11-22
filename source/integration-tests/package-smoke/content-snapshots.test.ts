@@ -1,35 +1,12 @@
-import { consumerEnvironment } from './support/consumer-environment.ts';
 import { execFile } from 'node:child_process';
 import { mkdtemp, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { packageConsumer } from './support/package-consumer.ts';
-
-const consumerFacade = packageConsumer(
-    'compares content snapshots across packaged execution boundaries',
-    function consumerFixture(consumerDirectory) {
-        async function executeConsumer(file: string): Promise<string> {
-            return new Promise(function executeSnapshotConsumer(resolve, reject) {
-                execFile(process.execPath, [ file ], {
-                    env: consumerEnvironment(process.env, consumerDirectory),
-                    cwd: consumerDirectory,
-                    timeout: 180_000
-                }, function completed(error, stdout, stderr) {
-                    if (error === null) {
-                        resolve(stdout);
-                    } else {
-                        reject(new Error(stderr, { cause: error }));
-                    }
-                });
-            });
-        }
-        return { consumerDirectory, executeConsumer };
-    }
-);
-const { test } = consumerFacade;
 
 import { uneval } from 'devalue';
 
 import { defaultRunRequest } from '../../test-support/run-command-factory.ts';
+import { packageConsumer } from './support/package-consumer.ts';
+import { consumerEnvironment } from './support/consumer-environment.ts';
 
 const script = `
 import assert from 'node:assert/strict';
@@ -66,6 +43,29 @@ try {
     await rm(cwd, {recursive: true, force: true});
 }
 `;
+
+const consumerFacade = packageConsumer(
+    'compares content snapshots across packaged execution boundaries',
+    function consumerFixture(consumerDirectory) {
+        async function executeConsumer(file: string): Promise<string> {
+            return new Promise(function executeSnapshotConsumer(resolve, reject) {
+                execFile(process.execPath, [ file ], {
+                    env: consumerEnvironment(consumerDirectory),
+                    cwd: consumerDirectory,
+                    timeout: 180_000
+                }, function completed(error, stdout, stderr) {
+                    if (error === null) {
+                        resolve(stdout);
+                    } else {
+                        reject(new Error(stderr, { cause: error }));
+                    }
+                });
+            });
+        }
+        return { consumerDirectory, executeConsumer };
+    }
+);
+const { test } = consumerFacade;
 
 export const testNode = test(
     'compares content snapshots across packaged execution boundaries',

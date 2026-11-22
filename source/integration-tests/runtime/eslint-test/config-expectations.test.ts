@@ -1,6 +1,6 @@
 import { table, suite, test } from '@overkill-dev/test';
 import type { Linter } from 'eslint';
-import { requirePublishedCompositeReference } from '../../../test-support/assertion-reference-boundary.ts';
+import { subjectAssertion } from '../../../test-support/assertion-reference-boundary.ts';
 
 import { observeRule, ruleCheck } from '../../../eslint-test/rule-observation.ts';
 import {
@@ -55,9 +55,8 @@ export const testNode = suite('ESLint config expectation evaluation', [
         return scope.assert.collect();
     }),
     test('accepts matching message fields and text patterns repeatedly', function (scope) {
-        requirePublishedCompositeReference(ruleCheck);
         scope.assert(
-            ruleCheck,
+            subjectAssertion(ruleCheck),
             'Configuration matches',
             observeRule(function () {
                 const expected: ConfigDiagnostics = {
@@ -73,9 +72,8 @@ export const testNode = suite('ESLint config expectation evaluation', [
         return scope.assert.collect();
     }),
     test('filters selected rules and compares unique rule identities', function (scope) {
-        requirePublishedCompositeReference(ruleCheck);
         scope.assert(
-            ruleCheck,
+            subjectAssertion(ruleCheck),
             'Configuration matches',
             observeRule(function () {
                 checkConfigDiagnostics([ message, message, { ...message, ruleId: null } ], {
@@ -130,9 +128,8 @@ export const testNode = suite('ESLint config expectation evaluation', [
         return scope.assert.collect();
     }),
     test('accepts equivalent numeric and named rule severities', function (scope) {
-        requirePublishedCompositeReference(ruleCheck);
         scope.assert(
-            ruleCheck,
+            subjectAssertion(ruleCheck),
             'Configuration matches',
             observeRule(function () {
                 checkResolvedConfig(actual, expectation);

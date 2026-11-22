@@ -1,10 +1,15 @@
-import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
+import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { defineMacro, suite, test } from '@overkill-dev/test';
 
 import { defaultAttachmentLimits } from '../../../engine/runtime-attachment.ts';
-import { attachmentFixture, attachmentPeerWork, attachmentWork } from '../../../test-support/attachment-fixture.ts';
+import {
+    attachmentFixture,
+    type AttachmentFixture,
+    attachmentPeerWork,
+    attachmentWork
+} from '../../../test-support/attachment-fixture.ts';
 import type { AttachmentExchange } from '../../../run/attachment-protocol.ts';
 import { createAttachmentServer } from '../../../run/attachment-server.ts';
 import { createAttachmentConnection } from '../../../run/attachment-connection.ts';
@@ -34,10 +39,10 @@ const assertInterruptedFile = defineCompositeAssertion({
     name: 'interrupted file',
     async assert(check, store: Awaited<ReturnType<typeof attachmentFixture>>['store']) {
         const artifact = store.artifacts()[0];
-        if (artifact === undefined || artifact === null) {
+        if (artifact === undefined) {
             return check.defined(artifact);
         }
-        const initialChecks = check.defined(artifact);
+
         const { content } = artifact.payload;
         if (content.kind !== 'file') {
             throw new Error('Expected a retained file.');
@@ -46,11 +51,10 @@ const assertInterruptedFile = defineCompositeAssertion({
             check.deepEqual(content.completion, { kind: 'incomplete', reason: 'interrupted' }),
             check.deepEqual(Array.from(await readFile(path.resolve(content.path))), [ 1, 2, 3 ])
         ]);
-        if (artifact.id.attempt === undefined || artifact.id.attempt === null) {
-            return check.group([ initialChecks, intermediateChecks, check.defined(artifact.id.attempt) ]);
+        if (artifact.id.attempt === null) {
+            return check.group([ intermediateChecks, check.defined(artifact.id.attempt) ]);
         }
         return check.group([
-            initialChecks,
             intermediateChecks,
             check.defined(
                 artifact
@@ -62,8 +66,8 @@ const assertInterruptedFile = defineCompositeAssertion({
     }
 });
 
-const assertConcurrentOwners = defineMacro((title: string) =>
-    test(title, async (scope) => {
+const assertConcurrentOwners = defineMacro(function (title: string) {
+    return test(title, async function (scope) {
         const { execution, store } = await attachmentFixture(scope.cleanup, defaultAttachmentLimits);
         const firstReady = Promise.withResolvers<undefined>();
         const secondReady = Promise.withResolvers<undefined>();
@@ -95,11 +99,24 @@ const assertConcurrentOwners = defineMacro((title: string) =>
         scope.assert.equal(store.artifacts().length, 2);
 
         return scope.assert.collect();
-    })
-);
+    });
+});
 
+const removedCancelledFile = defineCompositeAssertion({
+    name: 'prunes the cancelled file from disk',
+    async assert(check, store: AttachmentFixture['store']) {
+        const content = store.artifacts()[0]?.payload.content;
+        if (content?.kind !== 'file') {
+            return check.partialDeepEqual<unknown, unknown>(content, { kind: 'file' });
+        }
+        await store.prune(store.selectedArtifacts());
+        return await check.rejects(async function () {
+            await readFile(path.resolve(content.path));
+        }, { code: 'ENOENT' });
+    }
+});
 export const testNode = suite('Runtime attachment retention', [
-    test('channel EOF preserves binary prefixes and interrupted ownership', async (scope) => {
+    test('channel EOF preserves binary prefixes and interrupted ownership', async function (scope) {
         const { store } = await attachmentFixture(scope.cleanup, defaultAttachmentLimits);
         const server = await createAttachmentServer(store, defaultAttachmentLimits);
         scope.cleanup(async function finishAttachmentChannel() {
@@ -121,7 +138,7 @@ export const testNode = suite('Runtime attachment retention', [
 
         return scope.assert.collect();
     }),
-    test('cancelled branch files are removed without failing retained work', async (scope) => {
+    test('cancelled branch files are removed without failing retained work', async function (scope) {
         const { store } = await attachmentFixture(scope.cleanup, defaultAttachmentLimits);
         store.registerBranch('cancelled', function discardBranch() {
             return false;
@@ -129,14 +146,7 @@ export const testNode = suite('Runtime attachment retention', [
         const writer = await openBinaryEvidence(store.exchange.bind(null, 'peer'), 'cancelled', 0);
         await store.exchange('peer', { kind: 'write', writer, data: Buffer.from([ 4 ]).toString('base64') });
         scope.assert.deepEqual(await store.finish('peer'), []);
-        const content = store.artifacts()[0]?.payload.content;
-        if (content?.kind !== 'file') {
-            throw new Error('Expected discarded file evidence.');
-        }
-        await store.prune(store.selectedArtifacts());
-        await scope.assert.rejects(async function removedCancelledFile() {
-            await readFile(path.resolve(content.path));
-        }, { code: 'ENOENT' });
+        await scope.assert(removedCancelledFile, store);
 
         return scope.assert.collect();
     }),

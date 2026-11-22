@@ -213,7 +213,7 @@ export const testNode = suite('Human attachment rendering', [
             return scope.assert.collect();
         }
     }),
-    test('groups runtime variants by their full work identity', (scope) => {
+    test('groups runtime variants by their full work identity', function (scope) {
         const first = variantWork('first');
         const second = variantWork('second');
         const base = attachment({ kind: 'text', text: 'second', byteLength: 6, completion: { kind: 'complete' } });

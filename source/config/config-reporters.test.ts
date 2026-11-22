@@ -42,28 +42,12 @@ async function loadConfigValue(config: unknown): Promise<LoadedConfig> {
     return await loadConfig({ configPath: null, cwd: configFixtureCwd });
 }
 
-function reporterNames(config: LoadedConfig): readonly [string, string] {
-    const globalReporters = config.reporters;
-    const profileReporters = selectTestProfile('microtest', config).reporters;
-
-    if (globalReporters === undefined || globalReporters === null) {
-        throw new Error('Expected globalReporters to satisfy defined.');
-    }
-    if (profileReporters === undefined || profileReporters === null) {
-        throw new Error('Expected profileReporters to satisfy defined.');
-    }
-    const globalReporter = globalReporters[0];
-    const profileReporter = profileReporters[0];
-
-    if (globalReporter === undefined || globalReporter === null) {
-        throw new Error('Expected globalReporter to satisfy defined.');
-    }
-    if (profileReporter === undefined || profileReporter === null) {
-        throw new Error('Expected profileReporter to satisfy defined.');
-    }
+function reporterNames(config: LoadedConfig): readonly [string | undefined, string | undefined] {
     const context = createReportingContext({ projectRoot: null });
-
-    return [ globalReporter(context).name, profileReporter(context).name ];
+    return [
+        config.reporters?.[0]?.(context).name,
+        selectTestProfile('microtest', config).reporters?.[0]?.(context).name
+    ];
 }
 
 export const testNode = suite('Configuration reporters', [

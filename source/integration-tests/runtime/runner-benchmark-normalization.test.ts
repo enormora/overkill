@@ -1,18 +1,28 @@
-import type { CompositeAssertionReturn } from '@overkill-dev/test/assert';
-import { type CompositeCheckBuilder, defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { isDeepStrictEqual } from 'node:util';
+import {
+    type CompositeAssertionReturn,
+    type CompositeCheckBuilder,
+    defineCompositeAssertion
+} from '@overkill-dev/test/assert';
 import { table, type TestScope, suite, test } from '@overkill-dev/test';
+import type { CalibrationReferenceStore } from '../../baselines/calibration-store.ts';
+import {
+    type ResolvedRun,
+    orchestrator,
+    parseRunnerResult,
+    type RunCommand
+} from '../../packages/run/run.entry-point.ts';
 
 import type { RunResult } from '../../engine/run-result.ts';
 import { normalizationCommand, normalizationReferences } from '../../test-support/benchmark-normalization-fixture.ts';
-import { orchestrator, parseRunnerResult, type RunCommand } from '../../packages/run/run.entry-point.ts';
+
 import { createBenchmarkHtmlReport } from '../../reporters/benchmark-html-model.ts';
 import type { BenchmarkNormalizationEvidence } from '../../packages/bench/bench.entry-point.ts';
 
-const chartScalesChecks = (
+const chartScalesChecks = function (
     check: CompositeCheckBuilder<'assert'>,
     result: RunResult
-): CompositeAssertionReturn<'assert'> => {
+): CompositeAssertionReturn<'assert'> {
     const initialChecks = check.true(
         isDeepStrictEqual(parseRunnerResult(result).perTest[0]?.benchmark, result.perTest[0]?.benchmark)
     );
@@ -42,26 +52,13 @@ const assertNormalizedResult = defineCompositeAssertion({
     assert(check, result: RunResult) {
         const measured = result.perTest[0]?.benchmark;
         if (measured === undefined || measured === null) {
-            return check.defined(measured);
-        }
-        const initialChecks = check.group([
-            check.defined(measured),
-            check.equal(measured.metrics.value?.median, 100)
-        ]);
-        const { normalization } = measured;
-        if (normalization === undefined || normalization === null) {
-            return check.group([ initialChecks, check.defined(normalization) ]);
-        }
-        const intermediateChecks = check.defined(normalization);
-        const metric = normalization.metrics.value;
-        if (metric === undefined || metric === null) {
-            return check.group([ initialChecks, intermediateChecks, check.defined(metric) ]);
+            return check.group([ check.defined(measured), check.notNull(measured) ]);
         }
         return check.group([
-            initialChecks,
-            intermediateChecks,
-            check.defined(metric),
-            check.equal(metric.summary?.median, 50),
+            check.partialDeepEqual(measured, {
+                metrics: { value: { median: 100 } },
+                normalization: { metrics: { value: { summary: { median: 50 } } } }
+            }),
             check.equal(measured.budgets[0]?.estimate, 0.5),
             chartScalesChecks(check.annotated('chart scales'), result)
         ]);
@@ -70,25 +67,15 @@ const assertNormalizedResult = defineCompositeAssertion({
 const assertAutomaticResult = defineCompositeAssertion({
     name: 'automatic result',
     assert(check, result: RunResult) {
-        const initialChecks = check.group([
-            check.equal(result.status, 'passed'),
-            check.deepEqual(result.runnerErrors, [])
-        ]);
         const measured = result.perTest[0]?.benchmark;
         if (measured === undefined || measured === null) {
-            return check.group([ initialChecks, check.defined(measured) ]);
-        }
-        const intermediateChecks = check.defined(measured);
-        const { normalization } = measured;
-        if (normalization === undefined || normalization === null) {
-            return check.group([ initialChecks, intermediateChecks, check.defined(normalization) ]);
+            return check.group([ check.defined(measured), check.notNull(measured) ]);
         }
         return check.group([
-            initialChecks,
-            intermediateChecks,
-            check.defined(normalization),
+            check.equal(result.status, 'passed'),
+            check.deepEqual(result.runnerErrors, []),
             check.equal(measured.budgets[0]?.estimate, 0.5),
-            check.equal(normalization.metrics.value?.source, 'canonical')
+            check.partialDeepEqual(measured.normalization ?? {}, { metrics: { value: { source: 'canonical' } } })
         ]);
     }
 });
@@ -102,10 +89,10 @@ const captureFixedReference = defineCompositeAssertion({
             check.equal(capture.result.status, 'passed')
         ]);
         const [ reference ] = await store.list();
-        if (reference === undefined || reference === null) {
+        if (reference === undefined) {
             return check.group([ initialChecks, check.defined(reference) ]);
         }
-        const intermediateChecks = check.defined(reference);
+
         await store.write('bench', [ {
             ...reference.snapshot,
             samples: reference.snapshot.samples.map(function fasterReference() {
@@ -114,7 +101,7 @@ const captureFixedReference = defineCompositeAssertion({
         } ], function owners() {
             return reference.owners;
         });
-        return check.group([ initialChecks, intermediateChecks ]);
+        return check.group([ initialChecks ]);
     }
 });
 const normalizedBenchmark = defineCompositeAssertion({
@@ -130,11 +117,11 @@ function retainedNormalization(result: RunResult): BenchmarkNormalizationEvidenc
     }
     return normalization;
 }
-const captureScalesChecks = (
+const captureScalesChecks = function (
     check: CompositeCheckBuilder<'assert'>,
     canonical: RunResult,
     captured: RunResult
-): CompositeAssertionReturn<'assert'> => {
+): CompositeAssertionReturn<'assert'> {
     const before = retainedNormalization(canonical);
     const after = retainedNormalization(captured);
     return check.group([
@@ -148,32 +135,39 @@ const assertCaptureInvariant = defineCompositeAssertion({
     assert(check, canonical: RunResult, captured: RunResult) {
         const before = canonical.perTest[0];
         const after = captured.perTest[0];
-        if (before === undefined || before === null) {
-            return check.defined(before);
+        if (before === undefined || after === undefined) {
+            return check.group([ check.defined(before), check.defined(after) ]);
         }
-        const initialChecks = check.defined(before);
-        if (after === undefined || after === null) {
-            return check.group([ initialChecks, check.defined(after) ]);
-        }
-        const intermediateChecks = check.defined(after);
-        if (before.benchmark === undefined || before.benchmark === null) {
-            return check.group([ initialChecks, intermediateChecks, check.defined(before.benchmark) ]);
-        }
-        const laterChecks = check.defined(before.benchmark);
-        if (after.benchmark === undefined || after.benchmark === null) {
-            return check.group([ initialChecks, intermediateChecks, laterChecks, check.defined(after.benchmark) ]);
+        const beforeBenchmark = before.benchmark;
+        const afterBenchmark = after.benchmark;
+        if (beforeBenchmark === null || afterBenchmark === null) {
+            return check.group([ check.notNull(beforeBenchmark), check.notNull(afterBenchmark) ]);
         }
         return check.group([
-            initialChecks,
-            intermediateChecks,
-            laterChecks,
-            check.defined(after.benchmark),
             check.deepEqual(after.workId, before.workId),
-            check.deepEqual(after.benchmark.budgets, before.benchmark.budgets),
+            check.deepEqual(afterBenchmark.budgets, beforeBenchmark.budgets),
             captureScalesChecks(check.annotated('capture scales'), canonical, captured)
         ]);
     }
 });
+type DiscoveredNormalizationReferencesEvidence = {
+    readonly listed: ResolvedRun;
+    readonly store: CalibrationReferenceStore;
+};
+
+const discoveredNormalizationReferences = defineCompositeAssertion({
+    name: 'discovered normalization references',
+    async assert(
+        check,
+        { listed, store }: DiscoveredNormalizationReferencesEvidence
+    ) {
+        return check.group([
+            check.equal(listed.facts.benchmarkNormalization, null),
+            check.deepEqual(await store.list(), [])
+        ]);
+    }
+});
+
 export const testNode = suite('benchmark normalization process boundaries', [
     test(
         'display captures preserve logical identity and canonical budget decisions',
@@ -200,8 +194,7 @@ export const testNode = suite('benchmark normalization process boundaries', [
             const command = await normalizationCommand(scope.cleanup, boundary, 'normalized metric');
             const store = await normalizationReferences(command);
             const listed = await orchestrator.bench.list(command, { timing: null });
-            scope.assert.equal(listed.facts.benchmarkNormalization, null);
-            scope.assert.deepEqual(await store.list(), []);
+            await scope.assert(discoveredNormalizationReferences, { listed, store });
             await scope.assert(captureFixedReference, command);
             const result = await orchestrator.bench.run(command, { timing: null });
             scope.assert(normalizedBenchmark, result);
@@ -214,8 +207,17 @@ export const testNode = suite('benchmark normalization process boundaries', [
         async function (scope) {
             const command = await normalizationCommand(scope.cleanup, 'reuse', 'capture skips benchmark fixtures');
             const result = await orchestrator.bench.calibrate(command, { timing: null });
-            scope.assert.deepEqual(result.result.runnerErrors, []);
-            scope.assert.equal(result.result.status, 'passed');
+            scope.assert(
+                defineCompositeAssertion({
+                    name: 'captures without acquiring unrelated fixtures or running benchmark bodies',
+                    assert(check) {
+                        return check.group([
+                            check.deepEqual(result.result.runnerErrors, []),
+                            check.equal(result.result.status, 'passed')
+                        ]);
+                    }
+                })
+            );
             const store = await normalizationReferences(command);
             const references = await store.list();
             scope.assert.equal(references.length, 1);
@@ -229,25 +231,36 @@ export const testNode = suite('benchmark normalization process boundaries', [
         scope.assert(normalizedBenchmark, result);
         const measured = result.perTest[0]?.benchmark;
         scope.require.defined(measured);
-        scope.assert.deepEqual(
-            measured.budgets.map(function estimate(budget) {
-                return budget.estimate;
-            }),
-            [ 0.5, 100 ]
-        );
-        scope.assert.equal(
-            createBenchmarkHtmlReport({
-                result,
-                context: {
-                    id: null,
-                    startedAt: null,
-                    facts: null
+        scope.assert(
+            defineCompositeAssertion({
+                name: 'keeps constructor metrics raw without a scaling rule',
+                assert(check) {
+                    return check.group([
+                        check.deepEqual(
+                            measured
+                                .budgets
+                                .map(function estimate(budget) {
+                                    return budget.estimate;
+                                }),
+                            [ 0.5, 100 ]
+                        ),
+                        check.equal(
+                            createBenchmarkHtmlReport({
+                                result,
+                                context: {
+                                    id: null,
+                                    startedAt: null,
+                                    facts: null
+                                }
+                            })
+                                .charts
+                                .groups
+                                .length,
+                            3
+                        )
+                    ]);
                 }
             })
-                .charts
-                .groups
-                .length,
-            3
         );
         return scope.assert.collect();
     }),

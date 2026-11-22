@@ -69,7 +69,7 @@ export const testNode = suite('Resource failure capture', [
         });
         return scope.assert.collect();
     }),
-    test('all lifetime collectors and disposal run after combined failures', async (scope) => {
+    test('all lifetime collectors and disposal run after combined failures', async function (scope) {
         const events: string[] = [];
         const base = defineResource({
             name: 'service',
@@ -116,7 +116,7 @@ export const testNode = suite('Resource failure capture', [
 
         return scope.assert.collect();
     }),
-    test('attachment operation failures preserve body verdicts and stop retries', async (scope) => {
+    test('attachment operation failures preserve body verdicts and stop retries', async function (scope) {
         let disposed = 0;
         const resource = withFailureArtifacts(
             defineResource({
@@ -149,7 +149,7 @@ export const testNode = suite('Resource failure capture', [
 
         return scope.assert.collect();
     }),
-    test('direct resource collectors receive the selected default scenario', async (scope: TestScope) => {
+    test('direct resource collectors receive the selected default scenario', async function (scope: TestScope) {
         const resource = withFailureArtifacts(
             defineResource({
                 name: 'service',

@@ -148,10 +148,10 @@ async function executeHardTimedCase(
 const assertHardTimeoutResult = defineCompositeAssertion({
     name: 'hard timeout result',
     assert(check, executedCase: Awaited<ReturnType<typeof executeCaseBody>>, error: RunnerError | undefined) {
-        if (error === undefined || error === null) {
+        if (error === undefined) {
             return check.defined(error);
         }
-        if (error.attributedTo === undefined || error.attributedTo === null) {
+        if (error.attributedTo === null) {
             return check.defined(error.attributedTo);
         }
         return check.group([

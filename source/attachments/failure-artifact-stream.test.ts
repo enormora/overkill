@@ -39,11 +39,11 @@ const assertCaptureFailure = defineCompositeAssertion({
             }
             return await fixture.store.exchange('test', request);
         }, defaultAttachmentLimits);
-        const capture = await runWithAttachmentExecution(execution, async () => {
-            return await execution.runAttempt(work, { index: 0 }, async () => {
+        const capture = await runWithAttachmentExecution(execution, async function () {
+            return await execution.runAttempt(work, { index: 0 }, async function () {
                 const stream = attemptStream();
                 stream.write('received');
-                const rejected = await check.rejects(async () => {
+                const rejected = await check.rejects(async function () {
                     if (closeOnOwner) {
                         await closeAttemptFailureStreams(work, { index: 0 });
                     } else {
@@ -62,33 +62,36 @@ const assertCaptureFailure = defineCompositeAssertion({
 });
 
 export const testNode = suite('Failure artifact stream', [
-    test('late output reports a closed writer failure while preserving captured evidence', async (scope: TestScope) => {
-        const fixture = inlineAttachmentFixture(defaultAttachmentLimits, [ work ]);
-        await runWithAttachmentExecution(fixture.execution, async function ownedRun() {
-            await fixture.execution.runAttempt(work, { index: 0 }, async function closedCapture() {
-                const stream = attemptStream();
-                stream.write('received');
-                await stream.close();
-                stream.write('late');
-                await closeAttemptFailureStreams(work, { index: 0 });
+    test(
+        'late output reports a closed writer failure while preserving captured evidence',
+        async function (scope: TestScope) {
+            const fixture = inlineAttachmentFixture(defaultAttachmentLimits, [ work ]);
+            await runWithAttachmentExecution(fixture.execution, async function ownedRun() {
+                await fixture.execution.runAttempt(work, { index: 0 }, async function closedCapture() {
+                    const stream = attemptStream();
+                    stream.write('received');
+                    await stream.close();
+                    stream.write('late');
+                    await closeAttemptFailureStreams(work, { index: 0 });
+                });
             });
-        });
-        const errors = fixture.execution.takeErrors({ kind: 'case', work, attempt: { index: 0 } });
-        scope.assert.equal(errors.length, 1);
-        scope.assert.equal(
-            errors[0]?.message,
-            'Attachment writes require an open writer and an awaited previous write.'
-        );
-        const artifact = fixture.store.artifacts()[0];
-        scope.require.defined(artifact);
-        scope.assert.partialDeepEqual(artifact.payload.content, {
-            kind: 'text',
-            text: 'received',
-            completion: { kind: 'complete' }
-        });
+            const errors = fixture.execution.takeErrors({ kind: 'case', work, attempt: { index: 0 } });
+            scope.assert.equal(errors.length, 1);
+            scope.assert.equal(
+                errors[0]?.message,
+                'Attachment writes require an open writer and an awaited previous write.'
+            );
+            const artifact = fixture.store.artifacts()[0];
+            scope.require.defined(artifact);
+            scope.assert.partialDeepEqual(artifact.payload.content, {
+                kind: 'text',
+                text: 'received',
+                completion: { kind: 'complete' }
+            });
 
-        return scope.assert.collect();
-    }),
+            return scope.assert.collect();
+        }
+    ),
     test('attempt cleanup reports failed stream drains as an aggregate error', async function (scope) {
         await scope.assert(assertCaptureFailure, new Error('disconnected'), 'prepare', true);
         return scope.assert.collect();
@@ -106,30 +109,33 @@ export const testNode = suite('Failure artifact stream', [
         await closeAttemptFailureStreams(work, { index: 0 });
         return scope.assert.collect();
     }),
-    test('capture limits preserve complete UTF-8 characters and discard subsequent output', async (scope: TestScope) => {
-        const limits = { ...defaultAttachmentLimits, maxInlineBytes: 16 };
-        const fixture = inlineAttachmentFixture(limits, [ work ]);
-        await runWithAttachmentExecution(fixture.execution, async function ownedRun() {
-            await fixture.execution.runAttempt(work, { index: 0 }, async function overflowingOutput() {
-                const stream = attemptStream();
-                stream.write(`${'x'.repeat(limits.maxInlineBytes - 1)}🌍`);
-                stream.write('discarded');
-                await closeAttemptFailureStreams(work, { index: 0 });
-                await stream.close();
+    test(
+        'capture limits preserve complete UTF-8 characters and discard subsequent output',
+        async function (scope: TestScope) {
+            const limits = { ...defaultAttachmentLimits, maxInlineBytes: 16 };
+            const fixture = inlineAttachmentFixture(limits, [ work ]);
+            await runWithAttachmentExecution(fixture.execution, async function ownedRun() {
+                await fixture.execution.runAttempt(work, { index: 0 }, async function overflowingOutput() {
+                    const stream = attemptStream();
+                    stream.write(`${'x'.repeat(limits.maxInlineBytes - 1)}🌍`);
+                    stream.write('discarded');
+                    await closeAttemptFailureStreams(work, { index: 0 });
+                    await stream.close();
+                });
             });
-        });
-        const artifact = fixture.store.artifacts()[0];
-        scope.require.defined(artifact);
-        scope.assert.partialDeepEqual(artifact.payload.content, {
-            kind: 'text',
-            text: 'x'.repeat(limits.maxInlineBytes - 1),
-            completion: { kind: 'incomplete', reason: 'capture-limit' }
-        });
-        scope.assert.deepEqual(await fixture.execution.finish(), []);
+            const artifact = fixture.store.artifacts()[0];
+            scope.require.defined(artifact);
+            scope.assert.partialDeepEqual(artifact.payload.content, {
+                kind: 'text',
+                text: 'x'.repeat(limits.maxInlineBytes - 1),
+                completion: { kind: 'incomplete', reason: 'capture-limit' }
+            });
+            scope.assert.deepEqual(await fixture.execution.finish(), []);
 
-        return scope.assert.collect();
-    }),
-    test('closed empty captures report late output once without creating evidence', async (scope) => {
+            return scope.assert.collect();
+        }
+    ),
+    test('closed empty captures report late output once without creating evidence', async function (scope) {
         const fixture = inlineAttachmentFixture(defaultAttachmentLimits, [ work ]);
         await runWithAttachmentExecution(fixture.execution, async function ownedRun() {
             const closedStream = await fixture.execution.runAttempt(work, { index: 0 }, async function emptyCapture() {

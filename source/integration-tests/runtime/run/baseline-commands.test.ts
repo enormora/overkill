@@ -1,6 +1,9 @@
-import type { CompositeAssertionReturn } from '@overkill-dev/test/assert';
-import { type CompositeCheckBuilder } from '@overkill-dev/test/assert';
-import { defineCompositeAssertion } from '@overkill-dev/test/assert';
+import {
+    type CompositeAssertionReturn,
+    type CompositeCheckBuilder,
+    defineCompositeAssertion
+} from '@overkill-dev/test/assert';
+
 import { type TestScope, suite, test } from '@overkill-dev/test';
 
 import { orchestrator } from '../../../packages/run/run.entry-point.ts';
@@ -34,12 +37,12 @@ async function commandFixture(cleanup: TestScope['cleanup'], payload: 'binary' |
     });
     return { data, commands, request: { cwd: data.command.cwd, configPath: null, runRequest: data.command.request } };
 }
-const commandChecks = async (
+const commandChecks = async function (
     check: CompositeCheckBuilder<'assert'>,
     result: Promise<CommandLineRunnerResult>,
     exitCode: number,
     lines: number
-): Promise<CompositeAssertionReturn<'assert'>> => {
+): Promise<CompositeAssertionReturn<'assert'>> {
     const completed = await result;
     return check.group([ check.equal(completed.exitCode, exitCode), check.equal(completed.stdoutLines.length, lines) ]);
 };
@@ -85,10 +88,10 @@ const seedStaleRecord = defineCompositeAssertion({
             2
         );
         const [ entry ] = await fixture.data.entries();
-        if (entry === undefined || entry === null) {
+        if (entry === undefined) {
             return check.group([ initialChecks, check.defined(entry) ]);
         }
-        const intermediateChecks = check.defined(entry);
+
         const store = await fixture.data.store();
         await store.apply({
             kind: 'create',
@@ -97,7 +100,7 @@ const seedStaleRecord = defineCompositeAssertion({
                 work: { ...entry.baseline.work, case: { ...entry.baseline.work.case, title: 'removed' } }
             }
         });
-        return check.group([ initialChecks, intermediateChecks ]);
+        return check.group([ initialChecks ]);
     }
 });
 const assertReadOnlyCleanup = defineCompositeAssertion({

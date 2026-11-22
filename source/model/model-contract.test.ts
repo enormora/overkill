@@ -1,11 +1,8 @@
 import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { table, suite, test, type TestScope } from '@overkill-dev/test';
 
-import { Random } from 'fast-check';
-import { xoroshiro128plus } from 'pure-rand/generator/xoroshiro128plus';
 import type { Writable } from 'type-fest';
-import { generateInput } from '../property/generator-input.ts';
-import { generatorContext, shrinkDescendants } from '../test-support/generator-execution.ts';
+import { generatorContext, shrinkDescendants, retainedGeneratorInput } from '../test-support/generator-execution.ts';
 
 import type { PropertyInvocationEvidence } from '../packages/engine/engine.entry-point.ts';
 
@@ -67,7 +64,7 @@ const assertEnabledTrace = defineCompositeAssertion({
         let state = 0;
         return check.group([
             initialChecks,
-            ...trace.map((operation) => {
+            ...trace.map(function (operation) {
                 state += operation;
                 return check.between(state, 0, 3);
             })
@@ -86,12 +83,7 @@ function inspectShrinkTraces(
     generator: PropertyGenerator<readonly number[]>,
     seed: number
 ): ShrinkTraceCoverage {
-    const root = generateInput(
-        generator,
-        new Random(xoroshiro128plus(seed)),
-        undefined,
-        generatorContext(4, 4, 100_000)
-    );
+    const root = retainedGeneratorInput(generator, seed, generatorContext(4, 4, 100_000));
     const original = root.reconstruct();
     const descendants = shrinkDescendants(root, 30, function (candidate) {
         return candidate.shrink();
@@ -116,7 +108,7 @@ function inspectShrinkTraces(
 const assertConfirmedShrink = defineCompositeAssertion({
     name: 'confirmed shrink',
     assert(check, evidence: PropertyInvocationEvidence) {
-        if (evidence.confirmedWitness === undefined || evidence.confirmedWitness === null) {
+        if (evidence.confirmedWitness === null) {
             return check.defined(evidence.confirmedWitness);
         }
         return check.group([

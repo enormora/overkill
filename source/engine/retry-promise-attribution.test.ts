@@ -49,16 +49,16 @@ export const testNode = suite(
                     return Promise.withResolvers<undefined>();
                 }
             );
-            try {
-                scope.assert.notNull(promiseWindowsMonitor.casePromiseLeakError(first));
-                await promiseWindowsMonitor.runCase(next, async function completedAttempt() {
-                    return undefined;
-                });
-                scope.assert.equal(promiseWindowsMonitor.casePromiseLeakError(next), null);
-            } finally {
+            scope.cleanup(function stopPromiseObservation() {
                 promiseWindowsPending.resolve(undefined);
                 promiseWindowsMonitor.stop();
-            }
+            });
+
+            scope.assert.notNull(promiseWindowsMonitor.casePromiseLeakError(first));
+            await promiseWindowsMonitor.runCase(next, async function completedAttempt() {
+                return undefined;
+            });
+            scope.assert.equal(promiseWindowsMonitor.casePromiseLeakError(next), null);
 
             return scope.assert.collect();
         }
