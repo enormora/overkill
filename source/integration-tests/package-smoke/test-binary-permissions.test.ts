@@ -135,7 +135,7 @@ function assertPermissionReport(
     result: CliResult
 ): void {
     scope.assert.equal(result.code, profile === 'integration' ? 0 : 2);
-    scope.assert.match(result.stdout, /^  1 executed · [\d.]+ (?:µs|ms|s) execution · /mu);
+    scope.assert.match(result.stdout, /^ {2}1 executed · [\d.]+ (?:µs|ms|s) execution · /mu);
     if (profile === 'integration') {
         scope.assert.false(result.stdout.includes('Runner error:'));
     } else {
@@ -172,7 +172,7 @@ export const testNode: TestNode = suite('shipped CLI permission policies', [
 
             const result = await runBinary(profile, 'pure.test.mjs');
             scope.assert.equal(result.code, 0);
-            scope.assert.match(result.stdout, /^  1 executed · [\d.]+ (?:µs|ms|s) execution · /mu);
+            scope.assert.match(result.stdout, /^ {2}1 executed · [\d.]+ (?:µs|ms|s) execution · /mu);
             scope.assert.equal(result.stderr, '');
             return scope.assert.collect();
         }
