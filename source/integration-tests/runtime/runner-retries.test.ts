@@ -19,6 +19,7 @@ import type { RunCommand } from '../../run/run-types.ts';
 import type { IntegrationExecution, TimeoutPolicy } from '../../config/types.ts';
 import type { RetryArtifactPolicy } from '../../config/execution.ts';
 import {
+    isolatedRunStateDirectory,
     defaultIntegrationProfile,
     defaultRunConfig,
     defaultRunRequest
@@ -84,7 +85,10 @@ function retryCommand(
         ...defaultIntegrationProfile({
             execution,
             files: { include: [ selectedFixture.path ], exclude: [] },
-            ...selectedFixture.timeouts === null ? {} : { timeouts: selectedFixture.timeouts }
+            timeouts: {
+                ...selectedFixture.timeouts,
+                collectionMilliseconds: 30_000
+            }
         }),
         retries: { maxAttempts: 3, artifacts }
     };
@@ -92,7 +96,7 @@ function retryCommand(
         config: defaultRunConfig({
             profiles: { integration: profile },
             reporters: [ reporter ],
-            runtimeStateDir: 'target/retry-integration-state'
+            runtimeStateDir: isolatedRunStateDirectory()
         }),
         cwd: process.cwd(),
         engine: { kind: 'default' },
