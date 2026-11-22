@@ -12,7 +12,7 @@ import {
     type RunnerError
 } from './run-result.ts';
 import type { ExecutedBody } from './body-result.ts';
-import { isPropertyTermination } from './property-execution-host.ts';
+import { isPropertyTermination } from './property-control-error.ts';
 import type { TestPlanCase } from './test-plan.ts';
 
 type FinishedCaseCleanup = {

@@ -1,11 +1,9 @@
 import type { AssertionResult, AssertAssertionNode } from '../assertion-protocol/assertion-node.ts';
-import type { ExecutedBody } from './body-result.ts';
+import { isPropertyTermination } from './property-control-error.ts';
 import { classifyPropertyTrial, propertyTrialWithPolicyErrors } from './property-trial-outcome.ts';
 import { createAssertionRecorder, type AssertionRecorder } from './assertion-recorder.ts';
-import { TestContractSignalError } from './assertion-control-error.ts';
 import { bodyResultContext, completedBody, failedBody } from './case-body-execution.ts';
 import {
-    isPropertyTermination,
     propertyReplayWitness,
     propertyScope,
     type PropertyTrialResult,
@@ -64,32 +62,18 @@ async function evaluatePropertyTrial(
         ? completedBody({ assertionResult: completion.value, context })
         : failedBody({ context, error: completion.error, testCase });
     const countFailure = recorder.validateAssertionCount(result.returnedAssertions.length);
-    const checked: ExecutedBody =
-        countFailure === null || result.contractFailures.length > 0 ||
-            result.inconclusiveReason !== null || result.bodyError !== null || result.requireFailed
+    const unsuccessful = [
+        result.contractFailures.length > 0,
+        result.inconclusiveReason !== null,
+        result.bodyError !== null,
+        result.requireFailed
+    ]
+        .includes(true);
+    return classifyPropertyTrial(
+        countFailure === null || unsuccessful
             ? result
-            : { ...result, contractFailures: [ ...result.contractFailures, countFailure ] };
-    return classifyPropertyTrial(checked);
-}
-
-export function propertyObservationContractFailure(summary: string): never {
-    throw new TestContractSignalError({
-        kind: 'test-contract',
-        code: 'property-observation',
-        summary,
-        actual: summary,
-        expected: 'finite scores and valid labels within an active property trial'
-    }, undefined);
-}
-
-export function propertyScopeContractFailure(summary: string): never {
-    throw new TestContractSignalError({
-        kind: 'test-contract',
-        code: 'property-scope',
-        summary,
-        actual: summary,
-        expected: 'one awaited property invocation at a time in an active case'
-    }, undefined);
+            : { ...result, contractFailures: [ ...result.contractFailures, countFailure ] }
+    );
 }
 
 type PropertyCaseBody = {

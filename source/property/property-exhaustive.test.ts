@@ -1,7 +1,7 @@
-import { TestContractSignalError } from '../engine/assertion-control-error.ts';
 import { suite, test } from '@overkill-dev/test';
 import { test as subjectTest } from '../packages/test/test.entry-point.ts';
 
+import { TestContractSignalError } from '../engine/assertion-control-error.ts';
 import { executePropertyNode, propertyExecutionDefaults } from '../test-support/property-execution.ts';
 import { property, withProperties } from './property-authoring.ts';
 import { createCoverage, coverageRequirements } from './property-coverage.ts';
@@ -91,9 +91,19 @@ export const testNode = suite('exhaustive input coverage', [
         const coverage = createCoverage([], propertyLabels(1));
         const trial = coverage.trial('exploration');
         trial.cover('first', true);
-        scope.assert.match(coverageControlMessage(() => trial.cover('second', true)), /label limit/);
+        scope.assert.match(
+            coverageControlMessage(function () {
+                trial.cover('second', true);
+            }),
+            /label limit/
+        );
         trial.finish(true);
-        scope.assert.match(coverageControlMessage(() => trial.cover('first', true)), /outlived/);
+        scope.assert.match(
+            coverageControlMessage(function () {
+                trial.cover('first', true);
+            }),
+            /outlived/
+        );
         return scope.assert.collect();
     }),
     test('enumerates exact numeric domains including both signed zeros', function (scope) {

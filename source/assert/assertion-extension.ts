@@ -21,7 +21,8 @@ import {
     type ThrownMatcher,
     createThrownErrorRecord,
     isTestControlError,
-    type ThrownAssertionObservation,
+    observeRejection,
+    observeThrow,
     thrownMatcherChildren
 } from '../packages/engine/assertion-protocol.entry-point.ts';
 
@@ -338,18 +339,18 @@ export function createCompositeCheckBuilder<Source extends AssertionSource>(
         async rejects(thunk, matcher) {
             const promise = thunk();
 
-            let observation: ThrownAssertionObservation;
-            try {
-                observation = { status: 'resolved', value: await promise };
-            } catch (error: unknown) {
-                if (isTestControlError(error)) {
-                    throw error;
-                }
-                observation = { status: 'rejected', value: error };
+            const observation = await observeRejection(promise);
+            if (observation.status === 'rejected' && isTestControlError(observation.value)) {
+                throw observation.value;
             }
 
             return createCompositeAssertionGroup(thrownMatcherChildren({
-                kind: 'rejects', matcher, message, observation, source, sourceLocations
+                kind: 'rejects',
+                matcher,
+                message,
+                observation,
+                source,
+                sourceLocations
             }));
         },
 
@@ -362,18 +363,15 @@ export function createCompositeCheckBuilder<Source extends AssertionSource>(
         },
 
         throws(body, matcher) {
-            let observation: ThrownAssertionObservation;
-            try {
-                observation = { status: 'returned', value: body() };
-            } catch (error: unknown) {
-                if (isTestControlError(error)) {
-                    throw error;
-                }
-                observation = { status: 'threw', value: error };
-            }
+            const observation = observeThrow(body);
 
             return createCompositeAssertionGroup(thrownMatcherChildren({
-                kind: 'throws', matcher, message, observation, source, sourceLocations
+                kind: 'throws',
+                matcher,
+                message,
+                observation,
+                source,
+                sourceLocations
             }));
         },
 

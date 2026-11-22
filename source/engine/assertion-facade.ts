@@ -15,14 +15,13 @@ import {
     type CheckedThrownMatcher,
     createThrownMatcherAssertion,
     type SynchronousCallback,
-    type ThrownAssertionObservation,
     type ThrownMatcher
 } from '../assertion-protocol/thrown-matcher.ts';
 import {
     recordAssertReference,
     type AssertAssertionSink
 } from './custom-assertion-recording.ts';
-import { isTestControlError } from './test-control-error.ts';
+import { isTestControlError, observeRejection, observeThrow } from './test-control-error.ts';
 
 export type AssertAssertionFacade = {
     <Arguments extends readonly unknown[], Result extends Promise<CompositeAssertionReturn<'assert'>>>(
@@ -429,15 +428,10 @@ export function createRecordingAssertFacadeWithLocation(
             const promise = thunk();
             const pending = sink.recordPendingAssert();
 
-            let observation: ThrownAssertionObservation;
-            try {
-                observation = { status: 'resolved', value: await promise };
-            } catch (error: unknown) {
-                if (isTestControlError(error)) {
-                    pending.discard();
-                    throw error;
-                }
-                observation = { status: 'rejected', value: error };
+            const observation = await observeRejection(promise);
+            if (observation.status === 'rejected' && isTestControlError(observation.value)) {
+                pending.discard();
+                throw observation.value;
             }
 
             pending.resolve(createThrownMatcherAssertion({ kind: 'rejects', matcher, ...metadata, observation }));
@@ -463,15 +457,7 @@ export function createRecordingAssertFacadeWithLocation(
         throws(body, matcher, options) {
             const metadata = assertAssertionMetadata(options, annotation, captureLocation);
 
-            let observation: ThrownAssertionObservation;
-            try {
-                observation = { status: 'returned', value: body() };
-            } catch (error: unknown) {
-                if (isTestControlError(error)) {
-                    throw error;
-                }
-                observation = { status: 'threw', value: error };
-            }
+            const observation = observeThrow(body);
 
             sink.recordAssert(createThrownMatcherAssertion({ kind: 'throws', matcher, ...metadata, observation }));
         },

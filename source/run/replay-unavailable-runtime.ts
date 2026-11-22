@@ -1,4 +1,4 @@
-import { stopPropertyExecution } from '../engine/property-execution-host.ts';
+import { stopPropertyExecution } from '../engine/property-control-error.ts';
 import type { TestPlanCase } from '../engine/test-plan.ts';
 import type { CollectedRunCaseEntry } from './collected-run-plan.ts';
 

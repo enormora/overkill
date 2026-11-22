@@ -1,4 +1,3 @@
-import { RequireFailedSignalError, TestContractSignalError } from './assertion-control-error.ts';
 import { requirementPasses } from '../assertion-protocol/evaluation.ts';
 import type {
     AssertAssertionNode,
@@ -7,6 +6,7 @@ import type {
     RequireAssertionNode
 } from '../assertion-protocol/assertion-node.ts';
 import type { NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node-shape.ts';
+import { RequireFailedSignalError, TestContractSignalError } from './assertion-control-error.ts';
 import { recordDebugEntry, recordDebugAssertion } from './test-debug-recording.ts';
 import { createPropertyEvidenceRecorder } from './property-evidence.ts';
 import type { PropertyInvocationEvidence } from './property-failure-evidence.ts';
@@ -238,8 +238,8 @@ function recordedAssertionNodes(records: readonly RecordedAssertion[]): readonly
 
 export function createAssertionRecorder(): AssertionRecorder {
     const builderAssertions: (AssertAssertionNode | typeof discardedAssertion | null)[] = [];
-    const failures = new Set<TestContractFailure>();
     const recordedAssertions: RecordedAssertion[] = [];
+    const failures = new Set<TestContractFailure>();
     let failedRequireIndex: number | null = null;
     let plannedCount: number | null = null;
 
@@ -251,28 +251,22 @@ export function createAssertionRecorder(): AssertionRecorder {
         return recordedAssertions.slice(0, failedRequireIndex + 1);
     }
 
-    function pendingAssertionExists(): boolean {
-        return builderAssertions.includes(null);
-    }
-
     function failContract(failure: TestContractFailure): never {
         const recorded = Object.freeze({ ...failure });
         failures.add(recorded);
         throw new TestContractSignalError(recorded, undefined);
     }
 
-    function ensurePlanAllowed(count: number): void {
-        if (!Number.isSafeInteger(count) || count <= 0 || plannedCount !== null || recordedAssertions.length > 0) {
-            failContract(createInvalidPlanFailure(count));
-        }
-    }
-
     function collect(): NonEmptyReadonlyArray<AssertAssertionNode> {
-        if (builderAssertions.every(assertion => assertion === discardedAssertion)) {
+        if (
+            builderAssertions.every(function isDiscarded(assertion) {
+                return assertion === discardedAssertion;
+            })
+        ) {
             failContract(createNoAssertionsFailure());
         }
 
-        if (pendingAssertionExists()) {
+        if (builderAssertions.includes(null)) {
             failContract(createPendingAsyncAssertionFailure());
         }
 
@@ -288,7 +282,7 @@ export function createAssertionRecorder(): AssertionRecorder {
     }
 
     function validateReturnedAssertions(assertions: readonly AssertAssertionNode[]): TestContractFailure | null {
-        if (pendingAssertionExists()) {
+        if (builderAssertions.includes(null)) {
             return createPendingAsyncAssertionFailure();
         }
 
@@ -314,7 +308,7 @@ export function createAssertionRecorder(): AssertionRecorder {
         collect,
 
         completedThrowingAssertions() {
-            if (pendingAssertionExists()) {
+            if (builderAssertions.includes(null)) {
                 return createPendingAsyncAssertionFailure();
             }
 
@@ -338,7 +332,10 @@ export function createAssertionRecorder(): AssertionRecorder {
         failContract,
 
         plan(count) {
-            ensurePlanAllowed(count);
+            if (!Number.isSafeInteger(count) || count <= 0 || plannedCount !== null || recordedAssertions.length > 0) {
+                failContract(createInvalidPlanFailure(count));
+            }
+
             recordDebugEntry('plan', count);
             plannedCount = count;
         },
@@ -373,7 +370,7 @@ export function createAssertionRecorder(): AssertionRecorder {
             recordedAssertions.push({ assertion, builderAssertion: null });
 
             if (!requirementPasses(assertion)) {
-                failedRequireIndex ??= recordedAssertions.length - 1;
+                failedRequireIndex = failedRequireIndex ?? recordedAssertions.length - 1;
                 throw new RequireFailedSignalError();
             }
         },

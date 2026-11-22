@@ -65,7 +65,7 @@ function firstBodyError(outcome: FailOutcome): BodyErrorTestFailure | null {
 
 const compositeThrows = defineCompositeAssertion({
     name: 'compositeThrows',
-    assert(check, control: unknown) {
+    assert(check, control: Error) {
         return check.throws(function () {
             throw control;
         }, { exact: control });
@@ -74,14 +74,16 @@ const compositeThrows = defineCompositeAssertion({
 
 const compositeRejects = defineCompositeAssertion({
     name: 'compositeRejects',
-    async assert(check, control: unknown) {
-        return await check.rejects(() => Promise.reject(control), { exact: control });
+    async assert(check, control: Error) {
+        return await check.rejects(async function () {
+            return await Promise.reject(control);
+        }, { exact: control });
     }
 });
 
 const foreignThrows = defineCompositeAssertion({
     name: 'foreignThrows',
-    assert(check, control: unknown) {
+    assert(check, control: Error) {
         return check.fromThrowable('foreign', function () {
             throw control;
         });
@@ -90,8 +92,10 @@ const foreignThrows = defineCompositeAssertion({
 
 const foreignRejects = defineCompositeAssertion({
     name: 'foreignRejects',
-    async assert(check, control: unknown) {
-        return await check.fromRejectable('foreign', () => Promise.reject(control));
+    async assert(check, control: Error) {
+        return await check.fromRejectable('foreign', async function () {
+            await Promise.reject(control);
+        });
     }
 });
 
@@ -115,11 +119,14 @@ const invalidAsyncComposite = defineCompositeAssertion({
 
 type CasePlan = Parameters<EngineCaseBody>[0]['plan'];
 
-function invalidPlanSignal(plan: CasePlan, count: number): unknown {
+function invalidPlanSignal(plan: CasePlan): Error {
     try {
-        plan(count);
+        plan(0);
     } catch (error: unknown) {
-        return error;
+        if (error instanceof Error) {
+            return error;
+        }
+        throw error;
     }
     throw new Error('Expected invalid plan to throw.');
 }
@@ -131,28 +138,40 @@ function callWithInvalidReference(target: unknown): void {
     Reflect.apply(target, null, [ 'invalid reference' ]);
 }
 
+function failureKinds(outcome: FailOutcome): readonly string[] {
+    return outcome.failures.map(function failureKind(failure) {
+        return failure.kind === 'test-contract' ? failure.code : failure.kind;
+    });
+}
+
 export const testNode = suite('Error assertion execution', [
     test('keeps distinct caught contract failures and a later body error', async function (scope: TestScope) {
         const result = await executeSingleBody(function testBody(testScope) {
-            invalidPlanSignal(testScope.plan, 0);
-            invalidPlanSignal(testScope.plan, 0);
+            invalidPlanSignal(testScope.plan);
+            invalidPlanSignal(testScope.plan);
             throw new Error('Application failure.');
         });
         const outcome = firstFailOutcome(result);
         scope.require.notNull(outcome);
-        scope.assert.deepEqual(outcome.failures.map(failure =>
-            failure.kind === 'test-contract' ? failure.code : failure.kind
-        ), [ 'invalid-plan', 'invalid-plan', 'body-error' ]);
+        scope.assert.deepEqual(failureKinds(outcome), [ 'invalid-plan', 'invalid-plan', 'body-error' ]);
 
         return scope.assert.collect();
     }),
     test('retains caught collect, reference, and composite contract failures', async function (scope: TestScope) {
         const result = await executeSingleBody(async function testBody(testScope) {
-            const operations = [
-                () => testScope.assert.collect(),
-                () => callWithInvalidReference(testScope.assert),
-                () => testScope.assert(invalidComposite),
-                () => testScope.assert(invalidAsyncComposite)
+            const operations: readonly (() => Promise<void> | void)[] = [
+                function () {
+                    testScope.assert.collect();
+                },
+                function () {
+                    callWithInvalidReference(testScope.assert);
+                },
+                function () {
+                    testScope.assert(invalidComposite);
+                },
+                async function () {
+                    await testScope.assert(invalidAsyncComposite);
+                }
             ];
             for (const operation of operations) {
                 try {
@@ -166,9 +185,12 @@ export const testNode = suite('Error assertion execution', [
         });
         const outcome = firstFailOutcome(result);
         scope.require.notNull(outcome);
-        scope.assert.deepEqual(outcome.failures.map(failure =>
-            failure.kind === 'test-contract' ? failure.code : failure.kind
-        ), [ 'no-assertions', 'invalid-assertion-reference', 'invalid-composite-result', 'invalid-composite-result' ]);
+        scope.assert.deepEqual(failureKinds(outcome), [
+            'no-assertions',
+            'invalid-assertion-reference',
+            'invalid-composite-result',
+            'invalid-composite-result'
+        ]);
 
         return scope.assert.collect();
     }),
@@ -179,24 +201,36 @@ export const testNode = suite('Error assertion execution', [
         });
         const outcome = firstFailOutcome(result);
         scope.require.notNull(outcome);
-        scope.assert.deepEqual(outcome.failures.map(failure =>
-            failure.kind === 'test-contract' ? failure.code : failure.kind
-        ), [ 'invalid-plan' ]);
+        scope.assert.deepEqual(failureKinds(outcome), [ 'invalid-plan' ]);
 
         return scope.assert.collect();
     }),
     test('propagates controls through assertion adapters and settles pending slots', async function (scope: TestScope) {
         const result = await executeSingleBody(async function testBody(testScope) {
-            const control = invalidPlanSignal(testScope.plan, 0);
-            const operations = [
-                () => testScope.assert.throws(function () {
-                    throw control;
-                }, { exact: control }),
-                () => testScope.assert.rejects(() => Promise.reject(control), { exact: control }),
-                () => testScope.assert(compositeThrows, control),
-                () => testScope.assert(compositeRejects, control),
-                () => testScope.assert(foreignThrows, control),
-                () => testScope.assert(foreignRejects, control)
+            const control = invalidPlanSignal(testScope.plan);
+            const operations: readonly (() => Promise<void> | void)[] = [
+                function () {
+                    testScope.assert.throws(function () {
+                        throw control;
+                    }, { exact: control });
+                },
+                async function () {
+                    await testScope.assert.rejects(async function () {
+                        return await Promise.reject(control);
+                    }, { exact: control });
+                },
+                function () {
+                    testScope.assert(compositeThrows, control);
+                },
+                async function () {
+                    await testScope.assert(compositeRejects, control);
+                },
+                function () {
+                    testScope.assert(foreignThrows, control);
+                },
+                async function () {
+                    await testScope.assert(foreignRejects, control);
+                }
             ];
             for (const operation of operations) {
                 let caught: unknown = null;
@@ -211,16 +245,16 @@ export const testNode = suite('Error assertion execution', [
         });
         const outcome = firstFailOutcome(result);
         scope.require.notNull(outcome);
-        scope.assert.deepEqual(outcome.failures.map(failure =>
-            failure.kind === 'test-contract' ? failure.code : failure.kind
-        ), [ 'invalid-plan' ]);
+        scope.assert.deepEqual(failureKinds(outcome), [ 'invalid-plan' ]);
 
         return scope.assert.collect();
     }),
     test('reports a permission denial from rejects as a runner error', async function (scope) {
         const denied = Object.assign(new Error('Permission denied.'), { code: 'ERR_ACCESS_DENIED' });
         const result = await executeSingleBody(async function testBody(testScope) {
-            await testScope.assert.rejects(() => Promise.reject(denied), { exact: denied });
+            await testScope.assert.rejects(async function () {
+                return await Promise.reject(denied);
+            }, { exact: denied });
             return testScope.assert.collect();
         });
         scope.assert.equal(result.summary.passed, 0);
@@ -232,7 +266,7 @@ export const testNode = suite('Error assertion execution', [
         class RateLimitError extends Error {
             public constructor() {
                 super('Rate limit exceeded.');
-                this.name = 'TestContractSignalError';
+                this.name = 'RateLimitError';
             }
         }
 
