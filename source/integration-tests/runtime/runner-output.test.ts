@@ -23,7 +23,7 @@ async function runNode(args: readonly string[]): Promise<{ readonly stdout: stri
             [ '--disable-warning=PERM0004', ...args ],
             {
                 env: {
-                    ...z.record(z.string(), z.string()).parse(Reflect.get(process, 'env')),
+                    ...z.object({}).catchall(z.string()).parse(Reflect.get(process, 'env')),
                     NODE_OPTIONS: '--disable-warning=PERM0004'
                 }
             },
