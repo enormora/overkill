@@ -1,5 +1,5 @@
 import { glob } from 'node:fs/promises';
-import { defineMacro, suite, test, table, type TestScope } from '@overkill-dev/test';
+import { testDouble, suite, test, table, type TestScope } from '@overkill-dev/test';
 
 import { defaultAttachmentLimits } from '../../../engine/runtime-attachment.ts';
 import { attachmentRunFixture } from '../../../test-support/attachment-run-fixture.ts';
@@ -8,48 +8,6 @@ import { createAttachmentRecord } from '../../../run/attachment-record.ts';
 import { createAttachmentStorageSession } from '../../../run/attachment-storage-session.ts';
 import { createAttachmentRunCoordinator } from '../../../run/attachment-coordinator.ts';
 import { createAttachmentStore, type AttachmentStore } from '../../../run/attachment-store.ts';
-
-function rejectCaptureClock(cause: unknown): never {
-    throw cause;
-}
-const assertRejectedClock = defineMacro((title: string, cause: unknown, message: string) =>
-    test(title, async (scope) => {
-        const { resolved } = await attachmentRunFixture(scope.cleanup);
-        const directory = resolved.config.runtimeStateDir;
-        const store = createAttachmentStore({
-            witnessDirectory: `${directory}/witnesses`,
-            projectRoot: resolved.cwd,
-            directory,
-            limits: defaultAttachmentLimits,
-            work: [],
-            captureTime() {
-                return rejectCaptureClock(cause);
-            },
-            async checkpoint() {
-                return undefined;
-            }
-        });
-        const response = await store.exchange('test', {
-            kind: 'open',
-            branch: null,
-            contentKind: 'binary',
-            metadata: { name: 'screenshot', mediaType: 'image/png' },
-            owner: { kind: 'run' },
-            producer: { kind: 'case' }
-        });
-        scope.assert.deepEqual(response, { kind: 'error', message, reason: 'operation-error' });
-        scope.assert.deepEqual(store.artifacts(), []);
-        scope.assert.deepEqual(await Array.fromAsync(glob('**/*.attachment.bin', { cwd: directory })), []);
-
-        return scope.assert.collect();
-    })
-);
-const assertClockFailure = defineMacro((title: string) =>
-    suite(title, [
-        assertRejectedClock('rejected clock', new Error('clock unavailable'), 'clock unavailable'),
-        assertRejectedClock('rejected clock', null, 'Attachment operation failed.')
-    ])
-);
 
 type EvidencePreparation = {
     readonly capture: 'attempt' | 'lifetime';
@@ -98,7 +56,7 @@ async function preparedEvidenceStore(cleanup: TestScope['cleanup']): Promise<{
 }> {
     const { resolved } = await attachmentRunFixture(cleanup);
     const work = resolved.facts.cases[0]?.workId;
-    if (work === undefined || work === null) {
+    if (work === undefined) {
         throw new Error('Expected fixture work.');
     }
     const store = createAttachmentStore({
@@ -150,7 +108,7 @@ export const testNode = suite('Runtime attachment storage', [
             return scope.assert.collect();
         }
     }),
-    test('unknown consumers discard shared evidence unless their resource fails', async (scope) => {
+    test('unknown consumers discard shared evidence unless their resource fails', async function (scope) {
         const { store, work } = await preparedEvidenceStore(scope.cleanup);
         await checkpointPreparedEvidence(store, work, { capture: 'lifetime', contentKind: 'text', closed: true });
         store.settleResult(runResultFactory.build({ status: 'failed', runnerErrors: [ { subtype: 'artifact' } ] }));
@@ -160,7 +118,7 @@ export const testNode = suite('Runtime attachment storage', [
 
         return scope.assert.collect();
     }),
-    test('refuses missing integration limits', async (scope) => {
+    test('refuses missing integration limits', async function (scope) {
         const { resolved, dependencies } = await attachmentRunFixture(scope.cleanup);
         const record = await createAttachmentRecord(resolved, dependencies, null);
         await scope.assert.rejects(async function rejectInvalidStorage() {
@@ -172,7 +130,7 @@ export const testNode = suite('Runtime attachment storage', [
 
         return scope.assert.collect();
     }),
-    test('checkpoint failures reject attachment persistence', async (scope) => {
+    test('checkpoint failures reject attachment persistence', async function (scope) {
         const { resolved, dependencies } = await attachmentRunFixture(scope.cleanup);
         let writable = true;
         const record = await createAttachmentRecord(resolved, {
@@ -194,7 +152,7 @@ export const testNode = suite('Runtime attachment storage', [
 
         return scope.assert.collect();
     }),
-    test('finalization remains idempotent with the default retry policy', async (scope) => {
+    test('finalization remains idempotent with the default retry policy', async function (scope) {
         const { resolved, dependencies } = await attachmentRunFixture(scope.cleanup);
         const record = await createAttachmentRecord(resolved, dependencies, null);
         const coordinator = createAttachmentRunCoordinator(
@@ -225,7 +183,47 @@ export const testNode = suite('Runtime attachment storage', [
 
         return scope.assert.collect();
     }),
-    assertClockFailure('capture clock failures remove newly allocated attachment files'),
+    table({
+        title: 'capture clock failures remove newly allocated attachment files',
+        cases: [
+            { kind: 'Error object', message: 'clock unavailable' },
+            { kind: 'null value', message: 'Attachment operation failed.' }
+        ] as const,
+        caseTitle({ kind }) {
+            return kind;
+        },
+        async test(scope) {
+            const { kind, message } = scope.parameters;
+            const { resolved } = await attachmentRunFixture(scope.cleanup);
+            const directory = resolved.config.runtimeStateDir;
+            const store = createAttachmentStore({
+                witnessDirectory: `${directory}/witnesses`,
+                projectRoot: resolved.cwd,
+                directory,
+                limits: defaultAttachmentLimits,
+                work: [],
+                captureTime: testDouble.throws<() => number>(
+                    kind === 'Error object' ? new Error('clock unavailable') : null
+                ),
+                async checkpoint() {
+                    return undefined;
+                }
+            });
+            const response = await store.exchange('test', {
+                kind: 'open',
+                branch: null,
+                contentKind: 'binary',
+                metadata: { name: 'screenshot', mediaType: 'image/png' },
+                owner: { kind: 'run' },
+                producer: { kind: 'case' }
+            });
+            scope.assert.deepEqual(response, { kind: 'error', message, reason: 'operation-error' });
+            scope.assert.deepEqual(store.artifacts(), []);
+            scope.assert.deepEqual(await Array.fromAsync(glob('**/*.attachment.bin', { cwd: directory })), []);
+
+            return scope.assert.collect();
+        }
+    }),
     table({
         title: 'completed witness evidence survives interruption',
         cases: [ 'attempt', 'lifetime' ] as const,
