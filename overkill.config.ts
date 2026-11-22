@@ -1,5 +1,17 @@
-import { defineConfig, type ProjectIntegrationProfileConfig } from '@overkill-dev/test/config';
-import { createBenchmarkHtmlReporter, createLineReporter } from '@overkill-dev/test/reporters';
+import isInteractive from 'is-interactive';
+import { createBenchmarkHtmlReporter } from '@overkill-dev/test/reporters';
+import {
+    defineConfig,
+    type Config,
+    type ProjectIntegrationProfileConfig
+} from './source/packages/test/config.entry-point.ts';
+import { createLineReporter } from './source/packages/reporter-line/reporter-line.entry-point.ts';
+import { isReporter } from './source/engine/reporter.ts';
+
+const benchmarkHtmlReporter = createBenchmarkHtmlReporter({ outputFile: 'target/mutation-cost/report.html' });
+if (!isReporter(benchmarkHtmlReporter)) {
+    throw new TypeError('The benchmark HTML reporter must be created with defineReporter.');
+}
 
 const integrationPolicy: Pick<ProjectIntegrationProfileConfig, 'execution' | 'testFamily' | 'timeouts'> = {
     testFamily: 'integration',
@@ -11,7 +23,7 @@ const integrationPolicy: Pick<ProjectIntegrationProfileConfig, 'execution' | 'te
     }
 };
 
-export const config = defineConfig({
+export const config: Config = defineConfig({
     runtimeStateDir: 'target/overkill',
     profiles: {
         'mutation-cost': {
@@ -24,11 +36,15 @@ export const config = defineConfig({
             timeouts: { collectionMilliseconds: 30_000, softMilliseconds: 55_000, hardMilliseconds: 60_000 },
             reporters: [
                 createLineReporter(),
-                createBenchmarkHtmlReporter({ outputFile: 'target/mutation-cost/report.html' })
+                benchmarkHtmlReporter
             ]
         },
         unit: {
             testFamily: 'microtest',
+            reporters: [ createLineReporter({
+                showPassing: isInteractive({ stream: process.stdout }),
+                verbose: false
+            }) ],
             execution: { processModel: 'supervised-process', scheduling: 'concurrent', maxConcurrency: 8 },
             timeouts: { ...integrationPolicy.timeouts, collectionMilliseconds: 120_000 },
             files: {
