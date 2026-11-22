@@ -1,8 +1,10 @@
 import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
+
 import { packAllPackages } from 'packtory';
 import { z } from 'zod/v4';
+import { sealConsumerDependencies } from './consumer-resolution-boundary.ts';
 import { installConsumerTypes } from './consumer-types.ts';
 
 const { configuration } = z.object({ configuration: z.unknown() }).parse(
@@ -22,6 +24,7 @@ if (outcome.result.isErr) {
 }
 
 await installConsumerTypes();
+await sealConsumerDependencies(directory);
 
 await writeFile(
     join(directory, 'resolver.mjs'),

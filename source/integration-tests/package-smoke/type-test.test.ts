@@ -1,10 +1,12 @@
 import { execFile } from 'node:child_process';
 import { cp, mkdir, mkdtemp, rm, writeFile, readFile, readdir } from 'node:fs/promises';
-import { inspect } from 'node:util';
 import { setTimeout as delay } from 'node:timers/promises';
 import { join } from 'node:path';
+import { inspect } from 'node:util';
+
 import { suite } from '@overkill-dev/test';
 import { defaultRunRequest } from '../../test-support/run-command-factory.ts';
+import { sealConsumerDependencies } from './support/consumer-resolution-boundary.ts';
 import { consumerEnvironment } from './support/consumer-environment.ts';
 import { packageConsumer } from './support/package-consumer.ts';
 
@@ -192,6 +194,7 @@ const consumerFacade = packageConsumer('packaged native type tests', function co
             });
         }
         await provisionCompiler(directory);
+        await sealConsumerDependencies(directory);
         await writeFile(join(directory, 'package.json'), JSON.stringify({ type: 'module' }));
         return directory;
     }

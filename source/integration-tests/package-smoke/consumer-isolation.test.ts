@@ -2,12 +2,34 @@ import { execFile } from 'node:child_process';
 import { mkdir, mkdtemp, realpath, rm, writeFile } from 'node:fs/promises';
 import { join, resolve as resolvePath, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
+
 import { createProgram, ModuleKind } from 'typescript';
-import { suite, table, test } from '@overkill-dev/test';
+import { createTestFacade, suite, table, test } from '@overkill-dev/test';
+import { testWorkspace } from '../../test-support/test-workspace.ts';
 import { consumerCompilerTypes, consumerTypeDiagnostics } from './support/consumer-types.ts';
+import { sealConsumerDependencies } from './support/consumer-resolution-boundary.ts';
 import { consumerEnvironment } from './support/consumer-environment.ts';
 
-async function importConsumerDependency(directory: string, specifier: string): Promise<void> {
+const ancestorConsumer = createTestFacade({ resources: { workspace: testWorkspace } });
+
+async function createAncestorInstallation(directory: string, specifier: string): Promise<string> {
+    const dependency = join(directory, 'node_modules', specifier);
+    await mkdir(dependency, { recursive: true });
+    await writeFile(
+        join(dependency, 'package.json'),
+        JSON.stringify({ name: specifier, type: 'module', exports: './index.js' })
+    );
+    await writeFile(join(dependency, 'index.js'), 'export const ancestor = true;');
+    const consumer = join(directory, 'consumer');
+    await mkdir(consumer);
+    return consumer;
+}
+
+async function importConsumerDependency(
+    directory: string,
+    specifier: string,
+    environment: Readonly<Record<string, string>>
+): Promise<void> {
     await new Promise<void>(function importInChild(resolve, reject) {
         execFile(
             process.execPath,
@@ -17,7 +39,7 @@ async function importConsumerDependency(directory: string, specifier: string): P
                 '--eval',
                 `await import(${JSON.stringify(specifier)})`
             ],
-            { cwd: directory, env: consumerEnvironment(directory) },
+            { cwd: directory, env: environment },
             function completed(error: Error | null) {
                 if (error === null) {
                     resolve();
@@ -50,7 +72,7 @@ export const testNode = suite('Packed consumer isolation', [
                 await rm(directory, { recursive: true, force: true });
             });
             await scope.assert.rejects(async function importMissingDependency() {
-                await importConsumerDependency(directory, scope.parameters);
+                await importConsumerDependency(directory, scope.parameters, consumerEnvironment(directory));
             }, { message: /Consumer resolved an uninstalled (?:Overkill )?dependency/u });
             return scope.assert.collect();
         }
@@ -72,5 +94,19 @@ export const testNode = suite('Packed consumer isolation', [
             await consumerTypeDiagnostics(program, directory);
         }, { message: /TypeScript resolved an uninstalled declaration/u });
         return scope.assert.collect();
+    }),
+    ancestorConsumer.table({
+        title: 'blocks ancestor fallback after a child clears Node options',
+        cases: [ 'ancestor-only', '@ancestor/only' ],
+        caseTitle: String,
+        async test(scope) {
+            const consumer = await createAncestorInstallation(scope.resources.workspace, scope.parameters);
+            await importConsumerDependency(consumer, scope.parameters, { NODE_OPTIONS: '' });
+            await sealConsumerDependencies(consumer);
+            await scope.assert.rejects(async function importBlockedAncestor() {
+                await importConsumerDependency(consumer, scope.parameters, { NODE_OPTIONS: '' });
+            }, { message: /ERR_PACKAGE_PATH_NOT_EXPORTED/u });
+            return scope.assert.collect();
+        }
     })
 ]);
