@@ -77,13 +77,6 @@ export const config = defineConfig({ profiles: { microtest: ${JSON.stringify(pro
     );
 }
 
-export type ExpectedMutant = {
-    readonly file: string;
-    readonly line: number;
-    readonly status: 'Killed' | 'Survived' | 'NoCoverage';
-    readonly killers: readonly string[];
-    readonly optimizedCases: number;
-};
 const subjects = [
     {
         file: 'disjoint.mjs',
@@ -105,17 +98,6 @@ const subjects = [
     },
     { file: 'parameter.mjs', source: 'export function value() { return true; }', rows: [] }
 ] as const;
-export const expectedMutationManifest: readonly ExpectedMutant[] = [
-    { file: 'disjoint.mjs', line: 1, status: 'Killed', killers: [ 'disjoint first' ], optimizedCases: 1 },
-    { file: 'disjoint.mjs', line: 2, status: 'Killed', killers: [ 'disjoint second' ], optimizedCases: 1 },
-    { file: 'shared.mjs', line: 1, status: 'Killed', killers: [ 'shared first', 'shared second' ], optimizedCases: 2 },
-    { file: 'survivor.mjs', line: 1, status: 'Survived', killers: [], optimizedCases: 1 },
-    { file: 'uncovered.mjs', line: 1, status: 'NoCoverage', killers: [], optimizedCases: 0 },
-    { file: 'static.mjs', line: 1, status: 'Killed', killers: [ 'static' ], optimizedCases: 9 },
-    { file: 'hybrid.mjs', line: 1, status: 'Killed', killers: [ 'hybrid' ], optimizedCases: 9 },
-    { file: 'parameter.mjs', line: 1, status: 'Killed', killers: [ 'parameter 1', 'parameter 2' ], optimizedCases: 2 }
-];
-
 export async function writeAccuracyProject(modules: MutationModuleUrls, mode: MutationMode): Promise<void> {
     await writeMutationProfile(modules, mode, process.cwd());
     for (const subject of subjects) {

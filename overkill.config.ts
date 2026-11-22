@@ -22,6 +22,12 @@ const integrationPolicy = {
     }
 };
 
+const mutationCampaignPolicy = {
+    ...integrationPolicy,
+    execution: { ...integrationPolicy.execution, workDistribution: { mode: 'case' as const } },
+    timeouts: { collectionMilliseconds: 30_000, softMilliseconds: 360_000, hardMilliseconds: 365_000 }
+};
+
 export const config = defineConfig({
     runtimeStateDir: 'target/overkill',
     profiles: {
@@ -71,10 +77,22 @@ export const config = defineConfig({
             }
         },
         'mutation-campaigns': {
-            ...integrationPolicy,
-            execution: { ...integrationPolicy.execution, workDistribution: { mode: 'case' } },
-            files: { include: [ 'source/integration-tests/mutation-campaigns/**/*.test.ts' ] },
-            timeouts: { collectionMilliseconds: 30_000, softMilliseconds: 360_000, hardMilliseconds: 365_000 }
+            ...mutationCampaignPolicy,
+            files: {
+                include: [
+                    'source/integration-tests/mutation-campaigns/runner-mutation-accuracy.test.ts',
+                    'source/integration-tests/mutation-campaigns/runner-stryker-lifecycle.test.ts'
+                ]
+            }
+        },
+        'mutation-campaigns-extended': {
+            ...mutationCampaignPolicy,
+            files: {
+                include: [
+                    'source/integration-tests/mutation-campaigns/runner-mutation-accuracy-matrix.test.ts',
+                    'source/integration-tests/mutation-campaigns/runner-mutation-cost.test.ts'
+                ]
+            }
         },
         cli: {
             ...integrationPolicy,

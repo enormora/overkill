@@ -42,6 +42,9 @@ test-integration: benchmark-html-browser
     overkill run --profile runtime
     overkill run --profile mutation-campaigns
 
+test-mutation-campaigns-extended: benchmark-html-browser
+    overkill run --profile mutation-campaigns-extended
+
 test-cli-integration: benchmark-html-browser
     overkill run --profile cli
 
