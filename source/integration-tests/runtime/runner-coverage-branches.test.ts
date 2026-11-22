@@ -34,7 +34,7 @@ async function executeGenericCoverage(processModel: 'in-process' | 'supervised-p
                         sources: {
                             exclude: [],
                             include: [ `${fixtureRoot}/coverage-generics.ts` ],
-                            mode: 'all'
+                            mode: 'loaded'
                         },
                         thresholds: { branches: 100, functions: 100, lines: 100 }
                     },

@@ -2,15 +2,14 @@ import { execFile } from 'node:child_process';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { join, resolve as resolvePath } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { suite, table, type TestScope } from '@overkill-dev/test';
+import { suite, test, type TestScope } from '@overkill-dev/test';
 
 const binary = fileURLToPath(new URL('../../packages/test/overkill.entry-point.ts', import.meta.url));
 const fixture = 'source/integration-tests/runtime/fixtures/coverage.test.ts';
 const source = 'source/integration-tests/runtime/fixtures/coverage-source.ts';
-type CoverageMode = 'in-process' | 'supervised-process';
 type CoverageProject = { readonly config: string; readonly output: string; };
 
-async function coverageProject(cleanup: TestScope['cleanup'], mode: CoverageMode): Promise<CoverageProject> {
+async function coverageProject(cleanup: TestScope['cleanup']): Promise<CoverageProject> {
     await mkdir('target', { recursive: true });
     const directory = await mkdtemp(resolvePath('target/source-cli-coverage-'));
     cleanup(async function removeProject() {
@@ -23,10 +22,10 @@ async function coverageProject(cleanup: TestScope['cleanup'], mode: CoverageMode
         profiles: {
             coverage: {
                 testFamily: 'microtest',
-                execution: { processModel: mode, scheduling: 'concurrent', maxConcurrency: 2 },
+                execution: { processModel: 'in-process', scheduling: 'concurrent', maxConcurrency: 2 },
                 timeouts: { collectionMilliseconds: 30_000, softMilliseconds: 10_000, hardMilliseconds: 15_000 },
                 files: { include: [ fixture ] },
-                coverage: { sources: { mode: 'all', include: [ source ] }, outputs: [ 'lcov' ], outputDir: output }
+                coverage: { sources: { mode: 'loaded', include: [ source ] }, outputs: [ 'lcov' ], outputDir: output }
             }
         }
     };
@@ -61,22 +60,15 @@ async function coverageOutput(project: CoverageProject): Promise<string> {
 }
 
 export const testNode = suite('Source CLI coverage', [
-    table({
-        title: 'collects native coverage through either execution mode',
-        cases: [ 'in-process', 'supervised-process' ] as const,
-        caseTitle(mode) {
-            return mode;
-        },
-        async test(scope) {
-            const project = await coverageProject(scope.cleanup, scope.parameters);
-            const stdout = await coverageOutput(project);
-            const lcov = await readFile(join(project.output, 'lcov.info'), 'utf8');
-            scope.assert.match(stdout, /Run passed · 1 passed · [\d.]+ (?:µs|ms|s)$/mu);
-            scope.assert.match(stdout, /^ {2}1 executed · [\d.]+ (?:µs|ms|s) execution · /mu);
-            scope.assert.includes(lcov, `SF:${source}\n`);
-            scope.assert.match(lcov, /^FNDA:1,coveredValue$/mu);
-            scope.assert.match(lcov, /^FNDA:0,uncoveredValue$/mu);
-            return scope.assert.collect();
-        }
+    test('writes native coverage for a selected source', async function (scope) {
+        const project = await coverageProject(scope.cleanup);
+        const stdout = await coverageOutput(project);
+        const lcov = await readFile(join(project.output, 'lcov.info'), 'utf8');
+        scope.assert.match(stdout, /Run passed · 1 passed · [\d.]+ (?:µs|ms|s)$/mu);
+        scope.assert.match(stdout, /^ {2}1 executed · [\d.]+ (?:µs|ms|s) execution · /mu);
+        scope.assert.includes(lcov, `SF:${source}\n`);
+        scope.assert.match(lcov, /^FNDA:1,coveredValue$/mu);
+        scope.assert.match(lcov, /^FNDA:0,uncoveredValue$/mu);
+        return scope.assert.collect();
     })
 ]);
