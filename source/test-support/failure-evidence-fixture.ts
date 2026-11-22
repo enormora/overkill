@@ -107,7 +107,7 @@ export const assertCapturedText = defineCompositeAssertion({
 
 export const assertSeededWitness = defineCompositeAssertion({
     name: 'retains the seed and request fault configuration',
-    async assert(check, fixture: AttachmentFixture) {
+    async assert(check, fixture: EvidenceRun) {
         const witness = fixture.store.selectedArtifacts().find(function (artifact) {
             return artifact.id.subtype === 'witness';
         });

@@ -1,7 +1,7 @@
 import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import type { HttpTranscriptEntry, TranscriptCaptureErrorEntry } from '../transcript/http-transcript.ts';
 
-type ScenarioContext = { readonly scenario: string; };
+type ScenarioContext = { readonly scenario: string | null; };
 type ScenarioObservation = {
     readonly count: number;
     readonly entry: HttpTranscriptEntry<ScenarioContext> | TranscriptCaptureErrorEntry | null;
