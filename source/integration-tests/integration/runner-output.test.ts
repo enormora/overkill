@@ -67,7 +67,8 @@ async function runOutputProbe(
         'probe',
         ...capture === 'live' ? [ '--no-capture' ] : []
     ]);
-    scope.assert.includes(result.stdout, '1 discovered, 1 planned, 1 executed (1 pass, 0 fail, 0 skip)');
+    scope.assert.match(result.stdout, /Run passed · 1 passed · [\d.]+ (?:µs|ms|s)$/mu);
+    scope.assert.match(result.stdout, /^  1 executed · [\d.]+ (?:µs|ms|s) execution · /mu);
     scope.assert.equal(result.stdout.includes('collection stdout'), capture === 'live');
     scope.assert.equal(result.stdout.includes('case stdout'), capture !== 'buffered');
     scope.assert.equal(result.stderr, capture === 'buffered' ? '' : 'case stderr\n');

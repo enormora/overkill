@@ -71,7 +71,8 @@ export const testNode: TestNode = suite('Source CLI coverage', [
             const project = await coverageProject(scope, scope.parameters);
             const stdout = await coverageOutput(project);
             const lcov = await readFile(join(project.output, 'lcov.info'), 'utf8');
-            scope.assert.includes(stdout, '1 discovered, 1 planned, 1 executed (1 pass, 0 fail, 0 skip)');
+            scope.assert.match(stdout, /Run passed · 1 passed · [\d.]+ (?:µs|ms|s)$/mu);
+            scope.assert.match(stdout, /^  1 executed · [\d.]+ (?:µs|ms|s) execution · /mu);
             scope.assert.includes(lcov, `SF:${source}\n`);
             scope.assert.match(lcov, /^FNDA:1,coveredValue$/mu);
             scope.assert.match(lcov, /^FNDA:0,uncoveredValue$/mu);

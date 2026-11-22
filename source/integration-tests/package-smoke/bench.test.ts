@@ -105,7 +105,7 @@ async function assertUncapturedCommands(scope: TestScope, binary: string, consum
         consumerFolder
     );
     assertSuccessfulCommand(scope, uncaptured);
-    scope.assert.includes(uncaptured.stdout, '(1 pass, 0 fail');
+    scope.assert.match(uncaptured.stdout, /Run passed · 1 passed · [\d.]+ (?:µs|ms|s)$/mu);
 }
 
 export const testNode: TestNode = suite('Bench', [
@@ -126,7 +126,7 @@ export const testNode: TestNode = suite('Bench', [
                 consumerFolder
             );
             assertSuccessfulCommand(scope, measured);
-            scope.assert.includes(measured.stdout, '(1 pass, 0 fail');
+            scope.assert.match(measured.stdout, /Run passed · 1 passed · [\d.]+ (?:µs|ms|s)$/mu);
             return scope.assert.collect();
         }
     ),
@@ -146,7 +146,7 @@ export const testNode: TestNode = suite('Bench', [
             ], consumerFolder);
             scope.assert.equal(result.exitCode, 0);
             scope.assert.equal(result.stderr, '');
-            scope.assert.includes(result.stdout, '(4 pass, 0 fail, 1 skip)');
+            scope.assert.match(result.stdout, /Run passed · 4 passed · 1 skipped · [\d.]+ (?:µs|ms|s)$/mu);
             return scope.assert.collect();
         }
     ),
@@ -186,7 +186,7 @@ export const testNode: TestNode = suite('Bench', [
 
             scope.assert.equal(result.exitCode, 0);
             scope.assert.equal(result.stderr, '');
-            scope.assert.includes(result.stdout, '(4 pass, 0 fail, 1 skip)');
+            scope.assert.match(result.stdout, /Run passed · 4 passed · 1 skipped · [\d.]+ (?:µs|ms|s)$/mu);
             return scope.assert.collect();
         }
     ),

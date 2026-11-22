@@ -328,7 +328,7 @@ export const testNode: TestNode = suite('Test binary', [
             ]);
 
             scope.assert.equal(result.code, 0);
-            scope.assert.includes(result.stdout, '1 discovered, 1 planned, 1 executed');
+            scope.assert.match(result.stdout, /^  1 executed · [\d.]+ (?:µs|ms|s) execution · /mu);
             scope.assert.equal(result.stderr, '');
 
             return scope.assert.collect();
@@ -349,7 +349,7 @@ export const testNode: TestNode = suite('Test binary', [
 
             scope.assert.equal(result.code, 2);
             scope.assert.includes(result.stdout, 'Runner error: Runtime policy violation: console.');
-            scope.assert.includes(result.stdout, '1 discovered, 1 planned, 1 executed');
+            scope.assert.match(result.stdout, /^  1 executed · [\d.]+ (?:µs|ms|s) execution · /mu);
             scope.assert.equal(result.stderr, '');
 
             return scope.assert.collect();
