@@ -1,12 +1,12 @@
 import { suite, test } from '@overkill-dev/test';
 
-import { implementationAdmission } from './test-support/implementation-admission.ts';
+import { implementationAdmission } from '../../test-support/implementation-admission.ts';
 import {
     assignmentFacts,
     prepareImplementationAssignmentGraph,
     admitImplementationAssignments
-} from './implementation-assignment.ts';
-import { withImplementationActivations } from './implementation-participant.ts';
+} from '../../implementation-assignment.ts';
+import { withImplementationActivations } from '../../implementation-participant.ts';
 
 export const testNode = suite('implementation assignment admission', [
     test('collects stable assignment facts and rejects duplicate ownership', function (scope) {

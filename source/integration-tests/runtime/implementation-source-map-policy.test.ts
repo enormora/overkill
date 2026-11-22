@@ -1,7 +1,7 @@
 import { table, type TestScope, suite, test } from '@overkill-dev/test';
 
-import { deliverImplementationSource } from './implementation-source-map.ts';
-import { implementationMap, inlineImplementationMap } from './test-support/implementation-source-maps.ts';
+import { deliverImplementationSource } from '../../implementation-source-map.ts';
+import { implementationMap, inlineImplementationMap } from '../../test-support/implementation-source-maps.ts';
 
 const moduleUrl = 'file:///project/body.mjs';
 export const testNode = suite('immutable inline implementation source maps', [

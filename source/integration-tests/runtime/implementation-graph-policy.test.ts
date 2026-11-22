@@ -6,15 +6,15 @@ import {
     implementationFacts,
     mainImplementationUrl,
     dependencyImplementationUrl
-} from './test-support/memory-implementation-graph.ts';
-import { moduleLoadingRuntime } from './test-support/module-loading-runtime.ts';
-import { createModuleLoading } from './module-delivery.ts';
+} from '../../test-support/memory-implementation-graph.ts';
+import { moduleLoadingRuntime } from '../../test-support/module-loading-runtime.ts';
+import { createModuleLoading } from '../../module-delivery.ts';
 import {
     assertImplementationGraph,
     deliverImplementationGraph,
     prepareImplementationGraph,
     verifyImplementationGraph
-} from './implementation-graph.ts';
+} from '../../implementation-graph.ts';
 
 const main = memoryImplementationModule(mainImplementationUrl, {
     './dependency.ts': dependencyImplementationUrl,
