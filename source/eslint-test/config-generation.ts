@@ -1,26 +1,7 @@
 import { z } from 'zod';
 import type { Generator as PropertyGenerator } from '../packages/property/property.entry-point.ts';
-import type { ConfigGeneration, ConfigInput, ConfigSource, ConfigContract } from './config-definition.ts';
+import type { ConfigGeneration, ConfigInput, ConfigSource } from './config-definition.ts';
 import { sourceInputs } from './source-inputs.ts';
-
-export function generationContracts(generation: ConfigGeneration<string>): readonly ConfigContract[] {
-    if (Object.hasOwn(generation, 'contracts')) {
-        return z
-            .object({
-                contracts: z.array(z.discriminatedUnion('kind', [
-                    z.object({ kind: z.enum([ 'crash-freedom', 'fix-syntax', 'suggestion-syntax', 'repeatability' ]) }),
-                    z.object({ kind: z.literal('fix-stability'), maxRounds: z.number().int().positive() })
-                ]))
-            })
-            .parse(generation)
-            .contracts;
-    }
-    return [
-        { kind: 'crash-freedom' },
-        { kind: 'fix-syntax' },
-        { kind: 'suggestion-syntax' }
-    ];
-}
 
 export function configInputs(
     generation: ConfigGeneration<string>,

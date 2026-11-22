@@ -1,9 +1,14 @@
 import { z } from 'zod';
 import { isGenerator } from '../packages/property/property.entry-point.ts';
-import type { ConfigDefinition, ConfigGeneration, ConfigFixture, ConfigSelectionSet } from './config-definition.ts';
+import type {
+    ConfigContract,
+    ConfigDefinition,
+    ConfigGeneration,
+    ConfigFixture,
+    ConfigSelectionSet
+} from './config-definition.ts';
 import { catalogRules } from './config-inventory.ts';
 import { projectPath, validateProject } from './config-project.ts';
-import { generationContracts } from './config-generation.ts';
 
 type NamedConfigCase = { readonly title: string; readonly configs: ConfigSelectionSet<string>; };
 function uniqueNames(names: readonly string[], message: string): void {
@@ -24,6 +29,25 @@ export function configNames(names: readonly string[], selection: ConfigSelection
         throw new TypeError('Select unique known configuration names.');
     }
     return selected;
+}
+
+export function generationContracts(generation: ConfigGeneration<string>): readonly ConfigContract[] {
+    if (Object.hasOwn(generation, 'contracts')) {
+        return z
+            .object({
+                contracts: z.array(z.discriminatedUnion('kind', [
+                    z.object({ kind: z.enum([ 'crash-freedom', 'fix-syntax', 'suggestion-syntax', 'repeatability' ]) }),
+                    z.object({ kind: z.literal('fix-stability'), maxRounds: z.number().int().positive() })
+                ]))
+            })
+            .parse(generation)
+            .contracts;
+    }
+    return [
+        { kind: 'crash-freedom' },
+        { kind: 'fix-syntax' },
+        { kind: 'suggestion-syntax' }
+    ];
 }
 
 function validateInventories(definition: ConfigDefinition<string>): void {
