@@ -153,19 +153,6 @@ channel('child_process').subscribe(({process: child}) => {
     );
 }
 
-async function wedgedProcesses(directory: string): Promise<readonly number[]> {
-    const identities: unknown = JSON.parse(await readFile(join(directory, 'wedged-processes.json'), 'utf8'));
-    if (!Array.isArray(identities) || identities.length !== 2) {
-        throw new TypeError('Expected the analysis host and native compiler PIDs.');
-    }
-    return identities.map(function validatePid(pid: unknown) {
-        if (typeof pid !== 'number' || !Number.isSafeInteger(pid) || pid <= 1) {
-            throw new TypeError('Expected a process PID.');
-        }
-        return pid;
-    });
-}
-
 async function waitForProcessExit(pid: number): Promise<void> {
     for (let attempt = 0; attempt < 50; attempt += 1) {
         try {
@@ -179,6 +166,20 @@ async function waitForProcessExit(pid: number): Promise<void> {
         await delay(20);
     }
     throw new Error(`Owned process ${pid} still exists after shutdown.`);
+}
+
+async function waitForCompilerShutdown(directory: string): Promise<void> {
+    const identities: unknown = JSON.parse(await readFile(join(directory, 'wedged-processes.json'), 'utf8'));
+    if (!Array.isArray(identities) || identities.length !== 2) {
+        throw new TypeError('Expected the analysis host and native compiler PIDs.');
+    }
+    const ownedProcesses = identities.map(function validatePid(pid: unknown) {
+        if (typeof pid !== 'number' || !Number.isSafeInteger(pid) || pid <= 1) {
+            throw new TypeError('Expected a process PID.');
+        }
+        return pid;
+    });
+    await Promise.all(ownedProcesses.map(waitForProcessExit));
 }
 
 const consumerFacade = packageConsumer('packaged native type tests', function consumerFixture(consumerDirectory) {
@@ -285,8 +286,7 @@ console.log(JSON.stringify(reply.runResult?.perTest.map(entry=>entry.id.title)))
             message: result.stdout + result.stderr
         });
         scope.assert.includes(result.stdout, 'inconclusive');
-        const ownedProcesses = await wedgedProcesses(directory);
-        await Promise.all(ownedProcesses.map(waitForProcessExit));
+        await waitForCompilerShutdown(directory);
         return scope.assert.collect();
     }),
     test('authoring and profile imports do not load the execution backend', async function (scope) {

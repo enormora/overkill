@@ -34,7 +34,11 @@ function skippedPlan(): TestPlan {
     }));
 }
 
-async function preparedProject(cleanup: TestScope['cleanup'], signal: AbortSignal, original: TestPlan): Promise<PreparedProject> {
+async function preparedProject(
+    cleanup: TestScope['cleanup'],
+    signal: AbortSignal,
+    original: TestPlan
+): Promise<PreparedProject> {
     const files = Array.from({ length: sourceFileCount }, function (_value, index) {
         return `value${index}.ts`;
     });
