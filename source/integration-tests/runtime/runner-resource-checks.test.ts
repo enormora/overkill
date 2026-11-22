@@ -4,6 +4,7 @@ import { executionTitle } from '../../test-support/execution-profile-title.ts';
 import { orchestrator } from '../../run/run-orchestrator.entry-point.ts';
 import type { IntegrationExecution } from '../../config/types.ts';
 import {
+    isolatedRunStateDirectory,
     defaultIntegrationProfile,
     defaultRunConfig,
     defaultRunRequest
@@ -46,7 +47,7 @@ export const testNode = suite(
                         }
                     },
                     reporters: [],
-                    runtimeStateDir: 'target/resource-check-integration-state'
+                    runtimeStateDir: isolatedRunStateDirectory()
                 }),
                 cwd: process.cwd(),
                 engine: { kind: 'default' },

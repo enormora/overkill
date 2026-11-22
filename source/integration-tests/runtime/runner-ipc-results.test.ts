@@ -2,6 +2,7 @@ import { table, suite } from '@overkill-dev/test';
 
 import { orchestrator } from '../../packages/run/run.entry-point.ts';
 import {
+    isolatedRunStateDirectory,
     defaultMicrotestProfile,
     defaultRunConfig,
     defaultRunRequest
@@ -43,7 +44,7 @@ export const testNode = suite(
                             }
                         })
                     },
-                    runtimeStateDir: 'target/ipc-results-integration'
+                    runtimeStateDir: isolatedRunStateDirectory()
                 }),
                 cwd: process.cwd(),
                 engine: { kind: 'default' },

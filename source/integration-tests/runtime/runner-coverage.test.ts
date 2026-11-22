@@ -27,9 +27,11 @@ import {
 } from '../../packages/engine/engine.entry-point.ts';
 
 import { generateCoverageReports } from '../../run/coverage-reporting.ts';
-import { defaultCoveragePolicy } from '../../config/defaults.ts';
+import { isolatedRunStateDirectory, defaultMicrotestProfile } from '../../test-support/run-command-factory.ts';
 import { coverageSubject } from './support/coverage-subject.ts';
 import { loadCoverageFixtures } from './fixtures/coverage-files.ts';
+
+const defaultCoveragePolicy = defaultMicrotestProfile().coverage;
 
 const coverageFixturePath = 'source/integration-tests/runtime/fixtures/coverage.test.ts';
 const endlessLoopFixturePath = 'source/integration-tests/runtime/fixtures/endless-loop.test.ts';
@@ -54,7 +56,7 @@ function coverageConfig(
                 }
             }
         },
-        runtimeStateDir: 'target/coverage-integration'
+        runtimeStateDir: isolatedRunStateDirectory()
     });
     const profile = config.profiles.microtest;
     if (profile?.testFamily !== 'microtest') {
@@ -382,7 +384,7 @@ export const testNode = suite('Runner coverage', [
         const result = await coverageSubject.run({
             config: {
                 ...coverageConfig('supervised-process', 100, defaultCoveragePolicy, 'concurrent'),
-                runtimeStateDir: 'target/coverage-crash-integration'
+                runtimeStateDir: isolatedRunStateDirectory()
             },
             cwd: process.cwd(),
             engine: { kind: 'default' },

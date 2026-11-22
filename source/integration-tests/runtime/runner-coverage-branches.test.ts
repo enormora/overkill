@@ -8,6 +8,7 @@ import { z } from 'zod/v4';
 import type { RunResult } from '../../packages/engine/engine.entry-point.ts';
 
 import {
+    isolatedRunStateDirectory,
     defaultMicrotestProfile,
     defaultRunConfig,
     defaultRunRequest
@@ -45,7 +46,7 @@ async function executeGenericCoverage(processModel: 'in-process' | 'supervised-p
                     }
                 })
             },
-            runtimeStateDir: 'target/coverage-branches-integration'
+            runtimeStateDir: isolatedRunStateDirectory()
         }),
         cwd: process.cwd(),
         engine: { kind: 'default' },

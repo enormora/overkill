@@ -13,7 +13,7 @@ import { createCurrentProcessRunOrchestrator } from '../../run/current-process-r
 import { defaultRunEngine } from '../../run/default-run-engine.ts';
 import { loadRunEngineModule, loadRunTestModules, runDiscovery } from '../../run/node-run-dependencies.entry-point.ts';
 import { startSupervisedChild, startWorkerPoolHost } from '../../run/node-child-process-starters.ts';
-import { defaultRunRequest } from '../../test-support/run-command-factory.ts';
+import { isolatedRunStateDirectory, defaultRunRequest } from '../../test-support/run-command-factory.ts';
 
 const passing = 'source/integration-tests/runtime/fixtures/passing.test.ts';
 const wedged = 'source/integration-tests/runtime/fixtures/cancellation-cases.test.ts';
@@ -26,7 +26,7 @@ function command(
     return {
         config: {
             ...normalizeConfig({
-                runtimeStateDir: 'target/mutation-cancellation-state',
+                runtimeStateDir: isolatedRunStateDirectory(),
                 profiles: {
                     microtest: {
                         testFamily: 'microtest',
