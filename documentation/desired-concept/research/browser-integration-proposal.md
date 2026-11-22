@@ -486,11 +486,10 @@ not require ignoring every warning/error or every failed request.
 ## Simulation, App Builds, And HTML Hosts
 
 Reuse simulation definitions/catalogs, acquire/request-routed bindings,
-resources, transcripts, and witnesses. Add optional HTML-host assembly with
-explicit consumer markup, asset references, startup invocation/data, correct
-HTML/script encoding, and a CSP-compatible external config/module alternative.
-Existing SSR/template systems may supply the entire document. Do not prescribe
-framework, root element, template language, or entry-point name.
+resources, transcripts, and witnesses. The optional simulation HTTP response
+helper assembles trusted consumer markup and safely encodes asset references,
+including an external startup module. Consumers own startup data and its
+delivery. Existing SSR/template systems may supply the entire document.
 
 For `window.startApp(config)`, resolve scenario server-side and let consumer
 code map it to ordinary app configuration. Reuse the normal application bundle
@@ -761,7 +760,7 @@ groups are now defined in the canonical audit catalog under D19D.
 10. Resource checks survive failed requirements, plans, builder returns,
     transcript reset, interruption, and early return.
 11. Concurrent scenarios reuse one app artifact without mutable-state leakage;
-    startup config safely encodes script delimiter content.
+    consumer startup configuration reaches the correct app instance.
 12. Remote app/assets/APIs/channels are reachable with declared policy coverage.
 13. Browser-local function timing excludes return transport latency.
 14. Spinner response and delayed final result retain distinct measured endpoints.
@@ -999,11 +998,10 @@ failed-check results rather than misclassifying these as observer malfunctions.
 
 ### D12: Optional Simulation HTML-Host Helper Is In Scope
 
-Provide a first-party optional helper for consumer-owned markup/assets, safe
-scenario-derived startup data, and an explicit startup invocation. Existing
-SSR/template systems may supply the entire document. The app retains its
-configuration mapping and build ownership; no required framework, root element,
-global entry-point name, or general application bundler is introduced.
+Provide an optional simulation HTTP response helper for consumer-owned markup,
+stylesheets, and an external startup module. The consumer owns startup,
+configuration mapping and delivery, and builds. Existing SSR/template systems
+may supply the entire document.
 
 ### D13A: Request-Routed Test Fixtures Require Scenario Identity
 
@@ -1209,7 +1207,7 @@ Canonical concept documents define the settled contracts.
 | D09 | Resolved: collection policy                                   | Browser-free catalogue by default; one collection browser through explicit configuration opt-in; placement/reference details remain open                                          |
 | D10 | Partly resolved: controller/protocol/browser compatibility    | Classic command adapter excluded; assess Playwright public BiDi paths before adding clients for demonstrated gaps; exact matrix remains open                                      |
 | D11 | Resolved: cross-realm resource declaration                    | One portable declaration referencing owner/consumer modules; same-realm inline resources allowed; no duplicate profile binding system                                             |
-| D12 | Resolved: HTML-host helper                                    | Provide optional safe document/config assembly; consumer owns app mapping, markup/assets, builds, and may use existing SSR                                                        |
+| D12 | Resolved: HTML-host helper                                    | Provide optional HTML response assembly. The consumer owns markup, assets, startup configuration, and builds.                                                        |
 | D13 | Partly resolved: scenario routing/reproduction                | Request-routed test fixtures reject missing identity, including default; fixed-scenario servers bind at startup; exact helper/reproduction schema remains open                    |
 | D14 | Resolved: action-to-result meaning                            | Correlated browser input to authored DOM condition/app mark; host-command and rendering measurements stay separate; no timing substitution                                        |
 | D15 | Resolved: metric groups and provenance                        | Canonical collector catalog covers local timing, input, paint, requests, rendering, CPU/memory and named audits; exact platform/tool support requires validation                  |

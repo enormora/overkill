@@ -228,17 +228,16 @@ can discard it.
 
 ## Optional HTML Host
 
-The simulation layer provides an optional helper to assemble consumer-owned
-markup and asset references with safely embedded scenario-derived startup
-configuration and an explicit invocation, such as `window.startApp(config)`.
-The application owns the scenario-to-configuration mapping and its build.
-Existing SSR/template systems may supply the entire document instead.
+The simulation HTTP package offers an optional response helper that assembles
+consumer-owned markup, stylesheet references, and an external startup module.
+The handler selects the page route. The helper encodes generated HTML
+attributes and accepts trusted markup. Consumers can serve the result under a
+CSP that permits the referenced assets.
 
-The helper must support correct HTML/script encoding and a CSP-compatible
-external configuration/module alternative. It does not prescribe a framework,
-root element, global function name, template language, or application bundler.
-The ordinary application artifact can be reused across runtime configurations;
-dedicated deterministic entry points remain a consumer option when needed.
+Consumers own startup code, any scenario-to-configuration mapping and config
+delivery, asset serving, and application builds. The same application artifact
+can be reused across scenarios. A consumer can also supply a complete response
+from an existing SSR or template system.
 
 ## Scenario Timing
 

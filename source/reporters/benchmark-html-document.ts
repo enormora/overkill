@@ -1,5 +1,6 @@
 import type { MeasurementEvidence } from '../engine/measurement-evidence.ts';
 import type { BenchmarkGarbageCollectionResult } from '../engine/benchmark-result.ts';
+import { escapeHtml } from '../html-encoding.ts';
 import { difference, percentDifference } from './benchmark-deltas.ts';
 import type { BaselineChartRow, BenchmarkHtmlReport } from './benchmark-html-data.ts';
 import { formatDuration } from './run-summary-rendering.ts';
@@ -9,12 +10,7 @@ function optionalDuration(microseconds: number | null): string | null {
 }
 
 function htmlText(value: unknown): string {
-    return String(value)
-        .replaceAll('&', '&amp;')
-        .replaceAll('<', '&lt;')
-        .replaceAll('>', '&gt;')
-        .replaceAll('"', '&quot;')
-        .replaceAll("'", '&#39;');
+    return escapeHtml(String(value));
 }
 function table(headers: readonly string[], rows: readonly (readonly unknown[])[]): string {
     return `<table><thead><tr>${
