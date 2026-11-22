@@ -11,7 +11,7 @@ const integrationPolicy = {
         scheduling: 'concurrent' as const,
         maxConcurrency: 1,
         maxWorkers: concurrency,
-        workDistribution: { mode: 'case' as const },
+        workDistribution: { mode: 'file' as const },
         workerLifecycle: 'reuse' as const,
         dispatchPolicy: 'dynamic-lease' as const
     },
@@ -72,6 +72,7 @@ export const config = defineConfig({
         },
         'mutation-campaigns': {
             ...integrationPolicy,
+            execution: { ...integrationPolicy.execution, workDistribution: { mode: 'case' } },
             files: { include: [ 'source/integration-tests/mutation-campaigns/**/*.test.ts' ] },
             timeouts: { collectionMilliseconds: 30_000, softMilliseconds: 360_000, hardMilliseconds: 365_000 }
         },

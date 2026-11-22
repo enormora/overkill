@@ -26,9 +26,10 @@ source TypeScript executable.
 | `mutation-campaigns` | Stryker lifecycles, campaign matrices, and mutation-cost evidence        | Included in `just test-integration` |
 
 Integration files live under `source/integration-tests/<profile>`. Fixtures are
-excluded from profile discovery. Integration cases share reusable workers; engine
-singleton checks use fresh workers. Pools run one case per worker, with worker
-capacity following Node's available CPU parallelism. Microtests use the same CPU
+excluded from profile discovery. Runtime and CLI files form work units in reusable
+worker pools. Mutation cases use individual work units; engine singleton checks
+use fresh workers. Pools run one case per worker, with capacity following Node's
+available CPU parallelism. Microtests use the same CPU
 limit for concurrent cases in one supervised process.
 
 CI runs microtests once with native coverage using
@@ -48,9 +49,10 @@ the subject.
 
 Package smoke packs the current build once with Packtory. Per-case resources
 create consumers under `target/package-smoke`. Runtime resolution and compiler
-checks reject dependencies found in ancestor installations. Smoke children receive
-a minimal environment with the current Node executable on `PATH`. Add environment
-inputs explicitly when a consumer needs them.
+checks reject dependencies found in ancestor installations. Empty export maps also
+block fallback when supervised children clear their Node options. Smoke children
+retain system executable paths while excluding ancestor dependency bins. Add
+environment inputs explicitly when a consumer needs them.
 
 ## Mutation validation
 
