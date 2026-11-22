@@ -29,10 +29,10 @@ export const testNode: TestNode = suite('simulated HTTP listener ownership', [
         await using server = await listenToSimulatedHttpServer({ simulation }, function () {
             return fixture.listening;
         });
-        scope.assert.equal(server.baseUrl, 'http://127.0.0.1:1234');
+        scope.assert.equal(server.baseUrl, 'http://127.0.0.1:1234/default/');
         scope.assert.equal(
             server.scenarioUrl('offline', '/path?q=1'),
-            'http://127.0.0.1:1234/path?q=1&__overkill_scenario=offline'
+            'http://127.0.0.1:1234/offline/path?q=1'
         );
         scope.assert.equal(server.transcript, fixture.listening.transcript);
         scope.assert.true(Object.isFrozen(server));
@@ -49,9 +49,17 @@ export const testNode: TestNode = suite('simulated HTTP listener ownership', [
                 return fixture.listening;
             }
         );
-        scope.assert.equal(server.baseUrl, 'http://localhost:1234');
+        scope.assert.equal(server.baseUrl, 'http://localhost:1234/default/');
         await server.dispose();
         scope.assert.deepEqual(fixture.calls, [ 'listen:localhost:42', 'close' ]);
+        return scope.assert.collect();
+    }),
+    test('formats IPv6 listen addresses as routed URLs', async function (scope) {
+        const fixture = simulatedHttpListener(simulatedListenerScenario);
+        await using server = await listenToSimulatedHttpServer({ simulation, host: '::1' }, function () {
+            return fixture.listening;
+        });
+        scope.assert.equal(server.baseUrl, 'http://[::1]:1234/default/');
         return scope.assert.collect();
     }),
     test('propagates startup failures and unregisters the ready listener', async function (scope) {

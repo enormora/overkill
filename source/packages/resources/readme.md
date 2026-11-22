@@ -274,10 +274,11 @@ resource still acquires separately when those views differ.
 
 `createSimulatedHttpServerResource({ simulation, address })` starts a simulated
 HTTP server from `@overkill-dev/simulation` as a per-case resource. Its
-request-routed scenario slot uses the simulation name. A runtime binding makes
-`baseUrl` select that scenario, while `scenarioUrl(...)` remains available for
-explicit URL selection. Its transcript records the selected scenario and omits
-the internal scenario query parameter from the request URL.
+request-routed scenario slot uses the simulation name. A runtime binding sets the
+first path segment of `baseUrl`, including `/default/` for the default view.
+Use `new URL('orders', baseUrl)` for relative paths or `scenarioUrl(key, path)`
+to select another scenario. Missing or unknown keys return HTTP 400. Successful
+requests reach the handler and transcript with the scenario prefix removed.
 
 `startRuntime(...)` acquires dependencies before dependents, shares one handle
 per descriptor inside the session, and disposes acquired resources once in

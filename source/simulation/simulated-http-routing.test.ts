@@ -41,11 +41,18 @@ export const testNode: TestNode = suite('simulated HTTP request routing', [
         scope.assert.equal(fixture.response.status, null);
         return scope.assert.collect();
     }),
-    test('uses the root path when an incoming request has no URL', async function (scope) {
+    test('rejects an incoming request with no scenario prefix', async function (scope) {
         const fixture = simulatedHttpRequest(scope, simulation);
         Reflect.deleteProperty(fixture.request, 'url');
         await fixture.serve();
-        scope.assert.includes(responseText(fixture.response.body), '"url":"https://service.test:42/"');
+        scope.assert.equal(fixture.response.status, 400);
+        scope.assert.equal(responseText(fixture.response.body), 'Missing simulation scenario.');
+        const entry = fixture.transcript.firstEntry;
+        const interaction = entry?.[0] === 'http' ? entry[1] : null;
+        scope.assert.deepEqual({ context: interaction?.context, url: interaction?.request.url }, {
+            context: { scenario: null },
+            url: 'https://service.test:42/'
+        });
         scope.assert.deepEqual(fixture.errors, []);
         return scope.assert.collect();
     }),
@@ -94,11 +101,11 @@ export const testNode: TestNode = suite('simulated HTTP request routing', [
     }),
     test('removes scenario selection from the request delivered to the handler', async function (scope) {
         const fixture = simulatedHttpRequest(scope, simulation);
-        fixture.request.url = '/resource?value=one&__overkill_scenario=unavailable';
+        fixture.request.url = '/unavailable/resource?value=one&__overkill_scenario=default';
         await fixture.serve();
         scope.assert.equal(fixture.response.status, 503);
         scope.assert.deepEqual<unknown, unknown>(JSON.parse(responseText(fixture.response.body)), {
-            url: 'https://service.test:42/resource?value=one',
+            url: 'https://service.test:42/resource?value=one&__overkill_scenario=default',
             method: 'GET',
             body: '',
             headers: [],
@@ -109,12 +116,17 @@ export const testNode: TestNode = suite('simulated HTTP request routing', [
     }),
     test('rejects unknown scenarios without invoking a handler', async function (scope) {
         const fixture = simulatedHttpRequest(scope, simulation);
-        fixture.request.url = '/?__overkill_scenario=missing';
+        fixture.request.url = '/missing/';
         await fixture.serve();
         scope.assert.equal(fixture.response.status, 400);
         scope.assert.equal(responseText(fixture.response.body), 'Unknown simulation scenario.');
         scope.assert.deepEqual(fixture.errors, []);
-        scope.assert.equal(fixture.transcript.entryCount, 1);
+        const entry = fixture.transcript.firstEntry;
+        const interaction = entry?.[0] === 'http' ? entry[1] : null;
+        scope.assert.deepEqual({ context: interaction?.context, url: interaction?.request.url }, {
+            context: { scenario: 'missing' },
+            url: 'https://service.test:42/missing/'
+        });
         return scope.assert.collect();
     }),
     test('combines incoming body chunks and repeated headers', async function (scope) {
