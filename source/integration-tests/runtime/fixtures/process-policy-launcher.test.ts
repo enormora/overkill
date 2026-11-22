@@ -2,7 +2,8 @@ import { orchestrator } from '../../../run/run-orchestrator.entry-point.ts';
 import {
     defaultMicrotestProfile,
     defaultRunConfig,
-    defaultRunRequest
+    defaultRunRequest,
+    isolatedRunStateDirectory
 } from '../../../test-support/run-command-factory.ts';
 
 const [ , , operation, processModel ] = process.argv;
@@ -11,6 +12,7 @@ if (processModel !== 'in-process' && processModel !== 'supervised-process') {
 }
 const result = await orchestrator.run({
     config: defaultRunConfig({
+        runtimeStateDir: isolatedRunStateDirectory(),
         profiles: {
             microtest: defaultMicrotestProfile({
                 execution: { processModel, scheduling: 'serial', maxConcurrency: 1 },
