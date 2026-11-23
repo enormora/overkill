@@ -3,6 +3,7 @@ import type { AssertionOutcome } from './assertion-evaluation.ts';
 import {
     assertionSummary,
     type AssertionNode,
+    type RequireAssertionNode,
     type BuiltInAssertAssertionNode,
     type CompositeAssertionChildNode,
     type CompositeAssertionNode,
@@ -288,11 +289,40 @@ function evaluateCompositeAssertion(assertion: CompositeAssertionNode, id: strin
     };
 }
 
+const failedRequirements = new WeakMap<AssertionNode | CompositeAssertionChildNode, FailedCheck>();
+
+function requirementFailureWithIdentity(
+    failure: FailedCheck,
+    id: string,
+    source: AssertionSource
+): FailedCheck {
+    if (failure.kind !== 'composite') {
+        return { ...failure, id, source };
+    }
+
+    const children = failure.children.map(function rebaseChild(child) {
+        return requirementFailureWithIdentity(child, id + child.id.slice(failure.id.length), source);
+    });
+    assertNonEmptyItems(children, 'Expected a failed requirement to contain failed children.');
+    return { ...failure, children, id, source };
+}
+
+export function retainRequirementFailure(assertion: AssertionNode, boundary: AssertionNode): void {
+    const failure = failedRequirements.get(assertion);
+    if (failure !== undefined) {
+        failedRequirements.set(boundary, failure);
+    }
+}
+
 export function evaluateAssertion(
     assertion: AssertionNode | CompositeAssertionChildNode,
     id: number | string
 ): FailedCheck | null {
     const checkId = String(id);
+    const requirementFailure = failedRequirements.get(assertion);
+    if (requirementFailure !== undefined) {
+        return requirementFailureWithIdentity(requirementFailure, checkId, assertion.source);
+    }
 
     if (assertion.check === 'composite') {
         return evaluateCompositeAssertion(assertion, checkId);
@@ -303,6 +333,15 @@ export function evaluateAssertion(
     }
 
     return evaluateLeafAssertion(assertion, checkId);
+}
+
+export function requirementPasses(assertion: RequireAssertionNode): boolean {
+    const failure = evaluateAssertion(assertion, 1);
+    if (failure === null) {
+        return true;
+    }
+    failedRequirements.set(assertion, failure);
+    return false;
 }
 
 export function assertionPasses(assertion: AssertionNode): boolean {

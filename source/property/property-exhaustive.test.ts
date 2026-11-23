@@ -1,6 +1,7 @@
 import { suite, test } from '@overkill-dev/test';
 import { test as subjectTest } from '../packages/test/test.entry-point.ts';
 
+import { TestContractSignalError } from '../engine/assertion-control-error.ts';
 import { executePropertyNode, propertyExecutionDefaults } from '../test-support/property-execution.ts';
 import { property, withProperties } from './property-authoring.ts';
 import { createCoverage, coverageRequirements } from './property-coverage.ts';
@@ -8,6 +9,18 @@ import { enumerateDomain } from './generator-enumeration.ts';
 import { createPropertyWork } from './property-work.ts';
 import { propertyLabels } from './property-targets.ts';
 import { gen } from './generators.ts';
+
+function coverageControlMessage(operation: () => void): string {
+    try {
+        operation();
+    } catch (error: unknown) {
+        if (error instanceof TestContractSignalError) {
+            return error.message;
+        }
+        throw error;
+    }
+    throw new Error('Expected a coverage control signal.');
+}
 
 export const testNode = suite('exhaustive input coverage', [
     test('accepts exact percentage boundaries without rounding the observed ratio', function (scope) {
@@ -78,13 +91,19 @@ export const testNode = suite('exhaustive input coverage', [
         const coverage = createCoverage([], propertyLabels(1));
         const trial = coverage.trial('exploration');
         trial.cover('first', true);
-        scope.assert.throws(function () {
-            trial.cover('second', true);
-        }, { name: 'TestContractSignalError', message: /label limit/ });
+        scope.assert.match(
+            coverageControlMessage(function () {
+                trial.cover('second', true);
+            }),
+            /label limit/
+        );
         trial.finish(true);
-        scope.assert.throws(function () {
-            trial.cover('first', true);
-        }, { name: 'TestContractSignalError', message: /outlived/ });
+        scope.assert.match(
+            coverageControlMessage(function () {
+                trial.cover('first', true);
+            }),
+            /outlived/
+        );
         return scope.assert.collect();
     }),
     test('enumerates exact numeric domains including both signed zeros', function (scope) {

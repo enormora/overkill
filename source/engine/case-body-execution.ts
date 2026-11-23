@@ -1,12 +1,8 @@
 import { isImplementationLoadError } from '../implementation-load-error.ts';
 import { createThrownErrorRecord, type ThrownErrorRecord } from '../assertion-protocol/thrown-error-record.ts';
 import { isPropertyInconclusiveSignalError } from './property-inconclusive.ts';
-import {
-    isTestContractFailure,
-    isRequireFailedSignalError,
-    isTestContractSignalError,
-    type AssertionRecorder
-} from './assertion-recorder.ts';
+import { isRequireFailedSignalError, isTestContractSignalError } from './assertion-control-error.ts';
+import { isTestContractFailure, type AssertionRecorder } from './assertion-recorder.ts';
 import { isNodeAssertionError, nodeAssertionErrorFailure } from './node-assertion-error.ts';
 import {
     CaseRunnerError,
@@ -16,7 +12,7 @@ import {
     type RunnerError
 } from './run-result.ts';
 import type { ExecutedBody } from './body-result.ts';
-import { isPropertyTermination } from './property-execution-host.ts';
+import { isPropertyTermination } from './property-control-error.ts';
 import type { TestPlanCase } from './test-plan.ts';
 
 type FinishedCaseCleanup = {
@@ -178,6 +174,10 @@ export function completedBody(input: CompletedBodyInput): ExecutedBody {
         return requireFailedBody(context);
     }
 
+    if (recorder.hasContractFailures()) {
+        return contractFailedBody(context, context.contractFailures);
+    }
+
     const returnedAssertions = recorder.returnedAssertions(assertionResult);
 
     if (isTestContractFailure(returnedAssertions)) {
@@ -195,32 +195,27 @@ export function completedBody(input: CompletedBodyInput): ExecutedBody {
     };
 }
 
-export function completedThrowingBody(recorder: AssertionRecorder): ExecutedBody {
+export function completedThrowingBody(context: BodyResultContext): ExecutedBody {
+    const { recorder } = context;
     if (recorder.requireFailed()) {
-        return requireFailedBody({
-            cleanupErrors: [],
-            contractFailures: [],
-            recorder,
-            runnerErrors: []
-        });
+        return requireFailedBody(context);
+    }
+
+    if (recorder.hasContractFailures()) {
+        return contractFailedBody(context, context.contractFailures);
     }
 
     const returnedAssertions = recorder.completedThrowingAssertions();
 
     return isTestContractFailure(returnedAssertions)
-        ? contractFailedBody({
-            cleanupErrors: [],
-            contractFailures: [],
-            recorder,
-            runnerErrors: []
-        }, [ returnedAssertions ])
+        ? contractFailedBody(context, [ returnedAssertions, ...context.contractFailures ])
         : {
             bodyError: null,
             inconclusiveReason: null,
-            cleanupErrors: [],
-            contractFailures: [],
+            cleanupErrors: context.cleanupErrors,
+            contractFailures: context.contractFailures,
             requireFailed: false,
-            runnerErrors: [],
+            runnerErrors: context.runnerErrors,
             returnedAssertions
         };
 }
@@ -233,7 +228,7 @@ function nonRunnerFailedBody(input: FailedBodyInput): ExecutedBody {
     }
 
     if (isTestContractSignalError(error)) {
-        return contractFailedBody(context, [ error.failure(), ...context.contractFailures ]);
+        return contractFailedBody(context, Array.from(new Set([ ...context.contractFailures, error.failure() ])));
     }
 
     if (
@@ -264,7 +259,7 @@ export function failedBody(input: FailedBodyInput): ExecutedBody {
         return {
             ...error.result,
             cleanupErrors: [ ...error.result.cleanupErrors, ...context.cleanupErrors ],
-            contractFailures: [ ...error.result.contractFailures, ...context.contractFailures ],
+            contractFailures: Array.from(new Set([ ...context.contractFailures, ...error.result.contractFailures ])),
             runnerErrors: [ ...error.result.runnerErrors, ...context.runnerErrors ]
         };
     }
@@ -283,11 +278,16 @@ export function bodyResultContext(
     finishedScope: FinishedScope,
     sampleCleanupErrors: readonly unknown[]
 ): BodyResultContext {
-    const cleanup = finishedCaseCleanup(testCase, [ ...sampleCleanupErrors, ...finishedScope.cleanupErrors ]);
+    const recorded = recorder.contractFailures();
+    const errors = [ ...sampleCleanupErrors, ...finishedScope.cleanupErrors ];
+    const cleanupErrors = errors.filter(function independentError(error) {
+        return recorded.length === 0 || !isTestContractSignalError(error) || !recorded.includes(error.failure());
+    });
+    const cleanup = finishedCaseCleanup(testCase, cleanupErrors);
 
     return {
         cleanupErrors: cleanup.cleanupErrors,
-        contractFailures: finishedScope.lifecycleFailures,
+        contractFailures: [ ...recorded, ...finishedScope.lifecycleFailures ],
         recorder,
         runnerErrors: cleanup.runnerErrors
     };

@@ -54,3 +54,5 @@ export const hasDomainInvariant = defineCompositeAssertion({
 ```
 
 Each composite reference records one assertion boundary. Child checks created through `check.*` are grouped diagnostics, not extra plan units.
+
+Error assertions and foreign bridges propagate engine control signals unchanged.

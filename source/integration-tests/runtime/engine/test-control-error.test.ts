@@ -4,7 +4,7 @@ import { observeRule } from '../../../eslint-test/rule-observation.ts';
 import {
     RequireFailedSignalError as SourceRequireFailedSignalError,
     TestContractSignalError as SourceTestContractSignalError
-} from '../../../engine/assertion-recorder.ts';
+} from '../../../engine/assertion-control-error.ts';
 import { isTestControlError } from '../../../engine/test-control-error.ts';
 
 const failure = {
@@ -16,7 +16,7 @@ const failure = {
 } as const;
 const extension = import.meta.url.endsWith('.ts') ? 'ts' : 'js';
 const copiedModuleUrl = new URL(
-    `../../../engine/assertion-recorder.${extension}?copy=control-signals`,
+    `../../../engine/assertion-control-error.${extension}?copy=control-signals`,
     import.meta.url
 );
 const copiedModule = copiedModuleUrl.href;

@@ -12,6 +12,18 @@ import type { PropertyForall, PropertySampleScope } from './property-definition.
 import { property, withProperties } from './property-authoring.ts';
 import { gen } from './generators.ts';
 
+async function closedInvocationFailure(forall: PropertyForall): Promise<unknown> {
+    try {
+        await forall(gen.constant(1), function (value, sample) {
+            sample.assert.equal(value, 1);
+            return sample.assert.collect();
+        });
+    } catch (error: unknown) {
+        return error;
+    }
+    throw new Error('Expected the closed property scope to reject.');
+}
+
 export const testNode = suite('property trial scopes', [
     test('stops at a sample assertion-plan mismatch', async function (scope) {
         const values: number[] = [];
@@ -29,6 +41,40 @@ export const testNode = suite('property trial scopes', [
         scope.assert.equal(result.summary.failed, 1);
         scope.assert.includes(JSON.stringify(result.perTest), 'plan-mismatch');
         scope.assert.deepEqual(values, [ 1 ]);
+        return scope.assert.collect();
+    }),
+    test('retains a trial contract failure after both the trial and case catch its signals', async function (scope) {
+        const node = subjectTest(
+            'caught trial contract',
+            withProperties(async function (parent) {
+                try {
+                    await parent.forall(gen.constant(1), function (value, sample) {
+                        try {
+                            sample.plan(0);
+                        } catch (error: unknown) {
+                            sample.assert.instanceOf(error, Error);
+                        }
+                        sample.assert.equal(value, 1);
+                        return sample.assert.collect();
+                    });
+                } catch (error: unknown) {
+                    parent.assert.instanceOf(error, Error);
+                }
+                parent.assert.true(true);
+                return parent.assert.collect();
+            })
+        );
+        const result = await executePropertyNode(node, propertyExecutionDefaults);
+        const outcome = result.perTest[0]?.outcome;
+        if (outcome?.kind !== 'fail') {
+            throw new Error('Expected the caught trial contract to fail its case.');
+        }
+        scope.assert.deepEqual(
+            outcome.failures.map(function failureKind(failure) {
+                return failure.kind === 'test-contract' ? failure.code : failure.kind;
+            }),
+            [ 'invalid-plan' ]
+        );
         return scope.assert.collect();
     }),
     test('rejects malformed nested invocation definitions', async function (scope) {
@@ -156,12 +202,9 @@ export const testNode = suite('property trial scopes', [
         scope.assert.equal(result.summary.passed, 1);
         const forall = retained[0];
         scope.require.defined(forall);
-        await scope.assert.rejects(async function () {
-            return await forall(gen.constant(1), function (value, sample) {
-                sample.assert.equal(value, 1);
-                return sample.assert.collect();
-            });
-        }, { message: 'Property invocation cannot start after its scope has closed.' });
+        const failure = await closedInvocationFailure(forall);
+        scope.require.instanceOf(failure, Error);
+        scope.assert.equal(failure.message, 'Property invocation cannot start after its scope has closed.');
         return scope.assert.collect();
     }),
     test('counts one boundary per nested invocation and preserves wrapper settings', async function (scope) {

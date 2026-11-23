@@ -291,6 +291,25 @@ export const testNode = suite('Retry execution', [
         scope.assert.deepEqual(first.retried, { attempts: 3, finalVerdict: 'fail' });
         return scope.assert.collect();
     }),
+    test('does not retry a caught assertion-contract failure', async function (scope: TestScope) {
+        let runs = 0;
+        const result = await executeBody(function (attemptScope) {
+            runs += 1;
+            try {
+                attemptScope.plan(0);
+            } catch (error: unknown) {
+                attemptScope.assert.instanceOf(error, Error);
+            }
+            attemptScope.assert.fail();
+            return attemptScope.assert.collect();
+        }, options);
+        const first = result.perTest[0];
+        scope.require.defined(first);
+        scope.assert.equal(runs, 1);
+        scope.assert.equal(first.attempts.length, 1);
+        scope.assert.match(JSON.stringify(first.outcome), /invalid-plan/);
+        return scope.assert.collect();
+    }),
     test('cooperative soft timeouts reset per attempt after cleanup', async function (scope) {
         const clock = createDeterministicClock({ initialUnixEpochMicroseconds: 0n });
         const engine = deterministicEngine(clock);

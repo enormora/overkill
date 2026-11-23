@@ -432,13 +432,17 @@ export type {
     BenchmarkTimelineReport
 } from '../../engine/benchmark-timeline.ts';
 
-export { readPropertyExecutionHost, stopPropertyExecution } from '../../engine/property-execution-host.ts';
+export { readPropertyExecutionHost } from '../../engine/property-execution-host.ts';
 export type {
     PropertyExecutionHost,
     PropertyTrialResult,
     PropertyRunContext
 } from '../../engine/property-execution-host.ts';
-export { propertyScopeContractFailure, propertyObservationContractFailure } from '../../engine/property-trial.ts';
+export {
+    propertyScopeContractFailure,
+    propertyObservationContractFailure,
+    stopPropertyExecution
+} from '../../engine/property-control-error.ts';
 
 export { createEngine } from '../../engine/standard-engine.ts';
 

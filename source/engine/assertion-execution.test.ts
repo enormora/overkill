@@ -111,6 +111,26 @@ export const testNode = suite('Assertion execution', [
 
         return scope.assert.collect();
     }),
+    test('retains a caught failed requirement after its operand changes', async function (scope: TestScope) {
+        const result = await executeSingleBody(function testBody(testScope) {
+            const testScopeRequire: typeof testScope.require = testScope.require;
+            const user: Record<string, unknown> = {};
+            try {
+                testScopeRequire.hasProperty(user, 'name', { message: 'requires the name' });
+            } catch {
+                user.name = 'Ada';
+            }
+            testScope.assert.equal(user.name, 'Ada');
+            return testScope.assert.collect();
+        });
+        const outcome = firstFailOutcome(result);
+        scope.require.notNull(outcome);
+        const check = firstFailedCheck(outcome);
+        scope.require.notNull(check);
+        scope.assert.equal(check.source, 'require');
+        scope.assert.equal(check.summary, 'requires the name');
+        return scope.assert.collect();
+    }),
     test('skips plan mismatch when a requirement fails', async function (scope: TestScope) {
         const result = await executeSingleBody(function testBody(testScope) {
             const testScopeRequire: typeof testScope.require = testScope.require;

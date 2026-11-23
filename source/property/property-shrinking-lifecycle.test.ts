@@ -187,7 +187,7 @@ export const testNode = suite('shrink lifecycle', [
         );
         return scope.assert.collect();
     }),
-    test('failure keys expire when the invocation completes', async function (scope) {
+    test('failure keys expire when the invocation completes', async function (scope: TestScope) {
         let declareFailure: (key: string) => void = function () {
             throw new Error('Key setter was not captured.');
         };
@@ -205,9 +205,14 @@ export const testNode = suite('shrink lifecycle', [
             propertyExecutionDefaults
         );
         scope.assert.equal(result.summary.passed, 1);
-        scope.assert.throws(function expiredKey() {
+        let failure: unknown = null;
+        try {
             declareFailure('late');
-        }, { message: 'Failure keys require a nonblank string within an active trial.' });
+        } catch (error: unknown) {
+            failure = error;
+        }
+        scope.require.instanceOf(failure, Error);
+        scope.assert.equal(failure.message, 'Failure keys require a nonblank string within an active trial.');
         return scope.assert.collect();
     })
 ]);
