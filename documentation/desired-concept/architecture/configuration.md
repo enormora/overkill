@@ -584,7 +584,7 @@ That is enough for:
 - reporters
 - baseline adapters
 - benchmark metric collectors
-- type-test adapters
+- the native type-test family
 - mutation integrations
 
 Installing a package does not mutate the CLI, trigger package-name discovery,

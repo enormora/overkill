@@ -191,7 +191,10 @@ Benchmarks are not “tests with a timer.” They model workloads, fixtures, set
 
 ### Type Tests
 
-Type tests should be part of the concept as a supported test family, but through adapters or integrations rather than a custom Overkill implementation.
+The optional `@overkill-dev/type-test` package provides a native analysis family.
+TypeScript checks the original project, and Overkill owns assertion recognition,
+structural equality, case selection, and reporting. The runner and public engine
+use the same family.
 
 They matter because TypeScript-first projects need to catch regressions in:
 
@@ -290,7 +293,7 @@ available through explicit subpaths such as `@overkill-dev/test/config`,
 Optional packages stay separate installs when they are domain-specific,
 heavyweight, or aimed at a narrower audience. That includes browser and
 browser-benchmark packages, model/differential/linearizability
-packages, type-test adapters, mutation integrations, ESLint and AWS CDK
+packages, the native type-test family, mutation integrations, ESLint and AWS CDK
 adapters, contract adapters, accessibility adapters, and similar focused
 integrations.
 
