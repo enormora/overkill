@@ -1,14 +1,13 @@
-import { setTimeout as sleep } from 'node:timers/promises';
 import {
     type CompositeAssertionReturn,
     type CompositeCheckBuilder,
     defineCompositeAssertion
 } from '@overkill-dev/test/assert';
 
-import { suite, test } from '@overkill-dev/test';
+import { suite, test, type TestScope } from '@overkill-dev/test';
 
-import type { PlacementPlan } from '../../../run/run-types.ts';
-import { executeWorkerPoolUnits } from '../../../run/worker-pool-execution.ts';
+import type { PlacementPlan } from './run-types.ts';
+import { executeWorkerPoolUnits } from './worker-pool-execution.ts';
 import {
     type AcceptingPool,
     type CapturedWorkerTask,
@@ -17,8 +16,8 @@ import {
     fakeWorkerRuntime,
     placementPlan,
     testCaseMetadata
-} from '../../../run/worker-pool-placement-validation.test.ts';
-import type { WorkerPoolRunRuntime, WorkerPoolTaskRun } from '../../../run/worker-pool-runtime.ts';
+} from './worker-pool-placement-validation.test.ts';
+import type { WorkerPoolRunRuntime, WorkerPoolTaskRun } from './worker-pool-runtime.ts';
 
 type PlacementAssignment = PlacementPlan['assignments'][number];
 type WorkUnit = PlacementPlan['units'][number];
@@ -149,11 +148,6 @@ function batchingPlacement(): PlacementPlan {
     };
 }
 
-async function letWorkerLoopsRun(): Promise<void> {
-    await Promise.resolve();
-    await sleep(0);
-}
-
 function finishPendingTask(pool: ControlledPool): void {
     if (pool.pendingCount() > 0) {
         pool.finishNext();
@@ -268,10 +262,13 @@ const assertBatchTraceStarted = defineCompositeAssertion({
     }
 });
 
-async function completeSplitExecution(execution: ControlledExecution): Promise<readonly WorkerPoolTaskRun[]> {
+async function completeSplitExecution(
+    execution: ControlledExecution,
+    yieldToNextTurn: TestScope['yieldToNextTurn']
+): Promise<readonly WorkerPoolTaskRun[]> {
     finishPendingTask(execution.controlledPool);
     finishPendingTask(execution.controlledPool);
-    await letWorkerLoopsRun();
+    await yieldToNextTurn();
     finishPendingTask(execution.controlledPool);
 
     return await execution.completed;
@@ -288,9 +285,9 @@ export const testNode = suite({
                 const unit = multiWorkUnit('split-parent');
                 const execution = startControlledExecution(splitCandidatePlacement(unit));
 
-                await letWorkerLoopsRun();
+                await scope.yieldToNextTurn();
                 scope.assert(assertSplitTasks, execution.controlledPool);
-                const completedRuns = await completeSplitExecution(execution);
+                const completedRuns = await completeSplitExecution(execution, scope.yieldToNextTurn);
 
                 scope.assert.equal(completedRuns.length, 3);
 

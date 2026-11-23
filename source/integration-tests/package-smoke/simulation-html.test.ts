@@ -1,4 +1,4 @@
-import { type TestNode, test, type TestScope } from '#tests';
+import { type TestNode, test, type TestScope } from '@overkill-dev/test';
 
 import type * as HttpPackage from '../../packages/simulation/http.entry-point.ts';
 import type * as SimulationPackage from '../../packages/simulation/simulation.entry-point.ts';
@@ -12,28 +12,30 @@ type PageRequest = {
     readonly title: string;
 };
 
-async function assertStartupModule(scope: TestScope, pageUrl: string, html: string): Promise<void> {
+async function assertStartupModule(assert: TestScope['assert'], pageUrl: string, html: string): Promise<void> {
     const reference = /<script type="module" src="(?<reference>[^"]+)"><\/script>/u.exec(html)?.groups?.reference;
-    scope.require.defined(reference);
+    if (reference === undefined) {
+        throw new Error('The installed HTML response omitted the startup module.');
+    }
     const module = await fetch(new URL(reference, pageUrl));
-    scope.assert.equal(module.headers.get('content-type'), 'text/javascript');
-    scope.assert.equal(await module.text(), startupSource);
+    assert.equal(module.headers.get('content-type'), 'text/javascript');
+    assert.equal(await module.text(), startupSource);
 }
 
-async function assertPage(scope: TestScope, page: PageRequest): Promise<void> {
+async function assertPage(assert: TestScope['assert'], page: PageRequest): Promise<void> {
     const response = await fetch(page.url);
-    scope.assert.equal(response.status, 200);
-    scope.assert.equal(response.headers.get('content-type'), 'text/html; charset=utf-8');
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get('content-type'), 'text/html; charset=utf-8');
     const html = await response.text();
-    scope.assert.includes(html, `<main>${page.title}</main>`);
-    await assertStartupModule(scope, page.url, html);
+    assert.includes(html, `<main>${page.title}</main>`);
+    await assertStartupModule(assert, page.url, html);
     const api = await fetch(new URL('api', page.url));
-    scope.assert.deepEqual(await api.json(), { scenario: page.scenario });
+    assert.deepEqual(await api.json(), { scenario: page.scenario });
 }
 
-async function assertMissingScenario(scope: TestScope, routedBaseUrl: string): Promise<void> {
+async function assertMissingScenario(assert: TestScope['assert'], routedBaseUrl: string): Promise<void> {
     const response = await fetch(new URL('/', routedBaseUrl));
-    scope.assert.equal(response.status, 400);
+    assert.equal(response.status, 400);
     await response.text();
 }
 
@@ -73,8 +75,8 @@ export const testNode: TestNode = test('serves app pages from the installed HTTP
         { url: fixed.baseUrl, scenario: 'payments-500', title: 'Unavailable' }
     ];
     for (const page of pages) {
-        await assertPage(scope, page);
+        await assertPage(scope.assert, page);
     }
-    await assertMissingScenario(scope, routed.baseUrl);
+    await assertMissingScenario(scope.assert, routed.baseUrl);
     return scope.assert.collect();
 });

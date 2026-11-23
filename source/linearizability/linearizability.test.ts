@@ -5,7 +5,7 @@ import {
     checkLinearizability,
     type LinearizabilityEvent,
     type LinearizabilityModel
-} from '../../../packages/linearizability/linearizability.entry-point.ts';
+} from '../packages/linearizability/linearizability.entry-point.ts';
 
 type Operation = { readonly kind: 'read'; } | { readonly kind: 'write'; readonly value: number; };
 type Event = LinearizabilityEvent<Operation, number>;

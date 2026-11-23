@@ -10,9 +10,9 @@ import {
     sourceFile,
     sourceCall,
     sourceTree
-} from '../../../../test-support/native-source-fixture.ts';
+} from '../../test-support/native-source-fixture.ts';
 
-import { validateCallbackStorage, supportedCall } from '../../../../packages/type-test/source-options.ts';
+import { validateCallbackStorage, supportedCall } from './source-options.ts';
 
 function bindStorage(fixture: SourceFixture, statement: ast.VariableStatement): void {
     const declaration = statement.declarationList.declarations[0];

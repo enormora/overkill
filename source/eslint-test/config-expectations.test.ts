@@ -1,15 +1,15 @@
 import { table, suite, test } from '@overkill-dev/test';
 import type { Linter } from 'eslint';
-import { subjectAssertion } from '../../../test-support/assertion-reference-boundary.ts';
+import { subjectAssertion } from '../test-support/assertion-reference-boundary.ts';
 
-import { observeRule, ruleCheck } from '../../../eslint-test/rule-observation.ts';
+import { observeRule, ruleCheck } from './rule-observation.ts';
 import {
     checkConfigDiagnostics,
     checkResolvedConfig,
     normalizedRule
-} from '../../../eslint-test/config-expectations.ts';
-import type { ConfigDiagnostics, ConfigFileExpectation } from '../../../eslint-test/config-definition.ts';
-import type { ResolvedConfig } from '../../../eslint-test/config-execution.ts';
+} from './config-expectations.ts';
+import type { ConfigDiagnostics, ConfigFileExpectation } from './config-definition.ts';
+import type { ResolvedConfig } from './config-execution.ts';
 
 const message: Linter.LintMessage = {
     ruleId: 'eqeqeq',

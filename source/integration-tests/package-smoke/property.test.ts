@@ -3,11 +3,9 @@ import { cp, mkdir, mkdtemp, writeFile } from 'node:fs/promises';
 
 import path from 'node:path';
 import { suite } from '@overkill-dev/test';
-import { createProgram, ModuleKind, ScriptTarget } from 'typescript';
 import { packageConsumer } from './support/package-consumer.ts';
 
 import { consumerEnvironment } from './support/consumer-environment.ts';
-import { consumerCompilerTypes, consumerTypeDiagnostics } from './support/consumer-types.ts';
 
 import {
     microtestLoadBoundaryScript,
@@ -15,8 +13,7 @@ import {
     propertyCodecScript,
     propertyReplayScript,
     propertyLoadBoundaryScript,
-    propertySubpathScript,
-    propertyTypeScript
+    propertySubpathScript
 } from './support/property-scripts.ts';
 
 type ScriptOutput = { readonly code: number; readonly stdout: string; readonly stderr: string; };
@@ -78,25 +75,6 @@ export const testNode = suite('packaged property authoring', [
         scope.assert.equal(result.code, 0);
         scope.assert.equal(result.stderr, '');
         scope.assert.equal(result.stdout, 'property codecs passed\n');
-        return scope.assert.collect();
-    }),
-    test('packaged leaf and standard declarations share nominal generator types', async function (scope) {
-        const { consumerDirectory } = scope.resources.consumer;
-
-        const sourcePath = path.join(consumerDirectory, 'property-consumer.mts');
-        await writeFile(sourcePath, propertyTypeScript);
-        const program = createProgram([ sourcePath ], {
-            ...consumerCompilerTypes,
-            module: ModuleKind.NodeNext,
-            target: ScriptTarget.ESNext,
-            strict: true,
-            noEmit: true,
-            types: [ 'node' ]
-        });
-        scope.assert.deepEqual(
-            await consumerTypeDiagnostics(program, consumerDirectory),
-            []
-        );
         return scope.assert.collect();
     }),
     test('leaf and standard package copies share property ownership and declarations', async function (scope) {

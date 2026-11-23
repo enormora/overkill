@@ -14,16 +14,18 @@ Install dependencies with `npm ci`. The published `@overkill-dev/test` package
 provides test authoring, assertions, doubles, resources, and the `overkill` CLI.
 Source imports identify the system under test, including fixture programs that
 exercise the source runner. A change to source behavior needs no npm release to
-be tested. CLI coverage checks exercise both execution modes through the same
-source TypeScript executable.
+be tested. Runtime coverage checks exercise both microtest execution modes.
+One source CLI check exercises coverage flag and report wiring, and one packed
+CLI check exercises the installed supervised worker and reporter.
 
-| Profile              | Boundary                                                                 | Command                             |
-| -------------------- | ------------------------------------------------------------------------ | ----------------------------------- |
-| `microtests`         | In-memory behavior, supervised execution                                 | `just test-microtests`              |
-| `runtime`            | Programmatic runtime integration, files, compiler projects, and real I/O | `just test-integration`             |
-| `cli`                | CLI execution and process ownership on Linux and macOS                   | `just test-cli-integration`         |
-| `package-smoke`      | Freshly packed package exports, consumers, and executable startup        | `just test-package-smoke`           |
-| `mutation-campaigns` | Stryker lifecycles, campaign matrices, and mutation-cost evidence        | Included in `just test-integration` |
+| Profile                       | Boundary                                                                 | Command                                 |
+| ----------------------------- | ------------------------------------------------------------------------ | --------------------------------------- |
+| `microtests`                  | In-memory behavior, supervised execution                                 | `just test-microtests`                  |
+| `runtime`                     | Programmatic runtime integration, files, compiler projects, and real I/O | `just test-integration`                 |
+| `cli`                         | CLI execution and process ownership on Linux and macOS                   | `just test-cli-integration`             |
+| `package-smoke`               | Freshly packed package exports, consumers, and executable startup        | `just test-package-smoke`               |
+| `mutation-campaigns`          | Representative Stryker lifecycle and accuracy cases                      | Included in `just test-integration`     |
+| `mutation-campaigns-extended` | Full accuracy matrix and mutation-cost evidence                          | `just test-mutation-campaigns-extended` |
 
 Integration files live under `source/integration-tests/<profile>`. Fixtures are
 excluded from profile discovery. Runtime and CLI files form work units in reusable
@@ -56,11 +58,12 @@ environment inputs explicitly when a consumer needs them.
 
 ## Mutation validation
 
-Campaign matrices compare real Stryker runs using `perTest`, `all`, and `off`, both
-process models, and fresh and reused state. Fixed seeds and repeated campaigns
-check accuracy. A separate cache regression demonstrates the reused-state
-limitation. Package smoke tests run one mutant against a one-line module through
-the packed adapter.
+The standard integration gate compares representative real Stryker runs across
+both process models, checks fresh-state cleanup, and reproduces the reused-state
+cache limitation. Use `just test-mutation-campaigns-extended` for the full
+coverage, process-model, freshness, seed, and repetition matrix and for
+mutation-cost evidence. Package smoke loads the packed adapter to run one
+mutant against a one-line module.
 
 `just benchmark-mutation-cost` records source execution and campaign measurements
 in `target/mutation-cost/report.html`. Measurements include Stryker reload and

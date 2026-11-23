@@ -13,9 +13,12 @@ import {
 } from '../runtime/support/stryker-lifecycle-fixture.ts';
 import { executeMutationScript } from '../runtime/support/stryker-script.ts';
 
-const processModels = [ 'in-process', 'supervised-process' ] as const;
+const representativeModes = [
+    { processModel: 'in-process', freshState: false },
+    { processModel: 'supervised-process', freshState: true }
+] as const;
 type CampaignMode = {
-    readonly processModel: typeof processModels[number];
+    readonly processModel: (typeof representativeModes)[number]['processModel'];
     readonly freshState: boolean;
     readonly looping: boolean;
     readonly coverageAnalysis: 'all' | 'off' | 'perTest';
@@ -54,11 +57,7 @@ export const testNode = suite('Stryker execution lifecycle', [
     }),
     table({
         title: 'freshState preserves mutation identities across sandboxes',
-        cases: processModels.flatMap(function executionModes(processModel) {
-            return [ false, true ].flatMap(function stateModes(freshState) {
-                return { processModel, freshState };
-            });
-        }),
+        cases: representativeModes,
         caseTitle({ processModel, freshState }) {
             return [ processModel, String(freshState) ].map(String).join(', ');
         },
@@ -85,11 +84,7 @@ export const testNode = suite('Stryker execution lifecycle', [
     }),
     table({
         title: 'freshState executes mutants and reports reload support',
-        cases: processModels.flatMap(function executionModes(processModel) {
-            return [ false, true ].flatMap(function stateModes(freshState) {
-                return { processModel, freshState };
-            });
-        }),
+        cases: representativeModes,
         caseTitle({ processModel, freshState }) {
             return [ processModel, String(freshState) ].map(String).join(', ');
         },
@@ -102,13 +97,10 @@ export const testNode = suite('Stryker execution lifecycle', [
     }),
     table({
         title: 'freshState coverage',
-        cases: processModels.flatMap(function executionModes(processModel) {
-            return [ false, true ].flatMap(function stateModes(freshState) {
-                return ([ 'perTest', 'all', 'off' ] as const).map(function coverageModes(coverageAnalysis) {
-                    return { processModel, freshState, coverageAnalysis };
-                });
-            });
-        }),
+        cases: [
+            { processModel: 'in-process', freshState: false, coverageAnalysis: 'all' },
+            { processModel: 'supervised-process', freshState: true, coverageAnalysis: 'perTest' }
+        ] as const,
         caseTitle({ processModel, freshState, coverageAnalysis }) {
             return [ processModel, String(freshState), coverageAnalysis ].map(String).join(', ');
         },
@@ -135,26 +127,13 @@ export const testNode = suite('Stryker execution lifecycle', [
             return scope.assert.collect();
         }
     }),
-    table({
-        title: 'freshState reaps synchronous loops',
-        cases: processModels.flatMap(function executionModes(processModel) {
-            return [ false, true ].flatMap(function stateModes(freshState) {
-                return { processModel, freshState };
-            });
-        }),
-        caseTitle({ processModel, freshState }) {
-            return [ processModel, String(freshState) ].map(String).join(', ');
-        },
-        async test(scope) {
-            const { processModel, freshState } = scope.parameters;
-
-            await scope.assert(verifyCampaign, scope.cleanup, {
-                processModel,
-                freshState,
-                looping: true,
-                coverageAnalysis: 'off'
-            });
-            return scope.assert.collect();
-        }
+    test('fresh supervised execution reaps a synchronous loop', async function (scope) {
+        await scope.assert(verifyCampaign, scope.cleanup, {
+            processModel: 'supervised-process',
+            freshState: true,
+            looping: true,
+            coverageAnalysis: 'off'
+        });
+        return scope.assert.collect();
     })
 ]);

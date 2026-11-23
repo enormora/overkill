@@ -1,11 +1,11 @@
 import { table, suite, test } from '@overkill-dev/test';
 import * as ast from 'typescript-beta/ast';
-import type { TestPlan } from '../../../../engine/test-plan.ts';
+import type { TestPlan } from '../../engine/test-plan.ts';
 
-import { ownedCallback, callbackOrigin as origin } from '../../../../test-support/callback-source.ts';
-import { testDouble } from '../../../../packages/test/test.entry-point.ts';
+import { ownedCallback, callbackOrigin as origin } from '../../test-support/callback-source.ts';
+import { testDouble } from '../test/test.entry-point.ts';
 
-import { observationPlan } from '../../../../test-support/observation-lifetime.ts';
+import { observationPlan } from '../../test-support/observation-lifetime.ts';
 import {
     sourceFixture,
     sourceSymbol,
@@ -13,10 +13,10 @@ import {
     sourceFile,
     sourceMember,
     sourceProperty
-} from '../../../../test-support/native-source-fixture.ts';
-import { resolveBodyOrigin } from '../../../../packages/type-test/source-ownership.ts';
-import { collectOriginalAssertions } from '../../../../packages/type-test/original-assertions.ts';
-import { nativeReference } from '../../../../packages/type-test/native-reference.ts';
+} from '../../test-support/native-source-fixture.ts';
+import { resolveBodyOrigin } from './source-ownership.ts';
+import { collectOriginalAssertions } from './original-assertions.ts';
+import { nativeReference } from './native-reference.ts';
 
 function bodyOptions(body: ast.ArrowFunction): ast.ObjectLiteralExpression {
     return ast.factory.createObjectLiteralExpression([ sourceProperty('body', body) ]);

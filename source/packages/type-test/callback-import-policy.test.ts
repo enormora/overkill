@@ -8,9 +8,9 @@ import {
     sourceSymbol,
     sourceFile,
     sourceCall
-} from '../../../../test-support/native-source-fixture.ts';
-import { bindAuthoringCall } from '../../../../test-support/callback-source.ts';
-import { supportedCall, validateCallbackStorage } from '../../../../packages/type-test/source-options.ts';
+} from '../../test-support/native-source-fixture.ts';
+import { bindAuthoringCall } from '../../test-support/callback-source.ts';
+import { supportedCall, validateCallbackStorage } from './source-options.ts';
 
 type ImportForm = 'default' | 'equals' | 'named' | 'namespace' | 'side-effect';
 function importStatement(form: ImportForm): ast.Statement {

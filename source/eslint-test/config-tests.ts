@@ -7,12 +7,11 @@ import type {
     ConfigSource,
     ConfigSelectionSet
 } from './config-definition.ts';
-import { configNames, validateConfigDefinition } from './config-validation.ts';
+import { configNames, generationContracts, validateConfigDefinition } from './config-validation.ts';
 import { inventoryCheck, fileCheck } from './config-checks.ts';
 import { fixtureCheck } from './config-fixtures.ts';
 import { assertConfigOperation } from './config-assertions.ts';
 import { configProperty } from './config-properties.ts';
-import { generationContracts } from './config-generation.ts';
 import type { ConfigSeeds } from './config-seeds.ts';
 
 function configCase(

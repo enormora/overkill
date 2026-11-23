@@ -5,7 +5,7 @@ import {
     compareMutationCampaigns,
     type CampaignEvidence,
     type MutationCoverageMode
-} from '../../runtime/fixtures/mutation-evidence/mutation-accuracy.test.ts';
+} from '../../../test-support/mutation-campaign-evidence.ts';
 import type {
     MutationMode,
     MutationModuleUrls

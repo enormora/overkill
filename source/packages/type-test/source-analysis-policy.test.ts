@@ -10,7 +10,7 @@ import {
     sourceTree,
     sourceSymbol,
     sourceBody
-} from '../../../../test-support/native-source-fixture.ts';
+} from '../../test-support/native-source-fixture.ts';
 
 import {
     sourceSymbol as analyzedSymbol,
@@ -20,13 +20,13 @@ import {
     immutableInitializer,
     validateFunctionBinding,
     loadSourceSymbols
-} from '../../../../packages/type-test/source-analysis.ts';
+} from './source-analysis.ts';
 import {
     isSourceNode,
     createSourceAnalysis,
     type AnalyzedSymbol
-} from '../../../../packages/type-test/source-analysis-port.ts';
-import { namedBodyParameter } from '../../../../packages/type-test/source-ownership.ts';
+} from './source-analysis-port.ts';
+import { namedBodyParameter } from './source-ownership.ts';
 
 function incompleteSymbols(node: ast.Node): Promise<undefined>;
 function incompleteSymbols(nodes: readonly ast.Node[]): Promise<readonly undefined[]>;

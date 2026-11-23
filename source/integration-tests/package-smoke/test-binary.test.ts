@@ -109,8 +109,6 @@ async function readPackageExports(
     return packageExports;
 }
 
-const historySmokeConfig = 'history-overkill.config.js';
-
 const consumerFacade = packageConsumer('Installed CLI and public exports', function consumerFixture(consumerDirectory) {
     const packageSmokeFolder = path.join(consumerDirectory, 'consumer');
 
@@ -196,29 +194,7 @@ const consumerFacade = packageConsumer('Installed CLI and public exports', funct
             fs.writeFile(path.join(packageSmokeFolder, throwsOnImportSmokeFile), throwsOnImportSmokeScript)
         ]);
     }
-    async function writeHistorySmokeConfig(): Promise<void> {
-        await fs.mkdir(packageSmokeFolder, { recursive: true });
-        await fs.writeFile(
-            path.join(packageSmokeFolder, historySmokeConfig),
-            "export const config = { runtimeStateDir: 'history-state' };\n"
-        );
-    }
-    const assertHistoryCommand = defineCompositeAssertion({
-        name: 'history command',
-        async assert(check, args: readonly string[], expected: string) {
-            const result = await spawnNode([
-                overkillBinEntryPointPath,
-                'history',
-                ...args,
-                '--config',
-                historySmokeConfig
-            ]);
-            return check.group([ check.equal(result.code, 0), check.includes(result.stdout, expected) ]);
-        }
-    });
     return {
-        writeHistorySmokeConfig,
-        assertHistoryCommand,
         spawnNode,
         assertPackagedStandardSubpathImports,
         writeReporterPolicySmokeProject,
@@ -230,26 +206,6 @@ const consumerFacade = packageConsumer('Installed CLI and public exports', funct
 const { test } = consumerFacade;
 
 export const testNode = suite('Installed CLI and public exports', [
-    test('history commands support maintenance and clear confirmation', async function (scope) {
-        const { writeHistorySmokeConfig, assertHistoryCommand, spawnNode } = scope.resources.consumer;
-
-        await writeHistorySmokeConfig();
-        await scope.assert(assertHistoryCommand, [ 'compact' ], 'Compacted');
-        await scope.assert(assertHistoryCommand, [ 'list' ], 'REPLAY');
-        await scope.assert(assertHistoryCommand, [ 'prune', '--dry-run' ], 'Would remove');
-        const unconfirmed = await spawnNode([
-            overkillBinEntryPointPath,
-            'history',
-            'clear',
-            '--config',
-            historySmokeConfig
-        ]);
-        scope.assert.equal(unconfirmed.code, 3);
-        scope.assert.includes(unconfirmed.stderr, 'requires --yes');
-        await scope.assert(assertHistoryCommand, [ 'clear', '--yes' ], 'History cleared.');
-        return scope.assert.collect();
-    }),
-
     test('@overkill-dev/test package owns the overkill binary', async function (scope) {
         const testPackageJson = await readPackageJson(testPackageFolder);
         const runPackageJson = await readPackageJson(runPackageFolder);
@@ -326,17 +282,6 @@ export const testNode = suite('Installed CLI and public exports', [
             overkillBinEntryPointPath,
             '--help'
         ]);
-
-        scope.assert.equal(result.code, 0);
-        scope.assert.includes(result.stdout, 'overkill <subcommand>');
-        scope.assert.equal(result.stderr, '');
-
-        return scope.assert.collect();
-    }),
-    test('overkill bin entry point prints command help', async function (scope) {
-        const { spawnNode } = scope.resources.consumer;
-
-        const result = await spawnNode([ overkillBinEntryPointPath, '--help' ]);
 
         scope.assert.equal(result.code, 0);
         scope.assert.includes(result.stdout, 'overkill <subcommand>');

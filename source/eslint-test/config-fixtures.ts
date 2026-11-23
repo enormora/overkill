@@ -9,7 +9,8 @@ import type {
     ConfigSource
 } from './config-definition.ts';
 import { configLayers, inConfigProject, projectText } from './config-project.ts';
-import { fatalDiagnostics, observeConfigSource, stableObservation } from './config-execution.ts';
+import { observeConfigSource, stableObservation } from './config-execution.ts';
+import { fatalDiagnostics } from './diagnostic-expectations.ts';
 import { checkConfigDiagnostics } from './config-expectations.ts';
 
 async function customFixtureResult(

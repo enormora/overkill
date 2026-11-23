@@ -1,11 +1,11 @@
 import { suite, test, testDouble } from '@overkill-dev/test';
 
-import { createAsyncLeakMonitor } from '../../../engine/async-leak-diagnostics.ts';
-import { createRoot, createTestPlan } from '../../../packages/engine/engine.entry-point.ts';
+import { createAsyncLeakMonitor } from '../engine/async-leak-diagnostics.ts';
+import { createRoot, createTestPlan } from '../packages/engine/engine.entry-point.ts';
 
-import { delayedOutbox } from '../../../test-support/child-process-outbox-fixture.ts';
-import { createChildProcessOutbox, type SendChildProcessMessage } from '../../../run/child-process-outbox.ts';
-import { childProcessEnvelope } from '../../../run/child-process-protocol.ts';
+import { delayedOutbox } from '../test-support/child-process-outbox-fixture.ts';
+import { createChildProcessOutbox, type SendChildProcessMessage } from './child-process-outbox.ts';
+import { childProcessEnvelope } from './child-process-protocol.ts';
 
 const metadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
 export const testNode = suite('Child process outbox', [

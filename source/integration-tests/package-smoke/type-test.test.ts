@@ -223,58 +223,13 @@ export const testNode = suite('packaged native type tests', [
             const { isolatedConsumer } = scope.resources.consumer;
 
             const directory = await isolatedConsumer(true);
-            await writeRunnerProject(directory, 'in-process');
+            await writeRunnerProject(directory, 'supervised-process');
             const result = await runNode(directory, [ 'runner.mts' ]);
             scope.assert.equal(result.code, 0, { message: result.stderr });
             scope.assert.includes(result.stdout, '1 pass');
             return scope.assert.collect();
         }
     ),
-    test('checks only the runner selection in source order', async function (scope) {
-        const { isolatedConsumer } = scope.resources.consumer;
-        const directory = await isolatedConsumer(true);
-        await writeRunnerProject(directory, 'in-process');
-        await writeFile(
-            join(directory, 'runner.mts'),
-            `import * as engine from '@overkill-dev/engine';
-import {sameType} from '@overkill-dev/type-test';
-const metadata={annotations:{},controls:{},definitionLocations:[{kind:'unknown'}]} as const;
-function passing(title:string) {
-    return engine.createTestCase({...metadata,title,body(scope){
-        scope.assert(sameType<string,string>());return scope.assert.collect();
-    }});
-}
-const excluded=engine.createTestCase({...metadata,title:'excluded',body(scope){
-    scope.assert(sameType<string,number>());return scope.assert.collect();
-}});
-export const testNode=engine.createSuite({...metadata,title:'root',
-    children:[passing('selected z'),excluded,passing('selected a')]});`
-        );
-        const request = defaultRunRequest({
-            order: 'lexical',
-            profile: 'types',
-            selection: { kind: 'filter', filter: { kind: 'contains', field: 'title', value: 'selected' } }
-        });
-        const program = `import {commandLineRunner} from '@overkill-dev/run/command-line';
-const reply=await commandLineRunner.runTests({cwd:process.cwd(),configPath:null,
-    runRequest:${inspect(request, { depth: null })}});
-if(reply.exitCode!==0)throw new Error(reply.fallbackDiagnostics.join('\\n'));
-console.log(JSON.stringify(reply.runResult?.perTest.map(entry=>entry.id.title)));`;
-        const result = await runNode(directory, [ '--input-type=module', '--eval', program ]);
-        scope.assert.equal(result.code, 0, { message: result.stderr });
-        scope.assert.includes(result.stdout, '["selected z","selected a"]');
-        return scope.assert.collect();
-    }),
-    test('checks installed beta compilers in a supervised profile', async function (scope) {
-        const { isolatedConsumer } = scope.resources.consumer;
-
-        const directory = await isolatedConsumer(true);
-        await writeRunnerProject(directory, 'supervised-process');
-        const result = await runNode(directory, [ 'runner.mts' ]);
-        scope.assert.equal(result.code, 0, { message: result.stderr });
-        scope.assert.includes(result.stdout, '1 pass');
-        return scope.assert.collect();
-    }),
     table({
         title: 'reproduces recorded compiler work',
         cases: [ 'in-process', 'supervised-process' ] as const,

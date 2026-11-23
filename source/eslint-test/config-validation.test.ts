@@ -1,12 +1,12 @@
 import { table, suite, test } from '@overkill-dev/test';
 
-import { defineConfigTests } from '../../../packages/eslint-test/eslint-test.entry-point.ts';
-import { configDefinition, emptyConfigProject } from '../../../test-support/eslint-config.ts';
+import { configDefinition, emptyConfigProject } from '../test-support/eslint-config.ts';
+import { validateConfigDefinition } from './config-validation.ts';
 
 export const testNode = suite('config definition validation', [
     test('rejects inventory exclusions for rules outside the catalog', function (scope) {
         scope.assert.throws(function () {
-            defineConfigTests({
+            validateConfigDefinition({
                 ...configDefinition([]),
                 inventories: [ {
                     title: 'inventory',
@@ -23,7 +23,7 @@ export const testNode = suite('config definition validation', [
     }),
     test('validates effective inventory paths after admitting known exclusions', function (scope) {
         scope.assert.throws(function () {
-            defineConfigTests({
+            validateConfigDefinition({
                 ...configDefinition([]),
                 inventories: [ {
                     title: 'inventory',
@@ -40,7 +40,7 @@ export const testNode = suite('config definition validation', [
     }),
     test('validates expected fixed-output paths before creating fixture tests', function (scope) {
         scope.assert.throws(function () {
-            defineConfigTests({
+            validateConfigDefinition({
                 ...configDefinition([]),
                 fixtures: [ {
                     title: 'fix',
@@ -67,7 +67,7 @@ export const testNode = suite('config definition validation', [
 
             const input: unknown = configs;
             scope.assert.throws(function invalid() {
-                Reflect.apply(defineConfigTests, undefined, [ {
+                Reflect.apply(validateConfigDefinition, undefined, [ {
                     ...configDefinition([]),
                     files: [ { title: 'file', configs: input, filename: 'file.js', expect: { kind: 'ignored' } } ]
                 } ]);
@@ -77,24 +77,24 @@ export const testNode = suite('config definition validation', [
     }),
     test('rejects empty configuration maps and relative existing roots', function (scope) {
         scope.assert.throws(function noConfigs() {
-            defineConfigTests<string>({ ...configDefinition([]), configs: {} });
+            validateConfigDefinition({ ...configDefinition([]), configs: {} });
         }, { message: /at least one/ });
         scope.assert.throws(function relativeRoot() {
-            defineConfigTests({ ...configDefinition([]), project: { kind: 'existing', root: 'relative' } });
+            validateConfigDefinition({ ...configDefinition([]), project: { kind: 'existing', root: 'relative' } });
         }, { message: /absolute/ });
         return scope.assert.collect();
     }),
     test('rejects fake generators and empty or repeated contracts', function (scope) {
         const base = { title: 'generated', configs: 'all', project: emptyConfigProject };
         scope.assert.throws(function fakeGenerator() {
-            Reflect.apply(defineConfigTests, undefined, [ {
+            Reflect.apply(validateConfigDefinition, undefined, [ {
                 ...configDefinition([]),
                 generation: [ { ...base, generator: { kind: 'custom', input: {} } } ]
             } ]);
         }, { message: /Overkill generator/ });
         for (const contracts of [ [], [ { kind: 'crash-freedom' }, { kind: 'crash-freedom' } ] ]) {
             scope.assert.throws(function invalidContracts() {
-                Reflect.apply(defineConfigTests, undefined, [ {
+                Reflect.apply(validateConfigDefinition, undefined, [ {
                     ...configDefinition([]),
                     generation: [ {
                         ...base,

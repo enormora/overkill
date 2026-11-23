@@ -7,6 +7,7 @@ import { packageConsumer } from './support/package-consumer.ts';
 
 import { consumerEnvironment } from './support/consumer-environment.ts';
 import { consumerCompilerTypes, consumerTypeDiagnostics } from './support/consumer-types.ts';
+import { propertyTypeScript } from './support/property-scripts.ts';
 
 const lifecycleScript = `
 import assert from 'node:assert/strict';
@@ -184,7 +185,7 @@ const { test } = consumerFacade;
 
 export const testNode = suite('packaged public runner lifecycle', [
     test(
-        'published runner accepts engine nodes, reporters, and renderers without type aliases',
+        'compiles consumers across installed engine, runner, reporter, and property declarations',
         async function (scope) {
             const { consumerDirectory } = scope.resources.consumer;
 
@@ -206,7 +207,9 @@ export const testNode = suite('packaged public runner lifecycle', [
                 await runIfMain(import.meta, testNode, { reporters: [reporter], outputRenderer });
             `
             );
-            const program = createProgram([ sourcePath ], {
+            const propertySourcePath = path.join(consumerDirectory, 'property-consumer.mts');
+            await writeFile(propertySourcePath, propertyTypeScript);
+            const program = createProgram([ sourcePath, propertySourcePath ], {
                 ...consumerCompilerTypes,
                 module: ModuleKind.NodeNext,
                 target: ScriptTarget.ESNext,

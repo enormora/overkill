@@ -1,9 +1,9 @@
 import { type TestScope, suite, test, testDouble } from '@overkill-dev/test';
 
-import { observationCase } from '../../../test-support/observation-lifetime.ts';
-import type { BenchmarkScope } from '../../../engine/benchmark-node.ts';
-import { defaultMeasurementTarget } from '../../../bench/measurement-target.ts';
-import { createBenchmarkGarbageCollection } from '../../../bench/benchmark-garbage-collection.ts';
+import { observationCase } from '../test-support/observation-lifetime.ts';
+import type { BenchmarkScope } from '../engine/benchmark-node.ts';
+import { defaultMeasurementTarget } from './measurement-target.ts';
+import { createBenchmarkGarbageCollection } from './benchmark-garbage-collection.ts';
 
 function collectionScope(cleanup: TestScope['cleanup'], signal: AbortSignal): BenchmarkScope {
     return {

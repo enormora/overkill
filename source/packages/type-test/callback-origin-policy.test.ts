@@ -7,7 +7,7 @@ import {
     callbackOrigin,
     attachCallbackSource,
     bindAuthoringCall
-} from '../../../../test-support/callback-source.ts';
+} from '../../test-support/callback-source.ts';
 import {
     sourceConstant,
     sourceSymbol,
@@ -15,8 +15,8 @@ import {
     sourceBody,
     sourceCall,
     sourceMember
-} from '../../../../test-support/native-source-fixture.ts';
-import { resolveBodyOrigin } from '../../../../packages/type-test/source-ownership.ts';
+} from '../../test-support/native-source-fixture.ts';
+import { resolveBodyOrigin } from './source-ownership.ts';
 
 function positional(body: ast.Expression): readonly ast.Expression[] {
     return [ ast.factory.createStringLiteral('case', ast.TokenFlags.None), body ];

@@ -1,10 +1,10 @@
 import { Worker } from 'node:worker_threads';
 import { once } from 'node:events';
-import { setImmediate as scheduleDeliveryTurn } from 'node:timers';
 import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { suite, test, type TestScope } from '@overkill-dev/test';
 
 import { createDefaultWorkId } from '../../../engine/identity.ts';
+import type { ResourceCheckSnapshot } from '../../../resource-check-protocol.ts';
 import { withResourceCheckCancellation } from '../../../resource-check-cancellation.ts';
 import {
     currentResourceCheckBroker,
@@ -109,20 +109,15 @@ export const testNode = suite('persistent resource check channel', [
             await withObservedWorker(scope.cleanup, async function inspect(broker, worker) {
                 worker.postMessage('record', []);
                 await once(worker, 'message');
-                await worker.terminate();
-                await new Promise<void>(function deliveryTurn(resolve) {
-                    scheduleDeliveryTurn(resolve);
+                const disconnected = Promise.withResolvers<ResourceCheckSnapshot>();
+                broker.observe(function observeDisconnect(snapshot) {
+                    if (snapshot.interval.kind === 'attempt' && snapshot.status.kind === 'incomplete') {
+                        disconnected.resolve(snapshot);
+                    }
                 });
-                scope.assert.true(
-                    broker.snapshots().some(function retained(snapshot) {
-                        return snapshot.failures[0]?.check.summary === 'Remote owner failed';
-                    })
-                );
-                scope.assert.true(
-                    broker.snapshots().some(function interrupted(snapshot) {
-                        return snapshot.status.kind === 'incomplete';
-                    })
-                );
+                await worker.terminate();
+                const snapshot = await disconnected.promise;
+                scope.assert.equal(snapshot.failures[0]?.check.summary, 'Remote owner failed');
             });
             return scope.assert.collect();
         }

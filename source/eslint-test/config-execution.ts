@@ -42,12 +42,6 @@ export async function resolvedConfig(engine: ESLint, filename: string): Promise<
     return value === undefined ? undefined : resolvedConfigSchema.parse(value);
 }
 
-export function fatalDiagnostics(messages: readonly Linter.LintMessage[]): readonly Linter.LintMessage[] {
-    return messages.filter(function fatal(message) {
-        return message.fatal === true;
-    });
-}
-
 async function prepareSource(execution: ConfigExecution, input: ConfigSourceInput): Promise<string> {
     execution.context.signal.throwIfAborted();
     const filename = projectPath(execution.context.root, input.filename);

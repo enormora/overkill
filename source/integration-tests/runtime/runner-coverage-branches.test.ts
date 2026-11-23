@@ -8,14 +8,15 @@ import { z } from 'zod/v4';
 import type { RunResult } from '../../packages/engine/engine.entry-point.ts';
 
 import {
-    isolatedRunStateDirectory,
     defaultMicrotestProfile,
     defaultRunConfig,
     defaultRunRequest
 } from '../../test-support/run-command-factory.ts';
+import { createCoverageCaseProject } from './support/coverage-case-project.ts';
 import { coverageSubject } from './support/coverage-subject.ts';
 
-const fixtureRoot = 'source/integration-tests/runtime/fixtures';
+const sourceFile = 'coverage-generics.ts';
+const caseFile = 'coverage-generics.test.ts';
 const branchReportSchema = z.record(
     z.string(),
     z.object({
@@ -24,18 +25,17 @@ const branchReportSchema = z.record(
     })
 );
 
-async function executeGenericCoverage(processModel: 'in-process' | 'supervised-process'): Promise<RunResult> {
+async function executeGenericCoverage(
+    processModel: 'in-process' | 'supervised-process',
+    directory: string
+): Promise<RunResult> {
     return await coverageSubject.run({
         config: defaultRunConfig({
             profiles: {
                 microtest: defaultMicrotestProfile({
                     coverage: {
                         outputs: [ 'json', 'lcov' ],
-                        sources: {
-                            exclude: [],
-                            include: [ `${fixtureRoot}/coverage-generics.ts` ],
-                            mode: 'all'
-                        },
+                        sources: { mode: 'loaded', exclude: [] },
                         thresholds: { branches: 100, functions: 100, lines: 100 }
                     },
                     execution: { processModel, scheduling: 'serial' },
@@ -46,13 +46,13 @@ async function executeGenericCoverage(processModel: 'in-process' | 'supervised-p
                     }
                 })
             },
-            runtimeStateDir: isolatedRunStateDirectory()
+            runtimeStateDir: path.join(directory, 'state')
         }),
-        cwd: process.cwd(),
+        cwd: directory,
         engine: { kind: 'default' },
         request: defaultRunRequest({
             coverage: true,
-            paths: [ `${fixtureRoot}/coverage-generics.test.ts` ]
+            paths: [ caseFile ]
         })
     });
 }
@@ -64,7 +64,7 @@ const assertGenericCoverageReports = defineCompositeAssertion({
             await readFile(path.join(reportDirectory, 'coverage-final.json'), 'utf8')
         ));
         const initialChecks = check.group([
-            check.deepEqual(Object.keys(report), [ `${fixtureRoot}/coverage-generics.ts` ]),
+            check.deepEqual(Object.keys(report), [ sourceFile ]),
             check.deepEqual(
                 Object.values(report).map(function counts(file) {
                     return { branches: file.b, functions: file.f };
@@ -93,7 +93,8 @@ export const testNode = suite(
         cases: [ 'in-process', 'supervised-process' ] as const,
         caseTitle: String,
         async test(scope) {
-            const result = await executeGenericCoverage(scope.parameters);
+            const directory = await createCoverageCaseProject(scope.cleanup, caseFile, sourceFile);
+            const result = await executeGenericCoverage(scope.parameters, directory);
             scope.assert.equal(result.status, 'passed', { message: JSON.stringify(result.runnerErrors) });
             scope.assert.equal(result.summary.passed, 3);
             const artifact = result.artifacts.find(function isCoverage(candidate) {
@@ -106,7 +107,7 @@ export const testNode = suite(
                 branches: artifact.payload.summary.branches,
                 functions: artifact.payload.summary.functions
             }, { branches: { covered: 2, total: 2 }, functions: { covered: 1, total: 1 } });
-            await scope.assert(assertGenericCoverageReports, path.resolve(artifact.payload.directory));
+            await scope.assert(assertGenericCoverageReports, path.resolve(directory, artifact.payload.directory));
             return scope.assert.collect();
         }
     }) ]
