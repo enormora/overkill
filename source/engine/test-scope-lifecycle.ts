@@ -1,3 +1,5 @@
+import { runAssertionBody } from './assertion-lifetime.ts';
+import { attachAssertionBodyExecutor } from './assertion-body-scope.ts';
 import type { AssertionResult } from '../assertion-protocol/assertion-node.ts';
 import { currentTestDebugScope } from './test-debug-recording.ts';
 import type { AssertionRecorder } from './assertion-recorder.ts';
@@ -44,6 +46,7 @@ export function createTestScopeLifecycle(recorder: AssertionRecorder, context: C
     const assertContext = Object.assign(
         createRecordingAssertFacade(
             {
+                assertRecording: recorder.assertRecording,
                 failContract(failure) {
                     return recorder.failContract(failure);
                 },
@@ -63,36 +66,40 @@ export function createTestScopeLifecycle(recorder: AssertionRecorder, context: C
         }
     );
     const createScope = function createScope(signal: AbortSignal): TestScope {
-        return {
-            debug: currentTestDebugScope(),
-            seed,
-            random: createTestRandom(seed),
-            assert: assertContext,
-            cleanup(callback) {
-                registerCleanup(state, callback);
-            },
-            drainMicrotasks,
-            plan(count) {
-                recorder.plan(count);
-            },
-            require: createRecordingRequireFacade(
-                {
-                    failContract(failure) {
-                        return recorder.failContract(failure);
-                    },
-                    recordRequire(assertion) {
-                        recorder.recordRequire(assertion);
-                    }
+        return attachAssertionBodyExecutor(
+            {
+                debug: currentTestDebugScope(),
+                seed,
+                random: createTestRandom(seed),
+                assert: assertContext,
+                cleanup(callback) {
+                    registerCleanup(state, callback);
                 },
-                null
-            ),
-            settleAsyncWork,
-            signal,
-            startInFlight(operation) {
-                return startInFlight(state, assertContext, operation);
-            },
-            yieldToNextTurn
-        };
+                drainMicrotasks,
+                plan(count) {
+                    recorder.plan(count);
+                },
+                require: createRecordingRequireFacade(
+                    {
+                        assertRecording: recorder.assertRecording,
+                        failContract(failure) {
+                            return recorder.failContract(failure);
+                        },
+                        recordRequire(assertion) {
+                            recorder.recordRequire(assertion);
+                        }
+                    },
+                    null
+                ),
+                settleAsyncWork,
+                signal,
+                startInFlight(operation) {
+                    return startInFlight(state, assertContext, operation);
+                },
+                yieldToNextTurn
+            } satisfies TestScope,
+            (body) => runAssertionBody(body, () => recorder.close('settled'))
+        );
     };
 
     return {
@@ -102,7 +109,7 @@ export function createTestScopeLifecycle(recorder: AssertionRecorder, context: C
             return await finishing;
         },
         async runBody(signal, body) {
-            return await body(createScope(signal));
+            return await runAssertionBody(() => body(createScope(signal)), () => recorder.close('settled'));
         }
     };
 }
@@ -119,6 +126,7 @@ export function createThrowingTestScope(
         random: createTestRandom(seed),
         assert: createRecordingAssertFacade(
             {
+                assertRecording: recorder.assertRecording,
                 failContract(failure) {
                     return recorder.failContract(failure);
                 },
@@ -133,6 +141,7 @@ export function createThrowingTestScope(
         ),
         require: createRecordingRequireFacade(
             {
+                assertRecording: recorder.assertRecording,
                 failContract(failure) {
                     return recorder.failContract(failure);
                 },

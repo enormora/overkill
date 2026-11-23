@@ -12,6 +12,43 @@ import { executeProperty } from './property-execution.ts';
 import type { PropertyExecutionResult } from './property-execution-result.ts';
 
 export const testNode = suite('property trial execution', [
+    test('attributes a late assertion to the original property trial', async function (scope) {
+        let escaped: (() => void) | null = null;
+        const node = property({
+            title: 'late trial',
+            generator: gen.constant<number>(3),
+            examples: [ () => 1, () => 2 ],
+            test(value, sample) {
+                if (value === 1) {
+                    escaped = function recordLateAssertion() {
+                        sample.assert.true(true);
+                    };
+                } else if (value === 2 && escaped !== null) {
+                    try {
+                        escaped();
+                    } catch {
+                    }
+                }
+                sample.assert.true(true);
+                return sample.assert.collect();
+            }
+        });
+
+        const result = await executePropertyNode(node, propertyExecutionDefaults);
+        scope.assert.equal(result.perTest[0]?.verdict, 'pass');
+        scope.assert.equal(result.status, 'failed');
+        scope.assert.length(result.runnerErrors, 1);
+        scope.assert.partialDeepEqual<unknown, unknown>(result.runnerErrors[0], {
+            cause: {
+                kind: 'late-assertion-activity',
+                origin: {
+                    attempt: { index: 0 },
+                    trial: { kind: 'property', position: { phase: 'examples', index: 1 } }
+                }
+            }
+        });
+        return scope.assert.collect();
+    }),
     test('executes all five phases in order with independent accounting', async function (scope) {
         const observed: number[] = [];
         const captured: PropertyExecutionResult<number>[] = [];

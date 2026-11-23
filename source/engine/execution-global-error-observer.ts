@@ -1,3 +1,4 @@
+import { isTestContractSignalError } from './assertion-control-error.ts';
 import { observingInfrastructure } from '../execution-ownership.ts';
 import {
     executionErrorOwnership,
@@ -364,6 +365,9 @@ function currentTargetScopes(ownership: ExecutionErrorOwnership): readonly RunEr
 
 function receiveHookFailure(ownership: ExecutionErrorOwnership, hook: HookKind, reason: unknown): void {
     const { runScopeStorage, activeCaseStorage, activeScopes } = ownership;
+    if (isTestContractSignalError(reason) && reason.failure().code === 'late-assertion-activity') {
+        return;
+    }
     const activeCase = observingInfrastructure() ? null : activeCaseStorage.getStore() ?? null;
     const ambiguousScope = runScopeStorage.getStore() === undefined && activeScopes.size() > 1;
 

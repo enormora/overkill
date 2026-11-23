@@ -1,3 +1,7 @@
+import { observeWorkerLateAssertions } from './worker-pool-late-assertions.ts';
+import { appendRunnerErrors } from '../engine/execution-result.ts';
+import type { RunnerError } from './run-engine-primitives.ts';
+import { lateAssertionDiagnosticId } from '../engine/assertion-lifetime.ts';
 import { currentResourceCheckBroker, withResourceCheckBroker } from './resource-check-broker.ts';
 import {
     type RunAttachmentRecord,
@@ -190,11 +194,44 @@ async function executeWorkerPoolRunWithoutAttachments(
 
     const runtime = await createRuntime(resolvedRun, dependencies, state);
 
+    const lateAssertions = observeWorkerLateAssertions(runtime.lifecycle.token, function recordDiagnostic(error) {
+        runtime.runState.recordRunnerError(error);
+        runtime.reporterEvents.add((async function deliverDiagnostic() {
+            runtime.runState.recordRunnerErrors(
+                await runtime.reporterDelivery.reportEvent({ kind: 'runner-error', error })
+            );
+        })());
+    });
+    let result: RunResult;
     try {
-        return await finishExecutionWithRuntime(resolvedRun, dependencies, state, runtime);
+        result = await finishExecutionWithRuntime(resolvedRun, dependencies, state, runtime);
     } finally {
-        await releaseTimedRuntimePool(runtime, state.timing);
+        try {
+            await releaseTimedRuntimePool(runtime, state.timing);
+        } finally {
+            await lateAssertions.close();
+        }
     }
+    await runtime.reporterEvents.wait();
+    return appendNewLateAssertions(result, [
+        ...runtime.runState.runnerErrors(),
+        ...(runtime.pool.takeHostRunnerErrors?.() ?? [])
+    ]);
+}
+
+function appendNewLateAssertions(result: RunResult, errors: readonly RunnerError[]): RunResult {
+    const known = new Set(result.runnerErrors.map(lateAssertionDiagnosticId));
+    return appendRunnerErrors(
+        result,
+        errors.filter(function newDiagnostic(error) {
+            const id = lateAssertionDiagnosticId(error);
+            if (id === null || known.has(id)) {
+                return false;
+            }
+            known.add(id);
+            return true;
+        })
+    );
 }
 
 async function executeWorkerPoolRunWithState(
@@ -280,6 +317,7 @@ export async function runWorkerPoolCommand(
         ) ?? dependencies.createWorkerPool(poolOptions)
         : null;
 
+    let result: RunResult;
     try {
         const collection = await collectInWorkerPool({
             command,
@@ -289,7 +327,7 @@ export async function runWorkerPoolCommand(
             timing: options.timing
         });
 
-        return await executeWorkerPoolRunWithState(
+        result = await executeWorkerPoolRunWithState(
             await createResolvedRun(collection),
             dependencies,
             {
@@ -301,4 +339,5 @@ export async function runWorkerPoolCommand(
     } finally {
         await destroyCommandPool(pool, options.timing);
     }
+    return appendNewLateAssertions(result, pool?.takeHostRunnerErrors?.() ?? []);
 }

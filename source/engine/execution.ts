@@ -1,3 +1,5 @@
+import { withAssertionSettlement } from './assertion-lifetime.ts';
+import { withLateAssertionDelivery, type LateAssertionDelivery } from './late-assertion-delivery.ts';
 import { withResourceCheckReporting } from './resource-check-reporting.ts';
 import { withPreparedBodyPlan } from './body-reference-plan.ts';
 import { executeFamilyWork } from './family-execution.ts';
@@ -98,6 +100,17 @@ async function createRunResultBeforeRunEnd(input: ExecuteRunInput): Promise<RunR
 }
 
 async function executeRun(input: ExecuteRunInput): Promise<RunResult> {
+    return await withAssertionSettlement(async function observeSettlements() {
+        return await withLateAssertionDelivery(async function deliverLateAssertions(events) {
+            return await executeRunWithLateAssertions(input, events);
+        });
+    });
+}
+
+async function executeRunWithLateAssertions(
+    input: ExecuteRunInput,
+    events: LateAssertionDelivery
+): Promise<RunResult> {
     const result = await withResourceCheckReporting(
         input.context.reporterDelivery,
         input.options.runtimePolicy,
@@ -107,19 +120,34 @@ async function executeRun(input: ExecuteRunInput): Promise<RunResult> {
         }
     );
 
-    input.context.dependencies.globalErrorObserver.stop();
     input.context.dependencies.asyncLeakMonitor.stop();
 
-    const finalizedResult = await input.options.finalizeResult(result);
+    const diagnostics = await reportRunnerErrors(input.context.reporterDelivery, events.take());
+    const finalized = await input.options.finalizeResult(appendRunnerErrors(result, diagnostics));
+    const finalizedResult = appendRunnerErrors(
+        finalized,
+        await reportRunnerErrors(input.context.reporterDelivery, events.take())
+    );
     const runEndErrors = await input.context.reporterDelivery.reportEvent({
         kind: 'run-end',
         result: finalizedResult
     });
-    const resultForFinalReporting = appendRunnerErrors(finalizedResult, runEndErrors);
+    const lateErrors = await reportRunnerErrors(input.context.reporterDelivery, events.take());
+    const resultForFinalReporting = appendRunnerErrors(finalizedResult, [ ...runEndErrors, ...lateErrors ]);
     const finalReporterErrors = await input.context.reporterDelivery.reportResult(resultForFinalReporting);
+    const finishDiagnostics = await reportRunnerErrors(input.context.reporterDelivery, events.take());
     const disposeErrors = await input.reporterDisposal.disposeOnce();
 
-    return appendRunnerErrors(resultForFinalReporting, [ ...finalReporterErrors, ...disposeErrors ]);
+    const observer = input.context.dependencies.globalErrorObserver;
+    const observed = observer.takeErrors();
+    observer.stop();
+    return appendRunnerErrors(resultForFinalReporting, [
+        ...finalReporterErrors,
+        ...finishDiagnostics,
+        ...disposeErrors,
+        ...observed,
+        ...events.seal()
+    ]);
 }
 
 export type RuntimeExecute = (testPlan: TestPlan, options?: ExecuteOptions) => Promise<RunResult>;

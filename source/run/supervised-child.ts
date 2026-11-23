@@ -1,3 +1,4 @@
+import { currentLateAssertionSink, withLateAssertionFallback } from '../engine/late-assertion-delivery.ts';
 import type { Clock } from '@enormora/clock';
 import { resolveDebugSelection } from './run-debug.ts';
 import {
@@ -319,14 +320,23 @@ async function run(
         assignment.attachmentEndpoint,
         null,
         async function executeAttachmentAssignment() {
-            return await executeAssignment({
-                assignment,
-                collectedPlan: selected,
-                command,
-                dependencies,
-                host,
-                startedAtMs,
-                wallClock
+            const warn = currentLateAssertionSink();
+            return await withLateAssertionFallback(function forwardLateAssertion(error) {
+                if (process.connected === false) {
+                    warn(error);
+                } else {
+                    host.send({ kind: 'event', event: { kind: 'runner-error', error } });
+                }
+            }, async function executeObservedAssignment() {
+                return await executeAssignment({
+                    assignment,
+                    collectedPlan: selected,
+                    command,
+                    dependencies,
+                    host,
+                    startedAtMs,
+                    wallClock
+                });
             });
         }
     );

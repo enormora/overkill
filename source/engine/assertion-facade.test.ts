@@ -83,6 +83,9 @@ function createAssertRecording(): AssertRecording {
     const records: AssertAssertionNode[] = [];
     const facade = createRecordingAssertFacadeWithLocation(
         {
+            assertRecording() {
+                return undefined;
+            },
             failContract(failure) {
                 throw new Error(failure.summary);
             },

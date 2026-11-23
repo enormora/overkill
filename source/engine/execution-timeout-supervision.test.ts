@@ -123,9 +123,10 @@ async function executeHardTimedCase(
     bodyGate: Promise<void>
 ): ReturnType<typeof executeCaseBody> {
     const testCase = createPlannedCase('hard timeout', async function hardTimeoutBody(testScope) {
+        testScope.assert.true(true);
+        const assertions = testScope.assert.collect();
         await bodyGate;
-
-        return testScope.assert.collect();
+        return assertions;
     });
 
     return executeCaseBody({

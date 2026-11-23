@@ -424,6 +424,7 @@ export function createRecordingAssertFacadeWithLocation(
         },
 
         async rejects(thunk, matcher, options) {
+            sink.assertRecording('start an asynchronous assertion');
             const metadata = assertAssertionMetadata(options, annotation, captureLocation);
             const promise = thunk();
             const pending = sink.recordPendingAssert();
@@ -455,6 +456,7 @@ export function createRecordingAssertFacadeWithLocation(
         },
 
         throws(body, matcher, options) {
+            sink.assertRecording('invoke an error assertion');
             const metadata = assertAssertionMetadata(options, annotation, captureLocation);
 
             const observation = observeThrow(body);

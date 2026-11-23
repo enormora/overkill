@@ -1,3 +1,5 @@
+import { sendWorkerLateAssertion } from './worker-pool-late-assertions.ts';
+import { withLateAssertionFallback } from '../engine/late-assertion-delivery.ts';
 import { withWorkerResourceChecks } from './resource-check-client.ts';
 import {
     prepareLocalOwnerResources,
@@ -243,7 +245,11 @@ async function runAssignments(
     const outputCapture = runtime.capture(task, wallClock);
 
     try {
-        return { results: await runAssignedUnits(task, wallClock, collectedPlan, runtime) };
+        return await withLateAssertionFallback(function forwardLateAssertion(error) {
+            sendWorkerLateAssertion(task.lifecycle.token, error);
+        }, async function executeAssignments() {
+            return { results: await runAssignedUnits(task, wallClock, collectedPlan, runtime) };
+        });
     } finally {
         outputCapture.restore();
     }

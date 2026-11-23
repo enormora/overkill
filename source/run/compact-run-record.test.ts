@@ -3,6 +3,9 @@ import { type TestScope, suite, test } from '@overkill-dev/test';
 import { completedHistoryRecord, historyWork } from '../test-support/history-record-fixture.ts';
 import { benchmarkHtmlFixture } from '../test-support/benchmark-html-fixture.ts';
 import { canonicalJson } from '../canonical-identity.ts';
+import { lateAssertionDiagnostic } from '../engine/assertion-lifetime.ts';
+import { runResultFactory } from '../test-support/run-result-factory.ts';
+import { serializeRunDiagnostics } from './run-record-result.ts';
 import type { BenchmarkExecutionResult } from '../engine/benchmark-result.ts';
 import type { CompactRunRecord } from './run-record-types.ts';
 import { compactRunRecord } from './compact-run-record.ts';
@@ -103,6 +106,29 @@ function benchmarkEvidence(): BenchmarkExecutionResult {
 }
 
 export const testNode = suite('compact run evidence', [
+    test('retains late assertion attribution in detailed and compact records', function (scope) {
+        const origin = { case: historyWork.case, work: historyWork, attempt: { index: 1 }, trial: null };
+        const diagnostic = lateAssertionDiagnostic({
+            kind: 'late-assertion-activity',
+            origin,
+            operation: 'record an assertion',
+            closure: 'settled'
+        }, 'Late assertion');
+        const run = runResultFactory.build();
+        const { runnerErrors } = serializeRunDiagnostics({ ...run, runnerErrors: [ diagnostic ] });
+        const original = completedHistoryRecord('late-assertion');
+        const detailed = historyRecordSchema.parse(JSON.parse(JSON.stringify({
+            ...original,
+            result: { ...original.result, status: 'failed', runnerErrors }
+        })));
+        const compact = historyRecordSchema.parse(JSON.parse(JSON.stringify(compactRunRecord(detailed))));
+
+        scope.assert.deepEqual<unknown, unknown>(detailed.result?.runnerErrors, runnerErrors);
+        scope.assert.deepEqual<unknown, unknown>(compact.result?.runnerErrors, runnerErrors);
+        scope.assert.equal(compact.result?.perTest[0]?.verdict, 'pass');
+        scope.assert.equal(compact.result?.status, 'failed');
+        return scope.assert.collect();
+    }),
     test('retains compiler preparation and assertion ownership', function (scope) {
         const original = completedHistoryRecord('original-source');
         const id = '@overkill-dev/type-test';

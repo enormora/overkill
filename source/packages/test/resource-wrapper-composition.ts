@@ -1,3 +1,4 @@
+import { runScopedAssertionBody } from '../../engine/assertion-body-scope.ts';
 import { withRunnerInfrastructure } from '../../execution-ownership.ts';
 import { attachmentsForProducer } from '../resources/attachment-context.entry-point.ts';
 import {
@@ -266,7 +267,9 @@ function resourceExecution(
         scope
     ) {
         if (lifecycle.steps.length === 0) {
-            return await invokeTestBody(composition.body, composeMappedOnlyScopes(scope, composedActions));
+            return await runScopedAssertionBody(scope, function runMappedBody() {
+                return invokeTestBody(composition.body, composeMappedOnlyScopes(scope, composedActions));
+            });
         }
 
         const session = await acquireCompositionSession(lifecycle.steps, scope.signal, lifecycle.messages);
@@ -279,7 +282,9 @@ function resourceExecution(
             await disposeCompositionSession(session, lifecycle.messages);
         });
 
-        return await invokeTestBody(composition.body, composeActionScopes(attachmentScope, composedActions, session));
+        return await runScopedAssertionBody(scope, function runResourceBody() {
+            return invokeTestBody(composition.body, composeActionScopes(attachmentScope, composedActions, session));
+        });
     };
     return lifecycle.steps.length > 0 ? attachResourceMetadata(body, composedActions) : body;
 }

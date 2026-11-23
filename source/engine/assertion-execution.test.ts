@@ -7,7 +7,9 @@ import type { FailedCheck, SourceLocation } from '../assertion-protocol/assertio
 import { unknownSourceLocation } from '../assertion-protocol/source-location.ts';
 import { serializeValue } from '../compare/serialized-value.ts';
 
-import type { AssertionTestFailure, FailOutcome, RunResult } from './run-result.ts';
+import { defineFixedReporter } from '../test-support/reporter-definition.ts';
+import type { DefinedReporter } from './reporter.ts';
+import type { AssertionTestFailure, FailOutcome, RunResult, RunnerError } from './run-result.ts';
 
 function firstFailOutcome(result: RunResult): FailOutcome | null {
     const firstResult = result.perTest.at(0);
@@ -19,7 +21,10 @@ function firstFailOutcome(result: RunResult): FailOutcome | null {
     return null;
 }
 
-async function executeSingleBody(body: EngineCaseBody): Promise<RunResult> {
+async function executeSingleBody(
+    body: EngineCaseBody,
+    reporters: readonly DefinedReporter[] = []
+): Promise<RunResult> {
     const engine = createEngine();
 
     return await engine.execute(
@@ -38,7 +43,15 @@ async function executeSingleBody(body: EngineCaseBody): Promise<RunResult> {
                 controls: {},
                 title: 'root'
             })
-        )
+        ),
+        {
+            debug: { mode: 'off' },
+            execution: { mode: 'serial-in-process' },
+            reporters,
+            retryPolicy: null,
+            runFacts: {},
+            startedAt: '1970-01-01T00:00:00.000Z'
+        }
     );
 }
 
@@ -72,6 +85,133 @@ function firstFailedCheck(outcome: FailOutcome): FailedCheck | null {
 }
 
 export const testNode = suite('Assertion execution', [
+    test('rejects a microtask queued before an async body returns', async function (scope: TestScope) {
+        let invoked = false;
+        const result = await executeSingleBody(async function body(testScope) {
+            await Promise.resolve();
+            testScope.assert.true(true);
+            queueMicrotask(function recordLateAssertion() {
+                try {
+                    testScope.assert.throws(function lateThunk() {
+                        invoked = true;
+                        throw new Error('late');
+                    }, { message: 'late' });
+                } catch {
+                }
+            });
+            return testScope.assert.collect();
+        });
+
+        const outcome = firstFailOutcome(result);
+        scope.require.notNull(outcome);
+        scope.assert.false(invoked);
+        scope.assert.partialDeepEqual<unknown, unknown>(outcome.failures[0], {
+            code: 'late-assertion-activity',
+            kind: 'test-contract'
+        });
+        return scope.assert.collect();
+    }),
+    test('retains a caught cleanup assertion as a contract failure', async function (scope: TestScope) {
+        const result = await executeSingleBody(function body(testScope) {
+            testScope.cleanup(function cleanUp() {
+                try {
+                    testScope.plan(1);
+                } catch {
+                }
+            });
+            testScope.assert.true(true);
+            return testScope.assert.collect();
+        });
+
+        const outcome = firstFailOutcome(result);
+        scope.require.notNull(outcome);
+        scope.assert.partialDeepEqual<unknown, unknown>(outcome.failures[0], {
+            code: 'late-assertion-activity',
+            kind: 'test-contract'
+        });
+        return scope.assert.collect();
+    }),
+    test('reports a late call after test-end without changing the published verdict', async function (scope) {
+        let escaped: (() => void) | null = null;
+        const observed: RunnerError[] = [];
+        const result = await executeSingleBody(function body(testScope) {
+            escaped = function recordLateAssertion() {
+                testScope.assert.true(true);
+            };
+            testScope.assert.true(true);
+            return testScope.assert.collect();
+        }, [ defineFixedReporter({
+            kind: 'real-time',
+            name: 'late assertion observer',
+            sinks: [ { kind: 'memory' } ],
+            dispose: null,
+            onFinish: null,
+            onEvent(event) {
+                if (event.kind === 'runner-error') {
+                    observed.push(event.error);
+                }
+                if (event.kind === 'test-end' && escaped !== null) {
+                    try {
+                        escaped();
+                    } catch {
+                    }
+                }
+            }
+        }) ]);
+
+        scope.assert.equal(result.status, 'failed');
+        scope.assert.equal(result.perTest[0]?.verdict, 'pass');
+        scope.assert.length(result.runnerErrors, 1);
+        scope.assert.deepEqual(observed, result.runnerErrors);
+        scope.assert.partialDeepEqual<unknown, unknown>(result.runnerErrors[0], {
+            subtype: 'attribution-drift',
+            cause: {
+                kind: 'late-assertion-activity',
+                origin: {
+                    case: result.perTest[0]?.id,
+                    work: result.perTest[0]?.workId,
+                    attempt: { index: 0 },
+                    trial: null
+                }
+            }
+        });
+        return scope.assert.collect();
+    }),
+    test('rejects a pending assertion that finishes during cleanup', async function (scope: TestScope) {
+        const gate = Promise.withResolvers<never>();
+        const result = await executeSingleBody(function body(testScope) {
+            testScope.assert.true(true);
+            const assertions = testScope.assert.collect();
+            const pending = testScope.assert.rejects(() => gate.promise, { message: 'application error' });
+            const observed = pending.catch(function observeLateRejection() {
+                return undefined;
+            });
+            testScope.cleanup(async function finishPendingAssertion() {
+                gate.reject(new Error('application error'));
+                await observed;
+            });
+            return assertions;
+        });
+
+        const outcome = firstFailOutcome(result);
+        scope.require.notNull(outcome);
+        scope.assert.partialDeepEqual<unknown, unknown>(outcome.failures[0], {
+            code: 'late-assertion-activity',
+            actual: { operation: 'finish an asynchronous assertion' }
+        });
+        return scope.assert.collect();
+    }),
+    test('keeps collecting snapshots until the body settles', async function (scope) {
+        const result = await executeSingleBody(function body(testScope) {
+            testScope.assert.true(true);
+            testScope.assert.collect();
+            testScope.assert.false(false);
+            return testScope.assert.collect();
+        });
+
+        scope.assert.equal(result.perTest[0]?.verdict, 'pass');
+        return scope.assert.collect();
+    }),
     test(
         'counts successful requirements once a returned assertion result exists',
         async function (scope) {

@@ -82,8 +82,8 @@ export async function observePropertyTrial<Value>(
     };
     try {
         const trial = propagateTrialWorkExhaustion(
-            await context.host.evaluateTrial(async function runCandidate(scope) {
-                return await invocation.test(value, {
+            await context.host.evaluateTrial(function runCandidate(scope) {
+                return invocation.test(value, {
                     ...scope,
                     reconstructInput: tracking.reconstruction.input,
                     inconclusive: tracking.reconstruction.inconclusive,

@@ -228,6 +228,10 @@ function nonRunnerFailedBody(input: FailedBodyInput): ExecutedBody {
     }
 
     if (isTestContractSignalError(error)) {
+        const failure = error.failure();
+        if (failure.code === 'late-assertion-activity' && !context.contractFailures.includes(failure)) {
+            return bodyErrorResult(context, error);
+        }
         return contractFailedBody(context, Array.from(new Set([ ...context.contractFailures, error.failure() ])));
     }
 

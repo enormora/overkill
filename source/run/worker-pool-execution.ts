@@ -1,3 +1,4 @@
+import { lateAssertionDiagnosticId } from '../engine/assertion-lifetime.ts';
 import { withReplayCancellation } from './replay-cancellation.ts';
 import {
     createStoredRunValue,
@@ -317,12 +318,24 @@ function handleHostRunnerErrors(
     hostRunnerErrors: HostRunnerErrors,
     context: TaskFailureContext
 ): boolean {
-    if (hostRunnerErrors.length === 0) {
+    const fatalErrors = hostRunnerErrors.filter(function recordLateDiagnostic(error) {
+        if (lateAssertionDiagnosticId(error) === null) {
+            return true;
+        }
+        context.runtime.runState.recordRunnerError(error);
+        context.runtime.reporterEvents.add((async function deliverDiagnostic() {
+            context.runtime.runState.recordRunnerErrors(
+                await context.runtime.reporterDelivery.reportEvent({ error, kind: 'runner-error' })
+            );
+        })());
+        return false;
+    });
+    if (fatalErrors.length === 0) {
         return false;
     }
 
     context.runtime.terminalFailure.write(true);
-    context.runtime.runState.recordRunnerErrors(hostRunnerErrors);
+    context.runtime.runState.recordRunnerErrors(fatalErrors);
     context.dispatcher.clear();
     stopWorkerPoolTasks(context.runtime, null, 'host-failure', 'Worker-pool host failed.');
 

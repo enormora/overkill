@@ -12,6 +12,7 @@ import {
 import type { TestBody, TestScope } from './test-scope.ts';
 import { CaseRunnerError, type PropertyCaseEvidence, type RunnerError } from './run-result.ts';
 import type { TestPlanCase } from './test-plan.ts';
+import type { PropertyTrialIdentity } from './assertion-lifetime.ts';
 import { createTestScopeLifecycle } from './test-scope-lifecycle.ts';
 
 type PropertyBoundaryContext = {
@@ -39,28 +40,52 @@ async function resolvePropertyBoundary(
     }
 }
 
-async function evaluatePropertyTrial(
-    testCase: TestPlanCase,
-    signal: AbortSignal,
-    body: TestBody,
-    seed: bigint
-): Promise<PropertyTrialResult> {
-    const recorder = createAssertionRecorder();
-    const lifecycle = createTestScopeLifecycle(recorder, { seed, work: testCase.workId });
-    const controller = new AbortController();
-    const trialSignal = AbortSignal.any([ signal, controller.signal ]);
-    const completion = await (async function runTrialBody() {
+type TrialExecution = {
+    readonly testCase: TestPlanCase;
+    readonly scope: TestScope;
+    readonly seed: bigint;
+    readonly owner: AssertionRecorder;
+};
+type TrialCompletion = { readonly kind: 'returned'; readonly value: AssertionResult; } |
+    { readonly kind: 'threw'; readonly error: unknown; };
+
+async function completeTrialBody(
+    run: () => Promise<AssertionResult>,
+    recorder: AssertionRecorder,
+    signals: Pick<TrialSignals, 'ownerInterruption' | 'cancellation'>
+): Promise<TrialCompletion> {
+    const { ownerInterruption, cancellation } = signals;
+    const interruption = AbortSignal.any([ ownerInterruption, cancellation ]);
+    const interrupted = Promise.withResolvers<TrialCompletion>();
+    function closeInterruptedTrial(): void {
+        recorder.close('interrupted');
+        interrupted.resolve({ kind: 'threw', error: interruption.reason });
+    }
+    if (interruption.aborted) {
+        closeInterruptedTrial();
+    }
+    interruption.addEventListener('abort', closeInterruptedTrial, { once: true });
+    const bodyCompletion = (async function runTrialBody() {
         try {
-            trialSignal.throwIfAborted();
-            return { kind: 'returned', value: await lifecycle.runBody(trialSignal, body) } as const;
+            interruption.throwIfAborted();
+            return { kind: 'returned', value: await run() } as const;
         } catch (error: unknown) {
             return { kind: 'threw', error } as const;
         }
     })();
-    const context = bodyResultContext(recorder, testCase, await lifecycle.finish(controller), []);
-    const result = completion.kind === 'returned'
-        ? completedBody({ assertionResult: completion.value, context })
-        : failedBody({ context, error: completion.error, testCase });
+    const completion = await Promise.race([ bodyCompletion, interrupted.promise ]);
+    interrupted.resolve(completion);
+    interruption.removeEventListener('abort', closeInterruptedTrial);
+    return completion;
+}
+
+
+type TrialSignals = {
+    readonly ownerInterruption: AbortSignal;
+    readonly cancellation: AbortSignal;
+};
+
+function finalizeTrial(result: ReturnType<typeof completedBody>, recorder: AssertionRecorder): PropertyTrialResult {
     const countFailure = recorder.validateAssertionCount(result.returnedAssertions.length);
     const unsuccessful = [
         result.contractFailures.length > 0,
@@ -73,6 +98,34 @@ async function evaluatePropertyTrial(
         countFailure === null || unsuccessful
             ? result
             : { ...result, contractFailures: [ ...result.contractFailures, countFailure ] }
+    );
+}
+
+async function evaluatePropertyTrial(
+    execution: TrialExecution,
+    body: TestBody,
+    identity: PropertyTrialIdentity,
+    cancellation: AbortSignal
+): Promise<PropertyTrialResult> {
+    const { testCase, scope, seed, owner } = execution;
+    const recorder = createAssertionRecorder({ ...owner.origin, trial: identity });
+    const lifecycle = createTestScopeLifecycle(recorder, { seed, work: testCase.workId });
+    const controller = new AbortController();
+    const trialSignal = AbortSignal.any([ scope.signal, cancellation, controller.signal ]);
+    const completion = await completeTrialBody(async function runTrial() {
+        trialSignal.throwIfAborted();
+        return await lifecycle.runBody(trialSignal, body);
+    }, recorder, { ownerInterruption: owner.interruption, cancellation });
+    const finished = await lifecycle.finish(controller);
+    await scope.yieldToNextTurn();
+    recorder.close('settled');
+    recorder.publish();
+    const context = bodyResultContext(recorder, testCase, finished, []);
+    return finalizeTrial(
+        completion.kind === 'returned'
+            ? completedBody({ assertionResult: completion.value, context })
+            : failedBody({ context, error: completion.error, testCase }),
+        recorder
     );
 }
 
@@ -99,12 +152,15 @@ function matchesReplayDeclaration(target: 'forall' | 'property-value', declarati
     return expected === declaration;
 }
 
-export async function runPropertyCaseBody(testCase: TestPlanCase, context: PropertyCaseBody): Promise<AssertionResult> {
+export function runPropertyCaseBody(
+    testCase: TestPlanCase,
+    context: PropertyCaseBody
+): AssertionResult | Promise<AssertionResult> {
     const { execution } = testCase;
     const { scope, body, recorder } = context;
     if (execution.kind !== 'body' || execution.bodyMode !== 'property' || execution.policy.kind !== 'resolved') {
         assertOrdinaryPropertyRun(context.run);
-        return await body(scope);
+        return body(scope);
     }
     const witness = propertyReplayWitness(context.run);
     if (witness !== null && !matchesReplayDeclaration(witness.target.kind, execution.definition.kind)) {
@@ -113,7 +169,8 @@ export async function runPropertyCaseBody(testCase: TestPlanCase, context: Prope
             cause: null
         });
     }
-    return await body(propertyScope(scope, {
+    let unlabelledTrial = 0;
+    return body(propertyScope(scope, {
         scope,
         policy: execution.policy.policy,
         ...context.run,
@@ -122,14 +179,20 @@ export async function runPropertyCaseBody(testCase: TestPlanCase, context: Prope
             recorder.recordPropertyEvidence(evidence);
             await context.onPropertyUpdate({ invocations: recorder.propertyEvidence() });
         },
-        async evaluateTrial(trial, signal) {
+        async evaluateTrial(...[ trial, signal, coordinate ]) {
+            recorder.assertRecording('start a property trial');
+            const identity: PropertyTrialIdentity = coordinate === undefined
+                ? { kind: 'unlabelled-trial', index: unlabelledTrial }
+                : { kind: 'property', ...coordinate };
+            if (coordinate === undefined) {
+                unlabelledTrial += 1;
+            }
             const result = await evaluatePropertyTrial(
-                testCase,
-                AbortSignal.any([ scope.signal, signal ]),
+                { testCase, scope, seed: context.run.seed, owner: recorder },
                 trial,
-                context.run.seed
+                identity,
+                signal
             );
-            await scope.yieldToNextTurn();
             return propertyTrialWithPolicyErrors(result, context.takeTrialErrors());
         },
         async recordBoundary(evaluate, signal) {
@@ -144,8 +207,8 @@ export async function runPropertyCaseBody(testCase: TestPlanCase, context: Prope
                 return assertion;
             } catch (error: unknown) {
                 if (isPropertyTermination(error) && error.result.contractFailures.length > 0) {
-                    recorder.retainContractFailures(error.result.contractFailures);
                     pending.discard();
+                    recorder.retainContractFailures(error.result.contractFailures);
                 }
                 throw error;
             }

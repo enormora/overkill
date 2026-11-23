@@ -19,6 +19,7 @@ import type { TestPlanCase, TestPlanCaseExecution } from './test-plan.ts';
 
 export type RunTestCaseOptions = CaseExecutionOptions & {
     readonly interruption: Promise<ExecutedCase> | null;
+    readonly assertionRecorder: AssertionRecorder | null;
 };
 
 function defaultRunTestCaseOptions(): RunTestCaseOptions {
@@ -37,7 +38,8 @@ function defaultRunTestCaseOptions(): RunTestCaseOptions {
         attempt: { index: 0 },
         controller,
         runtimePolicy: null,
-        interruption: null
+        interruption: null,
+        assertionRecorder: null
     };
 }
 
@@ -87,8 +89,13 @@ function completedCaseOutcome(
     generated: boolean
 ): Pick<PerTestResult, 'outcome' | 'verdict'> {
     const outcome = createBodyOutcome(recorder, body, terminal !== null || generated);
-    if (terminal !== null && (outcome === null || outcome.kind === 'pass')) {
-        return { outcome: terminal.result.outcome, verdict: terminal.result.verdict };
+    if (terminal !== null) {
+        if (outcome === null || outcome.kind === 'pass') {
+            return { outcome: terminal.result.outcome, verdict: terminal.result.verdict };
+        }
+        if (recorder.lateFailures().length > 0) {
+            return { outcome, verdict: terminal.result.verdict };
+        }
     }
     return { outcome, verdict: outcome === null ? 'runtime-policy' : verdictFromOutcome(outcome) };
 }
@@ -115,15 +122,25 @@ export async function runTestCase(
         );
     }
 
+    const recorder = options.assertionRecorder ?? createAssertionRecorder({
+        case: testCase.id,
+        work: testCase.workId,
+        attempt: options.attempt,
+        trial: null
+    });
     const execution = {
-        recorder: createAssertionRecorder(),
+        recorder,
         benchmark: createBenchmarkAttempt(testCase, options.onBenchmarkUpdate, options.benchmarkEnvironment),
-        interruption: createCaseInterruption(options.interruption)
+        interruption: createCaseInterruption(options.interruption, recorder)
     };
     const completed = await runCaseBody(testCase, execution.recorder, {
         ...options,
         interruption: execution.interruption
     }, execution.benchmark);
+    recorder.close('settled');
+    if (options.assertionRecorder === null) {
+        recorder.publish();
+    }
     const executedBody = { ...completed, runnerErrors: [ ...completed.runnerErrors, ...execution.benchmark.errors() ] };
     const completion = completedCaseOutcome(
         execution.recorder,

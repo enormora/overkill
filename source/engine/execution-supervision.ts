@@ -1,3 +1,4 @@
+import { createAssertionRecorder, type AssertionRecorder } from './assertion-recorder.ts';
 import type { Clock } from '@enormora/clock';
 import type { BenchmarkExecutionEnvironment } from './benchmark-environment.ts';
 import {
@@ -78,6 +79,7 @@ type CaseExecutionInput = {
 };
 
 type ActiveCaseInput = CaseExecutionInput & {
+    readonly assertionRecorder: AssertionRecorder;
     readonly benchmark: BenchmarkState;
     readonly completion: CaseCompletion;
     readonly controller: AbortController;
@@ -238,7 +240,8 @@ async function runTestCaseWithPolicy(
         attempt: input.attempt,
         controller: input.controller,
         runtimePolicy: input.dependencies.runtimePolicy ?? null,
-        interruption: input.completion.promise
+        interruption: input.completion.promise,
+        assertionRecorder: input.assertionRecorder
     });
 
     return casePolicyResult(
@@ -417,6 +420,7 @@ function registerActiveCase(input: ActiveCaseInput): SupervisedActiveCase {
         benchmark: input.benchmark,
         attempt: input.attempt,
         abort() {
+            input.assertionRecorder.close('interrupted');
             input.controller.abort();
         },
         completion: input.completion,
@@ -517,10 +521,17 @@ function registerCaseBodyInput(input: ActiveCaseInput, timeoutMilliseconds: numb
 }
 
 function createActiveCaseInput(
-    input: CaseExecutionInput
+    input: CaseExecutionInput,
+    assertionRecorder: AssertionRecorder | null
 ): ActiveCaseInput {
     return {
         ...input,
+        assertionRecorder: assertionRecorder ?? createAssertionRecorder({
+            case: input.testCase.id,
+            work: input.testCase.workId,
+            attempt: input.attempt,
+            trial: null
+        }),
         benchmark: createBenchmarkState(),
         completion: createCaseCompletion(),
         controller: new AbortController()
@@ -539,7 +550,10 @@ export function recordProcessUsageSample(input: ProcessUsageSampleInput): boolea
     return true;
 }
 
-export async function executeCaseBody(input: CaseExecutionInput): Promise<ConcurrentCase> {
+export async function executeCaseBody(
+    input: CaseExecutionInput,
+    assertionRecorder: AssertionRecorder | null = null
+): Promise<ConcurrentCase> {
     if (input.dependencies.globalErrorObserver.hasFatalError() || !input.supervision.acceptsNewCases()) {
         return createTerminalCase(input.testCase, input.supervision.closedBoundaryVerdict(), 0, null);
     }
@@ -553,8 +567,13 @@ export async function executeCaseBody(input: CaseExecutionInput): Promise<Concur
         return invalidTimeoutCase(input.testCase, timeoutResolution.failure);
     }
 
-    return await runCaseBodyUnderSupervision(registerCaseBodyInput(
-        createActiveCaseInput(input),
-        timeoutResolution.milliseconds
-    ));
+    const activeCase = createActiveCaseInput(input, assertionRecorder);
+    try {
+        return await runCaseBodyUnderSupervision(registerCaseBodyInput(activeCase, timeoutResolution.milliseconds));
+    } finally {
+        if (assertionRecorder === null) {
+            activeCase.assertionRecorder.close('settled');
+            activeCase.assertionRecorder.publish();
+        }
+    }
 }

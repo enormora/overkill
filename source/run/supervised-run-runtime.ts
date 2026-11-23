@@ -1,3 +1,4 @@
+import { retainUniqueLateAssertionDiagnostics } from '../engine/assertion-lifetime.ts';
 import { finalizedResourceCheckResult } from '../engine/resource-check-result.ts';
 import { workIdentityKey } from '../engine/identity.ts';
 import { completeAnalysisResults, reportInterruptedAnalysis } from './supervised-analysis-result.ts';
@@ -376,10 +377,10 @@ function handleCompletedResult(result: RunResult, runtime: SupervisedRunRuntime)
 
     runtime.completedResult.write({
         ...result,
-        runnerErrors: [
+        runnerErrors: retainUniqueLateAssertionDiagnostics([
             ...supervisorErrors,
             ...deduplicatedChildRuntimePolicyErrors(result.runnerErrors, supervisorErrors)
-        ]
+        ])
     });
 }
 
@@ -475,10 +476,10 @@ function selectRunResult(runtime: SupervisedRunRuntime, startedAtMicroseconds: n
     }
 
     const supervisorErrors = runtime.state.runnerErrors();
-    const runnerErrors = deduplicatedRuntimePolicyErrors([
+    const runnerErrors = retainUniqueLateAssertionDiagnostics(deduplicatedRuntimePolicyErrors([
         ...supervisorErrors,
         ...deduplicatedChildRuntimePolicyErrors(completedResult.runnerErrors, supervisorErrors)
-    ]);
+    ]));
 
     return {
         ...parentResult,

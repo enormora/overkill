@@ -1,3 +1,4 @@
+import { observeWorkerLateAssertions } from './worker-pool-late-assertions.ts';
 import { createClock } from '@enormora/clock';
 import type { RunnerError, RunProcessUsageTracker } from '../packages/engine/engine.entry-point.ts';
 import { createExecutionGlobalErrorObserver } from '../engine/execution-global-error-observer.ts';
@@ -99,6 +100,7 @@ const state: WorkerPoolHostState = {
     pool: createStoredValue<TinypoolInstance | null>(null),
     processUsageTracker: createStoredValue<RunProcessUsageTracker | null>(null)
 };
+const lateAssertionObservers = new Map<string, ReturnType<typeof observeWorkerLateAssertions>>();
 const fatalShutdownStarted = createStoredValue(false);
 
 function send(message: WorkerPoolHostMessage): void {
@@ -159,6 +161,17 @@ function taskWithHostPort(
 }
 
 async function runTask(command: Extract<WorkerPoolHostCommand, { readonly kind: 'run-task'; }>): Promise<void> {
+    if (command.task.kind === 'run' && !lateAssertionObservers.has(command.task.lifecycle.token)) {
+        lateAssertionObservers.set(
+            command.task.lifecycle.token,
+            observeWorkerLateAssertions(
+                command.task.lifecycle.token,
+                function forwardDiagnostic(error) {
+                    send({ kind: 'runner-error', error });
+                }
+            )
+        );
+    }
     const task = taskWithHostPort(command);
 
     try {
@@ -222,6 +235,8 @@ async function destroy(): Promise<void> {
     state.pool.write(null);
     finishProcessUsageTracking();
     await poolToDestroy?.destroy();
+    await Promise.all(Array.from(lateAssertionObservers.values(), (observer) => observer.close()));
+    lateAssertionObservers.clear();
     globalErrorObserver.stop();
     send({ kind: 'destroyed' });
     await outbox.disconnect();
