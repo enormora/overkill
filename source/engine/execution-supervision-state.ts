@@ -53,6 +53,7 @@ export type ActiveCase = {
     readonly abort: () => void;
     readonly completion: CaseCompletion;
     readonly hardTimeout: ReturnType<Clock['setTimeout']> | null;
+    readonly interrupt: () => void;
     readonly startedAtMicroseconds: number;
     readonly testCase: TestPlanCase;
 };
