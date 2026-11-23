@@ -68,7 +68,7 @@ mutant against a one-line module.
 `just benchmark-mutation-cost` records source execution and campaign measurements
 in `target/mutation-cost/report.html`. Measurements include Stryker reload and
 worker replacement behavior; timings remain diagnostic. CI does not enforce a
-mutation-score or performance-regression gate for this repository.
+mutation-score or mutation-cost gate for this repository.
 
 Shared fixtures in `source/test-support` use the test-support lint preset,
 which permits fixture casts and literal sample data. Child fixtures with exact

@@ -1,0 +1,49 @@
+import { writeFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { defineReporter } from '@overkill-dev/engine';
+import { defineConfig } from '@overkill-dev/test/config';
+import { createBenchmarkHtmlReporter } from '@overkill-dev/test/reporters';
+
+const html = createBenchmarkHtmlReporter({ outputFile: 'report.html' });
+const evidence = defineReporter(function createPerformanceReporter(context) {
+    const reportFile = html(context);
+    let completedReport = null;
+    process.once('beforeExit', async function renderReport() {
+        if (completedReport === null) {
+            return;
+        }
+        try {
+            await reportFile.onResult(completedReport);
+        } catch (error) {
+            process.stderr.write(`Cannot render benchmark report: ${error.message}\n`);
+            process.exitCode = 2;
+        }
+    });
+    return {
+        kind: 'final-result',
+        name: 'performance-evidence',
+        sinks: [ { kind: 'file', path: resolve('measurements.json') } ],
+        dispose: null,
+        onResult(report) {
+            const { result } = report;
+            const entries = result.perTest.map(entry => ({ benchmark: entry.benchmark, verdict: entry.verdict }));
+            writeFileSync('measurements.json', JSON.stringify({
+                entries, errors: result.runnerErrors.map(error => error.message), status: result.status
+            }));
+            completedReport = report;
+        }
+    };
+});
+
+export const config = defineConfig({
+    runtimeStateDir: './state',
+    profiles: {
+        performance: {
+            testFamily: 'benchmark',
+            files: { include: [ 'performance-suite.mjs' ] },
+            execution: { processModel: 'worker-pool', scheduling: 'serial', maxWorkers: 1 },
+            timeouts: { collectionMilliseconds: 30000, softMilliseconds: 540000, hardMilliseconds: 600000 },
+            reporters: [ evidence ]
+        }
+    }
+});

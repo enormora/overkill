@@ -1,0 +1,290 @@
+import { readFile } from 'node:fs/promises';
+import { join } from 'node:path';
+import {
+    availableMetric, benchmark, calibratedMeasurement, cpuCalibration, defaultSamplingPolicy, moduleMeasurement,
+    processMeasurement, suite, timelineMeasurement, workload
+} from '@overkill-dev/test/bench';
+
+const settings = JSON.parse(await readFile(new URL('./measurement.json', import.meta.url), 'utf8'));
+const { mode, samples, cases, baseline, environment, launcher, startup, cli } = settings;
+const cliNodeArguments = [ '--permission-audit', '--allow-inspector', '--disable-warning=PERM0004' ];
+const commandMeasurement = processMeasurement({ instrumentation: 'off' });
+const terminalMeasurement = timelineMeasurement(processMeasurement({ instrumentation: 'node' }), { maximumEvents: 512 });
+const cpuTimingRule = { calibration: cpuCalibration(), scaling: 'proportional' };
+const budgetStatistic = mode === 'compare' ? { kind: 'quantile', probability: 0.5 } : { kind: 'observed-maximum' };
+const sampling = {
+    ...defaultSamplingPolicy,
+    minimumSamples: samples,
+    maximumSamples: samples,
+    relativePrecision: 0.25,
+    absolutePrecision: { retainedHeapBytes: 65536 }
+};
+const options = {
+    annotations: {},
+    controls: {},
+    sampling,
+    lifecycle: { warmupSamples: 1, cooldown: { mode: 'off' }, garbageCollection: 'off' }
+};
+
+function budgets(id, metrics) {
+    return Object.fromEntries(metrics.map(metric => {
+        const maximum = mode === 'compare' ? baseline[id]?.[metric] : Number.MAX_SAFE_INTEGER;
+        if (!Number.isFinite(maximum) || maximum < 0) {
+            throw new Error(`Missing reference threshold for ${id}/${metric}`);
+        }
+        return [ metric, { maximum, statistic: budgetStatistic } ];
+    }));
+}
+
+function performanceCase(id, kind, strategy, metrics, diagnosticMetrics, measure) {
+    const timings = [...metrics, ...diagnosticMetrics].filter(name => /(?:Micro|Milli)seconds$/u.test(name));
+    const measurement = timings.length === 0
+        ? strategy
+        : calibratedMeasurement(strategy, Object.fromEntries(timings.map(name => [ name, cpuTimingRule ])));
+    return benchmark(id, {
+        kind,
+        workloads: [ workload(id, {}) ],
+        measurement,
+        measure,
+        diagnosticMetrics,
+        budgets: { [id]: budgets(id, metrics) }
+    }, options);
+}
+
+function command(sample, args, cwd) {
+    return sample.process({
+        command: args,
+        cwd,
+        env: environment,
+        io: { kind: 'pipes' },
+        completion: { kind: 'exit', readiness: null, steps: [], expectedExitCodes: [ 0, 1, 2, 3 ] }
+    });
+}
+
+function commandOutput(result, expectedCode) {
+    const { output } = result.value;
+    if (output.kind !== 'pipes' || output.stdout.truncated || output.stderr.truncated) {
+        throw new Error('Incomplete command output');
+    }
+    if (result.value.completion.code !== expectedCode) {
+        throw new Error(`Command failed with exit code ${result.value.completion.code}: ${output.stdout.text}\n${output.stderr.text}`);
+    }
+    return output;
+}
+
+function readUsage(stderr) {
+    const marker = 'overkill-command-usage ';
+    const lines = stderr.split('\n').filter(line => line.startsWith(marker));
+    if (lines.length !== 1) {
+        throw new Error(`Expected one command usage record. Received ${stderr}`);
+    }
+    const usage = JSON.parse(lines[0].slice(marker.length));
+    for (const field of [ 'wallMicroseconds', 'userMicroseconds', 'systemMicroseconds', 'peakResidentBytes' ]) {
+        if (!Number.isSafeInteger(usage[field]) || usage[field] < 0) {
+            throw new Error(`Invalid command usage field ${field}`);
+        }
+    }
+    return usage;
+}
+
+function reading(value, unit, collector = 'reaped-command-usage-v1') {
+    return availableMetric(value, { collector, scope: 'custom', unit });
+}
+
+function cliCommand(spec) {
+    if (spec.workload === 'run-coverage') {
+        return [ 'run', '--coverage' ];
+    }
+    if (spec.workload === 'run-timings') {
+        return [ 'run', '--timings' ];
+    }
+    if (spec.workload === 'list-filtered') {
+        return [ 'list', '--title', 'case 0' ];
+    }
+    if (spec.workload === 'list-with-locations') {
+        return [ 'list', '--with-locations' ];
+    }
+    if (spec.workload === 'list') {
+        return [ 'list' ];
+    }
+    return spec.family === 'benchmark' ? [ 'bench', 'run' ] : [ 'run' ];
+}
+
+function verifyCommandOutput(spec, output) {
+    if (spec.workload.startsWith('list')) {
+        const filtered = spec.workload === 'list-filtered';
+        const expectedCases = spec.files * spec.suitesPerFile * (filtered ? 1 : spec.casesPerSuite);
+        const cases = output.stdout.text.split('\n').map(line => line.trim())
+            .filter(line => /^case \d+(?: \(.*\))?$/u.test(line));
+        if (cases.length !== expectedCases || filtered && cases.some(line => line !== 'case 0')) {
+            throw new Error(`Unexpected list output for ${spec.id}: ${output.stdout.text}`);
+        }
+        if (spec.workload === 'list-with-locations' && cases.some(line => !/\.mjs:\d+:\d+\)$/u.test(line))) {
+            throw new Error('List output omitted case locations');
+        }
+        return;
+    }
+
+    const reporting = spec.workload.startsWith('report-');
+    const evidence = reporting ? output.stderr.text : output.stdout.text;
+    if (evidence.split('\n').filter(line => line === 'overkill-work-complete').length !== 1) {
+        throw new Error(`Missing workload validation for ${spec.id}: ${output.stdout.text}\n${output.stderr.text}`);
+    }
+    if (reporting) {
+        validateReporterOutput(spec, output.stdout.text);
+    }
+}
+
+function validateReporterOutput(spec, stdout) {
+    const caseCount = spec.files * spec.suitesPerFile * spec.casesPerSuite;
+    const lines = stdout.split('\n');
+    const valid = {
+        'report-quiet': () => stdout === '',
+        'report-line': () => lines.filter(line => /\] case \d+ \(/u.test(line)).length === caseCount,
+        'report-dot': () => lines.includes('✔'.repeat(caseCount)),
+        'report-brief': () => lines.some(line => line.startsWith('done status=passed ')),
+        'report-line-failure': () => /replace .*expected .*writer.*actual .*reader/u.test(stdout),
+        'report-github-failure': () => lines.some(line => line.startsWith('::error '))
+    };
+    if (!valid[spec.workload]()) {
+        throw new Error('Unexpected reporter output for ' + spec.id + ': ' + stdout);
+    }
+}
+
+function cliArguments(spec) {
+    return [ ...cliNodeArguments, cli, ...cliCommand(spec),
+        '--config', 'consumer-config.mjs', '--profile', 'measured', '--seed', '42', '--order', 'lexical' ];
+}
+
+function terminalMarker(text) {
+    return { stream: 'terminal', text };
+}
+
+function terminalCase(spec) {
+    const caseCount = spec.files * spec.suitesPerFile * spec.casesPerSuite;
+    const dot = spec.workload === 'report-dot-pty';
+    const columns = dot ? 24 : 80;
+    const firstProgress = dot ? '✔' : '] 1/' + caseCount + ' failed=0';
+    const laterProgress = dot ? '✔'.repeat(columns) : '] ' + caseCount + '/' + caseCount + ' failed=0';
+    const metrics = [ 'startupMilliseconds', 'durationMicroseconds', 'processCpuTotalMicroseconds',
+        'processMaximumResidentSetBytes' ];
+    const diagnostics = [ 'firstOutputMilliseconds', 'outputBytes' ];
+    return performanceCase(spec.id, 'runtime', terminalMeasurement, metrics, diagnostics,
+        async function measureTerminal({ sample }) {
+            const result = await sample.process({
+                command: [ process.execPath, ...cliArguments(spec) ],
+                cwd: spec.directory,
+                env: { ...environment, NO_COLOR: '1' },
+                io: { kind: 'pty', name: 'xterm-256color', columns, rows: 24 },
+                completion: {
+                    kind: 'exit',
+                    readiness: terminalMarker(firstProgress),
+                    steps: [ { kind: 'expect', marker: terminalMarker(laterProgress) } ],
+                    expectedExitCodes: [ 0 ]
+                }
+            });
+            verifyTerminalOutput(result.value.output, dot, caseCount, columns);
+            return Object.fromEntries([...metrics, ...diagnostics].map(metric => [ metric, result.metrics[metric] ]));
+        });
+}
+
+function verifyTerminalOutput(output, dot, caseCount, columns) {
+    if (output.kind !== 'terminal' || output.terminal.truncated) {
+        throw new Error('Incomplete terminal output');
+    }
+    const text = output.terminal.text.replaceAll('\r\n', '\n');
+    if (text.split('\n').filter(line => line === 'overkill-work-complete').length !== 1) {
+        throw new Error('Missing terminal workload validation: ' + text);
+    }
+    if (dot) {
+        const expectedMarks = '✔'.repeat(columns) + '\n' + '✔'.repeat(caseCount - columns) + '\n';
+        if (!text.includes(expectedMarks)) {
+            throw new Error('Dot reporter did not wrap at the PTY width: ' + text);
+        }
+    } else if (!/\u001b\[2K/u.test(text)) {
+        throw new Error('Line progress reporter did not erase and redraw its status: ' + text);
+    }
+}
+
+function executionCase(spec) {
+    if (spec.terminal) {
+        return terminalCase(spec);
+    }
+    const { id, route, directory } = spec;
+    const repeated = spec.workload === 'repeated';
+    const resident = spec.workload === 'resident';
+    const metrics = resident ? [ 'sampledResidentBytes' ] : [ 'wallMicroseconds', 'cpuMicroseconds', 'peakResidentBytes' ];
+    if (repeated) {
+        metrics.push('warmWallMicroseconds', 'warmCpuMicroseconds', 'retainedHeapBytes');
+    }
+    return performanceCase(id, 'runtime', commandMeasurement, metrics, resident ? [] : [ 'userMicroseconds', 'systemMicroseconds', 'stdoutBytes' ],
+        async function measureExecution({ sample }) {
+            const args = route === 'cli'
+                ? cliArguments(spec)
+                : [ '--disable-warning=PERM0004', ...repeated ? [ '--expose-gc' ] : [], join(directory, 'consumer-driver.mjs') ];
+            const result = await command(sample, [ launcher, ...resident ? [ '--sample-resident' ] : [], process.execPath, ...args ], directory);
+            const expectedCode = spec.workload.endsWith('-failure') ? 1 : 0;
+            const output = commandOutput(result, expectedCode);
+            verifyCommandOutput(spec, output);
+            const usage = readUsage(output.stderr.text);
+            if (resident) {
+                if (!Number.isSafeInteger(usage.sampledResidentBytes) || usage.sampledResidentBytes <= 0) {
+                    throw new Error('Invalid sampled resident set size');
+                }
+                return { sampledResidentBytes: reading(usage.sampledResidentBytes, 'bytes', 'sampled-process-tree-rss-v1') };
+            }
+            const measured = {
+                wallMicroseconds: reading(usage.wallMicroseconds, 'microseconds'),
+                cpuMicroseconds: reading(usage.userMicroseconds + usage.systemMicroseconds, 'microseconds'),
+                peakResidentBytes: reading(usage.peakResidentBytes, 'bytes'),
+                userMicroseconds: reading(usage.userMicroseconds, 'microseconds'),
+                systemMicroseconds: reading(usage.systemMicroseconds, 'microseconds'),
+                stdoutBytes: reading(output.stdout.bytes, 'bytes', 'process-output-v1')
+            };
+            if (!repeated) {
+                return measured;
+            }
+            const warm = /^overkill-warm-batch (\d+) (\d+) (\d+)$/mu.exec(output.stdout.text);
+            if (warm === null) {
+                throw new Error('Missing warm execution observation');
+            }
+            return {
+                ...measured,
+                warmWallMicroseconds: reading(Number(warm[1]), 'microseconds', 'warm-engine-batch-v1'),
+                warmCpuMicroseconds: reading(Number(warm[2]), 'microseconds', 'warm-engine-batch-v1'),
+                retainedHeapBytes: reading(Number(warm[3]), 'bytes', 'post-gc-heap-growth-v1')
+            };
+        });
+}
+
+const startupNodes = [
+    performanceCase('root-import', 'startup', moduleMeasurement(),
+        [ 'durationMicroseconds' ], [ 'processStartupMilliseconds' ], async function measureImport({ sample }) {
+            const { metrics } = await sample.importModule({
+                url: new URL(startup.rootImport), cwd: startup.directory, env: environment, nodeArguments: []
+            });
+            return {
+                durationMicroseconds: metrics.durationMicroseconds,
+                processStartupMilliseconds: metrics.processStartupMilliseconds
+            };
+        }),
+    performanceCase('microtest-cli-startup', 'startup', commandMeasurement, [ 'durationMicroseconds' ],
+        [ 'firstOutputMilliseconds' ], async function measureStartup({ sample }) {
+            const result = await command(sample, [
+                process.execPath, ...cliNodeArguments, cli, 'run', '--config', 'overkill.config.mjs', '--seed', '42', '--order', 'lexical'
+            ], startup.directory);
+            const output = commandOutput(result, 0);
+            if (!/Run passed · 1 passed ·/u.test(output.stdout.text)) {
+                throw new Error(`Expected one passing microtest: ${output.stdout.text}\n${output.stderr.text}`);
+            }
+            return {
+                durationMicroseconds: result.metrics.durationMicroseconds,
+                firstOutputMilliseconds: result.metrics.firstOutputMilliseconds
+            };
+        })
+];
+
+export const testNode = suite('Overkill performance', [
+    ...startupNodes.filter(node => settings.startupIds.includes(node.title)),
+    ...cases.map(executionCase)
+]);

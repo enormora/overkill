@@ -1,0 +1,78 @@
+import { readFile } from 'node:fs/promises';
+import { ok } from 'node:assert/strict';
+import { defineReporter } from '@overkill-dev/engine';
+import { defineConfig } from '@overkill-dev/test/config';
+import { printCompletion } from './consumer-evidence.mjs';
+
+const definition = JSON.parse(await readFile(new URL('./definition.json', import.meta.url), 'utf8'));
+const { execution, expected, family, files, route, workload } = definition;
+const reporting = workload.startsWith('report-');
+
+const completionReporter = defineReporter(() => ({
+    name: 'performance-work-completion',
+    kind: 'final-result',
+    sinks: [ { kind: reporting ? 'stderr-raw' : 'stdout-raw' } ],
+    dispose: null,
+    onResult({ result, context }) {
+        if (workload === 'run-timings') {
+            ok(result.timings.precise?.spans.length > 0, 'Expected precise timing spans');
+        }
+        if (workload === 'run-coverage') {
+            const coverage = result.artifacts.find(artifact => artifact.payload.kind === 'coverage')?.payload;
+            ok(coverage?.summary.functions.covered > 0, 'Expected covered functions');
+            ok(coverage.reports.some(report => report.format === 'lcov'), 'Expected an LCOV report');
+        }
+        printCompletion(result, expected, context.facts, reporting ? process.stderr : process.stdout);
+    }
+}));
+
+async function reportingPolicy() {
+    if (!reporting || workload === 'report-quiet') {
+        return { reporters: [] };
+    }
+    const {
+        createBriefReporter, createDotReporter, createGithubActionsOutputRenderer,
+        createLineProgressReporter, createLineReporter
+    } = await import('@overkill-dev/test/reporters');
+    if (workload === 'report-github-failure') {
+        return { reporters: [ createBriefReporter() ], outputRenderer: createGithubActionsOutputRenderer() };
+    }
+    const createReporter = {
+        'report-brief': createBriefReporter,
+        'report-dot': createDotReporter,
+        'report-dot-pty': createDotReporter,
+        'report-line-progress-pty': createLineProgressReporter,
+        'report-line': createLineReporter,
+        'report-line-failure': createLineReporter
+    }[workload];
+    return { reporters: [ createReporter() ] };
+}
+
+const { reporters: selectedReporters, outputRenderer } = await reportingPolicy();
+const reporters = route === 'cli' ? [ ...selectedReporters, completionReporter ] : [];
+
+const testFamily = family === 'type-test' ? (await import('@overkill-dev/type-test')).family : family;
+const policy = {
+    runtimeStateDir: './state',
+    ...(outputRenderer === undefined ? {} : { outputRenderer }),
+    profiles: {
+        measured: {
+            testFamily,
+            execution,
+            ...family === 'type-test' ? {} : {
+                timeouts: { collectionMilliseconds: 60000, softMilliseconds: 12000, hardMilliseconds: 15000 }
+            },
+            files: execution.workDistribution?.mode === 'group'
+                ? { sets: { cases: { include: files } } }
+                : { include: workload.startsWith('list') ? [ 'file-*.mjs' ] : files },
+            ...workload === 'run-coverage' ? { coverage: {
+                sources: { mode: 'all', include: [ 'covered-operation.mjs' ], exclude: [] },
+                outputs: [ 'lcov' ], outputDir: 'coverage'
+            } } : {},
+            ...(family === 'type-test' ? { settings: definition.settings } : {}),
+            ...(reporters.length > 0 ? { reporters } : {})
+        }
+    }
+};
+
+export const config = defineConfig(policy);

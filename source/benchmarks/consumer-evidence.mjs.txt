@@ -1,0 +1,48 @@
+import { deepStrictEqual, equal } from 'node:assert/strict';
+
+export function verifyWork(result, expected, facts) {
+    const failed = expected.failed ?? 0;
+    const expectedStatus = failed === 0 ? 'passed' : 'failed';
+    if (result.runnerErrors.length !== 0 || result.status !== expectedStatus) {
+        const firstFailure = result.perTest.find(entry => entry.verdict !== 'pass');
+        throw new Error(JSON.stringify({
+            status: result.status,
+            errors: result.runnerErrors.map(error => error.message),
+            firstFailure: firstFailure?.outcome
+        }).slice(0, 2500));
+    }
+    equal(result.summary.planned, expected.cases);
+    equal(result.summary.passed, expected.cases - failed);
+    equal(result.summary.failed, failed);
+    if (expected.propertyTrials > 0) {
+        for (const entry of result.perTest) {
+            equal(entry.property?.invocations[0]?.summary.accounting.phases.exploration.executed, expected.propertyTrials);
+        }
+    }
+    if (expected.innerSamples > 0) {
+        for (const entry of result.perTest) {
+            equal(entry.benchmark?.status, 'complete');
+            equal(entry.benchmark?.samples, expected.innerSamples);
+        }
+    }
+    if (expected.policy !== null) {
+        const { execution } = facts;
+        deepStrictEqual(
+            [ execution.processModel, execution.scheduling ],
+            [ expected.policy.processModel, expected.policy.scheduling ]
+        );
+        if (expected.policy.processModel === 'worker-pool') {
+            deepStrictEqual(
+                [ execution.workDistribution.mode, execution.assignmentPolicy, execution.dispatchPolicy,
+                    execution.workerLifecycle, execution.hedging.mode, execution.hostProcess.kind ],
+                [ expected.policy.workDistribution.mode, expected.policy.assignmentPolicy, expected.policy.dispatchPolicy,
+                    expected.policy.workerLifecycle, expected.policy.hedging.mode, expected.hosted ? 'child' : 'direct' ]
+            );
+        }
+    }
+}
+
+export function printCompletion(result, expected, facts, stream = process.stdout) {
+    verifyWork(result, expected, facts);
+    stream.write('overkill-work-complete\n');
+}

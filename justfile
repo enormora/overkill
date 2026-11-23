@@ -63,3 +63,6 @@ publish-dry-run: _build-packages
 
 benchmark-mutation-cost: benchmark-html-browser
     overkill bench run --profile mutation-cost --seed 42 --order lexical
+
+benchmark mode="compare" output="target/performance/full" reference="source/benchmarks/baselines/shared.json" compiler="cc": _build-packages
+    node source/benchmarks/run-performance.ts {{mode}} "{{output}}" all "{{reference}}" "{{compiler}}"
