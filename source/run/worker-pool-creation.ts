@@ -80,7 +80,8 @@ async function createCachedWorkerEntryPoint(lifetime: AsyncDisposableStack): Pro
             `    const worker = await import(${JSON.stringify(workerPoolEntryPoint)});`,
             '    return await worker.runTask(task);',
             '}'
-        ].join('\n');
+        ]
+            .join('\n');
         await writeFile(entry, bootstrap);
         return entry;
     } catch {
