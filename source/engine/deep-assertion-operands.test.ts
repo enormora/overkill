@@ -61,6 +61,27 @@ function expectedInvalidDeepAssertionOperand(
 }
 
 export const testNode = suite('Deep assertion operands', [
+    test('retains invalid membership operands after mutation', async function (scope: TestScope) {
+        const result = await executeSingleBody(function body(testScope) {
+            const actual: unknown[] = [ 1 ];
+            testScope.assert.arrayContainsPartial(actual, { id: 1 });
+            actual[0] = { id: 1 };
+            return testScope.assert.collect();
+        });
+        const outcome = firstOutcome(result);
+        scope.require.defined(outcome);
+        scope.require(failOutcome, outcome);
+        scope.assert.deepEqual(
+            outcome.failures,
+            expectedInvalidDeepAssertionOperand({
+                check: 'array-contains-partial',
+                index: 0,
+                role: 'actual',
+                type: 'number'
+            })
+        );
+        return scope.assert.collect();
+    }),
     test(
         'rejects primitive facade deep assertion operands at runtime',
         async function (scope: TestScope) {

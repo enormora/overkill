@@ -22,7 +22,16 @@ import type { RunRecordResult } from './run-record-types.ts';
 
 function recordedCheck(check: FailedCheck, convert: (value: unknown) => SerializedValue): FailedCheck {
     if (check.kind === 'foreign') {
-        return { ...check, error: { ...check.error, thrown: convert(check.error.thrown) } };
+        const { message, name, stack, thrown } = check.error;
+        return {
+            ...check,
+            error: {
+                message,
+                name,
+                stack,
+                thrown: Object.hasOwn(check.error, 'thrownEncoding') ? thrown : convert(thrown)
+            }
+        };
     }
     if (check.kind === 'composite') {
         const [ first, ...remaining ] = check.children;

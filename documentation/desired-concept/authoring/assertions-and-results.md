@@ -34,9 +34,9 @@ assert-source node, whether it comes from `scope.assert.collect()` or is
 returned directly. Successful `require` entries count toward `plan(n)` only
 after a valid assert-source result exists.
 
-The engine normalizes these lazy assertion nodes into `TestOutcome`
-internally. Users usually collect builder assertions through the assertion
-context, while reporters and integrations consume structured outcomes.
+The engine normalizes recorded builder checks and evaluates directly returned
+lazy nodes to produce `TestOutcome`. Reporters and integrations consume the
+structured outcomes.
 
 Sources:
 
@@ -1086,7 +1086,11 @@ diagnostics without freezing or otherwise changing application objects.
 Truncated diagnostic serialization is not an operand snapshot suitable for
 comparison. Public low-level lazy protocol values retain their explicit
 evaluation contract; builder recording must preserve its assertion-time meaning
-before handing results to later outcome normalization.
+before handing results to later outcome normalization. In injected composites,
+each child observes its operands at its call or settlement. The parent
+captures its own diagnostic operands when the composite completes. Native
+regular-expression matches use the caller's current `lastIndex` without
+advancing it.
 
 #### Returned Assertion Ownership
 
@@ -1451,8 +1455,10 @@ Overkill assertion boundary:
 
 - success records one passed assertion boundary
 - failure records one `FailedCheck`
-- thrown foreign errors are normalized into Overkill's structured
-  diagnostics
+- injected bridges capture any thrown value as bounded structured diagnostics
+  at the child boundary. Live results identify the payload with
+  `error.thrownEncoding: 'serialized'`. Run records store the captured
+  `error.thrown` value directly.
 - source location points to the Overkill assertion boundary, not to the
   foreign assertion library internals
 

@@ -12,6 +12,10 @@ const thrownErrorSchema = z.strictObject({
     stack: z.string().nullable(),
     thrown: z.unknown()
 });
+const foreignErrorSchema = z.union([
+    thrownErrorSchema.extend({ thrown: serializedValueSchema, thrownEncoding: z.literal('serialized') }),
+    thrownErrorSchema
+]);
 const failedCheckSchema: z.ZodType<FailedCheck> = z.lazy(function () {
     const base = {
         actual: serializedValueSchema,
@@ -30,7 +34,7 @@ const failedCheckSchema: z.ZodType<FailedCheck> = z.lazy(function () {
             kind: z.literal('composite'),
             children: z.tuple([ failedCheckSchema ]).rest(failedCheckSchema)
         }),
-        z.strictObject({ ...base, kind: z.literal('foreign'), error: thrownErrorSchema, label: z.string() })
+        z.strictObject({ ...base, kind: z.literal('foreign'), error: foreignErrorSchema, label: z.string() })
     ]);
 });
 export const resourceCheckOwnerSchema = z.strictObject({

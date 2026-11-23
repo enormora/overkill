@@ -1,5 +1,5 @@
 import { defineCompositeAssertion } from '@overkill-dev/test/assert';
-import { suite, test } from '@overkill-dev/test';
+import { suite, test, type TestScope } from '@overkill-dev/test';
 
 import { P } from 'ts-pattern';
 import { createFactory } from '@enormora/objectory';
@@ -63,8 +63,12 @@ type ResultOk = {
 };
 
 const resultOk = defineSubjectCompositeAssertion({
-    assert(check, result: ResultOk) {
-        return check.true(result.ok);
+    async assert(check, result: ResultOk) {
+        const state = { ok: result.ok };
+        const initial = check.deepEqual(state, { ok: true });
+        await Promise.resolve();
+        state.ok = false;
+        return check.group([ initial, check.deepEqual(state, { ok: false }) ]);
     },
     name: 'resultOk'
 });
@@ -361,22 +365,25 @@ export const testNode = suite('Installed engine interoperability', [
         return scope.assert.collect();
     }),
     test(
-        'imports @overkill-dev/assert reference and executes it through @overkill-dev/engine',
-        async function (scope) {
-            const testCase = createTestCase({
+        'preserves packaged composite checks across operand mutation',
+        async function (scope: TestScope) {
+            const engine = createEngine();
+            const testCase = engine.createTestCase({
                 definitionLocations: [ { kind: 'unknown' } ],
-                body(testScope) {
-                    testScope.assert(resultOk, { ok: true });
+                async body(testScope) {
+                    await testScope.assert(resultOk, { ok: true });
                     return testScope.assert.collect();
                 },
                 annotations: {},
                 controls: {},
                 title: 'uses assert package'
             });
-            const result = await execute(createTestPlan(createSmokeRoot([ testCase ])));
+            const root = engine.createRoot({ children: [ testCase ], annotations: {}, controls: {}, title: 'root' });
+            const result = await engine.execute(engine.createTestPlan(root));
+            const outcome = result.perTest[0]?.outcome;
 
-            scope.assert.equal(result.summary.passed, 1);
-            scope.assert.equal(result.summary.failed, 0);
+            scope.require.defined(outcome);
+            scope.assert.deepEqual(outcome, { kind: 'pass' });
 
             return scope.assert.collect();
         }

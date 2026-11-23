@@ -25,6 +25,27 @@ async function closedInvocationFailure(forall: PropertyForall): Promise<unknown>
 }
 
 export const testNode = suite('property trial scopes', [
+    test('projects the assertion-time counterexample after a trial mutates its operand', async function (scope) {
+        const node = property({
+            title: 'mutable operand',
+            generator: gen.constant<number>(1),
+            test(value, sample) {
+                const actual = { count: value };
+                sample.assert.deepEqual(actual, { count: 2 });
+                actual.count = 2;
+                return sample.assert.collect();
+            }
+        });
+        const result = await executePropertyNode(node, propertyExecutionDefaults);
+        const outcome = result.perTest[0]?.outcome;
+        if (outcome?.kind !== 'fail' || outcome.failures[0].kind !== 'assertion') {
+            throw new Error('Expected the recorded counterexample to fail.');
+        }
+        const [ check ] = outcome.failures[0].checks;
+        scope.assert.includes(JSON.stringify(check.actual), '"value":1');
+        scope.assert.includes(JSON.stringify(check.expected), '"value":2');
+        return scope.assert.collect();
+    }),
     test('stops at a sample assertion-plan mismatch', async function (scope) {
         const values: number[] = [];
         const node = property({

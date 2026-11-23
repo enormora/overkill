@@ -435,6 +435,7 @@ export function createRecordingAssertFacadeWithLocation(
                 throw observation.value;
             }
 
+            sink.assertRecording('finish an asynchronous assertion');
             pending.resolve(createThrownMatcherAssertion({ kind: 'rejects', matcher, ...metadata, observation }));
         },
 

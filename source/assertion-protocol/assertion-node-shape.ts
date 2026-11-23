@@ -1,3 +1,4 @@
+import type { Except } from 'type-fest';
 import type { SerializedValue as SerializedValueDefinition } from '../compare/serialized-value.ts';
 import type { Diff, DiffPathSegment } from '../diff/diff-shape.ts';
 import type { ThrownErrorRecord } from './thrown-error-record.ts';
@@ -76,8 +77,13 @@ export type FailedCompositeCheck = FailedCheckBase & {
     readonly kind: 'composite';
 };
 
+type CapturedForeignError = Except<ThrownErrorRecord, 'thrown'> & {
+    readonly thrown: SerializedValue;
+    readonly thrownEncoding: 'serialized';
+};
+
 export type FailedForeignCheck = FailedCheckBase & {
-    readonly error: ThrownErrorRecord;
+    readonly error: CapturedForeignError | ThrownErrorRecord;
     readonly kind: 'foreign';
     readonly label: string;
 };
