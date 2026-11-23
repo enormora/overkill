@@ -263,7 +263,7 @@ export const testNode = suite('debug lifecycle', [
         scope.assert.equal(artifact.payload.timeline.at(-1)?.kind, 'body-end');
         return scope.assert.collect();
     }),
-    test('completed artifacts ignore late assertions and recording registrations', async function (scope) {
+    test('completed artifacts stay unchanged when late assertions reject', async function (scope) {
         const engine = createTestEngine();
         let late = function noLateWork(): void {
             return undefined;
@@ -278,13 +278,13 @@ export const testNode = suite('debug lifecycle', [
                     title: 'closed',
                     body(inner) {
                         late = function lateWork() {
-                            inner.assert.equal(2, 2);
                             inner.debug.includeRecording({
                                 name: 'late',
                                 recorded() {
                                     throw new Error('Must not read late providers.');
                                 }
                             });
+                            inner.assert.equal(2, 2);
                         };
                         inner.assert.equal(1, 1);
                         return inner.assert.collect();
@@ -294,7 +294,7 @@ export const testNode = suite('debug lifecycle', [
         }));
         const result = await engine.execute(plan, options);
         const encoded = JSON.stringify(artifactFrom(result));
-        late();
+        scope.assert.throws(late, { message: /assertion context settled/u });
         scope.assert.equal(JSON.stringify(artifactFrom(result)), encoded);
         return scope.assert.collect();
     })
