@@ -20,7 +20,8 @@ engine.createTestCase({...metadata,title:'fail',body(scope){
 }})
 ];`;
 
-const sharedCases = `function generic<T extends string>() {
+const sharedCases = `import {importedBody} from './dependency.ts';
+function generic<T extends string>() {
     return test('generic',scope=>{
         bodyCalls++;scope.assert(assignableTo<T,string>());return scope.assert.collect();
     });
@@ -32,11 +33,12 @@ const parameterized=defineParameterizedTestBody((scope,data:number)=>{
 const macro=defineMacro(()=>test('macro',scope=>{
     bodyCalls++;scope.assert(same<string,string>());return scope.assert.collect();
 }));
-const nodes=[generic<'literal'>(),macro(),test('parameterized',parameterized(1)),table({
-    title:'rows',cases:[1,2],test:scope=>{
+const nodes=[suite('outer',[suite('inner',[
+    generic<'literal'>(),macro(),test('parameterized',parameterized(1)),test('imported',importedBody),
+    table({title:'rows',cases:[1,2],test:scope=>{
         bodyCalls++;scope.assert(same<typeof scope.parameters,number>());return scope.assert.collect();
-    }
-})];`;
+    }})
+])])];`;
 
 const bindingCases = `const nodes=[test('bindings',scope=>{
     bodyCalls++;
@@ -306,8 +308,24 @@ test('excluded',scope=>{
     test('keeps shared table and generic macro evidence under original constraints', async function (scope) {
         const result = await runNativeProject(scope.cleanup, sharedCases, null);
         scope.assert.equal(result.status, 'passed', { message: result.errors.join('\n') });
-        scope.assert.equal(result.summary.passed, 5);
+        scope.assert.equal(result.summary.passed, 6);
         scope.assert.equal(result.bodyCalls, 0);
+        const evidence = result.checkerFacts?.compilers[0]?.evidence ?? [];
+        const imported = evidence
+            .filter(function importedSite(site) {
+                return site.path.endsWith('/dependency.ts');
+            })
+            .map(function location({ line, column, owners }) {
+                return {
+                    line,
+                    column,
+                    titles: owners.map(function (owner) {
+                        return owner.case.title;
+                    })
+                };
+            });
+        scope.assert.deepEqual(imported, [ { line: 7, column: 5, titles: [ 'imported' ] } ]);
+        scope.assert.equal(evidence.length, 5);
         return scope.assert.collect();
     }),
     test('supports type, expression, and negated relations', async function (scope) {

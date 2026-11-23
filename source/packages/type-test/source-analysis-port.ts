@@ -50,7 +50,7 @@ function symbolIdentities(program: SourceAnalysis['program']): WeakMap<SourceSym
     return symbols;
 }
 export function isSourceNode(input: TypeScript.Node | readonly TypeScript.Node[]): input is TypeScript.Node {
-    return Object.hasOwn(input, 'kind');
+    return !Array.isArray(input);
 }
 
 export function createSourceAnalysis<Symbol extends SourceSymbol>(input: SourceInput<Symbol>): SourceAnalysis {
