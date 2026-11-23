@@ -1,5 +1,6 @@
 import { AST_NODE_TYPES as NodeType, type TSESLint, type TSESTree as Tree } from '@typescript-eslint/utils';
 import { type BindingAnalysis, bindingAnalysis } from './binding-analysis.ts';
+import type { BindingOrigin } from './binding-origin.ts';
 
 type Author = 'suite' | 'test';
 
@@ -9,13 +10,17 @@ function isAuthor(name: string | undefined): name is Author {
     return name === 'suite' || name === 'test';
 }
 
-function aliasedAuthor(analysis: BindingAnalysis, identifier: Readonly<Tree.Identifier>): Author | null {
-    const origin = analysis.originOf(identifier);
+function authoringExport(origin: BindingOrigin | null): Author | null {
     if (origin?.root.kind !== 'import' || origin.root.source !== authoringModule || origin.path.length !== 1) {
         return null;
     }
     const [ author ] = origin.path;
-    return isAuthor(author) && author !== identifier.name ? author : null;
+    return isAuthor(author) ? author : null;
+}
+
+function aliasedAuthor(analysis: BindingAnalysis, identifier: Readonly<Tree.Identifier>): Author | null {
+    const author = authoringExport(analysis.originOf(identifier));
+    return author !== identifier.name ? author : null;
 }
 
 function renamedImport(node: Readonly<Tree.ImportSpecifier>): Author | null {
@@ -34,7 +39,7 @@ export const publishedAuthorNames: TSESLint.RuleModule<'alias'> = {
     },
     create(context) {
         const candidates: Readonly<Tree.Identifier>[] = [];
-        const reportedImports = new WeakSet<object>();
+        const reportedImports = new WeakSet<Readonly<Tree.Node>>();
         return {
             ...bindingAnalysis(context.sourceCode, function reportAliases(analysis) {
                 for (const identifier of candidates) {

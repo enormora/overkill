@@ -330,25 +330,32 @@ export const testNode = suite('static authoring binding analysis', [
     }),
     test('applies the repository author policy to imported and local aliases', function (scope) {
         const linter = new TSESLint.Linter();
-        const messages = linter.verify(`
+        const messages = linter.verify(
+            `
             import { test as renamed, suite } from '@overkill-dev/test';
             renamed('one', callback);
             const run = suite;
             run('two', []);
             { const run = unrelated; run(); }
             suite('three', []);
-        `, [ {
-            files: [ '**/*.ts' ],
-            languageOptions: { parser },
-            plugins: { fixture: { rules: { names: publishedAuthorNames } } },
-            rules: { 'fixture/names': 'error' }
-        } ], { filename: 'fixture.ts' });
-        scope.assert.deepEqual(messages.map(function (message) {
-            return [ message.line, message.message ];
-        }), [
-            [ 2, 'Use the published test author without an alias.' ],
-            [ 5, 'Use the published suite author without an alias.' ]
-        ]);
+        `,
+            [ {
+                files: [ '**/*.ts' ],
+                languageOptions: { parser },
+                plugins: { fixture: { rules: { names: publishedAuthorNames } } },
+                rules: { 'fixture/names': 'error' }
+            } ],
+            { filename: 'fixture.ts' }
+        );
+        scope.assert.deepEqual(
+            messages.map(function (message) {
+                return [ message.line, message.message ];
+            }),
+            [
+                [ 2, 'Use the published test author without an alias.' ],
+                [ 5, 'Use the published suite author without an alias.' ]
+            ]
+        );
         return scope.assert.collect();
     })
 ]);
