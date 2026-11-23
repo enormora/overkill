@@ -26,7 +26,7 @@
         "microtest-cli-one-serial": {
             "wallMicroseconds": 140,
             "cpuMicroseconds": 75,
-            "peakResidentBytes": 170000000
+            "peakResidentBytes": 180000000
         },
         "microtest-engine-many-suites-serial": {
             "wallMicroseconds": 40,
@@ -81,12 +81,12 @@
         "integration-runner-many-suites-serial": {
             "wallMicroseconds": 290,
             "cpuMicroseconds": 83,
-            "peakResidentBytes": 210000000
+            "peakResidentBytes": 220000000
         },
         "integration-cli-many-suites-serial": {
             "wallMicroseconds": 300,
             "cpuMicroseconds": 85,
-            "peakResidentBytes": 200000000
+            "peakResidentBytes": 210000000
         },
         "integration-engine-many-files-serial": {
             "wallMicroseconds": 130,
@@ -96,17 +96,17 @@
         "integration-runner-many-files-serial": {
             "wallMicroseconds": 330,
             "cpuMicroseconds": 89,
-            "peakResidentBytes": 210000000
+            "peakResidentBytes": 230000000
         },
         "integration-cli-many-files-serial": {
             "wallMicroseconds": 360,
             "cpuMicroseconds": 88,
-            "peakResidentBytes": 190000000
+            "peakResidentBytes": 200000000
         },
         "property-engine-one-serial": {
             "wallMicroseconds": 50,
             "cpuMicroseconds": 27,
-            "peakResidentBytes": 140000000
+            "peakResidentBytes": 150000000
         },
         "property-runner-one-serial": {
             "wallMicroseconds": 91,
@@ -116,7 +116,7 @@
         "property-cli-one-serial": {
             "wallMicroseconds": 58,
             "cpuMicroseconds": 82,
-            "peakResidentBytes": 170000000
+            "peakResidentBytes": 180000000
         },
         "property-engine-many-suites-serial": {
             "wallMicroseconds": 33,
@@ -131,7 +131,7 @@
         "property-cli-many-suites-serial": {
             "wallMicroseconds": 120,
             "cpuMicroseconds": 140,
-            "peakResidentBytes": 230000000
+            "peakResidentBytes": 240000000
         },
         "property-engine-many-files-serial": {
             "wallMicroseconds": 43,
@@ -151,52 +151,52 @@
         "type-test-engine-one-serial": {
             "wallMicroseconds": 150,
             "cpuMicroseconds": 230,
-            "peakResidentBytes": 510000000
+            "peakResidentBytes": 540000000
         },
         "type-test-runner-one-serial": {
             "wallMicroseconds": 310,
             "cpuMicroseconds": 510,
-            "peakResidentBytes": 520000000
+            "peakResidentBytes": 530000000
         },
         "type-test-cli-one-serial": {
             "wallMicroseconds": 380,
             "cpuMicroseconds": 570,
-            "peakResidentBytes": 510000000
+            "peakResidentBytes": 530000000
         },
         "type-test-engine-many-suites-serial": {
             "wallMicroseconds": 160,
             "cpuMicroseconds": 240,
-            "peakResidentBytes": 510000000
+            "peakResidentBytes": 540000000
         },
         "type-test-runner-many-suites-serial": {
             "wallMicroseconds": 340,
             "cpuMicroseconds": 550,
-            "peakResidentBytes": 520000000
+            "peakResidentBytes": 530000000
         },
         "type-test-cli-many-suites-serial": {
             "wallMicroseconds": 380,
             "cpuMicroseconds": 580,
-            "peakResidentBytes": 520000000
+            "peakResidentBytes": 530000000
         },
         "type-test-engine-many-files-serial": {
             "wallMicroseconds": 160,
             "cpuMicroseconds": 240,
-            "peakResidentBytes": 510000000
+            "peakResidentBytes": 530000000
         },
         "type-test-runner-many-files-serial": {
             "wallMicroseconds": 330,
             "cpuMicroseconds": 520,
-            "peakResidentBytes": 510000000
+            "peakResidentBytes": 530000000
         },
         "type-test-cli-many-files-serial": {
             "wallMicroseconds": 380,
             "cpuMicroseconds": 590,
-            "peakResidentBytes": 510000000
+            "peakResidentBytes": 530000000
         },
         "benchmark-engine-one-serial": {
             "wallMicroseconds": 23,
             "cpuMicroseconds": 31,
-            "peakResidentBytes": 150000000
+            "peakResidentBytes": 160000000
         },
         "benchmark-runner-one-serial": {
             "wallMicroseconds": 67,
@@ -216,12 +216,12 @@
         "benchmark-runner-many-suites-serial": {
             "wallMicroseconds": 62,
             "cpuMicroseconds": 86,
-            "peakResidentBytes": 200000000
+            "peakResidentBytes": 210000000
         },
         "benchmark-cli-many-suites-serial": {
             "wallMicroseconds": 64,
             "cpuMicroseconds": 87,
-            "peakResidentBytes": 190000000
+            "peakResidentBytes": 210000000
         },
         "benchmark-engine-many-files-serial": {
             "wallMicroseconds": 22,
@@ -231,12 +231,12 @@
         "benchmark-runner-many-files-serial": {
             "wallMicroseconds": 110,
             "cpuMicroseconds": 92,
-            "peakResidentBytes": 200000000
+            "peakResidentBytes": 210000000
         },
         "benchmark-cli-many-files-serial": {
             "wallMicroseconds": 77,
             "cpuMicroseconds": 93,
-            "peakResidentBytes": 200000000
+            "peakResidentBytes": 210000000
         },
         "microtest-runner-many-files-in-process-serial": {
             "wallMicroseconds": 36,
@@ -261,7 +261,7 @@
         "microtest-cli-many-files-in-process-serial": {
             "wallMicroseconds": 33,
             "cpuMicroseconds": 45,
-            "peakResidentBytes": 200000000
+            "peakResidentBytes": 210000000
         },
         "microtest-cli-many-files-in-process-concurrent": {
             "wallMicroseconds": 34,
@@ -296,17 +296,17 @@
         "property-runner-many-files-supervised-process-concurrent": {
             "wallMicroseconds": 81,
             "cpuMicroseconds": 130,
-            "peakResidentBytes": 230000000
+            "peakResidentBytes": 240000000
         },
         "property-cli-many-files-in-process-serial": {
             "wallMicroseconds": 51,
             "cpuMicroseconds": 67,
-            "peakResidentBytes": 240000000
+            "peakResidentBytes": 250000000
         },
         "property-cli-many-files-in-process-concurrent": {
             "wallMicroseconds": 48,
             "cpuMicroseconds": 64,
-            "peakResidentBytes": 240000000
+            "peakResidentBytes": 250000000
         },
         "property-cli-many-files-supervised-process-serial": {
             "wallMicroseconds": 120,
@@ -341,39 +341,39 @@
         "microtest-cli-many-files-report-line": {
             "wallMicroseconds": 31,
             "cpuMicroseconds": 44,
-            "peakResidentBytes": 200000000
+            "peakResidentBytes": 210000000
         },
         "microtest-cli-many-files-report-dot": {
             "wallMicroseconds": 35,
             "cpuMicroseconds": 48,
-            "peakResidentBytes": 200000000
+            "peakResidentBytes": 210000000
         },
         "microtest-cli-many-files-report-dot-pty": {
             "startupMilliseconds": 0.029,
             "durationMicroseconds": 33,
             "processCpuTotalMicroseconds": 45,
-            "processMaximumResidentSetBytes": 200000000
+            "processMaximumResidentSetBytes": 210000000
         },
         "microtest-cli-many-files-report-line-progress-pty": {
             "startupMilliseconds": 0.028,
             "durationMicroseconds": 32,
             "processCpuTotalMicroseconds": 44,
-            "processMaximumResidentSetBytes": 200000000
+            "processMaximumResidentSetBytes": 210000000
         },
         "microtest-cli-many-files-report-brief": {
             "wallMicroseconds": 33,
             "cpuMicroseconds": 45,
-            "peakResidentBytes": 200000000
+            "peakResidentBytes": 210000000
         },
         "microtest-cli-many-files-report-line-failure": {
             "wallMicroseconds": 51,
             "cpuMicroseconds": 50,
-            "peakResidentBytes": 200000000
+            "peakResidentBytes": 210000000
         },
         "microtest-cli-many-files-report-github-failure": {
             "wallMicroseconds": 35,
             "cpuMicroseconds": 48,
-            "peakResidentBytes": 200000000
+            "peakResidentBytes": 210000000
         },
         "microtest-cli-many-files-run-control": {
             "wallMicroseconds": 34,
@@ -383,45 +383,45 @@
         "microtest-cli-many-files-run-timings": {
             "wallMicroseconds": 35,
             "cpuMicroseconds": 47,
-            "peakResidentBytes": 200000000
+            "peakResidentBytes": 210000000
         },
         "microtest-cli-many-files-run-coverage": {
             "wallMicroseconds": 43,
             "cpuMicroseconds": 58,
-            "peakResidentBytes": 230000000
+            "peakResidentBytes": 240000000
         },
         "integration-runner-many-files-concurrent": {
             "wallMicroseconds": 55,
             "cpuMicroseconds": 79,
-            "peakResidentBytes": 210000000
+            "peakResidentBytes": 220000000
         },
         "integration-runner-many-files-pool-file-reuse": {
             "wallMicroseconds": 60,
             "cpuMicroseconds": 97,
-            "peakResidentBytes": 340000000
+            "peakResidentBytes": 350000000
         },
         "integration-runner-many-files-pool-resident-memory": {
-            "sampledResidentBytes": 810000000
+            "sampledResidentBytes": 820000000
         },
         "integration-cli-many-files-pool-file-fresh": {
             "wallMicroseconds": 190,
             "cpuMicroseconds": 230,
-            "peakResidentBytes": 310000000
+            "peakResidentBytes": 320000000
         },
         "integration-runner-many-files-pool-case-fresh": {
             "wallMicroseconds": 350,
             "cpuMicroseconds": 600,
-            "peakResidentBytes": 320000000
+            "peakResidentBytes": 330000000
         },
         "integration-runner-many-files-hosted-pool-group": {
             "wallMicroseconds": 130,
             "cpuMicroseconds": 190,
-            "peakResidentBytes": 220000000
+            "peakResidentBytes": 230000000
         },
         "integration-runner-many-files-pool-history-hedging": {
             "wallMicroseconds": 79,
             "cpuMicroseconds": 96,
-            "peakResidentBytes": 330000000
+            "peakResidentBytes": 340000000
         },
         "microtest-engine-many-files-warm-batch": {
             "wallMicroseconds": 40,
@@ -434,12 +434,12 @@
         "type-test-runner-many-files-in-process": {
             "wallMicroseconds": 190,
             "cpuMicroseconds": 280,
-            "peakResidentBytes": 510000000
+            "peakResidentBytes": 530000000
         },
         "type-test-cli-many-files-in-process": {
             "wallMicroseconds": 230,
             "cpuMicroseconds": 320,
-            "peakResidentBytes": 520000000
+            "peakResidentBytes": 530000000
         },
         "benchmark-runner-one-hosted-pool": {
             "wallMicroseconds": 64,
@@ -449,7 +449,7 @@
         "benchmark-cli-many-files-pool-artifact": {
             "wallMicroseconds": 83,
             "cpuMicroseconds": 110,
-            "peakResidentBytes": 260000000
+            "peakResidentBytes": 270000000
         }
     }
 }
