@@ -123,7 +123,7 @@ Benchmark profiles keep serial execution within each worker, `maxConcurrency: 1`
 and hedging off. Adaptive placement may use parallel worker lanes for eligible
 artifact-size measurements; all other measurements remain serial. Timeout
 defaults are collection 5000 ms, soft 40000 ms, and hard 60000 ms. Explicit
-policies may lower these limits; hard cannot exceed 60000 ms.
+policies may adjust these limits. The soft timeout must be at or below the hard timeout.
 
 It also confirms that Overkill should support:
 

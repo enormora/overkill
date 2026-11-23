@@ -186,7 +186,7 @@ function normalizeBenchmarkProfile(profile: ParsedBenchmarkProfile): BenchmarkPr
     const execution = normalizeBenchmarkExecution(profile.execution);
     const files = normalizeRequiredProfileFiles(profile.files);
 
-    validateBenchmarkExecution(execution, policy.timeouts);
+    validateBenchmarkExecution(execution);
     assertValidWorkDistribution(execution, files);
 
     return {
