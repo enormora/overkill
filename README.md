@@ -42,3 +42,10 @@ inconclusive rather than a consistency verdict.
 
 See the [package documentation](source/packages/linearizability/readme.md) for
 event logs, model transitions, and result semantics.
+
+## Type testing
+
+Install `@overkill-dev/type-test` and an explicit TypeScript compiler to assert
+type relationships in your original project. See the
+[package guide](source/packages/type-test/readme.md) for runner profiles, direct
+engine execution, and recorded replay.
