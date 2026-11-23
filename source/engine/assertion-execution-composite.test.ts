@@ -444,7 +444,7 @@ export const testNode = suite('Composite assertion execution', [
                 if (child.check !== 'true') {
                     throw new Error('Expected a recorded true assertion.');
                 }
-                const invoke = async function () {
+                const invoke = async function (): Promise<void> {
                     if (asynchronous) {
                         await body.assert(borrowChildAsync, child);
                     } else {
