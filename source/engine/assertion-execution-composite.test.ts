@@ -412,9 +412,12 @@ export const testNode = suite('Composite assertion execution', [
         });
         const outcome = firstFailOutcome(result);
         scope.require.notNull(outcome);
-        scope.assert.deepEqual(outcome.failures.map(function (failure) {
-            return failure.kind === 'test-contract' ? [ failure.code, failure.actual ] : failure.kind;
-        }), [ [ 'invalid-returned-builder-assertion', 'child-reuse' ] ]);
+        scope.assert.deepEqual(
+            outcome.failures.map(function (failure) {
+                return failure.kind === 'test-contract' ? [ failure.code, failure.actual ] : failure.kind;
+            }),
+            [ [ 'invalid-returned-builder-assertion', 'child-reuse' ] ]
+        );
         return scope.assert.collect();
     }),
     test('retains child reuse failures from sync and async custom assertions', async function (scope: TestScope) {
@@ -428,12 +431,23 @@ export const testNode = suite('Composite assertion execution', [
                 const borrowChild = defineCompositeAssertion({
                     name: 'borrowed child',
                     assert() {
-                        return asynchronous ? Promise.resolve(child) : child;
+                        return child;
+                    }
+                });
+                const borrowChildAsync = defineCompositeAssertion({
+                    name: 'borrowed async child',
+                    async assert() {
+                        return Promise.resolve(child);
                     }
                 });
                 requireEngineCompositeReference(borrowChild);
+                requireEngineCompositeReference(borrowChildAsync);
                 try {
-                    await body.assert(borrowChild);
+                    if (asynchronous) {
+                        await body.assert(borrowChildAsync);
+                    } else {
+                        body.assert(borrowChild);
+                    }
                 } catch (error: unknown) {
                     body.assert.instanceOf(error, Error);
                 }
@@ -441,9 +455,12 @@ export const testNode = suite('Composite assertion execution', [
             });
             const outcome = firstFailOutcome(result);
             scope.require.notNull(outcome);
-            scope.assert.deepEqual(outcome.failures.map(function (failure) {
-                return failure.kind === 'test-contract' ? [ failure.code, failure.actual ] : failure.kind;
-            }), [ [ 'invalid-returned-builder-assertion', 'child-reuse' ] ]);
+            scope.assert.deepEqual(
+                outcome.failures.map(function (failure) {
+                    return failure.kind === 'test-contract' ? [ failure.code, failure.actual ] : failure.kind;
+                }),
+                [ [ 'invalid-returned-builder-assertion', 'child-reuse' ] ]
+            );
         }
         return scope.assert.collect();
     }),

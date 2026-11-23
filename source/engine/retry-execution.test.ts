@@ -293,9 +293,9 @@ export const testNode = suite('Retry execution', [
         return scope.assert.collect();
     }),
     test('rejects a builder node returned by an earlier retry attempt', async function (scope) {
-        let previous: AssertAssertionNode | undefined;
+        let previous: AssertAssertionNode | null = null;
         const result = await executeBody(function (attempt) {
-            if (previous !== undefined) {
+            if (previous !== null) {
                 return previous;
             }
             attempt.assert.true(true);

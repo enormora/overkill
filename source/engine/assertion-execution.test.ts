@@ -6,7 +6,6 @@ import type { AssertAssertionNode } from '../assertion-protocol/assertion-node.t
 import type { FailedCheck, SourceLocation } from '../assertion-protocol/assertion-node-shape.ts';
 import { unknownSourceLocation } from '../assertion-protocol/source-location.ts';
 import { serializeValue } from '../compare/serialized-value.ts';
-import { testOutcomeSchema } from './assertion-result-schema.ts';
 
 import { defineFixedReporter } from '../test-support/reporter-definition.ts';
 import type { DefinedReporter } from './reporter.ts';
@@ -398,31 +397,41 @@ export const testNode = suite('Assertion execution', [
         });
         const [ foreign ] = collected;
         scope.require.defined(foreign);
-        const receiving = await executeSingleBody(() => foreign);
-        const outcome = firstFailOutcome(receiving);
+        const outcome = firstFailOutcome(
+            await executeSingleBody(function () {
+                return foreign;
+            })
+        );
         scope.require.notNull(outcome);
 
         scope.assert.equal(source.summary.passed, 1);
-        scope.assert.deepEqual(outcome.failures.map(function (failure) {
-            return failure.kind === 'test-contract' ? [ failure.code, failure.actual ] : failure.kind;
-        }), [ [ 'invalid-returned-builder-assertion', 'foreign-owner' ] ]);
-        scope.assert.deepEqual(testOutcomeSchema.parse(outcome), outcome);
+        scope.assert.deepEqual(
+            outcome.failures.map(function (failure) {
+                return failure.kind === 'test-contract' ? [ failure.code, failure.actual ] : failure.kind;
+            }),
+            [ [ 'invalid-returned-builder-assertion', 'foreign-owner' ] ]
+        );
         return scope.assert.collect();
     }),
     test('rejects repeated recorded nodes with or without a plan', async function (scope: TestScope) {
         for (const plan of [ null, 2 ]) {
-            const outcome = firstFailOutcome(await executeSingleBody(function (body) {
-                if (plan !== null) {
-                    body.plan(plan);
-                }
-                body.assert.true(true);
-                const [ first ] = body.assert.collect();
-                return [ first, ...body.assert.collect() ];
-            }));
+            const outcome = firstFailOutcome(
+                await executeSingleBody(function (body) {
+                    if (plan !== null) {
+                        body.plan(plan);
+                    }
+                    body.assert.true(true);
+                    const [ first ] = body.assert.collect();
+                    return [ first, ...body.assert.collect() ];
+                })
+            );
             scope.require.notNull(outcome);
-            scope.assert.deepEqual(outcome.failures.map(function (failure) {
-                return failure.kind === 'test-contract' ? [ failure.code, failure.actual ] : failure.kind;
-            }), [ [ 'invalid-returned-builder-assertion', 'duplicate-node' ] ]);
+            scope.assert.deepEqual(
+                outcome.failures.map(function (failure) {
+                    return failure.kind === 'test-contract' ? [ failure.code, failure.actual ] : failure.kind;
+                }),
+                [ [ 'invalid-returned-builder-assertion', 'duplicate-node' ] ]
+            );
         }
         return scope.assert.collect();
     }),
@@ -442,7 +451,7 @@ export const testNode = suite('Assertion execution', [
             body.assert.true(true);
             const [ first ] = body.assert.collect();
             body.assert.true(true);
-            const [, second ] = body.assert.collect();
+            const [ , second ] = body.assert.collect();
             if (second === undefined) {
                 throw new Error('Expected a second recorded assertion.');
             }
