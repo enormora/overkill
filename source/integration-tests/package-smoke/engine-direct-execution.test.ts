@@ -1,5 +1,5 @@
 import { defineCompositeAssertion } from '@overkill-dev/test/assert';
-import { suite, test } from '@overkill-dev/test';
+import { suite, test, type TestScope } from '@overkill-dev/test';
 
 import { P } from 'ts-pattern';
 import { createFactory } from '@enormora/objectory';
@@ -366,7 +366,7 @@ export const testNode = suite('Installed engine interoperability', [
     }),
     test(
         'preserves packaged composite checks across operand mutation',
-        async function (scope) {
+        async function (scope: TestScope) {
             const engine = createEngine();
             const testCase = engine.createTestCase({
                 definitionLocations: [ { kind: 'unknown' } ],
