@@ -107,6 +107,20 @@ export const testNode = suite('compiler matrix evidence', [
             }),
             [ 'pass', 'inconclusive' ]
         );
+        scope.assert.deepEqual(
+            execution.result.perTest.map(function identity(result) {
+                return result.workId;
+            }),
+            plan.cases.map(function plannedWork(testCase) {
+                return testCase.workId;
+            })
+        );
+        scope.assert.deepEqual(
+            execution.result.perTest.map(function outcome(result) {
+                return result.outcome?.kind;
+            }),
+            [ 'pass', 'inconclusive' ]
+        );
         scope.assert.equal(execution.result.runnerErrors[0]?.message, 'Compiler project failed');
         scope.assert.deepEqual<unknown, unknown>(execution.facts, {
             version: 3,
