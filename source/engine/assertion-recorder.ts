@@ -44,7 +44,7 @@ export type AssertionRecorder = {
     readonly publish: () => void;
     readonly assertRecording: (operation: string) => void;
     readonly lateFailures: () => readonly TestContractFailure[];
-    readonly recordPropertyEvidence: (evidence: PropertyInvocationEvidence) => void;
+    readonly recordPropertyEvidence: (evidence: PropertyInvocationEvidence) => boolean;
     readonly propertyEvidence: () => readonly PropertyInvocationEvidence[];
     readonly activeRecordedAssertions: () => readonly AssertionNode[];
     readonly hasContractFailures: () => boolean;
@@ -250,10 +250,12 @@ function recordedAssertionNodes(records: readonly RecordedAssertion[]): readonly
     });
 }
 
-type AssertionContext = Pick<
-    AssertionRecorder,
-    'assertRecording' | 'close' | 'interruption' | 'lateFailures' | 'origin' | 'publish'
->;
+type AssertionContext =
+    & Pick<
+        AssertionRecorder,
+        'assertRecording' | 'close' | 'interruption' | 'lateFailures' | 'origin' | 'publish'
+    >
+    & { readonly acceptsPropertyEvidence: () => boolean; };
 
 function createAssertionContext(
     origin: AssertionOrigin,
@@ -286,6 +288,9 @@ function createAssertionContext(
         origin,
         interruption: interruption.signal,
         assertRecording,
+        acceptsPropertyEvidence() {
+            return state.kind === 'recording' || state.kind === 'closed' && state.closure === 'settled';
+        },
         lateFailures() {
             return lateFailures.slice();
         },
@@ -305,19 +310,19 @@ function createAssertionContext(
     };
 }
 
-type AssertionRecords = {
-    readonly builderAssertions: (AssertAssertionNode | typeof discardedAssertion | null)[];
-    readonly recordedAssertions: RecordedAssertion[];
-    readonly failures: Set<TestContractFailure>;
-};
+function createAssertionRecords() {
+    const builderAssertions: (AssertAssertionNode | typeof discardedAssertion | null)[] = [];
+    const recordedAssertions: RecordedAssertion[] = [];
+    const failures = new Set<TestContractFailure>();
+    return { builderAssertions, recordedAssertions, failures };
+}
 
 export function createAssertionRecorder(origin: AssertionOrigin): AssertionRecorder {
-    const records: AssertionRecords = { builderAssertions: [], recordedAssertions: [], failures: new Set() };
+    const records = createAssertionRecords();
     const property = createPropertyEvidenceRecorder();
     const lifetime = createAssertionContext(origin, function retainFailure(failure) {
         records.failures.add(failure);
     });
-    const { assertRecording } = lifetime;
     let failedRequireIndex: number | null = null;
     let plannedCount: number | null = null;
 
@@ -330,14 +335,14 @@ export function createAssertionRecorder(origin: AssertionOrigin): AssertionRecor
     }
 
     function failContract(failure: TestContractFailure): never {
-        assertRecording('record an assertion contract failure');
+        lifetime.assertRecording('record an assertion contract failure');
         const recorded = Object.freeze({ ...failure });
         records.failures.add(recorded);
         throw new TestContractSignalError(recorded, undefined);
     }
 
     function collect(): NonEmptyReadonlyArray<AssertAssertionNode> {
-        assertRecording('collect assertions');
+        lifetime.assertRecording('collect assertions');
         if (
             records.builderAssertions.every(function isDiscarded(assertion) {
                 return assertion === discardedAssertion;
@@ -382,8 +387,11 @@ export function createAssertionRecorder(origin: AssertionOrigin): AssertionRecor
     return {
         propertyEvidence: property.propertyEvidence,
         recordPropertyEvidence(evidence) {
-            assertRecording('record property evidence');
+            if (!lifetime.acceptsPropertyEvidence()) {
+                return false;
+            }
             property.recordPropertyEvidence(evidence);
+            return true;
         },
         ...lifetime,
         activeRecordedAssertions() {
@@ -417,7 +425,7 @@ export function createAssertionRecorder(origin: AssertionOrigin): AssertionRecor
         failContract,
 
         plan(count) {
-            assertRecording('set an assertion plan');
+            lifetime.assertRecording('set an assertion plan');
             if (
                 !Number.isSafeInteger(count) || count <= 0 || plannedCount !== null ||
                 records.recordedAssertions.length > 0
@@ -430,14 +438,14 @@ export function createAssertionRecorder(origin: AssertionOrigin): AssertionRecor
         },
 
         recordAssert(assertion) {
-            assertRecording('record an assertion');
+            lifetime.assertRecording('record an assertion');
             recordDebugAssertion(assertion);
             records.builderAssertions.push(assertion);
             records.recordedAssertions.push({ assertion, builderAssertion: assertion });
         },
 
         recordPendingAssert() {
-            assertRecording('start an asynchronous assertion');
+            lifetime.assertRecording('start an asynchronous assertion');
             recordDebugEntry('assert', null);
             const builderIndex = records.builderAssertions.length;
             const recordIndex = records.recordedAssertions.length;
@@ -447,11 +455,11 @@ export function createAssertionRecorder(origin: AssertionOrigin): AssertionRecor
 
             return {
                 discard() {
-                    assertRecording('discard an asynchronous assertion');
+                    lifetime.assertRecording('discard an asynchronous assertion');
                     records.builderAssertions[builderIndex] = discardedAssertion;
                 },
                 resolve(assertion) {
-                    assertRecording('finish an asynchronous assertion');
+                    lifetime.assertRecording('finish an asynchronous assertion');
                     records.builderAssertions[builderIndex] = assertion;
                     records.recordedAssertions[recordIndex] = { assertion, builderAssertion: assertion };
                 }
@@ -459,7 +467,7 @@ export function createAssertionRecorder(origin: AssertionOrigin): AssertionRecor
         },
 
         recordRequire(assertion) {
-            assertRecording('record a requirement');
+            lifetime.assertRecording('record a requirement');
             recordDebugAssertion(assertion);
             records.recordedAssertions.push({ assertion, builderAssertion: null });
 

@@ -27,7 +27,8 @@ import {
     createRunResourceRuntimePolicy,
     engineExecution,
     type RunRuntimePolicy,
-    runWithWorkerAttachments
+    runWithWorkerAttachments,
+    withSupervisedLateAssertionDelivery
 } from './run-support.ts';
 import {
     createSupervisedChildTestPlan,
@@ -39,8 +40,7 @@ import {
 import {
     createSupervisedChildExecute,
     createSupervisedResourceLifecycleTiming,
-    createSupervisedChildReporter,
-    withSupervisedLateAssertionDelivery
+    createSupervisedChildReporter
 } from './supervised-child-execution.ts';
 import {
     supervisedAssignedPlan,
@@ -320,7 +320,9 @@ async function run(
         assignment.attachmentEndpoint,
         null,
         async function executeAttachmentAssignment() {
-            return await withSupervisedLateAssertionDelivery(host, async function executeObservedAssignment() {
+            return await withSupervisedLateAssertionDelivery(function sendDiagnostic(error) {
+                host.send({ kind: 'event', event: { kind: 'runner-error', error } });
+            }, async function executeObservedAssignment() {
                 return await executeAssignment({
                     assignment,
                     collectedPlan: selected,

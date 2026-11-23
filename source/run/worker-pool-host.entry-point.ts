@@ -1,8 +1,7 @@
 import { createClock } from '@enormora/clock';
 import type { RunnerError, RunProcessUsageTracker } from '../packages/engine/engine.entry-point.ts';
 import { createExecutionGlobalErrorObserver } from '../engine/execution-global-error-observer.ts';
-import { observeWorkerLateAssertions, type WorkerLateAssertionObserver } from './worker-pool-late-assertions.ts';
-import { readHostCommand } from './worker-pool-host-transport.ts';
+import { createHostedLateAssertionDelivery, readHostCommand } from './worker-pool-host-transport.ts';
 import { createChildProcessOutbox } from './child-process-outbox.ts';
 import {
     createNodeProcessUsageTracker
@@ -100,12 +99,13 @@ const state: WorkerPoolHostState = {
     pool: createStoredValue<TinypoolInstance | null>(null),
     processUsageTracker: createStoredValue<RunProcessUsageTracker | null>(null)
 };
-const lateAssertionObservers = new Map<string, WorkerLateAssertionObserver>();
 const fatalShutdownStarted = createStoredValue(false);
 
 function send(message: WorkerPoolHostMessage): void {
     outbox.send(message);
 }
+
+const lateAssertionDelivery = createHostedLateAssertionDelivery(send);
 
 function portTransferList(
     port: Readonly<WorkerPoolMessageChannel['port']>
@@ -161,16 +161,8 @@ function taskWithHostPort(
 }
 
 async function runTask(command: Extract<WorkerPoolHostCommand, { readonly kind: 'run-task'; }>): Promise<void> {
-    if (command.task.kind === 'run' && !lateAssertionObservers.has(command.task.lifecycle.token)) {
-        lateAssertionObservers.set(
-            command.task.lifecycle.token,
-            observeWorkerLateAssertions(
-                command.task.lifecycle.token,
-                function forwardDiagnostic(error) {
-                    send({ kind: 'runner-error', error });
-                }
-            )
-        );
+    if (command.task.kind === 'run') {
+        lateAssertionDelivery.observe(command.task.lifecycle.token);
     }
     const task = taskWithHostPort(command);
 
@@ -235,10 +227,7 @@ async function destroy(): Promise<void> {
     state.pool.write(null);
     finishProcessUsageTracking();
     await poolToDestroy?.destroy();
-    await Promise.all(Array.from(lateAssertionObservers.values(), async function closeObserver(observer) {
-        await observer.close();
-    }));
-    lateAssertionObservers.clear();
+    await lateAssertionDelivery.close();
     globalErrorObserver.stop();
     send({ kind: 'destroyed' });
     await outbox.disconnect();

@@ -1,6 +1,6 @@
 import type { AssertionResult, AssertAssertionNode } from '../assertion-protocol/assertion-node.ts';
 import { isPropertyTermination } from './property-control-error.ts';
-import { classifyPropertyTrial, propertyTrialWithPolicyErrors } from './property-trial-outcome.ts';
+import { classifyPropertyTrialWithAssertionCount, propertyTrialWithPolicyErrors } from './property-trial-outcome.ts';
 import { createAssertionRecorder, type AssertionRecorder } from './assertion-recorder.ts';
 import { bodyResultContext, completedBody, failedBody } from './case-body-execution.ts';
 import {
@@ -12,8 +12,7 @@ import {
 import type { TestBody, TestScope } from './test-scope.ts';
 import { CaseRunnerError, type PropertyCaseEvidence, type RunnerError } from './run-result.ts';
 import type { TestPlanCase } from './test-plan.ts';
-import type { PropertyTrialIdentity } from './assertion-lifetime.ts';
-import { createTestScopeLifecycle } from './test-scope-lifecycle.ts';
+import { runInterruptibleScopeBody } from './test-scope-lifecycle.ts';
 
 type PropertyBoundaryContext = {
     readonly signal: AbortSignal;
@@ -46,60 +45,7 @@ type TrialExecution = {
     readonly seed: bigint;
     readonly owner: AssertionRecorder;
 };
-type TrialCompletion =
-    | { readonly kind: 'returned'; readonly value: AssertionResult; }
-    | { readonly kind: 'threw'; readonly error: unknown; };
-
-async function completeTrialBody(
-    run: () => Promise<AssertionResult>,
-    recorder: AssertionRecorder,
-    signals: Pick<TrialSignals, 'ownerInterruption' | 'cancellation'>
-): Promise<TrialCompletion> {
-    const { ownerInterruption, cancellation } = signals;
-    const interruption = AbortSignal.any([ ownerInterruption, cancellation ]);
-    const interrupted = Promise.withResolvers<TrialCompletion>();
-    function closeInterruptedTrial(): void {
-        recorder.close('interrupted');
-        interrupted.resolve({ kind: 'threw', error: interruption.reason });
-    }
-    if (interruption.aborted) {
-        closeInterruptedTrial();
-    }
-    interruption.addEventListener('abort', closeInterruptedTrial, { once: true });
-    const bodyCompletion = (async function runTrialBody() {
-        try {
-            interruption.throwIfAborted();
-            return { kind: 'returned', value: await run() } as const;
-        } catch (error: unknown) {
-            return { kind: 'threw', error } as const;
-        }
-    })();
-    const completion = await Promise.race([ bodyCompletion, interrupted.promise ]);
-    interrupted.resolve(completion);
-    interruption.removeEventListener('abort', closeInterruptedTrial);
-    return completion;
-}
-
-type TrialSignals = {
-    readonly ownerInterruption: AbortSignal;
-    readonly cancellation: AbortSignal;
-};
-
-function finalizeTrial(result: ReturnType<typeof completedBody>, recorder: AssertionRecorder): PropertyTrialResult {
-    const countFailure = recorder.validateAssertionCount(result.returnedAssertions.length);
-    const unsuccessful = [
-        result.contractFailures.length > 0,
-        result.inconclusiveReason !== null,
-        result.bodyError !== null,
-        result.requireFailed
-    ]
-        .includes(true);
-    return classifyPropertyTrial(
-        countFailure === null || unsuccessful
-            ? result
-            : { ...result, contractFailures: [ ...result.contractFailures, countFailure ] }
-    );
-}
+type PropertyTrialIdentity = NonNullable<AssertionRecorder['origin']['trial']>;
 
 async function evaluatePropertyTrial(
     execution: TrialExecution,
@@ -109,27 +55,20 @@ async function evaluatePropertyTrial(
 ): Promise<PropertyTrialResult> {
     const { testCase, scope, seed, owner } = execution;
     const recorder = createAssertionRecorder({ ...owner.origin, trial: identity });
-    const lifecycle = createTestScopeLifecycle(recorder, { seed, work: testCase.workId });
-    const controller = new AbortController();
-    const trialSignal = AbortSignal.any([ scope.signal, cancellation, controller.signal ]);
-    const completion = await completeTrialBody(
-        async function runTrial() {
-            trialSignal.throwIfAborted();
-            return await lifecycle.runBody(trialSignal, body);
-        },
-        recorder,
-        { ownerInterruption: owner.interruption, cancellation }
-    );
-    const finished = await lifecycle.finish(controller);
-    await scope.yieldToNextTurn();
+    const { cleanup, completion } = await runInterruptibleScopeBody(recorder, { seed, work: testCase.workId }, body, {
+        parent: scope.signal,
+        cancellation,
+        ownerInterruption: owner.interruption,
+        afterCleanup: scope.yieldToNextTurn
+    });
     recorder.close('settled');
     recorder.publish();
-    const context = bodyResultContext(recorder, testCase, finished, []);
-    return finalizeTrial(
+    const context = bodyResultContext(recorder, testCase, cleanup, []);
+    return classifyPropertyTrialWithAssertionCount(
         completion.kind === 'returned'
             ? completedBody({ assertionResult: completion.value, context })
             : failedBody({ context, error: completion.error, testCase }),
-        recorder
+        recorder.validateAssertionCount
     );
 }
 
@@ -180,8 +119,9 @@ export function runPropertyCaseBody(
         ...context.run,
         workId: testCase.workId,
         async recordEvidence(evidence) {
-            recorder.recordPropertyEvidence(evidence);
-            await context.onPropertyUpdate({ invocations: recorder.propertyEvidence() });
+            if (recorder.recordPropertyEvidence(evidence)) {
+                await context.onPropertyUpdate({ invocations: recorder.propertyEvidence() });
+            }
         },
         async evaluateTrial(...[ trial, signal, coordinate ]) {
             recorder.assertRecording('start a property trial');
@@ -207,10 +147,14 @@ export function runPropertyCaseBody(
                     caseSignal: scope.signal,
                     locations: testCase.definitionLocations
                 });
+                recorder.interruption.throwIfAborted();
                 pending.resolve(assertion);
                 return assertion;
             } catch (error: unknown) {
-                if (isPropertyTermination(error) && error.result.contractFailures.length > 0) {
+                if (
+                    isPropertyTermination(error) && error.result.contractFailures.length > 0 &&
+                    !recorder.interruption.aborted
+                ) {
                     pending.discard();
                     recorder.retainContractFailures(error.result.contractFailures);
                 }

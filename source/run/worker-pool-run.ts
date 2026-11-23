@@ -239,7 +239,7 @@ async function executeWorkerPoolRunWithoutAttachments(
     await runtime.reporterEvents.wait();
     return appendNewLateAssertions(result, [
         ...runtime.runState.runnerErrors(),
-        ...(runtime.pool.takeHostRunnerErrors?.() ?? [])
+        ...runtime.pool.takeHostRunnerErrors?.() ?? []
     ]);
 }
 
@@ -302,7 +302,7 @@ function createHostedCommandPool(
     dependencies: RunOrchestratorDependencies,
     timing: RunTimingMeasurement | null
 ): CreatedWorkerPool | null {
-    const timingOption = timing === null ? {} : { timing: timing };
+    const timingOption = timing === null ? {} : { timing };
     const poolOptions = {
         cwd: command.cwd,
         hostProcess: command.hostProcess,

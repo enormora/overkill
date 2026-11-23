@@ -28,13 +28,14 @@ async function executeShrinkDeadline(timeoutPolicy: NonNullable<ExecuteOptions['
             return 100;
         } ],
         test(value, sample) {
+            sample.assert.fail({ message: 'original failure before deadline' });
+            const assertions = sample.assert.collect();
             if (value === 0) {
                 clock.advanceByMilliseconds(
                     Math.min(timeoutPolicy.timeoutMilliseconds, timeoutPolicy.hardTimeoutMilliseconds)
                 );
             }
-            sample.assert.fail({ message: 'original failure before deadline' });
-            return sample.assert.collect();
+            return assertions;
         }
     });
     const plan = resolveTestPlanCollectionPolicy(
@@ -87,6 +88,7 @@ export const testNode = suite('shrink lifecycle', [
             JSON.stringify(serializeValue(100))
         );
         scope.assert.includes(JSON.stringify(result.runnerErrors), 'hard-timeout');
+        scope.assert.false(JSON.stringify(result.runnerErrors).includes('late-assertion-activity'));
         return scope.assert.collect();
     }),
     test('retains matching evidence alongside the native soft timeout', async function (scope) {

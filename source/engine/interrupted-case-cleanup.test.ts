@@ -134,6 +134,17 @@ const cleanupRemainsPending = defineCompositeAssertion({
     }
 });
 
+function prepareScopeLifecycle() {
+    const work = {
+        familyVariant: null,
+        case: { file: null, suite: [], title: 'case', params: null },
+        runtimes: [],
+        workload: null
+    };
+    const recorder = createAssertionRecorder({ case: work.case, work, attempt: { index: 0 }, trial: null });
+    return createTestScopeLifecycle(recorder, { seed: 0n, work });
+}
+
 export const testNode = suite('interrupted case cleanup', [
     test('closes assertions before the interruption signal is delivered', async function (scope) {
         const gate = Promise.withResolvers<undefined>();
@@ -301,14 +312,7 @@ export const testNode = suite('interrupted case cleanup', [
         'concurrent finalization waits for the same cleanup and retains its failures',
         async function (scope) {
             const state = { gate: Promise.withResolvers<undefined>(), controller: new AbortController(), cleanups: 0 };
-            const work = {
-                familyVariant: null,
-                case: { file: null, suite: [], title: 'case', params: null },
-                runtimes: [],
-                workload: null
-            };
-            const recorder = createAssertionRecorder({ case: work.case, work, attempt: { index: 0 }, trial: null });
-            const lifecycle = createTestScopeLifecycle(recorder, { seed: 0n, work });
+            const lifecycle = prepareScopeLifecycle();
             lifecycle.createScope(state.controller.signal).cleanup(async function pendingCleanup() {
                 state.cleanups += 1;
                 await state.gate.promise;

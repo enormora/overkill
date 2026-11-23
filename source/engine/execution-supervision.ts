@@ -78,10 +78,8 @@ type CaseExecutionInput = {
     readonly timeoutPolicy: ExecuteTimeoutPolicy | null | undefined;
 };
 
-type AssertionRecorder = NonNullable<RunTestCaseOptions['assertionRecorder']>;
-
 type ActiveCaseInput = CaseExecutionInput & {
-    readonly assertionRecorder: AssertionRecorder;
+    readonly assertionRecorder: NonNullable<RunTestCaseOptions['assertionRecorder']>;
     readonly benchmark: BenchmarkState;
     readonly completion: CaseCompletion;
     readonly controller: AbortController;
@@ -143,10 +141,6 @@ function failCase(
         durationMicroseconds
     }, { index: 0 });
 }
-function timeoutControlValue(testCase: TestPlanCase): unknown {
-    return testCase.controls.timeoutMilliseconds;
-}
-
 function isPositiveSafeInteger(value: unknown): value is number {
     return typeof value === 'number' && Number.isSafeInteger(value) && value > 0;
 }
@@ -159,7 +153,7 @@ function resolveSoftTimeout(
         return { kind: 'milliseconds', milliseconds: null };
     }
 
-    const controlTimeout = timeoutControlValue(testCase);
+    const controlTimeout = testCase.controls.timeoutMilliseconds;
 
     if (controlTimeout === null) {
         return { kind: 'milliseconds', milliseconds: policy.timeoutMilliseconds };
@@ -536,7 +530,7 @@ export function recordProcessUsageSample(input: ProcessUsageSampleInput): boolea
 
 export async function executeCaseBody(
     input: CaseExecutionInput,
-    assertionRecorder: AssertionRecorder | null = null
+    assertionRecorder: RunTestCaseOptions['assertionRecorder'] = null
 ): Promise<ConcurrentCase> {
     if (input.dependencies.globalErrorObserver.hasFatalError() || !input.supervision.acceptsNewCases()) {
         return createTerminalCase(input.testCase, input.supervision.closedBoundaryVerdict(), 0, null);

@@ -1,6 +1,6 @@
-import { randomUUID } from 'node:crypto';
 import { types } from 'node:util';
 import { promiseHooks } from 'node:v8';
+import { threadId } from 'node:worker_threads';
 import { createStoredValue } from '../stored-value.ts';
 import { attachAssertionBodyExecutor } from '../execution-ownership.ts';
 import type { AttemptId, CaseId, WorkId } from './identity.ts';
@@ -52,7 +52,7 @@ function observeSettlement(): SettlementObservation {
     });
 
     return {
-        invoke(body) {
+        invoke<Value>(body: AssertionBody<Value>): Promise<Value> | Value {
             invoking += 1;
             try {
                 return body();
@@ -97,8 +97,11 @@ export async function withAssertionSettlement<Value>(run: () => Promise<Value>):
 
 function invokeBody<Value>(body: AssertionBody<Value>, close: () => void): Promise<Value> | Value {
     const observation = settlement.read();
+    const execute = observation === null ? body : function executeObservedBody(): Promise<Value> | Value {
+        return observation.invoke(body);
+    };
     try {
-        return observation === null ? body() : observation.invoke(body);
+        return execute();
     } catch (error: unknown) {
         close();
         throw error;
@@ -146,12 +149,21 @@ export function lateAssertionFailure(activity: LateAssertionActivity): TestContr
     });
 }
 
+const diagnosticSequenceKey = Symbol.for('@overkill-dev/late-assertion-sequence/v1');
+
+function nextDiagnosticId(): string {
+    const previous: unknown = Reflect.get(globalThis, diagnosticSequenceKey);
+    const sequence = typeof previous === 'bigint' ? previous + 1n : 0n;
+    Reflect.set(globalThis, diagnosticSequenceKey, sequence);
+    return `${process.pid}:${threadId}:${sequence}`;
+}
+
 export function lateAssertionDiagnostic(activity: LateAssertionActivity, message: string): RunnerError {
     return {
         attributedTo: null,
         attributedToAttempt: null,
         attributedToWork: null,
-        cause: { ...activity, id: randomUUID() },
+        cause: { ...activity, id: nextDiagnosticId() },
         diagnostics: [ { label: 'assertion origin', value: JSON.stringify(activity.origin) } ],
         message,
         subtype: 'attribution-drift'

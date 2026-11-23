@@ -157,24 +157,29 @@ function resultWithOpaqueEvidence(): RunResult {
     };
 }
 
+function retainedLateAssertion() {
+    const origin = { case: historyWork.case, work: historyWork, attempt: { index: 1 }, trial: null };
+    const diagnostic = lateAssertionDiagnostic({
+        kind: 'late-assertion-activity',
+        origin,
+        operation: 'record an assertion',
+        closure: 'settled'
+    }, 'Late assertion');
+    const run = runResultFactory.build();
+    const { runnerErrors } = serializeRunDiagnostics({ ...run, runnerErrors: [ diagnostic ] });
+    const original = completedHistoryRecord('late-assertion');
+    const detailed = historyRecordSchema.parse(JSON.parse(canonicalJson({
+        ...original,
+        result: { ...original.result, status: 'failed', runnerErrors }
+    })));
+    const compact = historyRecordSchema.parse(JSON.parse(canonicalJson(compactRunRecord(detailed))));
+
+    return { detailed, compact, runnerErrors };
+}
+
 export const testNode = suite('Run record result', [
     test('retains late assertion attribution in detailed and compact records', function (scope) {
-        const origin = { case: historyWork.case, work: historyWork, attempt: { index: 1 }, trial: null };
-        const diagnostic = lateAssertionDiagnostic({
-            kind: 'late-assertion-activity',
-            origin,
-            operation: 'record an assertion',
-            closure: 'settled'
-        }, 'Late assertion');
-        const run = runResultFactory.build();
-        const { runnerErrors } = serializeRunDiagnostics({ ...run, runnerErrors: [ diagnostic ] });
-        const original = completedHistoryRecord('late-assertion');
-        const detailed = historyRecordSchema.parse(JSON.parse(canonicalJson({
-            ...original,
-            result: { ...original.result, status: 'failed', runnerErrors }
-        })));
-        const compact = historyRecordSchema.parse(JSON.parse(canonicalJson(compactRunRecord(detailed))));
-
+        const { detailed, compact, runnerErrors } = retainedLateAssertion();
         scope.assert.deepEqual<unknown, unknown>(detailed.result?.runnerErrors, runnerErrors);
         scope.assert.deepEqual<unknown, unknown>(compact.result?.runnerErrors, runnerErrors);
         scope.assert.equal(compact.result?.perTest[0]?.verdict, 'pass');

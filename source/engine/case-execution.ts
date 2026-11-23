@@ -1,5 +1,4 @@
 import type { Clock } from '@enormora/clock';
-import type { AttemptId } from './identity.ts';
 import { runCaseBody } from './case-body.ts';
 import type { CaseExecutionOptions } from './case-execution-context.ts';
 import type { ExecutedBody } from './body-result.ts';
@@ -114,13 +113,16 @@ function caseBodyMode(execution: TestPlanCaseExecution): string {
     return execution.bodyMode;
 }
 
-export function createCaseAssertionRecorder(testCase: TestPlanCase, attempt: AttemptId): AssertionRecorder {
+export function createCaseAssertionRecorder(
+    testCase: TestPlanCase,
+    attempt: RunTestCaseOptions['attempt']
+): AssertionRecorder {
     return createAssertionRecorder({ case: testCase.id, work: testCase.workId, attempt, trial: null });
 }
 
 export async function withCaseAssertionRecorder<Value>(
     testCase: TestPlanCase,
-    attempt: AttemptId,
+    attempt: RunTestCaseOptions['attempt'],
     recorder: AssertionRecorder | null,
     run: (active: AssertionRecorder) => Promise<Value>
 ): Promise<Value> {
@@ -134,33 +136,6 @@ export async function withCaseAssertionRecorder<Value>(
         owned.close('settled');
         owned.publish();
     }
-}
-
-export async function runTestCase(
-    testCase: TestPlanCase,
-    wallClock: Clock,
-    options: RunTestCaseOptions = defaultRunTestCaseOptions()
-): Promise<ExecutedCase> {
-    const startedAtMicroseconds = Number(wallClock.currentMonotonicMicroseconds);
-
-    if (testCase.execution.kind === 'skip') {
-        return skippedCase(
-            testCase,
-            testCase.execution.reason,
-            Number(wallClock.currentMonotonicMicroseconds) - startedAtMicroseconds
-        );
-    }
-
-    return await withCaseAssertionRecorder(
-        testCase,
-        options.attempt,
-        options.assertionRecorder,
-        async function run(recorder) {
-            return await executeTestBody(testCase, options, recorder, function measureExecution() {
-                return Number(wallClock.currentMonotonicMicroseconds) - startedAtMicroseconds;
-            });
-        }
-    );
 }
 
 async function executeTestBody(
@@ -203,4 +178,31 @@ async function executeTestBody(
         runnerErrors: executedBody.runnerErrors,
         durationMicroseconds
     };
+}
+
+export async function runTestCase(
+    testCase: TestPlanCase,
+    wallClock: Clock,
+    options: RunTestCaseOptions = defaultRunTestCaseOptions()
+): Promise<ExecutedCase> {
+    const startedAtMicroseconds = Number(wallClock.currentMonotonicMicroseconds);
+
+    if (testCase.execution.kind === 'skip') {
+        return skippedCase(
+            testCase,
+            testCase.execution.reason,
+            Number(wallClock.currentMonotonicMicroseconds) - startedAtMicroseconds
+        );
+    }
+
+    return await withCaseAssertionRecorder(
+        testCase,
+        options.attempt,
+        options.assertionRecorder,
+        async function run(recorder) {
+            return await executeTestBody(testCase, options, recorder, function measureExecution() {
+                return Number(wallClock.currentMonotonicMicroseconds) - startedAtMicroseconds;
+            });
+        }
+    );
 }

@@ -52,18 +52,14 @@ export function propertyReplayWitness(context: PropertyRunContext): PropertyWitn
     return hasPropertyReplay(context) ? context.replay : corpusReplayWitness(propertyCorpusSnapshot(context));
 }
 
-export type PropertyTrialCoordinate = {
+type PropertyTrialCoordinate = {
     readonly invocation: string;
     readonly position: PropertyTrialPosition;
 };
 
-type PropertyTrialArguments =
-    | readonly [
-        body: TestBody,
-        signal: AbortSignal,
-        coordinate: PropertyTrialCoordinate
-    ]
-    | readonly [body: TestBody, signal: AbortSignal];
+type CoordinatedTrial = readonly [body: TestBody, signal: AbortSignal, coordinate: PropertyTrialCoordinate];
+type UnlabelledTrial = readonly [body: TestBody, signal: AbortSignal];
+type PropertyTrialArguments = CoordinatedTrial | UnlabelledTrial;
 
 type EvaluatePropertyTrial = (...input: PropertyTrialArguments) => Promise<PropertyTrialResult>;
 

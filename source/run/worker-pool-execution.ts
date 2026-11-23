@@ -1,8 +1,8 @@
-import { lateAssertionDiagnosticId } from '../engine/assertion-lifetime.ts';
 import { withReplayCancellation } from './replay-cancellation.ts';
 import {
     createStoredRunValue,
     createSupervisedRunState,
+    isLateAssertionDiagnostic,
     type StoredRunValue
 } from './supervised-run-state.ts';
 import type {
@@ -40,6 +40,7 @@ import {
     recordPlacementRecoveryDecisions,
     recordTaskCrash,
     recordTaskPermissionFailure,
+    recordReporterEventErrors,
     stopWorkerPoolTasks
 } from './worker-pool-task-events.ts';
 import {
@@ -319,15 +320,11 @@ function handleHostRunnerErrors(
     context: TaskFailureContext
 ): boolean {
     const fatalErrors = hostRunnerErrors.filter(function recordLateDiagnostic(error) {
-        if (lateAssertionDiagnosticId(error) === null) {
+        if (!isLateAssertionDiagnostic(error)) {
             return true;
         }
         context.runtime.runState.recordRunnerError(error);
-        context.runtime.reporterEvents.add((async function deliverDiagnostic() {
-            context.runtime.runState.recordRunnerErrors(
-                await context.runtime.reporterDelivery.reportEvent({ error, kind: 'runner-error' })
-            );
-        })());
+        context.runtime.reporterEvents.add(recordReporterEventErrors({ error, kind: 'runner-error' }, context.runtime));
         return false;
     });
     if (fatalErrors.length === 0) {

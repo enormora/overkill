@@ -155,12 +155,7 @@ async function reportFinalResult(
     );
 }
 
-export async function finishWorkerPoolRun(
-    runtime: WorkerPoolRunRuntime,
-    completedTaskRuns: readonly WorkerPoolTaskRun[],
-    startedAtMicroseconds: number
-): Promise<RunResult> {
-    await runtime.reporterEvents.wait();
+async function retainHostErrors(runtime: WorkerPoolRunRuntime): Promise<void> {
     const hostErrors = runtime.pool.takeHostRunnerErrors?.() ?? [];
     runtime.runState.recordRunnerErrors(hostErrors);
     for (const error of hostErrors) {
@@ -170,6 +165,15 @@ export async function finishWorkerPoolRun(
             );
         }
     }
+}
+
+export async function finishWorkerPoolRun(
+    runtime: WorkerPoolRunRuntime,
+    completedTaskRuns: readonly WorkerPoolTaskRun[],
+    startedAtMicroseconds: number
+): Promise<RunResult> {
+    await runtime.reporterEvents.wait();
+    await retainHostErrors(runtime);
     const perTest = orderedPerTest(
         runtime.collectedPlan,
         [

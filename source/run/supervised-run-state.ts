@@ -243,6 +243,10 @@ function processEnvironmentBoundary(error: RunnerError): string {
     return caseIdentityKey(error.attributedTo);
 }
 
+export function isLateAssertionDiagnostic(error: RunnerError): boolean {
+    return lateAssertionDiagnosticId(error) !== null;
+}
+
 function runtimeDiagnosticKey(error: RunnerError): string | null {
     const lateAssertionId = lateAssertionDiagnosticId(error);
     if (lateAssertionId !== null) {

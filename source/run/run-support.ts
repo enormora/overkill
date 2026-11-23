@@ -1,8 +1,10 @@
 import type { NormalizedConfig, MaxConcurrency, ProfileConfig, Scheduling } from '../config/types.ts';
+import { currentLateAssertionSink, withLateAssertionFallback } from '../engine/late-assertion-delivery.ts';
 import { RunCollectionError } from './run-errors.ts';
 import { runWithWorkerAttachments as executeWorkerAttachments } from './attachment-worker-context.ts';
 import type {
     TestRuntimePolicy,
+    RunnerError,
     RunResult,
     TestPlanCase,
     ReporterDispatcher,
@@ -223,4 +225,18 @@ export function propertyReplayContext(
     command: RunCommand
 ): Record<PropertyKey, never> | { readonly propertyReplay: PropertyCorpusSnapshot['checkedIn'][number]; } {
     return hasPropertyReplay(command) ? { propertyReplay: command.propertyReplay } : {};
+}
+
+export async function withSupervisedLateAssertionDelivery<Value>(
+    send: (error: RunnerError) => void,
+    run: () => Promise<Value>
+): Promise<Value> {
+    const warn = currentLateAssertionSink();
+    return await withLateAssertionFallback(function forwardLateAssertion(error) {
+        if (process.connected) {
+            send(error);
+        } else {
+            warn(error);
+        }
+    }, run);
 }

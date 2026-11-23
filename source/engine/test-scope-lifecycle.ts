@@ -82,6 +82,83 @@ export function createTestScopeLifecycle(recorder: AssertionRecorder, context: C
     };
 }
 
+type ReturnedScopeBody = { readonly kind: 'returned'; readonly value: AssertionResult; };
+type ThrownScopeBody = { readonly kind: 'threw'; readonly error: unknown; };
+type ScopeBodyCompletion = ReturnedScopeBody | ThrownScopeBody;
+
+type ScopeInterruption = {
+    readonly completion: Promise<ScopeBodyCompletion>;
+    readonly finish: (settled: ScopeBodyCompletion) => void;
+};
+
+function observeScopeInterruption(signal: AbortSignal, recorder: AssertionRecorder): ScopeInterruption {
+    const pending = Promise.withResolvers<ScopeBodyCompletion>();
+    function closeInterruptedScope(): void {
+        recorder.close('interrupted');
+        pending.resolve({ kind: 'threw', error: signal.reason });
+    }
+    if (signal.aborted) {
+        closeInterruptedScope();
+    } else {
+        signal.addEventListener('abort', closeInterruptedScope, { once: true });
+    }
+    return {
+        completion: pending.promise,
+        finish(settled) {
+            pending.resolve(settled);
+            signal.removeEventListener('abort', closeInterruptedScope);
+        }
+    };
+}
+
+async function scopeBodyCompletion(
+    run: () => Promise<AssertionResult>,
+    signal: AbortSignal
+): Promise<ScopeBodyCompletion> {
+    try {
+        signal.throwIfAborted();
+        return { kind: 'returned', value: await run() };
+    } catch (error: unknown) {
+        return { kind: 'threw', error };
+    }
+}
+
+type ScopeBodyBoundaries = {
+    readonly parent: AbortSignal;
+    readonly cancellation: AbortSignal;
+    readonly ownerInterruption: AbortSignal;
+    readonly afterCleanup: () => Promise<void>;
+};
+
+type FinishedScopeBody = {
+    readonly cleanup: FinishedScopeLifecycle;
+    readonly completion: ScopeBodyCompletion;
+};
+
+export async function runInterruptibleScopeBody(
+    recorder: AssertionRecorder,
+    context: CaseRandomContext,
+    body: TestBody,
+    boundaries: ScopeBodyBoundaries
+): Promise<FinishedScopeBody> {
+    const lifecycle = createTestScopeLifecycle(recorder, context);
+    const controller = new AbortController();
+    const signal = AbortSignal.any([ boundaries.parent, boundaries.cancellation, controller.signal ]);
+    const interruption = AbortSignal.any([ boundaries.ownerInterruption, boundaries.cancellation ]);
+    const interrupted = observeScopeInterruption(interruption, recorder);
+    const completion = await Promise.race([
+        scopeBodyCompletion(async function executeBody() {
+            signal.throwIfAborted();
+            return await lifecycle.runBody(signal, body);
+        }, interruption),
+        interrupted.completion
+    ]);
+    interrupted.finish(completion);
+    const cleanup = await lifecycle.finish(controller);
+    await boundaries.afterCleanup();
+    return { cleanup, completion };
+}
+
 function createThrowingTestScope(
     recorder: AssertionRecorder,
     signal: AbortSignal,
