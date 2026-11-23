@@ -92,17 +92,12 @@ type CompilerCancellation = {
     readonly dispose: () => void;
 };
 
-function observeCompilerCancellation(
-    lifetime: CompilerLifetime,
-    stopped: AbortSignal,
-    signal: AbortSignal
-): CompilerCancellation {
+function observeCompilerCancellation(stopped: AbortSignal): CompilerCancellation {
     const interrupted = Promise.withResolvers<never>();
     const listeners = new AbortController();
     stopped.addEventListener('abort', function interrupt() {
         interrupted.reject(stopped.reason);
     }, { once: true, signal: listeners.signal });
-    signal.addEventListener('abort', lifetime.terminate, { once: true, signal: listeners.signal });
     return {
         interrupted: interrupted.promise,
         dispose() {
@@ -119,7 +114,7 @@ export async function runCompilerOperation<Value>(
 ): Promise<Value> {
     const stopped = AbortSignal.any([ signal, lifetime.closed ]);
     stopped.throwIfAborted();
-    const cancellation = observeCompilerCancellation(lifetime, stopped, signal);
+    const cancellation = observeCompilerCancellation(stopped);
     try {
         const value = await Promise.race([ lifetime.run(operation), cancellation.interrupted ]);
         signal.throwIfAborted();
