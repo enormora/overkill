@@ -20,7 +20,7 @@ function authoringExport(origin: BindingOrigin | null): Author | null {
 
 function aliasedAuthor(analysis: BindingAnalysis, identifier: Readonly<Tree.Identifier>): Author | null {
     const author = authoringExport(analysis.originOf(identifier));
-    return author !== identifier.name ? author : null;
+    return author === identifier.name ? null : author;
 }
 
 function renamedImport(node: Readonly<Tree.ImportSpecifier>): Author | null {

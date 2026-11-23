@@ -86,6 +86,10 @@ function ignoreExpression(): void {
     return undefined;
 }
 
+function widenOutput(previous: State | undefined, candidate: State): State {
+    return previous === undefined ? candidate : joinStates(previous, candidate);
+}
+
 function reachingInputs(frame: Frame, entry: State, apply: ApplyEvent): ReadonlyMap<Segment, State> {
     const inputs = new Map<Segment, State>();
     const outputs = new Map<Segment, State>();
@@ -98,7 +102,7 @@ function reachingInputs(frame: Frame, entry: State, apply: ApplyEvent): Readonly
             inputs.set(segment, input);
             const candidate = replay(input, frame.events.get(segment) ?? [], apply, ignoreExpression);
             const previous = outputs.get(segment);
-            const output = previous === undefined ? candidate : joinStates(previous, candidate);
+            const output = widenOutput(previous, candidate);
             if (previous === undefined || !sameState(previous, output)) {
                 outputs.set(segment, output);
                 segment.nextSegments.forEach(function (successor) {
