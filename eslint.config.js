@@ -3,6 +3,7 @@ import { browserConfig } from '@enormora/eslint-config-browser';
 import { nodeConfig, nodeConfigFileConfig, nodeEntryPointFileConfig } from '@enormora/eslint-config-node';
 import { testSupportConfig } from '@enormora/eslint-config-test-base';
 import { typescriptConfig } from '@enormora/eslint-config-typescript';
+import { publishedAuthorNames } from './source/eslint-plugin/published-author-names.ts';
 
 const frameworkScopeNames = [
     'TestScope',
@@ -14,19 +15,6 @@ const frameworkScopeNames = [
     'ThrowingTestBody'
 ]
     .join('|');
-
-const publishedAuthors = [ '@overkill-dev/test' ].flatMap(function authorModule(moduleName) {
-    return [ 'suite', 'test' ].map(function authorName(name) {
-        return {
-            selector: [
-                `ImportDeclaration[source.value="${moduleName}"]`,
-                `ImportSpecifier[imported.name="${name}"]:not([local.name="${name}"])`
-            ]
-                .join(' > '),
-            message: `Use the published ${name} author without an alias.`
-        };
-    });
-});
 
 export default [
     {
@@ -65,7 +53,9 @@ export default [
     {
         files: [ 'source/**/*.test.ts', 'source/test-support/**/*.ts', 'source/integration-tests/*/support/**/*.ts' ],
         ignores: [ '**/*.type-test.ts' ],
+        plugins: { overkill: { rules: { 'published-author-names': publishedAuthorNames } } },
         rules: {
+            'overkill/published-author-names': 'error',
             'no-restricted-syntax': [ 'error', {
                 selector: [
                     'ImportDeclaration[source.value=/^[.]/]',
@@ -79,7 +69,7 @@ export default [
             }, {
                 selector: 'FunctionDeclaration > Identifier[typeAnnotation.typeAnnotation.typeName.name="TestScope"]',
                 message: 'Use native assertions, macros, or tables instead of passing a full test scope to a helper.'
-            }, ...publishedAuthors ]
+            } ]
         }
     },
     {

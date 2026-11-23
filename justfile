@@ -26,7 +26,7 @@ lint-unused-code:
     knip
 
 lint-dependencies:
-    depcruise source --config dependency-cruiser.config.js
+    depcruise source eslint.config.js --config dependency-cruiser.config.js
 
 lint-duplication *OPTIONS:
     jscpd source --config jscpd.json {{OPTIONS}}
