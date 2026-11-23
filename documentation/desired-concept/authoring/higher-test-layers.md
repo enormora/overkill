@@ -401,10 +401,10 @@ and authoring policies that those mechanisms cannot establish.
 | `prefer-table`                    | Prefer tables for independent repeated cases while preserving stateful scenarios and deliberate test-node composition.           |
 | `no-conditional-assertions`       | Reject conditionally executed assertions in test bodies; custom assertion implementations may use conditional logic.             |
 
-This settles the rule purposes. Detailed detection boundaries, options,
-and authoring-layer coverage need rule-specific design. The plugin defines
-rules; users choose which rules to enable and their severities. Catalog
-membership does not imply enablement or a recommended preset.
+The [coverage matrix](#authoring-layer-coverage) defines the source forms each
+rule applies to. Detailed detection and options belong to each rule. Users
+choose which rules to enable and their severities. Catalog membership does not
+imply enablement or a recommended preset.
 
 #### Scope Ownership And Binding Identity
 
@@ -516,16 +516,164 @@ These checks belong outside the plugin:
   assertion-time operand meaning, and protocol structure:
   [runtime assertion integrity](./assertions-and-results.md#runtime-assertion-integrity)
 
-Authoring-layer coverage must be decided per rule after the catalog is
-complete. Export policies concern discovered entry modules regardless of
-which package constructs their nodes. Assertion ownership is engine-level,
-and assertion-extension definitions live in `@overkill-dev/assert`; neither
-is inherently limited to imports from `@overkill-dev/test`.
-
 See [Static Authoring Research](../research/static-authoring-rules.md) for
 additional candidates, conditional-assertion analysis, implementation audit
 notes, and comparisons with other test plugins. Additional rule candidates
 remain proposals; the runtime contracts linked above are settled requirements.
+
+#### Authoring-Layer Coverage
+
+- **Default authoring.** Syntax-only linting recognizes canonical public
+  imports. Case callbacks include `test(title, body)`, `test({ body, ... })`,
+  `table({ test, ... })`, and `throwingTest` from
+  `@overkill-dev/test/compatibility`. Follow the body through recognized
+  `withRuntime`, `withResource`, and `withResources` wrappers. Lint locally
+  resolvable bodies at their declarations, including bodies authored inside
+  macros and callbacks passed to `defineParameterizedTestBody`.
+- **Custom facades.** With TypeScript parser services, resolve imports,
+  re-exports, and `createTestFacade` members by their canonical Overkill
+  declarations, including declarations available only as `.d.ts` files.
+  Use the resolved Overkill signature to identify the author and its body
+  position. Independently declared wrapper signatures and ambiguous origins
+  produce no match. Binding analysis still decides which value reaches each
+  use, including through aliases, destructuring, shadowing, and reassignment.
+- **Direct engine.** Recognize public factories and methods on receivers proven
+  to come from `createEngine()`. Case positions include `body` on ordinary,
+  throwing, and property cases, `cases[].body` on engine tables, and
+  `workloads[].body` on workload cases. Recognize declared nested trial scopes
+  such as `scope.forall(...)` separately. Assertion rules require a proven
+  assertion API in the body. Manually assembled assertion-protocol values
+  remain under engine validation.
+- **Assertion helpers.** Resolve `defineCompositeAssertion` and
+  `defineNarrowingCompositeAssertion` from `@overkill-dev/assert` by binding
+  identity. Use the injected check builder's declared position where present.
+  In a case body, `scope.assert(reference, ...)` is a single assertion boundary
+  regardless of how the reference implements its checks.
+- **Entry modules.** Enable entry-only rules in ESLint flat-config `files`
+  blocks that correspond to the runner's entry selection, including relevant
+  exclusions. The same policies apply to entries authored through the default
+  API, a facade, or the engine. Case bodies and assertion definitions can be
+  linted in both entry and support modules.
+
+In the matrix, **injected APIs** are proven `assert` and `require` facades,
+including their aliases and annotated variants. **Check builders** are the
+builders injected into recognized assertion definitions.
+
+| Rule | Supported forms |
+| ---- | --------------- |
+| `no-scope-escape` | Proven case or trial scopes and their `assert`, `require`, and `plan` APIs, including extracted methods. Honor declared Overkill scope-injection contracts. |
+| `no-single-use-trivial-assertion` | Local, unexported `defineCompositeAssertion` definitions with one source reference that forward one built-in check. Preserve narrowing, grouped checks, and custom diagnostics. |
+| `no-self-comparison` | Built-in equality checks on injected APIs and check builders when both operands have the same stable binding identity. |
+| `no-constant-actual-assert` | Built-in checks on injected APIs and check builders with a defined actual/expected pair. A constant actual and nonconstant expected suggest reversed operands. |
+| `prefer-semantic-assertions` | Built-in checks on injected APIs and check builders where the direct form preserves comparison semantics, evaluation order, and assertion boundaries. |
+| `no-shared-mutable-test-state` | Proven case bodies, including cases declared in support modules. Respect per-case state and explicit resource lifetimes. |
+| `no-reexported-test-node` | Configured entries that forward another module's `testNode` unchanged through re-export syntax or a local alias. Allow local composition from imported fragments. |
+| `consistent-run-if-main` | Configured entries under `always` or `never`. Recognize `runIfMain` from `@overkill-dev/run`, `@overkill-dev/test`, and proven facade equivalents. |
+| `no-setup-in-error-assertion` | Built-in `throws` and `rejects` callbacks on injected APIs and check builders. |
+| `no-duplicate-assertions` | Adjacent equivalent built-in checks in one body or as siblings of one explicit composite group. Require stable, side-effect-free operands and equivalent diagnostics. An intervening operation ends the sequence. |
+| `prefer-table` | Independent repeated sibling cases written with recognized default, facade, or engine constructors. Suggest the corresponding table API and preserve stateful scenarios and deliberate composition. |
+| `no-conditional-assertions` | Proven runtime case and trial bodies, including custom assertion reference calls. Allow branches inside assertion implementations and straight-line checks after `require`. Native type-test references follow the [compiler family's source contract](./testing-models.md#native-assertion-contract). |
+
+##### Facade declarations
+
+A typed consumer importing `apiTest` through a barrel retains the canonical
+author signature from `createTestFacade`. The facade module exports the member
+and the barrel re-exports it.
+
+```ts
+import { createTestFacade } from '@overkill-dev/test';
+
+export const { test: apiTest } = createTestFacade();
+```
+
+```ts
+export { apiTest } from './facade.js';
+```
+
+This wrapper introduces its own call signature, so a consumer's callback
+passed to `apiTest` is outside facade recognition.
+
+```ts
+import { test, type TestBody } from '@overkill-dev/test';
+
+export function apiTest(body: TestBody) {
+    return test('API', body);
+}
+```
+
+##### Engine entries and support modules
+
+`catalog.ts` is a support module that exports a reusable engine-authored
+fragment alongside a forwarded `testNode`.
+
+```ts
+import { createTestCase, unknownSourceLocation } from '@overkill-dev/engine';
+
+export { testNode } from './other-catalog.js';
+
+declare function loadAccount(): { readonly id: string } | undefined;
+
+export const fragment = createTestCase({
+    title: 'loads an account',
+    annotations: {},
+    controls: {},
+    definitionLocations: [unknownSourceLocation],
+    body(scope) {
+        scope.assert.defined(loadAccount());
+        return scope.assert.collect();
+    }
+});
+```
+
+`accounts.test.ts` is a configured entry. It can create its own suite from the
+fragment. Changing it to `export { testNode } from './catalog.js'` would forward
+another module's root and violate `no-reexported-test-node`.
+
+```ts
+import { createSuite, unknownSourceLocation } from '@overkill-dev/engine';
+import { fragment } from './catalog.js';
+
+export const testNode = createSuite({
+    title: 'accounts',
+    annotations: {},
+    controls: {},
+    definitionLocations: [unknownSourceLocation],
+    children: [fragment]
+});
+```
+
+##### Custom assertion definitions and calls
+
+The assertion implementation may branch to select a diagnostic. The case body
+invokes the reference conditionally, so `no-conditional-assertions` reports
+the call in the case.
+
+```ts
+import { defineCompositeAssertion } from '@overkill-dev/assert';
+import { test } from '@overkill-dev/test';
+
+type Response = { readonly status: number } | { readonly error: string };
+
+declare function loadAccount(): Response | undefined;
+
+const successful = defineCompositeAssertion({
+    name: 'successful response',
+    assert(check, response: Response) {
+        if ('error' in response) {
+            return check.annotated(response.error).fail();
+        }
+        return check.equal(response.status, 200);
+    }
+});
+
+export const testNode = test('loads an account', (scope) => {
+    const response = loadAccount();
+    if (response !== undefined) {
+        scope.assert(successful, response);
+    }
+    return scope.assert.collect();
+});
+```
 
 ## What Overkill Should Add Or Emphasize
 
