@@ -137,7 +137,8 @@ export const testNode = suite('child process payload schemas', [
             verdict: 'fail',
             workId: createDefaultWorkId(caseId)
         };
-        scope.assert.deepEqual(reporterEventSchema.parse(event), event);
+        const received: unknown = JSON.parse(JSON.stringify(event));
+        scope.assert.deepEqual(reporterEventSchema.parse(received), received);
         return scope.assert.collect();
     }),
     test('rejects reporter events without executable identity', function (scope) {
