@@ -91,22 +91,38 @@ type ScopeInterruption = {
     readonly finish: (settled: ScopeBodyCompletion) => void;
 };
 
-function observeScopeInterruption(signal: AbortSignal, recorder: AssertionRecorder): ScopeInterruption {
-    const pending = Promise.withResolvers<ScopeBodyCompletion>();
-    function closeInterruptedScope(): void {
-        recorder.close('interrupted');
-        pending.resolve({ kind: 'threw', error: signal.reason });
-    }
+function watchAbort(signal: AbortSignal, interrupted: () => void): () => void {
     if (signal.aborted) {
-        closeInterruptedScope();
+        interrupted();
     } else {
-        signal.addEventListener('abort', closeInterruptedScope, { once: true });
+        signal.addEventListener('abort', interrupted, { once: true });
     }
+    return function stopWatching() {
+        signal.removeEventListener('abort', interrupted);
+    };
+}
+
+function observeScopeInterruption(boundaries: ScopeBodyBoundaries, recorder: AssertionRecorder): ScopeInterruption {
+    const { parent, cancellation, ownerInterruption } = boundaries;
+    const pending = Promise.withResolvers<ScopeBodyCompletion>();
+    function interrupt(reason: unknown): void {
+        recorder.close('interrupted');
+        pending.resolve({ kind: 'threw', error: reason });
+    }
+    const stopOwner = watchAbort(ownerInterruption, function interruptFromOwner() {
+        interrupt(ownerInterruption.reason);
+    });
+    const stopCancellation = watchAbort(cancellation, function interruptLocalTrial() {
+        if (!parent.aborted || cancellation.reason !== parent.reason) {
+            interrupt(cancellation.reason);
+        }
+    });
     return {
         completion: pending.promise,
         finish(settled) {
             pending.resolve(settled);
-            signal.removeEventListener('abort', closeInterruptedScope);
+            stopOwner();
+            stopCancellation();
         }
     };
 }
@@ -144,13 +160,11 @@ export async function runScopeBodyWithInterruption(
     const lifecycle = createTestScopeLifecycle(recorder, context);
     const controller = new AbortController();
     const signal = AbortSignal.any([ boundaries.parent, boundaries.cancellation, controller.signal ]);
-    const interruption = AbortSignal.any([ boundaries.ownerInterruption, boundaries.cancellation ]);
-    const interrupted = observeScopeInterruption(interruption, recorder);
+    const interrupted = observeScopeInterruption(boundaries, recorder);
     const completion = await Promise.race([
         scopeBodyCompletion(async function executeBody() {
-            signal.throwIfAborted();
             return await lifecycle.runBody(signal, body);
-        }, interruption),
+        }, AbortSignal.any([ signal, boundaries.ownerInterruption ])),
         interrupted.completion
     ]);
     interrupted.finish(completion);
