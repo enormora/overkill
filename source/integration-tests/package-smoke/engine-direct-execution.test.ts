@@ -365,9 +365,10 @@ export const testNode = suite('Installed engine interoperability', [
         return scope.assert.collect();
     }),
     test(
-        'imports @overkill-dev/assert reference and executes it through @overkill-dev/engine',
+        'preserves packaged composite checks across operand mutation',
         async function (scope) {
-            const testCase = createTestCase({
+            const engine = createEngine();
+            const testCase = engine.createTestCase({
                 definitionLocations: [ { kind: 'unknown' } ],
                 async body(testScope) {
                     await testScope.assert(resultOk, { ok: true });
@@ -377,10 +378,12 @@ export const testNode = suite('Installed engine interoperability', [
                 controls: {},
                 title: 'uses assert package'
             });
-            const result = await execute(createTestPlan(createSmokeRoot([ testCase ])));
+            const root = engine.createRoot({ children: [ testCase ], annotations: {}, controls: {}, title: 'root' });
+            const result = await engine.execute(engine.createTestPlan(root));
+            const outcome = result.perTest[0]?.outcome;
 
-            scope.assert.equal(result.summary.passed, 1);
-            scope.assert.equal(result.summary.failed, 0);
+            scope.require.defined(outcome);
+            scope.assert.deepEqual(outcome, { kind: 'pass' });
 
             return scope.assert.collect();
         }
