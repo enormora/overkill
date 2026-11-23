@@ -267,7 +267,8 @@ function completeActiveCasesAs(
 
     for (const [ key, activeCase ] of supervision.activeCases) {
         supervision.removeActiveCase(key);
-        activeCase.interrupt();
+        activeCase.closeAssertionRecording();
+        activeCase.controller.abort();
         clearSupervisionTimeout(dependencies.wallClock, activeCase.hardTimeout);
         activeCase.completion.complete(createTerminalCase(
             activeCase.testCase,
@@ -415,14 +416,11 @@ function registerActiveCase(input: ActiveCaseInput): SupervisedActiveCase {
     const activeCase: SupervisedActiveCase = {
         benchmark: input.benchmark,
         attempt: input.attempt,
-        abort() {
-            input.controller.abort();
-        },
         completion: input.completion,
+        controller: input.controller,
         hardTimeout,
-        interrupt() {
+        closeAssertionRecording() {
             input.assertionRecorder.close('interrupted');
-            input.controller.abort();
         },
         startedAtMicroseconds,
         testCase: input.testCase
