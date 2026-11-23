@@ -269,7 +269,12 @@ export const testNode = suite('Runner retries', [
             ));
 
             scope.assert.equal(result.status, 'failed');
-            scope.assert.deepEqual(result.perTest.map((testResult) => testResult.verdict), [ 'pass', 'pass' ]);
+            scope.assert.deepEqual(
+                result.perTest.map(function caseVerdict(testResult) {
+                    return testResult.verdict;
+                }),
+                [ 'pass', 'pass' ]
+            );
             scope.assert.length(result.runnerErrors, 1);
             scope.assert.partialDeepEqual<unknown, unknown>(result.runnerErrors[0], {
                 cause: {
@@ -277,7 +282,12 @@ export const testNode = suite('Runner retries', [
                     origin: { attempt: { index: 0 }, work: result.perTest[0]?.workId }
                 }
             });
-            scope.assert.length(events.filter((event) => event.kind === 'runner-error'), 1);
+            scope.assert.length(
+                events.filter(function runnerError(event) {
+                    return event.kind === 'runner-error';
+                }),
+                1
+            );
             return scope.assert.collect();
         }
     }),
@@ -297,10 +307,15 @@ export const testNode = suite('Runner retries', [
             ));
 
             scope.assert.equal(result.status, 'failed');
-            scope.assert.deepEqual(result.perTest[0]?.attempts.map((attempt) => attempt.verdict) ?? [], [
-                'fail',
-                'pass'
-            ]);
+            scope.assert.deepEqual(
+                result.perTest[0]?.attempts.map(function attemptVerdict(attempt) {
+                    return attempt.verdict;
+                }) ?? [],
+                [
+                    'fail',
+                    'pass'
+                ]
+            );
             scope.assert.equal(result.perTest[0]?.verdict, 'pass');
             scope.assert.length(result.runnerErrors, 1);
             scope.assert.partialDeepEqual<unknown, unknown>(result.runnerErrors[0], {
@@ -309,7 +324,12 @@ export const testNode = suite('Runner retries', [
                     origin: { attempt: { index: 0 }, work: result.perTest[0]?.workId }
                 }
             });
-            scope.assert.length(events.filter((event) => event.kind === 'runner-error'), 1);
+            scope.assert.length(
+                events.filter(function runnerError(event) {
+                    return event.kind === 'runner-error';
+                }),
+                1
+            );
             return scope.assert.collect();
         }
     }),

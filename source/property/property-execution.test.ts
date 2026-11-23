@@ -17,7 +17,14 @@ export const testNode = suite('property trial execution', [
         const node = property({
             title: 'late trial',
             generator: gen.constant<number>(3),
-            examples: [ () => 1, () => 2 ],
+            examples: [
+                function firstExample() {
+                    return 1;
+                },
+                function secondExample() {
+                    return 2;
+                }
+            ],
             test(value, sample) {
                 if (value === 1) {
                     escaped = function recordLateAssertion() {

@@ -1,5 +1,4 @@
-import { runScopedAssertionBody } from '../../engine/assertion-body-scope.ts';
-import { withRunnerInfrastructure } from '../../execution-ownership.ts';
+import { runScopedAssertionBody, withRunnerInfrastructure } from '../../execution-ownership.ts';
 import { attachmentsForProducer } from '../resources/attachment-context.entry-point.ts';
 import {
     isBodyReference,

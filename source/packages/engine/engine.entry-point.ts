@@ -435,7 +435,6 @@ export type {
 export { readPropertyExecutionHost } from '../../engine/property-execution-host.ts';
 export type {
     PropertyExecutionHost,
-    PropertyTrialCoordinate,
     PropertyTrialResult,
     PropertyRunContext
 } from '../../engine/property-execution-host.ts';

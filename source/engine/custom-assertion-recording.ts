@@ -219,31 +219,46 @@ function createNarrowingCompositeAssertionNode<Source extends AssertionSource>(
     });
 }
 
-async function recordResolvedCompositeAssertion(input: PendingCompositeAssertionInput): Promise<void> {
-    const resolved = await Promise.resolve(input.result).catch(function rejectComposite(error: unknown) {
-        if (isTestControlError(error)) {
-            input.pending.discard();
-        }
-        throw error;
-    });
-    input.sink.assertRecording('finish an asynchronous assertion');
-    let children: NonEmptyReadonlyArray<CompositeAssertionChildNode<'assert'>>;
-    try {
-        children = normalizeCompositeChildren(resolved, input.sink.failContract);
-    } catch (error: unknown) {
-        if (isTestControlError(error)) {
-            input.pending.discard();
-        }
-        throw error;
+function discardRejectedComposite(input: PendingCompositeAssertionInput, error: unknown): never {
+    if (isTestControlError(error)) {
+        input.pending.discard();
     }
-    input.pending.resolve(createCompositeAssertionNode({
-        annotation: input.annotation,
-        children,
-        parameters: input.parameters,
-        record: input.record,
-        source: 'assert',
-        sourceLocations: input.sourceLocations
-    }));
+    throw error;
+}
+
+async function awaitCompositeResult(
+    input: PendingCompositeAssertionInput
+): Promise<CompositeAssertionReturn<'assert'>> {
+    try {
+        return await input.result;
+    } catch (error: unknown) {
+        return discardRejectedComposite(input, error);
+    }
+}
+
+function resolveCompositeAssertion(
+    input: PendingCompositeAssertionInput,
+    resolved: CompositeAssertionReturn<'assert'>
+): CompositeAssertionNode<'assert'> {
+    try {
+        return createCompositeAssertionNode({
+            annotation: input.annotation,
+            children: normalizeCompositeChildren(resolved, input.sink.failContract),
+            parameters: input.parameters,
+            record: input.record,
+            source: 'assert',
+            sourceLocations: input.sourceLocations
+        });
+    } catch (error: unknown) {
+        return discardRejectedComposite(input, error);
+    }
+}
+
+async function recordResolvedCompositeAssertion(input: PendingCompositeAssertionInput): Promise<void> {
+    const resolved = await awaitCompositeResult(input);
+    input.sink.assertRecording('finish an asynchronous assertion');
+    const assertion = resolveCompositeAssertion(input, resolved);
+    input.pending.resolve(assertion);
 }
 
 function recordCompositeAssertion(input: CompositeAssertionRecordingInput): Promise<void> | void {

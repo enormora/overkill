@@ -14,13 +14,14 @@ export function sendWorkerLateAssertion(token: string, error: RunnerError): void
         return new NodeBroadcastChannel(channelName(token));
     });
     try {
+        // eslint-disable-next-line unicorn/require-post-message-target-origin -- Node BroadcastChannel only accepts the message.
         channel.postMessage(error);
     } finally {
         channel.close();
     }
 }
 
-type WorkerLateAssertionObserver = { readonly close: () => Promise<void>; };
+export type WorkerLateAssertionObserver = { readonly close: () => Promise<void>; };
 export function observeWorkerLateAssertions(
     token: string,
     receive: (error: RunnerError) => void
@@ -45,10 +46,10 @@ export function observeWorkerLateAssertions(
             await waitForImmediate();
             for (;;) {
                 const received: unknown = Reflect.apply(receiveMessageOnPort, undefined, [ channel ]);
-                if (typeof received !== 'object' || received === null || !('message' in received)) {
+                if (typeof received !== 'object' || received === null) {
                     break;
                 }
-                report(received.message);
+                report(Reflect.get(received, 'message'));
             }
             channel.close();
         }

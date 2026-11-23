@@ -1,5 +1,4 @@
 import { retainUniqueLateAssertionDiagnostics, lateAssertionDiagnosticId } from '../engine/assertion-lifetime.ts';
-import { reportRunnerErrorEvents } from '../engine/runner-error-reporting.ts';
 import { finalizedResourceCheckResult } from '../engine/resource-check-result.ts';
 import { workIdentityKey } from '../engine/identity.ts';
 import { currentResourceCheckBroker } from './resource-check-broker.ts';
@@ -164,12 +163,13 @@ export async function finishWorkerPoolRun(
     await runtime.reporterEvents.wait();
     const hostErrors = runtime.pool.takeHostRunnerErrors?.() ?? [];
     runtime.runState.recordRunnerErrors(hostErrors);
-    runtime.runState.recordRunnerErrors(
-        await reportRunnerErrorEvents(
-            runtime.reporterDelivery,
-            hostErrors.filter((error) => lateAssertionDiagnosticId(error) !== null)
-        )
-    );
+    for (const error of hostErrors) {
+        if (lateAssertionDiagnosticId(error) !== null) {
+            runtime.runState.recordRunnerErrors(
+                await runtime.reporterDelivery.reportEvent({ kind: 'runner-error', error })
+            );
+        }
+    }
     const perTest = orderedPerTest(
         runtime.collectedPlan,
         [

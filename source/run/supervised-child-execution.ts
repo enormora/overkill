@@ -1,4 +1,5 @@
 import type { Clock } from '@enormora/clock';
+import { currentLateAssertionSink, withLateAssertionFallback } from '../engine/late-assertion-delivery.ts';
 import type { RuntimeExecute } from '../engine/execution.ts';
 import { createReporterDispatcher } from '../engine/reporter-dispatcher.ts';
 import { defineReporter, type DefinedReporter } from '../engine/reporter.ts';
@@ -96,4 +97,18 @@ export function createSupervisedChildReporter(host: SupervisedChildReporterHost)
             sinks: [ { kind: 'memory' } ]
         };
     });
+}
+
+export async function withSupervisedLateAssertionDelivery<Value>(
+    host: SupervisedChildReporterHost,
+    run: () => Promise<Value>
+): Promise<Value> {
+    const warn = currentLateAssertionSink();
+    return await withLateAssertionFallback(function forwardLateAssertion(error) {
+        if (!process.connected) {
+            warn(error);
+        } else {
+            host.send({ kind: 'event', event: { kind: 'runner-error', error } });
+        }
+    }, run);
 }

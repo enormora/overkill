@@ -182,10 +182,15 @@ export const testNode = suite('Assertion execution', [
         const result = await executeSingleBody(function body(testScope) {
             testScope.assert.true(true);
             const assertions = testScope.assert.collect();
-            const pending = testScope.assert.rejects(() => gate.promise, { message: 'application error' });
-            const observed = pending.catch(function observeLateRejection() {
-                return undefined;
-            });
+            const pending = testScope.assert.rejects(async function waitForApplication() {
+                return await gate.promise;
+            }, { message: 'application error' });
+            const observed = (async function observeLateRejection() {
+                try {
+                    await pending;
+                } catch {
+                }
+            })();
             testScope.cleanup(async function finishPendingAssertion() {
                 gate.reject(new Error('application error'));
                 await observed;

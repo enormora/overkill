@@ -1,4 +1,4 @@
-import { runScopedAssertionBody } from '../engine/assertion-body-scope.ts';
+import { runScopedAssertionBody } from '../execution-ownership.ts';
 import {
     isBodyReference,
     isPropertyBodyAttachment,
@@ -87,7 +87,7 @@ function declaredPropertyBody<Value>(
     }
     return isBodyReference(body)
         ? mapBodyReference(body, function bindProperty(bound) {
-            return execution(function executeSample(value, sample) {
+            return execution(function executeSample(value, sample): ReturnType<PropertyBody<Value>> {
                 return bound({ value, sample });
             });
         })
@@ -175,9 +175,12 @@ async function runNestedPropertyBody(
 ): Promise<AssertionResult> {
     let completed = false;
     try {
-        const result = await runScopedAssertionBody(scope, function runPropertyBody() {
-            return executableBody(body)({ ...scope, forall: session.forall });
-        });
+        const result = await runScopedAssertionBody(
+            scope,
+            function runPropertyBody(): ReturnType<InlinePropertyCaseBody> {
+                return executableBody(body)({ ...scope, forall: session.forall });
+            }
+        );
         completed = true;
         return result;
     } finally {

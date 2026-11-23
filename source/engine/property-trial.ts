@@ -46,8 +46,9 @@ type TrialExecution = {
     readonly seed: bigint;
     readonly owner: AssertionRecorder;
 };
-type TrialCompletion = { readonly kind: 'returned'; readonly value: AssertionResult; } |
-    { readonly kind: 'threw'; readonly error: unknown; };
+type TrialCompletion =
+    | { readonly kind: 'returned'; readonly value: AssertionResult; }
+    | { readonly kind: 'threw'; readonly error: unknown; };
 
 async function completeTrialBody(
     run: () => Promise<AssertionResult>,
@@ -78,7 +79,6 @@ async function completeTrialBody(
     interruption.removeEventListener('abort', closeInterruptedTrial);
     return completion;
 }
-
 
 type TrialSignals = {
     readonly ownerInterruption: AbortSignal;
@@ -112,10 +112,14 @@ async function evaluatePropertyTrial(
     const lifecycle = createTestScopeLifecycle(recorder, { seed, work: testCase.workId });
     const controller = new AbortController();
     const trialSignal = AbortSignal.any([ scope.signal, cancellation, controller.signal ]);
-    const completion = await completeTrialBody(async function runTrial() {
-        trialSignal.throwIfAborted();
-        return await lifecycle.runBody(trialSignal, body);
-    }, recorder, { ownerInterruption: owner.interruption, cancellation });
+    const completion = await completeTrialBody(
+        async function runTrial() {
+            trialSignal.throwIfAborted();
+            return await lifecycle.runBody(trialSignal, body);
+        },
+        recorder,
+        { ownerInterruption: owner.interruption, cancellation }
+    );
     const finished = await lifecycle.finish(controller);
     await scope.yieldToNextTurn();
     recorder.close('settled');

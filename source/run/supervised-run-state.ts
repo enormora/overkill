@@ -1,3 +1,4 @@
+import { lateAssertionDiagnosticId } from '../engine/assertion-lifetime.ts';
 import type { ReporterEvent } from '../engine/reporter.ts';
 import type { ResourceCheckSnapshot } from '../resource-check-protocol.ts';
 import { resourceCheckSnapshotKey } from '../resource-check-snapshot.ts';
@@ -242,7 +243,11 @@ function processEnvironmentBoundary(error: RunnerError): string {
     return caseIdentityKey(error.attributedTo);
 }
 
-function processEnvironmentPolicyKey(error: RunnerError): string | null {
+function runtimeDiagnosticKey(error: RunnerError): string | null {
+    const lateAssertionId = lateAssertionDiagnosticId(error);
+    if (lateAssertionId !== null) {
+        return `late-assertion:${lateAssertionId}`;
+    }
     if (!processEnvironmentPolicyError(error)) {
         return null;
     }
@@ -250,29 +255,29 @@ function processEnvironmentPolicyKey(error: RunnerError): string | null {
     return `process-env:${processEnvironmentBoundary(error)}`;
 }
 
-function processEnvironmentPolicyKeys(errors: readonly RunnerError[]): ReadonlySet<string> {
+function runtimeDiagnosticKeys(errors: readonly RunnerError[]): ReadonlySet<string> {
     return new Set(errors.flatMap(function toPolicyKey(error) {
-        const key = processEnvironmentPolicyKey(error);
+        const key = runtimeDiagnosticKey(error);
 
         return key === null ? [] : [ key ];
     }));
 }
 
 export function deduplicatedRuntimePolicyErrors(errors: readonly RunnerError[]): readonly RunnerError[] {
-    const processEnvironmentKeys = new Set<string>();
+    const diagnosticKeys = new Set<string>();
 
     return errors.filter(function notDuplicatedProcessEnvironmentError(error) {
-        const key = processEnvironmentPolicyKey(error);
+        const key = runtimeDiagnosticKey(error);
 
         if (key === null) {
             return true;
         }
 
-        if (processEnvironmentKeys.has(key)) {
+        if (diagnosticKeys.has(key)) {
             return false;
         }
 
-        processEnvironmentKeys.add(key);
+        diagnosticKeys.add(key);
 
         return true;
     });
@@ -282,10 +287,10 @@ export function deduplicatedChildRuntimePolicyErrors(
     childErrors: readonly RunnerError[],
     supervisorErrors: readonly RunnerError[]
 ): readonly RunnerError[] {
-    const supervisorKeys = processEnvironmentPolicyKeys(supervisorErrors);
+    const supervisorKeys = runtimeDiagnosticKeys(supervisorErrors);
 
     return childErrors.filter(function notDuplicatedBySupervisor(error) {
-        const key = processEnvironmentPolicyKey(error);
+        const key = runtimeDiagnosticKey(error);
 
         return key === null || !supervisorKeys.has(key);
     });

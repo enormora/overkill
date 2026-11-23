@@ -58,8 +58,12 @@ export type PropertyTrialCoordinate = {
 };
 
 type PropertyTrialArguments =
-    | readonly [body: TestBody, signal: AbortSignal]
-    | readonly [body: TestBody, signal: AbortSignal, coordinate: PropertyTrialCoordinate];
+    | readonly [
+        body: TestBody,
+        signal: AbortSignal,
+        coordinate: PropertyTrialCoordinate
+    ]
+    | readonly [body: TestBody, signal: AbortSignal];
 
 type EvaluatePropertyTrial = (...input: PropertyTrialArguments) => Promise<PropertyTrialResult>;
 

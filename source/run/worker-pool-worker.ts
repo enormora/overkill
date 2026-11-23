@@ -1,5 +1,5 @@
-import { sendWorkerLateAssertion } from './worker-pool-late-assertions.ts';
 import { withLateAssertionFallback } from '../engine/late-assertion-delivery.ts';
+import { sendWorkerLateAssertion } from './worker-pool-late-assertions.ts';
 import { withWorkerResourceChecks } from './resource-check-client.ts';
 import {
     prepareLocalOwnerResources,

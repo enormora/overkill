@@ -1,10 +1,10 @@
-import { createAssertionRecorder, type AssertionRecorder } from './assertion-recorder.ts';
 import type { Clock } from '@enormora/clock';
 import type { BenchmarkExecutionEnvironment } from './benchmark-environment.ts';
 import {
     invalidTimeoutControlFailure,
     runTestCase,
     timeoutFailure,
+    withCaseAssertionRecorder,
     type RunTestCaseOptions
 } from './case-execution.ts';
 import { workIdentityKey, type AttemptId, type WorkId } from './identity.ts';
@@ -77,6 +77,8 @@ type CaseExecutionInput = {
     readonly testCase: TestPlanCase;
     readonly timeoutPolicy: ExecuteTimeoutPolicy | null | undefined;
 };
+
+type AssertionRecorder = NonNullable<RunTestCaseOptions['assertionRecorder']>;
 
 type ActiveCaseInput = CaseExecutionInput & {
     readonly assertionRecorder: AssertionRecorder;
@@ -520,24 +522,6 @@ function registerCaseBodyInput(input: ActiveCaseInput, timeoutMilliseconds: numb
     };
 }
 
-function createActiveCaseInput(
-    input: CaseExecutionInput,
-    assertionRecorder: AssertionRecorder | null
-): ActiveCaseInput {
-    return {
-        ...input,
-        assertionRecorder: assertionRecorder ?? createAssertionRecorder({
-            case: input.testCase.id,
-            work: input.testCase.workId,
-            attempt: input.attempt,
-            trial: null
-        }),
-        benchmark: createBenchmarkState(),
-        completion: createCaseCompletion(),
-        controller: new AbortController()
-    };
-}
-
 export function recordProcessUsageSample(input: ProcessUsageSampleInput): boolean {
     const breach = findProcessBudgetBreach(input.budgets, input.sample, input.previousSample);
 
@@ -567,13 +551,18 @@ export async function executeCaseBody(
         return invalidTimeoutCase(input.testCase, timeoutResolution.failure);
     }
 
-    const activeCase = createActiveCaseInput(input, assertionRecorder);
-    try {
-        return await runCaseBodyUnderSupervision(registerCaseBodyInput(activeCase, timeoutResolution.milliseconds));
-    } finally {
-        if (assertionRecorder === null) {
-            activeCase.assertionRecorder.close('settled');
-            activeCase.assertionRecorder.publish();
+    return await withCaseAssertionRecorder(
+        input.testCase,
+        input.attempt,
+        assertionRecorder,
+        async function run(recorder) {
+            return await runCaseBodyUnderSupervision(registerCaseBodyInput({
+                ...input,
+                assertionRecorder: recorder,
+                benchmark: createBenchmarkState(),
+                completion: createCaseCompletion(),
+                controller: new AbortController()
+            }, timeoutResolution.milliseconds));
         }
-    }
+    );
 }

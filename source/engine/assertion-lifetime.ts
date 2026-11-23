@@ -2,13 +2,16 @@ import { randomUUID } from 'node:crypto';
 import { types } from 'node:util';
 import { promiseHooks } from 'node:v8';
 import { createStoredValue } from '../stored-value.ts';
+import { attachAssertionBodyExecutor } from '../execution-ownership.ts';
 import type { AttemptId, CaseId, WorkId } from './identity.ts';
 import type { PropertyTrialPosition } from './property-failure-evidence.ts';
 import type { RunnerError, TestContractFailure } from './run-result.ts';
 
-export type PropertyTrialIdentity =
-    | { readonly kind: 'property'; readonly invocation: string; readonly position: PropertyTrialPosition; }
-    | { readonly kind: 'unlabelled-trial'; readonly index: number; };
+export type PropertyTrialIdentity = {
+    readonly kind: 'property';
+    readonly invocation: string;
+    readonly position: PropertyTrialPosition;
+} | { readonly kind: 'unlabelled-trial'; readonly index: number; };
 
 export type AssertionOrigin = {
     readonly case: CaseId;
@@ -19,7 +22,10 @@ export type AssertionOrigin = {
 
 export type AssertionClosure = 'interrupted' | 'settled';
 
+type AssertionBody<Value> = () => Promise<Value> | Value;
+
 type SettlementObservation = {
+    readonly invoke: <Value>(body: AssertionBody<Value>) => Promise<Value> | Value;
     readonly track: (promise: Promise<unknown>, close: () => void) => () => void;
     readonly retain: () => void;
     readonly release: () => void;
@@ -31,16 +37,29 @@ function observeSettlement(): SettlementObservation {
     const settled = new WeakSet<Promise<unknown>>();
     const pending = new WeakMap<Promise<unknown>, Set<() => void>>();
     let users = 0;
+    let invoking = 0;
     const stop = promiseHooks.onSettled(function closeSettledBody(promise: Promise<unknown>) {
         const closers = pending.get(promise);
-        pending.delete(promise);
-        settled.add(promise);
-        closers?.forEach(function closeRecorder(close) {
-            close();
-        });
+        if (invoking > 0) {
+            settled.add(promise);
+        }
+        if (closers !== undefined) {
+            pending.delete(promise);
+            for (const close of closers) {
+                close();
+            }
+        }
     });
 
     return {
+        invoke(body) {
+            invoking += 1;
+            try {
+                return body();
+            } finally {
+                invoking -= 1;
+            }
+        },
         track(promise, close) {
             if (settled.has(promise)) {
                 close();
@@ -76,16 +95,17 @@ export async function withAssertionSettlement<Value>(run: () => Promise<Value>):
     }
 }
 
-function invokeBody<Value>(body: () => Promise<Value> | Value, close: () => void): Promise<Value> | Value {
+function invokeBody<Value>(body: AssertionBody<Value>, close: () => void): Promise<Value> | Value {
+    const observation = settlement.read();
     try {
-        return body();
+        return observation === null ? body() : observation.invoke(body);
     } catch (error: unknown) {
         close();
         throw error;
     }
 }
 
-export async function runAssertionBody<Value>(body: () => Promise<Value> | Value, close: () => void): Promise<Value> {
+export async function runAssertionBody<Value>(body: AssertionBody<Value>, close: () => void): Promise<Value> {
     const value = invokeBody(body, close);
     if (!types.isPromise(value)) {
         close();
@@ -98,6 +118,15 @@ export async function runAssertionBody<Value>(body: () => Promise<Value> | Value
         untrack?.();
         close();
     }
+}
+
+export function scopeWithAssertionSettlement<Scope extends Readonly<Record<string, unknown>>>(
+    scope: Scope,
+    close: () => void
+): Scope {
+    return attachAssertionBodyExecutor(scope, async function executeBody(body) {
+        return await runAssertionBody(body, close);
+    });
 }
 
 export type LateAssertionActivity = {

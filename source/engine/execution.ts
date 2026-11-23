@@ -99,15 +99,7 @@ async function createRunResultBeforeRunEnd(input: ExecuteRunInput): Promise<RunR
     };
 }
 
-async function executeRun(input: ExecuteRunInput): Promise<RunResult> {
-    return await withAssertionSettlement(async function observeSettlements() {
-        return await withLateAssertionDelivery(async function deliverLateAssertions(events) {
-            return await executeRunWithLateAssertions(input, events);
-        });
-    });
-}
-
-async function executeRunWithLateAssertions(
+async function finalizeRunWithLateAssertions(
     input: ExecuteRunInput,
     events: LateAssertionDelivery
 ): Promise<RunResult> {
@@ -124,10 +116,24 @@ async function executeRunWithLateAssertions(
 
     const diagnostics = await reportRunnerErrors(input.context.reporterDelivery, events.take());
     const finalized = await input.options.finalizeResult(appendRunnerErrors(result, diagnostics));
-    const finalizedResult = appendRunnerErrors(
+    return appendRunnerErrors(
         finalized,
         await reportRunnerErrors(input.context.reporterDelivery, events.take())
     );
+}
+
+function stopGlobalErrorObservation(input: ExecuteRunInput): readonly RunnerError[] {
+    const { globalErrorObserver } = input.context.dependencies;
+    const observed = globalErrorObserver.takeErrors();
+    globalErrorObserver.stop();
+    return observed;
+}
+
+async function executeRunWithLateAssertions(
+    input: ExecuteRunInput,
+    events: LateAssertionDelivery
+): Promise<RunResult> {
+    const finalizedResult = await finalizeRunWithLateAssertions(input, events);
     const runEndErrors = await input.context.reporterDelivery.reportEvent({
         kind: 'run-end',
         result: finalizedResult
@@ -138,16 +144,21 @@ async function executeRunWithLateAssertions(
     const finishDiagnostics = await reportRunnerErrors(input.context.reporterDelivery, events.take());
     const disposeErrors = await input.reporterDisposal.disposeOnce();
 
-    const observer = input.context.dependencies.globalErrorObserver;
-    const observed = observer.takeErrors();
-    observer.stop();
     return appendRunnerErrors(resultForFinalReporting, [
         ...finalReporterErrors,
         ...finishDiagnostics,
         ...disposeErrors,
-        ...observed,
+        ...stopGlobalErrorObservation(input),
         ...events.seal()
     ]);
+}
+
+async function executeRun(input: ExecuteRunInput): Promise<RunResult> {
+    return await withAssertionSettlement(async function observeSettlements() {
+        return await withLateAssertionDelivery(async function deliverLateAssertions(events) {
+            return await executeRunWithLateAssertions(input, events);
+        });
+    });
 }
 
 export type RuntimeExecute = (testPlan: TestPlan, options?: ExecuteOptions) => Promise<RunResult>;

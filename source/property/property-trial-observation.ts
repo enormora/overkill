@@ -13,7 +13,7 @@ import { trialFailureKey, type TrialFailureKey } from './property-failure-key.ts
 import { trialTargets, type TrialTargets } from './property-targets.ts';
 import { trialInputReconstruction, type TrialInputReconstruction } from './property-input-reconstruction.ts';
 import type { CoverageTrial } from './property-coverage.ts';
-import type { NormalizedPropertyInvocation } from './property-definition.ts';
+import type { NormalizedPropertyInvocation, PropertyBody } from './property-definition.ts';
 import { propertyExhaustion, propertyTrialPosition, type PropertyWork } from './property-work.ts';
 
 export type ObservedTrial = {
@@ -82,7 +82,7 @@ export async function observePropertyTrial<Value>(
     };
     try {
         const trial = propagateTrialWorkExhaustion(
-            await context.host.evaluateTrial(function runCandidate(scope) {
+            await context.host.evaluateTrial(function runCandidate(scope): ReturnType<PropertyBody<Value>> {
                 return invocation.test(value, {
                     ...scope,
                     reconstructInput: tracking.reconstruction.input,

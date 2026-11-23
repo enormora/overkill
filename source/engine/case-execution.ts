@@ -1,4 +1,5 @@
 import type { Clock } from '@enormora/clock';
+import type { AttemptId } from './identity.ts';
 import { runCaseBody } from './case-body.ts';
 import type { CaseExecutionOptions } from './case-execution-context.ts';
 import type { ExecutedBody } from './body-result.ts';
@@ -82,6 +83,17 @@ function skippedCase(
     };
 }
 
+function completedTerminalOutcome(
+    outcome: TestOutcome | null,
+    terminal: PerTestResult,
+    hasLateFailures: boolean
+): Pick<PerTestResult, 'outcome' | 'verdict'> {
+    if (outcome === null || outcome.kind === 'pass') {
+        return { outcome: terminal.outcome, verdict: terminal.verdict };
+    }
+    return { outcome, verdict: hasLateFailures ? terminal.verdict : verdictFromOutcome(outcome) };
+}
+
 function completedCaseOutcome(
     recorder: AssertionRecorder,
     body: ExecutedBody,
@@ -89,15 +101,10 @@ function completedCaseOutcome(
     generated: boolean
 ): Pick<PerTestResult, 'outcome' | 'verdict'> {
     const outcome = createBodyOutcome(recorder, body, terminal !== null || generated);
-    if (terminal !== null) {
-        if (outcome === null || outcome.kind === 'pass') {
-            return { outcome: terminal.result.outcome, verdict: terminal.result.verdict };
-        }
-        if (recorder.lateFailures().length > 0) {
-            return { outcome, verdict: terminal.result.verdict };
-        }
+    if (terminal === null) {
+        return { outcome, verdict: outcome === null ? 'runtime-policy' : verdictFromOutcome(outcome) };
     }
-    return { outcome, verdict: outcome === null ? 'runtime-policy' : verdictFromOutcome(outcome) };
+    return completedTerminalOutcome(outcome, terminal.result, recorder.lateFailures().length > 0);
 }
 
 function caseBodyMode(execution: TestPlanCaseExecution): string {
@@ -105,6 +112,28 @@ function caseBodyMode(execution: TestPlanCaseExecution): string {
         throw new TypeError('Referenced body was not admitted before case execution.');
     }
     return execution.bodyMode;
+}
+
+export function createCaseAssertionRecorder(testCase: TestPlanCase, attempt: AttemptId): AssertionRecorder {
+    return createAssertionRecorder({ case: testCase.id, work: testCase.workId, attempt, trial: null });
+}
+
+export async function withCaseAssertionRecorder<Value>(
+    testCase: TestPlanCase,
+    attempt: AttemptId,
+    recorder: AssertionRecorder | null,
+    run: (active: AssertionRecorder) => Promise<Value>
+): Promise<Value> {
+    if (recorder !== null) {
+        return await run(recorder);
+    }
+    const owned = createCaseAssertionRecorder(testCase, attempt);
+    try {
+        return await run(owned);
+    } finally {
+        owned.close('settled');
+        owned.publish();
+    }
 }
 
 export async function runTestCase(
@@ -122,12 +151,24 @@ export async function runTestCase(
         );
     }
 
-    const recorder = options.assertionRecorder ?? createAssertionRecorder({
-        case: testCase.id,
-        work: testCase.workId,
-        attempt: options.attempt,
-        trial: null
-    });
+    return await withCaseAssertionRecorder(
+        testCase,
+        options.attempt,
+        options.assertionRecorder,
+        async function run(recorder) {
+            return await executeTestBody(testCase, options, recorder, function measureExecution() {
+                return Number(wallClock.currentMonotonicMicroseconds) - startedAtMicroseconds;
+            });
+        }
+    );
+}
+
+async function executeTestBody(
+    testCase: TestPlanCase,
+    options: RunTestCaseOptions,
+    recorder: AssertionRecorder,
+    elapsed: () => number
+): Promise<ExecutedCase> {
     const execution = {
         recorder,
         benchmark: createBenchmarkAttempt(testCase, options.onBenchmarkUpdate, options.benchmarkEnvironment),
@@ -138,9 +179,6 @@ export async function runTestCase(
         interruption: execution.interruption
     }, execution.benchmark);
     recorder.close('settled');
-    if (options.assertionRecorder === null) {
-        recorder.publish();
-    }
     const executedBody = { ...completed, runnerErrors: [ ...completed.runnerErrors, ...execution.benchmark.errors() ] };
     const completion = completedCaseOutcome(
         execution.recorder,
@@ -148,7 +186,7 @@ export async function runTestCase(
         execution.interruption.result(),
         caseBodyMode(testCase.execution) === 'benchmark'
     );
-    const durationMicroseconds = Number(wallClock.currentMonotonicMicroseconds) - startedAtMicroseconds;
+    const durationMicroseconds = elapsed();
 
     return {
         result: singleAttemptResult({

@@ -1,4 +1,3 @@
-import { runAssertionBody } from './assertion-lifetime.ts';
 import type { ExecutedBody } from './body-result.ts';
 import { runPropertyCaseBody } from './property-trial.ts';
 import { testBodyExecutionError, runCaseBodyWithCancellation } from './case-policy.ts';
@@ -13,7 +12,7 @@ import {
 } from './case-body-execution.ts';
 import type { AssertionRecorder } from './assertion-recorder.ts';
 import type { CaseExecutionOptions } from './case-execution-context.ts';
-import { createTestScopeLifecycle, createThrowingTestScope } from './test-scope-lifecycle.ts';
+import { createTestScopeLifecycle, runThrowingTestBody } from './test-scope-lifecycle.ts';
 import type { CaseInterruption } from './case-interruption.ts';
 import type { TestPlanCase } from './test-plan.ts';
 
@@ -55,7 +54,7 @@ async function runBuilderCaseBody(
     const runBody = async function runUserBody(): Promise<AssertionResult> {
         return await lifecycle.runBody(
             options.controller.signal,
-            function runFamilyBody(scope) {
+            function runFamilyBody(scope): ReturnType<typeof runPropertyCaseBody> {
                 return runPropertyCaseBody(testCase, {
                     scope,
                     recorder,
@@ -105,12 +104,10 @@ async function runThrowingCaseBody(
         if (typeof body !== 'function') {
             throw new TypeError('Throwing implementation was not admitted.');
         }
-        const scope = createThrowingTestScope(
-            recorder,
-            options.controller.signal,
-            { seed: options.seed, work: testCase.workId }
-        );
-        await runAssertionBody(() => body(scope), () => recorder.close('settled'));
+        await runThrowingTestBody(recorder, options.controller.signal, {
+            seed: options.seed,
+            work: testCase.workId
+        }, body);
     };
     const runAndPrepare = async function runThrowingBodyAndPreparation(): Promise<ExecutedBody> {
         const completion = await options.interruption.run(runBody);

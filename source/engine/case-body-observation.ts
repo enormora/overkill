@@ -1,5 +1,6 @@
-import type { AssertionRecorder } from './assertion-recorder.ts';
 import { createStoredValue } from '../stored-value.ts';
+import { createCaseAssertionRecorder } from './case-execution.ts';
+import type { AssertionRecorder } from './assertion-recorder.ts';
 import { observeCaseResourceOwners } from './resource-owner-observation.ts';
 import { caseWithAsyncLeakPolicy, type AsyncLeakCheckedCase } from './execution-async-leak-policy.ts';
 import { executeCaseBody } from './execution-supervision.ts';
@@ -90,7 +91,7 @@ async function runObservedCase(
     };
 }
 
-export async function executeTimedLeakCheckedCase(
+async function executeTimedLeakCheckedCase(
     input: ExecuteCaseInput,
     recorder: AssertionRecorder
 ): Promise<TimedLeakCheckedCase> {
@@ -123,5 +124,25 @@ export async function executeTimedLeakCheckedCase(
         endedAtMicroseconds: Number(input.context.dependencies.wallClock.currentMonotonicMicroseconds),
         leakCheckedCase,
         startedAtMicroseconds
+    };
+}
+
+export type ObservedCaseBody = {
+    readonly lateFailures: AssertionRecorder['lateFailures'];
+    readonly publish: () => void;
+    readonly run: () => Promise<TimedLeakCheckedCase>;
+};
+
+export function observeCaseBody(input: ExecuteCaseInput): ObservedCaseBody {
+    const recorder = createCaseAssertionRecorder(input.testCase, { index: input.attempt });
+    return {
+        lateFailures: recorder.lateFailures,
+        publish() {
+            recorder.close('settled');
+            recorder.publish();
+        },
+        async run() {
+            return await executeTimedLeakCheckedCase(input, recorder);
+        }
     };
 }

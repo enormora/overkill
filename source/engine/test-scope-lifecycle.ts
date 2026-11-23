@@ -1,6 +1,5 @@
-import { runAssertionBody } from './assertion-lifetime.ts';
-import { attachAssertionBodyExecutor } from './assertion-body-scope.ts';
 import type { AssertionResult } from '../assertion-protocol/assertion-node.ts';
+import { runAssertionBody, scopeWithAssertionSettlement } from './assertion-lifetime.ts';
 import { currentTestDebugScope } from './test-debug-recording.ts';
 import type { AssertionRecorder } from './assertion-recorder.ts';
 import {
@@ -16,7 +15,7 @@ import {
 import { createRecordingAssertFacade } from './assertion-facade.ts';
 import { createRecordingRequireFacade } from './require-assertion-facade.ts';
 import type { TestContractFailure } from './run-result.ts';
-import type { TestScope, ThrowingTestScope } from './test-scope.ts';
+import type { TestBody, TestScope, ThrowingTestBody, ThrowingTestScope } from './test-scope.ts';
 import { createTestRandom, deriveCaseSeed, type CaseRandomContext } from './case-random.ts';
 
 type FinishedScopeLifecycle = {
@@ -43,64 +42,31 @@ export function createTestScopeLifecycle(recorder: AssertionRecorder, context: C
         await drainMicrotasks();
         return { cleanupErrors, lifecycleFailures: validateInFlightTasks(state) };
     }
-    const assertContext = Object.assign(
-        createRecordingAssertFacade(
-            {
-                assertRecording: recorder.assertRecording,
-                failContract(failure) {
-                    return recorder.failContract(failure);
-                },
-                recordAssert(assertion) {
-                    recorder.recordAssert(assertion);
-                },
-                recordPendingAssert() {
-                    return recorder.recordPendingAssert();
-                }
+    function closeRecording(): void {
+        recorder.close('settled');
+    }
+    const assertContext = Object.assign(createRecordingAssertFacade(recorder, null), { collect: recorder.collect });
+    function createScope(signal: AbortSignal): TestScope {
+        const scope: TestScope = {
+            debug: currentTestDebugScope(),
+            seed,
+            random: createTestRandom(seed),
+            assert: assertContext,
+            cleanup(callback) {
+                registerCleanup(state, callback);
             },
-            null
-        ),
-        {
-            collect() {
-                return recorder.collect();
-            }
-        }
-    );
-    const createScope = function createScope(signal: AbortSignal): TestScope {
-        return attachAssertionBodyExecutor(
-            {
-                debug: currentTestDebugScope(),
-                seed,
-                random: createTestRandom(seed),
-                assert: assertContext,
-                cleanup(callback) {
-                    registerCleanup(state, callback);
-                },
-                drainMicrotasks,
-                plan(count) {
-                    recorder.plan(count);
-                },
-                require: createRecordingRequireFacade(
-                    {
-                        assertRecording: recorder.assertRecording,
-                        failContract(failure) {
-                            return recorder.failContract(failure);
-                        },
-                        recordRequire(assertion) {
-                            recorder.recordRequire(assertion);
-                        }
-                    },
-                    null
-                ),
-                settleAsyncWork,
-                signal,
-                startInFlight(operation) {
-                    return startInFlight(state, assertContext, operation);
-                },
-                yieldToNextTurn
-            } satisfies TestScope,
-            (body) => runAssertionBody(body, () => recorder.close('settled'))
-        );
-    };
+            drainMicrotasks,
+            plan: recorder.plan,
+            require: createRecordingRequireFacade(recorder, null),
+            settleAsyncWork,
+            signal,
+            startInFlight(operation) {
+                return startInFlight(state, assertContext, operation);
+            },
+            yieldToNextTurn
+        };
+        return scopeWithAssertionSettlement(scope, closeRecording);
+    }
 
     return {
         createScope,
@@ -109,12 +75,14 @@ export function createTestScopeLifecycle(recorder: AssertionRecorder, context: C
             return await finishing;
         },
         async runBody(signal, body) {
-            return await runAssertionBody(() => body(createScope(signal)), () => recorder.close('settled'));
+            return await runAssertionBody(function executeBody(): ReturnType<TestBody> {
+                return body(createScope(signal));
+            }, closeRecording);
         }
     };
 }
 
-export function createThrowingTestScope(
+function createThrowingTestScope(
     recorder: AssertionRecorder,
     signal: AbortSignal,
     context: CaseRandomContext
@@ -124,33 +92,22 @@ export function createThrowingTestScope(
         debug: currentTestDebugScope(),
         seed,
         random: createTestRandom(seed),
-        assert: createRecordingAssertFacade(
-            {
-                assertRecording: recorder.assertRecording,
-                failContract(failure) {
-                    return recorder.failContract(failure);
-                },
-                recordAssert(assertion) {
-                    recorder.recordAssert(assertion);
-                },
-                recordPendingAssert() {
-                    return recorder.recordPendingAssert();
-                }
-            },
-            null
-        ),
-        require: createRecordingRequireFacade(
-            {
-                assertRecording: recorder.assertRecording,
-                failContract(failure) {
-                    return recorder.failContract(failure);
-                },
-                recordRequire(assertion) {
-                    recorder.recordRequire(assertion);
-                }
-            },
-            null
-        ),
+        assert: createRecordingAssertFacade(recorder, null),
+        require: createRecordingRequireFacade(recorder, null),
         signal
     };
+}
+
+export async function runThrowingTestBody(
+    recorder: AssertionRecorder,
+    signal: AbortSignal,
+    context: CaseRandomContext,
+    body: ThrowingTestBody
+): Promise<void> {
+    const scope = createThrowingTestScope(recorder, signal, context);
+    await runAssertionBody(function executeBody(): ReturnType<ThrowingTestBody> {
+        return body(scope);
+    }, function closeRecording() {
+        recorder.close('settled');
+    });
 }
