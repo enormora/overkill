@@ -7,8 +7,13 @@ import { canonicalJson } from '../canonical-identity.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 
 import { compactRunRecord } from './compact-run-record.ts';
-import { historyRecordSchema } from './history-record.ts';
-import { recordedRunResult, serializeRunDiagnostics, parseSerializedRunDiagnostics } from './run-record-result.ts';
+import { historyRecordSchema, type HistoryRecord } from './history-record.ts';
+import {
+    recordedRunResult,
+    serializeRunDiagnostics,
+    parseSerializedRunDiagnostics,
+    type SerializedRunDiagnostics
+} from './run-record-result.ts';
 
 function opaqueFailure(): TestOutcome {
     const thrown = new Map<string, unknown>();
@@ -157,7 +162,13 @@ function resultWithOpaqueEvidence(): RunResult {
     };
 }
 
-function retainedLateAssertion() {
+type RetainedLateAssertion = {
+    readonly detailed: HistoryRecord;
+    readonly compact: HistoryRecord;
+    readonly runnerErrors: SerializedRunDiagnostics['runnerErrors'];
+};
+
+function retainedLateAssertion(): RetainedLateAssertion {
     const origin = { case: historyWork.case, work: historyWork, attempt: { index: 1 }, trial: null };
     const diagnostic = lateAssertionDiagnostic({
         kind: 'late-assertion-activity',

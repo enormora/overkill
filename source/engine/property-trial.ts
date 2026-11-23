@@ -12,7 +12,7 @@ import {
 import type { TestBody, TestScope } from './test-scope.ts';
 import { CaseRunnerError, type PropertyCaseEvidence, type RunnerError } from './run-result.ts';
 import type { TestPlanCase } from './test-plan.ts';
-import { runInterruptibleScopeBody } from './test-scope-lifecycle.ts';
+import { runScopeBodyWithInterruption } from './test-scope-lifecycle.ts';
 
 type PropertyBoundaryContext = {
     readonly signal: AbortSignal;
@@ -55,12 +55,17 @@ async function evaluatePropertyTrial(
 ): Promise<PropertyTrialResult> {
     const { testCase, scope, seed, owner } = execution;
     const recorder = createAssertionRecorder({ ...owner.origin, trial: identity });
-    const { cleanup, completion } = await runInterruptibleScopeBody(recorder, { seed, work: testCase.workId }, body, {
-        parent: scope.signal,
-        cancellation,
-        ownerInterruption: owner.interruption,
-        afterCleanup: scope.yieldToNextTurn
-    });
+    const { cleanup, completion } = await runScopeBodyWithInterruption(
+        recorder,
+        { seed, work: testCase.workId },
+        body,
+        {
+            parent: scope.signal,
+            cancellation,
+            ownerInterruption: owner.interruption,
+            afterCleanup: scope.yieldToNextTurn
+        }
+    );
     recorder.close('settled');
     recorder.publish();
     const context = bodyResultContext(recorder, testCase, cleanup, []);

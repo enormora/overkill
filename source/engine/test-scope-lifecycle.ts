@@ -135,7 +135,7 @@ type FinishedScopeBody = {
     readonly completion: ScopeBodyCompletion;
 };
 
-export async function runInterruptibleScopeBody(
+export async function runScopeBodyWithInterruption(
     recorder: AssertionRecorder,
     context: CaseRandomContext,
     body: TestBody,

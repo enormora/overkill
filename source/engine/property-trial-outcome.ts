@@ -46,7 +46,7 @@ function hasAdditionalFailures(result: ExecutedBody, failure: TestFailure | null
         });
 }
 
-export function classifyPropertyTrial(result: ExecutedBody): PropertyTrialResult {
+function classifyPropertyTrial(result: ExecutedBody): PropertyTrialResult {
     if (
         hasNativeFailure(result)
     ) {

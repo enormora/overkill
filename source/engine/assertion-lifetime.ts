@@ -7,7 +7,7 @@ import type { AttemptId, CaseId, WorkId } from './identity.ts';
 import type { PropertyTrialPosition } from './property-failure-evidence.ts';
 import type { RunnerError, TestContractFailure } from './run-result.ts';
 
-export type PropertyTrialIdentity = {
+type PropertyTrialIdentity = {
     readonly kind: 'property';
     readonly invocation: string;
     readonly position: PropertyTrialPosition;
@@ -150,10 +150,12 @@ export function lateAssertionFailure(activity: LateAssertionActivity): TestContr
 }
 
 const diagnosticSequenceKey = Symbol.for('@overkill-dev/late-assertion-sequence/v1');
+const firstDiagnosticSequence = 0n;
+const diagnosticSequenceIncrement = 1n;
 
 function nextDiagnosticId(): string {
     const previous: unknown = Reflect.get(globalThis, diagnosticSequenceKey);
-    const sequence = typeof previous === 'bigint' ? previous + 1n : 0n;
+    const sequence = typeof previous === 'bigint' ? previous + diagnosticSequenceIncrement : firstDiagnosticSequence;
     Reflect.set(globalThis, diagnosticSequenceKey, sequence);
     return `${process.pid}:${threadId}:${sequence}`;
 }

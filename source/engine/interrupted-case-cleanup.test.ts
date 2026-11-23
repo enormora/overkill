@@ -6,7 +6,7 @@ import { createStoredValue, type StoredValue } from '../stored-value.ts';
 import { createInterruptedCase, type InterruptedCase } from '../test-support/interrupted-case.ts';
 import { createPermissionDenialRuntimePolicy } from '../run/capability-policy.ts';
 import { createAssertionRecorder } from './assertion-recorder.ts';
-import { createTestScopeLifecycle } from './test-scope-lifecycle.ts';
+import { createTestScopeLifecycle, type TestScopeLifecycle } from './test-scope-lifecycle.ts';
 import type { ConcurrentCase } from './execution-supervision.ts';
 
 type RegistrationProbe = { readonly registerCleanup: () => void; readonly startWork: () => void; };
@@ -134,7 +134,7 @@ const cleanupRemainsPending = defineCompositeAssertion({
     }
 });
 
-function prepareScopeLifecycle() {
+function prepareScopeLifecycle(): TestScopeLifecycle {
     const work = {
         familyVariant: null,
         case: { file: null, suite: [], title: 'case', params: null },
