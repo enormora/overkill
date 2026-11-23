@@ -25,6 +25,7 @@ type TinypoolOptions = {
     readonly minThreads: number;
     readonly runtime: 'worker_threads';
     readonly useAtomics: boolean;
+    readonly workerData: boolean;
 };
 
 type TinypoolWorker = { readonly once: (event: 'exit', listener: () => void) => unknown; };
@@ -38,7 +39,10 @@ export type TinypoolInstance = {
     readonly setHostOutputSink?: (sink: WorkerPoolHostOutputSink | null) => void;
 };
 
-export type TinypoolConstructor = new (options: TinypoolOptions) => TinypoolInstance;
+type TinypoolConstructor = {
+    readonly workerData: unknown;
+    new (options: TinypoolOptions): TinypoolInstance;
+};
 
 type TinypoolModule = {
     readonly Tinypool: TinypoolConstructor;

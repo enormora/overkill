@@ -488,7 +488,8 @@ discarded, and conflicting outcomes fail the case with a `hedged-conflict`
 artifact.
 `workerLifecycle: 'reuse'` reuses worker threads between units.
 `workerLifecycle: 'fresh-worker-per-unit'` creates disposable isolation per
-unit. `supervised-process` remains available when a single process-isolated
+unit. Node workers in the same pool can share its temporary compile cache.
+`supervised-process` remains available when a single process-isolated
 child boundary is preferred.
 
 Resource requirements resolve after work-unit formation. A `serial` or

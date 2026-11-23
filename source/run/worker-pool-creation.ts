@@ -1,5 +1,9 @@
+import { mkdtempDisposable, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { readProcessEnvironment } from './node-host-readers.ts';
 import { loadTinypoolConstructor, type TinypoolInstance } from './tinypool-node-compatibility.ts';
-import { workerPoolEntryPointUrl } from './worker-pool-worker.ts';
+import { workerPoolEntryPointUrl } from './worker-pool-bootstrap.entry-point.ts';
 import type { WorkerPoolCreationOptions } from './run-orchestrator-dependencies.ts';
 
 const Tinypool = loadTinypoolConstructor();
@@ -48,18 +52,81 @@ export function observeWorkerPoolLifetime(pool: TinypoolInstance): TinypoolInsta
     };
 }
 
-export function createTinypoolWorkerPool(options: TinypoolWorkerPoolOptions): TinypoolInstance {
+function startTinypool(options: TinypoolWorkerPoolOptions, cacheEntryPoint: string | null): TinypoolInstance {
     return observeWorkerPoolLifetime(
         new Tinypool({
             concurrentTasksPerWorker: 1,
-            filename: options.filename,
+            filename: cacheEntryPoint ?? options.filename,
             isolateWorkers: isolateWorkers(options),
             maxThreads: options.workerCount,
             minThreads: isolateWorkers(options) ? 0 : options.workerCount,
             runtime: 'worker_threads',
-            useAtomics: false
+            useAtomics: false,
+            workerData: cacheEntryPoint !== null
         })
     );
+}
+
+async function createCachedWorkerEntryPoint(lifetime: AsyncDisposableStack): Promise<string | null> {
+    try {
+        const directory = lifetime.use(await mkdtempDisposable(join(tmpdir(), 'overkill-worker-compile-cache-')));
+        const entry = join(directory.path, 'worker.mjs');
+        const bootstrap = [
+            "import { enableCompileCache } from 'node:module';",
+            'export async function runTask(task) {',
+            "    if (task.kind === 'run') {",
+            '        enableCompileCache({ directory: import.meta.dirname });',
+            '    }',
+            `    const worker = await import(${JSON.stringify(workerPoolEntryPoint)});`,
+            '    return await worker.runTask(task);',
+            '}'
+        ].join('\n');
+        await writeFile(entry, bootstrap);
+        return entry;
+    } catch {
+        return null;
+    }
+}
+
+function createCachedFreshPool(options: TinypoolWorkerPoolOptions): TinypoolInstance {
+    const lifetime = new AsyncDisposableStack();
+    let started: Promise<TinypoolInstance> | null = null;
+    let pool: TinypoolInstance | null = null;
+
+    async function start(): Promise<TinypoolInstance> {
+        const cacheEntryPoint = await createCachedWorkerEntryPoint(lifetime);
+        const instance = startTinypool(options, cacheEntryPoint);
+        lifetime.defer(instance.destroy);
+        pool = instance;
+        return instance;
+    }
+
+    return {
+        options: { isolateWorkers: true, maxThreads: options.workerCount },
+        get threads() {
+            return pool?.threads ?? [];
+        },
+        async run(task, runOptions) {
+            started = started ?? start();
+            const instance = await started;
+            return await instance.run(task, runOptions);
+        },
+        async destroy() {
+            try {
+                await started;
+            } finally {
+                await lifetime.disposeAsync();
+            }
+        }
+    };
+}
+
+export function createTinypoolWorkerPool(options: TinypoolWorkerPoolOptions): TinypoolInstance {
+    const environment = readProcessEnvironment(process);
+    const canShareCompileCache = isolateWorkers(options) && options.filename === workerPoolEntryPoint &&
+        options.workerCount > 0 && environment.NODE_DISABLE_COMPILE_CACHE !== '1' &&
+        environment.NODE_V8_COVERAGE === undefined;
+    return canShareCompileCache ? createCachedFreshPool(options) : startTinypool(options, null);
 }
 
 export function createPool(options: WorkerPoolCreationOptions): TinypoolInstance {
