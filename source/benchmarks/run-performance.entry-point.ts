@@ -42,7 +42,7 @@ const mode = modeSchema.parse(rawMode);
 const samples = mode === 'capture' ? captureSamples : regularSamples;
 if (outputPath === undefined || mode !== 'run' && baselinePath === '') {
     throw new Error([
-        'Usage: run-performance.ts <run|capture|compare> <output directory>',
+        'Usage: run-performance.entry-point.ts <run|capture|compare> <output directory>',
         '[all|startup|case-id] [reference file] [compiler]'
     ]
         .join(' '));

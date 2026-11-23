@@ -6,6 +6,7 @@ const configFiles = [
 ];
 
 const entryPointFiles = [
+    '^source/benchmarks/run-performance\\.entry-point\\.ts$',
     '^source/packages/.+/.+\\.entry-point\\.ts$',
     '^source/reporters/',
     '^source/run/supervised-child\\.entry-point\\.ts$'
