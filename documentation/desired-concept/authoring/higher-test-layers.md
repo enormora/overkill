@@ -559,20 +559,20 @@ In the matrix, **injected APIs** are proven `assert` and `require` facades,
 including their aliases and annotated variants. **Check builders** are the
 builders injected into recognized assertion definitions.
 
-| Rule | Supported forms |
-| ---- | --------------- |
-| `no-scope-escape` | Proven case or trial scopes and their `assert`, `require`, and `plan` APIs, including extracted methods. Honor declared Overkill scope-injection contracts. |
-| `no-single-use-trivial-assertion` | Local, unexported `defineCompositeAssertion` definitions with one source reference that forward one built-in check. Preserve narrowing, grouped checks, and custom diagnostics. |
-| `no-self-comparison` | Built-in equality checks on injected APIs and check builders when both operands have the same stable binding identity. |
-| `no-constant-actual-assert` | Built-in checks on injected APIs and check builders with a defined actual/expected pair. A constant actual and nonconstant expected suggest reversed operands. |
-| `prefer-semantic-assertions` | Built-in checks on injected APIs and check builders where the direct form preserves comparison semantics, evaluation order, and assertion boundaries. |
-| `no-shared-mutable-test-state` | Proven case bodies, including cases declared in support modules. Respect per-case state and explicit resource lifetimes. |
-| `no-reexported-test-node` | Configured entries that forward another module's `testNode` unchanged through re-export syntax or a local alias. Allow local composition from imported fragments. |
-| `consistent-run-if-main` | Configured entries under `always` or `never`. Recognize `runIfMain` from `@overkill-dev/run`, `@overkill-dev/test`, and proven facade equivalents. |
-| `no-setup-in-error-assertion` | Built-in `throws` and `rejects` callbacks on injected APIs and check builders. |
-| `no-duplicate-assertions` | Adjacent equivalent built-in checks in one body or as siblings of one explicit composite group. Require stable, side-effect-free operands and equivalent diagnostics. An intervening operation ends the sequence. |
-| `prefer-table` | Independent repeated sibling cases written with recognized default, facade, or engine constructors. Suggest the corresponding table API and preserve stateful scenarios and deliberate composition. |
-| `no-conditional-assertions` | Proven runtime case and trial bodies, including custom assertion reference calls. Allow branches inside assertion implementations and straight-line checks after `require`. Native type-test references follow the [compiler family's source contract](./testing-models.md#native-assertion-contract). |
+| Rule                              | Supported forms                                                                                                                                                                                                                                                                                        |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `no-scope-escape`                 | Proven case or trial scopes and their `assert`, `require`, and `plan` APIs, including extracted methods. Honor declared Overkill scope-injection contracts.                                                                                                                                            |
+| `no-single-use-trivial-assertion` | Local, unexported `defineCompositeAssertion` definitions with one source reference that forward one built-in check. Preserve narrowing, grouped checks, and custom diagnostics.                                                                                                                        |
+| `no-self-comparison`              | Built-in equality checks on injected APIs and check builders when both operands have the same stable binding identity.                                                                                                                                                                                 |
+| `no-constant-actual-assert`       | Built-in checks on injected APIs and check builders with a defined actual/expected pair. A constant actual and nonconstant expected suggest reversed operands.                                                                                                                                         |
+| `prefer-semantic-assertions`      | Built-in checks on injected APIs and check builders where the direct form preserves comparison semantics, evaluation order, and assertion boundaries.                                                                                                                                                  |
+| `no-shared-mutable-test-state`    | Proven case bodies, including cases declared in support modules. Respect per-case state and explicit resource lifetimes.                                                                                                                                                                               |
+| `no-reexported-test-node`         | Configured entries that forward another module's `testNode` unchanged through re-export syntax or a local alias. Allow local composition from imported fragments.                                                                                                                                      |
+| `consistent-run-if-main`          | Configured entries under `always` or `never`. Recognize `runIfMain` from `@overkill-dev/run`, `@overkill-dev/test`, and proven facade equivalents.                                                                                                                                                     |
+| `no-setup-in-error-assertion`     | Built-in `throws` and `rejects` callbacks on injected APIs and check builders.                                                                                                                                                                                                                         |
+| `no-duplicate-assertions`         | Adjacent equivalent built-in checks in one body or as siblings of one explicit composite group. Require stable, side-effect-free operands and equivalent diagnostics. An intervening operation ends the sequence.                                                                                      |
+| `prefer-table`                    | Independent repeated sibling cases written with recognized default, facade, or engine constructors. Suggest the corresponding table API and preserve stateful scenarios and deliberate composition.                                                                                                    |
+| `no-conditional-assertions`       | Proven runtime case and trial bodies, including custom assertion reference calls. Allow branches inside assertion implementations and straight-line checks after `require`. Native type-test references follow the [compiler family's source contract](./testing-models.md#native-assertion-contract). |
 
 ##### Facade declarations
 
@@ -611,13 +611,13 @@ import { createTestCase, unknownSourceLocation } from '@overkill-dev/engine';
 
 export { testNode } from './other-catalog.js';
 
-declare function loadAccount(): { readonly id: string } | undefined;
+declare function loadAccount(): { readonly id: string; } | undefined;
 
 export const fragment = createTestCase({
     title: 'loads an account',
     annotations: {},
     controls: {},
-    definitionLocations: [unknownSourceLocation],
+    definitionLocations: [ unknownSourceLocation ],
     body(scope) {
         scope.assert.defined(loadAccount());
         return scope.assert.collect();
@@ -637,8 +637,8 @@ export const testNode = createSuite({
     title: 'accounts',
     annotations: {},
     controls: {},
-    definitionLocations: [unknownSourceLocation],
-    children: [fragment]
+    definitionLocations: [ unknownSourceLocation ],
+    children: [ fragment ]
 });
 ```
 
@@ -652,7 +652,7 @@ the call in the case.
 import { defineCompositeAssertion } from '@overkill-dev/assert';
 import { test } from '@overkill-dev/test';
 
-type Response = { readonly status: number } | { readonly error: string };
+type Response = { readonly status: number; } | { readonly error: string; };
 
 declare function loadAccount(): Response | undefined;
 
