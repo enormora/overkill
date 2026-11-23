@@ -3,6 +3,7 @@ import { ChildProcess } from 'node:child_process';
 import { channel } from 'node:diagnostics_channel';
 import * as timers from 'node:timers';
 import { z } from 'zod';
+import { withRunnerInfrastructure } from '../../execution-ownership.ts';
 
 const disposalSymbols: typeof Symbol & { readonly asyncDispose: typeof Symbol.asyncDispose; } = Symbol;
 const asyncDispose: typeof Symbol.asyncDispose = disposalSymbols.asyncDispose;
@@ -66,7 +67,9 @@ export function createCompilerLifetime(): CompilerLifetime {
         terminate,
         run(operation) {
             closed.signal.throwIfAborted();
-            return compilerContext.run(identity, operation);
+            return withRunnerInfrastructure(function runOwnedCompiler() {
+                return compilerContext.run(identity, operation);
+            });
         },
         async [asyncDispose]() {
             closed.abort(new Error('Compiler lifetime is disposed.'));
@@ -92,17 +95,12 @@ type CompilerCancellation = {
     readonly dispose: () => void;
 };
 
-function observeCompilerCancellation(
-    lifetime: CompilerLifetime,
-    stopped: AbortSignal,
-    signal: AbortSignal
-): CompilerCancellation {
+function observeCompilerCancellation(stopped: AbortSignal): CompilerCancellation {
     const interrupted = Promise.withResolvers<never>();
     const listeners = new AbortController();
     stopped.addEventListener('abort', function interrupt() {
         interrupted.reject(stopped.reason);
     }, { once: true, signal: listeners.signal });
-    signal.addEventListener('abort', lifetime.terminate, { once: true, signal: listeners.signal });
     return {
         interrupted: interrupted.promise,
         dispose() {
@@ -119,7 +117,7 @@ export async function runCompilerOperation<Value>(
 ): Promise<Value> {
     const stopped = AbortSignal.any([ signal, lifetime.closed ]);
     stopped.throwIfAborted();
-    const cancellation = observeCompilerCancellation(lifetime, stopped, signal);
+    const cancellation = observeCompilerCancellation(stopped);
     try {
         const value = await Promise.race([ lifetime.run(operation), cancellation.interrupted ]);
         signal.throwIfAborted();

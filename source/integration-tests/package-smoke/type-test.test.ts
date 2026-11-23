@@ -2,13 +2,12 @@ import { execFile } from 'node:child_process';
 import { cp, mkdir, mkdtemp, rm, writeFile, readFile, readdir } from 'node:fs/promises';
 import { setTimeout as delay } from 'node:timers/promises';
 import { join } from 'node:path';
-import { inspect } from 'node:util';
 
 import { suite } from '@overkill-dev/test';
-import { defaultRunRequest } from '../../test-support/run-command-factory.ts';
 import { sealConsumerDependencies } from './support/consumer-resolution-boundary.ts';
 import { consumerEnvironment } from './support/consumer-environment.ts';
 import { packageConsumer } from './support/package-consumer.ts';
+import { serializedTypeTestRequest, writeParityProject } from './support/type-test-parity.ts';
 
 const engineCaseSource = `import * as engine from '@overkill-dev/engine';
 import { family, sameType } from '@overkill-dev/type-test';
@@ -230,6 +229,16 @@ export const testNode = suite('packaged native type tests', [
             return scope.assert.collect();
         }
     ),
+    test('delivers the same original evidence through the engine and runner', async function (scope) {
+        const { isolatedConsumer } = scope.resources.consumer;
+        const directory = await isolatedConsumer(true);
+        await writeRunnerProject(directory, 'in-process');
+        await writeParityProject(directory);
+        const result = await runNode(directory, [ '--permission-audit', 'parity.mjs' ]);
+        scope.assert.equal(result.code, 0, { message: result.stdout + result.stderr });
+        scope.assert.includes(result.stdout, 'engine and runner delivered original-source evidence');
+        return scope.assert.collect();
+    }),
     table({
         title: 'reproduces recorded compiler work',
         cases: [ 'in-process', 'supervised-process' ] as const,
@@ -238,7 +247,7 @@ export const testNode = suite('packaged native type tests', [
             const { isolatedConsumer } = scope.resources.consumer;
             const directory = await isolatedConsumer(true);
             await writeRunnerProject(directory, scope.parameters);
-            const request = defaultRunRequest({
+            const request = serializedTypeTestRequest({
                 profile: 'types',
                 record: true,
                 selection: { kind: 'filter', filter: { kind: 'equals', field: 'title', value: 'native' } }
@@ -249,7 +258,7 @@ const cwd=process.cwd();
 const source=await readFile('runner.mts','utf8');
 await writeFile('runner.mts',source.replace('sameType<string,string>()','sameType<string,number>()'));
 const original=await commandLineRunner.runTests({cwd,configPath:null,
-    runRequest:${inspect(request, { depth: null })}});
+    runRequest:${request}});
 if(original.exitCode!==1||original.runResult?.summary.failed!==1) {
     throw new Error(original.fallbackDiagnostics.join('\\n'));
 }

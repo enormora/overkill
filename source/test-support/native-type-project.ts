@@ -211,7 +211,21 @@ async function writeProject(directory: string, request: ProjectRequest): Promise
     const source = fixtureSource(request);
     await writeFile(join(directory, 'tsconfig.json'), JSON.stringify(config));
     await writeFile(join(directory, sourceName), source);
-    await writeFile(join(directory, 'dependency.ts'), 'export type Value = { readonly value: string };');
+    const packages = resolvePath(import.meta.dirname, '../packages');
+    await writeFile(
+        join(directory, 'dependency.ts'),
+        `
+import type { TestScope } from ${JSON.stringify(join(packages, 'engine/engine.entry-point.ts'))};
+import { sameType } from ${JSON.stringify(join(packages, 'type-test/type-test.entry-point.ts'))};
+export type Value = { readonly value: string };
+export function importedBody(scope: TestScope) {
+    throwIfExecuted();
+    scope.assert(sameType<Value, { readonly value: string }>());
+    return scope.assert.collect();
+}
+function throwIfExecuted(): void { throw new Error('Imported static body ran.'); }
+`
+    );
     if (!request.compiled) {
         return join(directory, sourceName);
     }

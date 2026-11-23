@@ -244,6 +244,47 @@ const nodes=[generic<'literal'>(),table({title:'static rows',cases:[1,2],test:sc
 }})];
 `;
 
+const inferredCases = `
+function identity<T>(value:T):T { return value; }
+class Box<T> { readonly value:T; constructor(value:T) { this.value=value; } }
+function contextual<T, R>(value:T, select:(value:T)=>R):R { return select(value); }
+function wideFirst(value:string|number):'wide';
+function wideFirst(value:string):'narrow';
+function wideFirst(value:string|number):'wide'|'narrow' { return 'wide'; }
+function narrowFirst(value:string):'narrow';
+function narrowFirst(value:string|number):'wide';
+function narrowFirst(value:string|number):'wide'|'narrow' { return 'narrow'; }
+export class Nominal { private readonly identity = 1; }
+class Other { private readonly identity = 1; }
+const nodes=[suite('composition',[
+    test('authored inference',scope=>{
+        bodyCalls++;
+        scope.assert(same.withActual<'literal'>(),identity('literal' as const));
+        scope.assert(same.withActual<Box<42>>(),new Box(42 as const));
+        scope.assert(same.withActual<string>(),contextual({name:'value'},value=>value.name));
+        return scope.assert.collect();
+    }),
+    test('overload order',scope=>{
+        bodyCalls++;
+        scope.assert(same.withActual<'wide'>(),wideFirst('text'));
+        scope.assert(same.withActual<'narrow'>(),narrowFirst('text'));
+        scope.assert(same.not<typeof wideFirst,typeof narrowFirst>());
+        return scope.assert.collect();
+    }),
+    test('nominal identity',scope=>{
+        bodyCalls++;
+        scope.assert(same<Nominal,import('./cases.ts').Nominal>());
+        scope.assert(same.not<Nominal,Other>());
+        return scope.assert.collect();
+    }),
+    test('assertion in a skipped branch',scope=>{
+        bodyCalls++;
+        if(false)scope.assert(same<string,number>());
+        return scope.assert.collect();
+    })
+])];
+`;
+
 export const testNode = suite('original-source relations', [
     test('implements the documented equality rules in the original project', async function (scope) {
         const { project, directory } = await originalProject(scope.cleanup, scope.signal);
@@ -261,6 +302,18 @@ export const testNode = suite('original-source relations', [
         scope.assert.equal(result.summary.inconclusive, 1);
         scope.assert.equal(result.summary.passed, 0);
         scope.assert.equal(result.bodyCalls, 0);
+        return scope.assert.collect();
+    }),
+    test('checks authored inference, overloads and nominal identity without executing bodies', async function (scope) {
+        const result = await runNativeProject(scope.cleanup, inferredCases, null);
+        scope.assert.deepEqual(result.completions, [
+            { title: 'authored inference', verdict: 'pass' },
+            { title: 'overload order', verdict: 'pass' },
+            { title: 'nominal identity', verdict: 'pass' },
+            { title: 'assertion in a skipped branch', verdict: 'fail' }
+        ], { message: [ ...result.errors, ...result.diagnostics ].join('\n') });
+        scope.assert.equal(result.bodyCalls, 0);
+        scope.assert.deepEqual(result.errors, []);
         return scope.assert.collect();
     }),
     test('keeps unsupported symbolic evidence inconclusive under negation', async function (scope) {
