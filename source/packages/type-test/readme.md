@@ -127,6 +127,8 @@ compiler options. `assignableFrom` asks whether expected is assignable to actual
 `sameType` compares structure while preserving distinctions such as literal
 types, optional and readonly members, and nominal declaration identity.
 Equality is inconclusive when recursive expansion exceeds 256 comparison levels.
+Any relation is inconclusive when operand inspection exceeds 2,048 distinct
+compiler types.
 Expression operands use the types at their authored locations. For calls,
 constructors, and generic inference, write the TypeScript expression and assert
 its inferred type, as in the quickstart.
@@ -250,6 +252,10 @@ original project again.
 
 Only selected cases contribute assertion evidence. TypeScript can still report
 diagnostics anywhere in the original project, including unselected source.
+Case-start events mark entry to the compiler check. Each case's duration
+includes its share of assertion evaluation. Shared project validation is
+recorded in run timings.
+
 The type-test adapter artifact retains site evidence and diagnostics, including
 inconclusive sites in a case that already failed.
 

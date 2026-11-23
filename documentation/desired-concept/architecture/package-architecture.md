@@ -929,7 +929,7 @@ able to wire in:
 - reporters
 - baseline adapters
 - mutation integrations
-- type-test adapters
+- the native type-test family
 - browser adapters or benchmark measurement strategies
 
 ## Integrations

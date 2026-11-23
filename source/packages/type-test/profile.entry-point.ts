@@ -4,7 +4,7 @@ import { typeTestSettingsSchema } from './profile-settings.ts';
 export type { CompilerPolicy, TypeTestSettings } from './profile-settings.ts';
 export const family = defineTestFamily({
     id: '@overkill-dev/type-test',
-    version: '2',
+    version: '3',
     module: { moduleUrl: import.meta.url, exportName: 'family' },
     features: { execution: 'analysis', processModels: [ 'in-process', 'supervised-process' ], profileOptions: [] },
     parseSettings(input) {

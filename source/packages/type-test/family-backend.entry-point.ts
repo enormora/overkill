@@ -55,7 +55,6 @@ async function reportCheckerResult(context: FamilyAnalysisContext, result: RunRe
     }
     for (const testCase of result.perTest) {
         context.signal.throwIfAborted();
-        await context.report({ kind: 'case-start', workId: testCase.workId });
         await context.report({ kind: 'case-end', result: testCase, artifacts: [] });
     }
     for (const artifact of result.artifacts) {
@@ -87,14 +86,16 @@ export async function prepare(input: FamilyPreparationInput<TypeTestSettings>): 
             await preparation.dispose();
         },
         async collect(selection) {
-            const collected = await preparation.collect(
-                selectedCheckerPlan(preparation, selection.workIds),
-                selection.signal
-            );
+            const plan = selectedCheckerPlan(preparation, selection.workIds);
+            const collected = await preparation.collect(plan, selection.signal);
             return {
                 kind: 'analysis',
                 facts: collected.facts,
                 async execute(context) {
+                    for (const testCase of plan.cases) {
+                        context.signal.throwIfAborted();
+                        await context.report({ kind: 'case-start', workId: testCase.workId });
+                    }
                     await executeCheckerCollection(collected, context);
                 }
             };

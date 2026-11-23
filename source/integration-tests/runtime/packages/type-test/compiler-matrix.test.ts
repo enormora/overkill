@@ -26,6 +26,7 @@ Program.prototype.getSemanticDiagnostics=async function readDiagnostics(
     this:import('typescript-beta/async').Program,
     ...args:Parameters<typeof semanticDiagnostics>
 ){
+    events.push('compiler-diagnostics');
     const diagnostics=await semanticDiagnostics.apply(this,args);
     if(!changed){
         changed=true;appendFileSync(import.meta.filename,'\\n');
@@ -145,6 +146,7 @@ export const testNode = suite('compiler matrix evidence', [
         scope.assert.equal(result.summary.passed, 0);
         scope.assert.equal(result.summary.failed, 0);
         scope.assert.deepEqual(result.completions, [ { title: 'passing', verdict: 'inconclusive' } ]);
+        scope.assert.deepEqual(result.events, [ 'test-start', 'compiler-diagnostics', 'test-end' ]);
         scope.assert.equal(result.checkerFacts?.compilers[0]?.evidence, undefined);
         scope.assert.includes(result.errors.join('\n'), 'changed after collection');
         scope.assert.equal(result.bodyCalls, 0);

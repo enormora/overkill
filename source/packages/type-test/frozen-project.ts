@@ -135,7 +135,7 @@ export function originalProjectFacts(project: FrozenProject): unknown {
 }
 
 export function typeAnalysis(project: FrozenProject): TypeAnalysis {
-    return { compiler: project.compiler.syntax, checker: project.configured.checker };
+    return { program: project.program, compiler: project.compiler.syntax, checker: project.configured.checker };
 }
 
 export async function disposeProject(project: FrozenProject): Promise<void> {

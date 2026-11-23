@@ -49,6 +49,7 @@ export type SourceFixture = {
     readonly bindCanonicalPath: (from: string, to: string) => void;
     readonly bindSymbol: (node: syntax.Node, symbol: SourceSymbol) => void;
     readonly forgetSymbol: (node: syntax.Node) => void;
+    readonly addRelationExport: (symbol: SourceSymbol) => void;
     readonly bindName: (name: string, symbol: SourceSymbol) => void;
     readonly addFile: (file: syntax.SourceFile) => void;
     readonly bindAlias: (alias: SourceSymbol, target: SourceSymbol) => void;
@@ -99,6 +100,7 @@ export function sourceFixture(): SourceFixture {
     const files = new Map<string, syntax.SourceFile>();
     const aliases = new Map<SourceSymbol, SourceSymbol>();
     const signatures = new Map<syntax.Node, SourceSignature>();
+    const relationExports: SourceSymbol[] = [];
     const responses: SourceResponses = { symbols, names, files, aliases, signatures };
     return {
         bindCanonicalPath(from, to) {
@@ -109,6 +111,9 @@ export function sourceFixture(): SourceFixture {
         },
         forgetSymbol(node) {
             symbols.delete(node);
+        },
+        addRelationExport(symbol) {
+            relationExports.push(symbol);
         },
         bindName(name, symbol) {
             names.set(name, symbol);
@@ -123,6 +128,9 @@ export function sourceFixture(): SourceFixture {
             signatures.set(node, signature);
         },
         analysis: createSourceAnalysis({
+            async getRelationModuleExports() {
+                return relationExports;
+            },
             realpath(path) {
                 return canonical.get(path) ?? path;
             },

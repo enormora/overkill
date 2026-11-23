@@ -226,7 +226,7 @@ export const testNode = suite('isolated native syntax analysis', [
         const reference = sourceTree(sourceMember(ast.factory.createIdentifier('foreign'), 'expressions'));
         await scope.assert.rejects(async function () {
             await nativeReference(fixture.analysis, reference);
-        }, { message: /not an adapter-owned/u });
+        }, { message: /not an export of the type-test package/u });
         return scope.assert.collect();
     })
 ]);

@@ -33,7 +33,14 @@ function ownedSite(input: NativeCheckEvidence, message: string | null): NativeSi
     };
 }
 function checkedSite(site: NativeSite, result: SiteEvidence['result']): SiteEvidence {
-    return { site, compilerVersion: '7.1.0-beta', actual: 'string', expected: 'number', result };
+    return {
+        site,
+        compilerVersion: '7.1.0-beta',
+        actual: 'string',
+        expected: 'number',
+        result,
+        durationMicroseconds: 25
+    };
 }
 function selectedEvidence(message: string | null): NativeCheckEvidence & { readonly site: NativeSite; } {
     const input = evidence();
@@ -64,6 +71,7 @@ export const testNode = suite('native checker completion policy', [
             checked: [ checkedSite(input.site, { kind: 'established', holds: true }) ]
         });
         scope.assert.equal(result.status, 'passed');
+        scope.assert.equal(result.perTest[0]?.durationMicroseconds, 25);
         scope.assert.deepEqual<unknown, unknown>(result.perTest[0]?.outcome, { kind: 'pass' });
         return scope.assert.collect();
     }),

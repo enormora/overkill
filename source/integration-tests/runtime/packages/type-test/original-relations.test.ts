@@ -28,6 +28,9 @@ const equal = new Set([
     'Intersection',
     'Parameter',
     'Generic',
+    'GenericObjectReturn',
+    'GenericArrayReturn',
+    'NestedGenericReturn',
     'Recursive',
     'Imported',
     'Self',
@@ -53,10 +56,21 @@ const unequal = [
     'NoInfer',
     'Overload',
     'MappedReadonly',
-    'MappedOptional'
+    'MappedOptional',
+    'GenericNominalReturn'
 ];
 
 const fixtureSource = `${relationSource}
+export type GenericObjectReturnActual = <T>() => { value: T };
+export type GenericObjectReturnExpected = <U>() => { value: U };
+export type GenericArrayReturnActual = <T>() => T[];
+export type GenericArrayReturnExpected = <U>() => U[];
+export type NestedGenericReturnActual = <T>() => <U extends T>(value: U) => { value: T };
+export type NestedGenericReturnExpected = <A>() => <B extends A>(value: B) => { value: A };
+export type GenericNominalReturnActual = <T>() => { value: T; identity: First };
+export type GenericNominalReturnExpected = <U>() => { value: U; identity: Second };
+export type LibraryMapActual = Map<string, number>;
+export type LibraryMapExpected = ReadonlyMap<string, number>;
 export type MappedEquivalentActual = Readonly<{ value: string }>;
 export type MappedEquivalentExpected = { readonly value: string };
 export type MappedReadonlyActual = Readonly<{ value: string }>;
@@ -165,7 +179,7 @@ const assignabilityChecks = async function (
     types: ReadonlyMap<string, Type>
 ): Promise<CompositeAssertionReturn<'assert'>> {
     const checks = await Promise.all(
-        [ 'AnyUnknown', 'NeverString', 'Literal' ].map(async function compareDirections(name) {
+        [ 'AnyUnknown', 'NeverString', 'Literal', 'LibraryMap' ].map(async function compareDirections(name) {
             const [ source, target ] = operands(types, name);
             const annotated = check.annotated(name);
             return annotated.group([
@@ -316,6 +330,56 @@ export const testNode = suite('original-source relations', [
         scope.assert.deepEqual(result.errors, []);
         return scope.assert.collect();
     }),
+    test(
+        'treats nested recovery types as invalid evidence in both directions and under negation',
+        async function (scope) {
+            const result = await runNativeProject(
+                scope.cleanup,
+                `const nodes = [
+test('assignable to', scope => {
+    // @ts-expect-error fixture intentionally refers to a missing type
+    scope.assert(assignableTo<{ item: Missing }, { item: string }>());
+    return scope.assert.collect();
+}),
+test('assignable from', scope => {
+    // @ts-expect-error fixture intentionally refers to a missing type
+    scope.assert(assignableFrom<{ item: string[] }, { item: Missing[] }>());
+    return scope.assert.collect();
+}),
+test('negated', scope => {
+    // @ts-expect-error fixture intentionally refers to a missing type
+    scope.assert(assignableTo.not<{ item: Missing }, { item: string }>());
+    return scope.assert.collect();
+}),
+test('equality', scope => {
+    // @ts-expect-error fixture intentionally refers to a missing type
+    scope.assert(same<{ item: Missing }, { item: any }>());
+    return scope.assert.collect();
+}),
+test('erased missing type', scope => {
+    // @ts-expect-error the union would otherwise erase the missing type
+    scope.assert(assignableTo<string | Missing | any, string>());
+    return scope.assert.collect();
+}),
+test('explicit any', scope => {
+    scope.assert(assignableTo<{ item: any }, { item: string }>());
+    return scope.assert.collect();
+})
+];`,
+                null
+            );
+            scope.assert.deepEqual(result.completions, [
+                { title: 'assignable to', verdict: 'inconclusive' },
+                { title: 'assignable from', verdict: 'inconclusive' },
+                { title: 'negated', verdict: 'inconclusive' },
+                { title: 'equality', verdict: 'inconclusive' },
+                { title: 'erased missing type', verdict: 'inconclusive' },
+                { title: 'explicit any', verdict: 'pass' }
+            ]);
+            scope.assert.includes(result.errors.join('\n'), 'Recovery types cannot establish a type relation.');
+            return scope.assert.collect();
+        }
+    ),
     test('keeps unsupported symbolic evidence inconclusive under negation', async function (scope) {
         const result = await runNativeProject(scope.cleanup, unsupportedCases, null);
         scope.assert.equal(result.status, 'failed');
