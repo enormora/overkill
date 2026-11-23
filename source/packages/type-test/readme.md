@@ -111,12 +111,12 @@ Its type exports are `CompilerSelection`, `CompilerPolicy`,
 
 Each relation supports the following forms inside a case body:
 
-| Form | Example |
-| --- | --- |
-| Two type arguments | `scope.assert(sameType<Actual, Expected>())` |
-| Actual expression | `scope.assert(sameType.withActual<Expected>(), actual)` |
+| Form                | Example                                                   |
+| ------------------- | --------------------------------------------------------- |
+| Two type arguments  | `scope.assert(sameType<Actual, Expected>())`              |
+| Actual expression   | `scope.assert(sameType.withActual<Expected>(), actual)`   |
 | Expected expression | `scope.assert(sameType.withExpected<Actual>(), expected)` |
-| Two expressions | `scope.assert(sameType.expressions, actual, expected)` |
+| Two expressions     | `scope.assert(sameType.expressions, actual, expected)`    |
 
 Put `.not` immediately after the relation name in any form, as in
 `scope.assert(sameType.not.expressions, actual, expected)`. An inconclusive
@@ -238,15 +238,15 @@ original project again.
 
 ## Read diagnostics
 
-| Situation | Result |
-| --- | --- |
-| Missing configuration or unavailable compiler | Setup error |
-| Authored skip | Skipped without inspecting the body |
-| Resolved body with zero assertion sites | `no-assertions` failure |
-| False relation | Assertion failure at the original call site with operand types and compiler version |
-| Unsupported or unresolved source or relation | Inconclusive unless another relation fails the case |
-| TypeScript diagnostics or checker failure | Run error and inconclusive cases for the affected compiler |
-| Observed inputs change during the run | The invocation's evidence is invalidated. Run again with fresh preparation. |
+| Situation                                     | Result                                                                              |
+| --------------------------------------------- | ----------------------------------------------------------------------------------- |
+| Missing configuration or unavailable compiler | Setup error                                                                         |
+| Authored skip                                 | Skipped without inspecting the body                                                 |
+| Resolved body with zero assertion sites       | `no-assertions` failure                                                             |
+| False relation                                | Assertion failure at the original call site with operand types and compiler version |
+| Unsupported or unresolved source or relation  | Inconclusive unless another relation fails the case                                 |
+| TypeScript diagnostics or checker failure     | Run error and inconclusive cases for the affected compiler                          |
+| Observed inputs change during the run         | The invocation's evidence is invalidated. Run again with fresh preparation.         |
 
 Only selected cases contribute assertion evidence. TypeScript can still report
 diagnostics anywhere in the original project, including unselected source.
