@@ -2,6 +2,8 @@ import { arch, platform } from 'node:os';
 import { z } from 'zod/v4';
 
 const referenceVersion = 4;
+const decimalBase = 10;
+const thresholdDigits = 2;
 const hostSchema = z.strictObject({
     platform: z.string(),
     architecture: z.string(),
@@ -67,7 +69,7 @@ function completedResult(entry: Readonly<Evidence['entries'][number]>, samples: 
 function metricCeiling(result: BenchmarkResult, item: Budget): number {
     const summary = result.metrics[item.metric];
     const maximum = item.interval.upper;
-    if (maximum === null || summary === undefined || summary.maximum === null || summary.count !== result.samples) {
+    if (maximum === null || summary?.count !== result.samples || summary.maximum === null) {
         throw new Error(`Incomplete metric ${result.workload.name}/${item.metric}`);
     }
     return maximum;
@@ -93,6 +95,15 @@ function verifyInventory(
         });
         throw new Error(`Benchmark inventory failed: ${JSON.stringify({ errors: evidence.errors, missing })}`);
     }
+}
+
+function roundedCeiling(value: number): number {
+    if (value === 0) {
+        return 0;
+    }
+    const magnitude = Math.floor(Math.log10(value));
+    const step = decimalBase ** (magnitude + 1 - thresholdDigits);
+    return Number((Math.ceil(value / step) * step).toPrecision(thresholdDigits));
 }
 
 function thresholdsFor(
@@ -122,15 +133,6 @@ function thresholdsFor(
     }
     verifyInventory(evidence, caseIds, thresholds);
     return Object.fromEntries(thresholds);
-}
-
-function roundedCeiling(value: number): number {
-    if (value === 0) {
-        return 0;
-    }
-    const magnitude = Math.floor(Math.log10(value));
-    const step = 10 ** (magnitude - 1);
-    return Number((Math.ceil(value / step) * step).toPrecision(2));
 }
 
 export function captureReference(

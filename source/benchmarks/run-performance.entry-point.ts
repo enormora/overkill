@@ -13,7 +13,7 @@ import { captureReference, readReference, verifyPerformance } from './performanc
 import { performanceCases, startupCases } from './performance-cases.ts';
 
 const argumentOffset = 2;
-const jsonIndent = 2;
+const jsonIndent = 4;
 const regularSamples = 20;
 const captureSamples = 3;
 
