@@ -256,6 +256,10 @@ table({title:'rows',cases:['first','second'] as const,caseTitle:String,test:scop
         const result = await runCompiledTypeProject(scope.cleanup, definitions, titles);
         scope.assert.equal(result.status, 'passed', { message: result.errors.join('\n') });
         scope.assert.deepEqual(result.titles, titles);
+        scope.assert.true(result.durations.every(function measured(duration) {
+            return duration > 0;
+        }));
+        scope.assert.equal(result.durations[0], result.durations[1]);
         scope.assert.deepEqual(
             result.completions.map(function (completion) {
                 return completion.title;
@@ -380,6 +384,8 @@ const nodes=[engine.createTestCase(options)];`;
         const result = await runNativeProject(scope.cleanup, definitions, null);
         scope.assert.equal(result.status, 'failed');
         scope.assert.equal(result.summary.passed, 0);
+        scope.assert.equal(result.phase, 'prepare');
+        scope.assert.deepEqual(result.events, []);
         scope.assert.includes(result.errors.join('\n'), 'runtime execution controls');
         return scope.assert.collect();
     }),

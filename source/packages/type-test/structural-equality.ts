@@ -1,5 +1,6 @@
 import type { Type, TypeParameter, Signature, Symbol as CompilerSymbol, IndexInfo } from 'typescript-beta/async';
 
+import { sameNominalMember, sameNominalSymbols } from './nominal-evidence.ts';
 import { sourceDeclarations } from './source-analysis.ts';
 import type { TypeAnalysis } from './source-analysis-port.ts';
 
@@ -128,25 +129,12 @@ async function symbolicMapped(type: Type): Promise<boolean> {
     return properties.length === 0;
 }
 
-function comparisonKey(context: Comparison, actual: Type, expected: Type): string {
-    if (actual.isErrorType() || expected.isErrorType()) {
-        throw new Error('Recovery types cannot establish equality.');
-    }
-    return JSON.stringify([ actual.id, expected.id, Array.from(context.binders) ]);
-}
-
 function binderIdentity(context: Comparison, actual: TypeParameter, expected: TypeParameter): RelationEvidence {
     const target = context.binders.get(actual.id);
     if (target !== undefined) {
         return established(target === expected.id);
     }
     return actual.id === expected.id ? established(true) : unsupported;
-}
-
-async function nominalSymbols(actual: Type, expected: Type): Promise<RelationEvidence> {
-    const symbol = await actual.getSymbol();
-    const target = await expected.getSymbol();
-    return symbol === undefined || target === undefined ? unsupported : established(symbol === target);
 }
 
 async function signatureParameter(callSignature: Signature, index: number): Promise<CompilerSymbol | undefined> {
@@ -216,7 +204,7 @@ async function uniqueSymbol(context: Comparison, actual: Type, expected: Type): 
     if (!hasCompilerFlag(actual.flags, flag) || !hasCompilerFlag(expected.flags, flag)) {
         return established(false);
     }
-    return await nominalSymbols(actual, expected);
+    return await sameNominalSymbols(actual, expected, unsupported);
 }
 
 function symbolic(_context: Comparison, actual: Type, expected: Type): RelationEvidence | null {
@@ -231,7 +219,7 @@ async function enumLiteral(context: Comparison, actual: Type, expected: Type): P
     if (!hasCompilerFlag(actual.flags, flag) || !hasCompilerFlag(expected.flags, flag)) {
         return established(false);
     }
-    return await nominalSymbols(actual, expected);
+    return await sameNominalSymbols(actual, expected, unsupported);
 }
 
 function comparisonBoundary(context: Comparison, key: string): RelationEvidence | null {
@@ -285,6 +273,9 @@ async function member(
         return established(false);
     }
     if (await checker.isReadonlySymbol(actual) !== await checker.isReadonlySymbol(expected)) {
+        return established(false);
+    }
+    if (context.binders.size > 0 && !await sameNominalMember(compiler, actual, expected)) {
         return established(false);
     }
     return await context.compare(
@@ -435,17 +426,17 @@ async function signature(context: Comparison, actual: Signature, expected: Signa
     ]);
 }
 
-async function signatures(
-    context: Comparison,
-    actual: readonly Signature[],
-    expected: readonly Signature[]
+async function orderedEvidence<Entry>(
+    actual: readonly Entry[],
+    expected: readonly Entry[],
+    compareEntries: (actual: Entry, expected: Entry) => Promise<RelationEvidence>
 ): Promise<RelationEvidence> {
     if (actual.length !== expected.length) {
         return established(false);
     }
     return await all(actual.map(async function (value, index) {
         const target = expected[index];
-        return target === undefined ? established(false) : await signature(context, value, target);
+        return target === undefined ? established(false) : await compareEntries(value, target);
     }));
 }
 
@@ -475,22 +466,54 @@ async function mutuallyAssignable(context: Comparison, actual: Type, expected: T
         await context.analysis.checker.isTypeAssignableTo(expected, actual);
 }
 
-async function structure(context: Comparison, actual: Type, expected: Type): Promise<RelationEvidence | null> {
-    if (!structured(actual) || !structured(expected)) {
-        return null;
+async function sameReferenceArguments(context: Comparison, actual: Type, expected: Type): Promise<boolean> {
+    if (!actual.isTypeReference() || !expected.isTypeReference()) {
+        return false;
     }
-    if (await symbolicMapped(actual) || await symbolicMapped(expected)) {
-        return unsupported;
+    const [ leftTarget, rightTarget ] = await Promise.all([ actual.getTarget(), expected.getTarget() ]);
+    if (leftTarget.id !== rightTarget.id) {
+        return false;
     }
-    if (!await mutuallyAssignable(context, actual, expected)) {
-        return established(false);
+    const { checker } = context.analysis;
+    const [ left, right ] = await Promise.all([ checker.getTypeArguments(actual), checker.getTypeArguments(expected) ]);
+    const argumentsEvidence = await orderedEvidence(left, right, async function compareArgument(value, target) {
+        return await context.compare(context, value, target);
+    });
+    return argumentsEvidence.kind === 'established' && argumentsEvidence.holds;
+}
+
+async function objectStructure(context: Comparison, actual: Type, expected: Type): Promise<RelationEvidence> {
+    async function compareSignature(left: Signature, right: Signature): Promise<RelationEvidence> {
+        return await signature(context, left, right);
     }
     return await all([
         members(context, actual, expected),
         indexes(context, actual, expected),
-        signatures(context, await actual.getCallSignatures(), await expected.getCallSignatures()),
-        signatures(context, await actual.getConstructSignatures(), await expected.getConstructSignatures())
+        orderedEvidence(await actual.getCallSignatures(), await expected.getCallSignatures(), compareSignature),
+        orderedEvidence(
+            await actual.getConstructSignatures(),
+            await expected.getConstructSignatures(),
+            compareSignature
+        )
     ]);
+}
+
+async function structuredEvidence(context: Comparison, actual: Type, expected: Type): Promise<RelationEvidence> {
+    if (await symbolicMapped(actual) || await symbolicMapped(expected)) {
+        return unsupported;
+    }
+    if (context.binders.size === 0) {
+        return await mutuallyAssignable(context, actual, expected)
+            ? await objectStructure(context, actual, expected)
+            : established(false);
+    }
+    return await sameReferenceArguments(context, actual, expected)
+        ? established(true)
+        : await objectStructure(context, actual, expected);
+}
+
+async function structure(context: Comparison, actual: Type, expected: Type): Promise<RelationEvidence | null> {
+    return structured(actual) && structured(expected) ? await structuredEvidence(context, actual, expected) : null;
 }
 
 const rules: readonly ComparisonRule[] = [
@@ -506,7 +529,7 @@ const rules: readonly ComparisonRule[] = [
 ];
 
 async function compare(context: Comparison, actual: Type, expected: Type): Promise<RelationEvidence> {
-    const key = comparisonKey(context, actual, expected);
+    const key = JSON.stringify([ actual.id, expected.id, Array.from(context.binders) ]);
     const boundary = comparisonBoundary(context, key);
     if (boundary !== null) {
         return boundary;

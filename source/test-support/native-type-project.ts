@@ -21,6 +21,9 @@ const resultSchema = z
         artifactCount: z.number(),
         logicalCaseCount: z.number(),
         diagnostics: z.array(z.string()),
+        durations: z.array(z.number()),
+        events: z.array(z.string()),
+        phase: z.enum([ 'prepare', 'collect', 'execute' ]),
         completions: z.array(z.object({ title: z.string(), verdict: z.string() })),
         checkerFacts: z
             .object({
@@ -65,7 +68,9 @@ await using prepared = await engine.prepareFamily({testPlan:engine.createTestPla
     settings:{projectConfigPath:import.meta.dirname+'/tsconfig.json',compiler:${JSON.stringify(request.compiler)}},
     projectRoot:import.meta.dirname,signal});
 const workIds=${caseSelection};
+phase='collect';
 const collected=await prepared.collect({workIds,signal});
+phase='execute';
 result=await engine.execute(collected,{signal,debug:{mode:'off'},retryPolicy:null,reporters:[reporter],
     execution:{mode:'serial-in-process'},runFacts:{},startedAt:new Date().toISOString()});
 } catch(error) {
@@ -89,7 +94,9 @@ const {appendFile}=await import('node:fs/promises');
 ${change}
 let result;
 try {
+phase='collect';
 const collected=await prepared.collect({workIds:plan.cases.map(c=>c.workId),signal});
+phase='execute';
 result=await engine.execute(collected,{signal,debug:{mode:'off'},retryPolicy:null,reporters:[],
     execution:{mode:'serial-in-process'},runFacts:{},startedAt:new Date().toISOString()});
 } catch(error) {
@@ -117,11 +124,14 @@ import { defineResource, withResource } from ${resourceImport};
 import { family } from ${profileImport};
 const metadata = { annotations: {}, controls: {}, definitionLocations: [{ kind: 'unknown' }] } as const;
 let bodyCalls = 0;
+let phase: 'prepare' | 'collect' | 'execute' = 'prepare';
+const events: string[] = [];
 ${request.definitions}
 const completions: {title:string;verdict:string}[] = [];
 const reporter = engine.defineReporter(() => ({
     kind:'real-time',name:'type-test fixture',sinks:[{kind:'memory'}],onFinish:null,dispose:null,
     onEvent(event) {
+        if(event.kind==='test-start'||event.kind==='test-end') events.push(event.kind);
         if(event.kind==='test-end') completions.push({title:event.case.title,verdict:event.verdict});
     }
 }));
@@ -136,7 +146,8 @@ const facts = checkerArtifact?.payload.kind==='adapter'
     : null;
 console.log(JSON.stringify({
     status: result.status, summary: result.summary, titles: result.perTest.map(r => r.id.title),
-    errors: result.runnerErrors.map(r => r.message), bodyCalls,
+    errors: result.runnerErrors.map(r => r.message), bodyCalls, events, phase,
+    durations: result.perTest.map(r => r.durationMicroseconds),
     compilerVersions: result.perTest.map(r =>
         r.workId.familyVariant?.key.replace('typescript@', '') ?? 'missing'),
     artifactCount: result.artifacts.length,

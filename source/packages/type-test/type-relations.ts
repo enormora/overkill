@@ -1,5 +1,6 @@
 import type { Type } from 'typescript-beta/async';
 import type { TypeAnalysis } from './source-analysis-port.ts';
+import { invalidOperand } from './operand-evidence.ts';
 import { compareEquality } from './structural-equality.ts';
 import { established, type Relation, type RelationEvidence } from './relation-evidence.ts';
 
@@ -9,8 +10,9 @@ export async function compareRelation(
     actual: Type,
     expected: Type
 ): Promise<RelationEvidence> {
-    if (actual.isErrorType() || expected.isErrorType()) {
-        return { kind: 'inconclusive', reason: 'Recovery types cannot establish a type relation.' };
+    const invalid = await invalidOperand(analysis, [ actual, expected ]);
+    if (invalid !== null) {
+        return { kind: 'inconclusive', reason: invalid };
     }
     if (relation === 'sameType') {
         return await compareEquality(analysis, actual, expected);

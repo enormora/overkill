@@ -20,6 +20,7 @@ export type SiteEvidence = {
     readonly actual: string;
     readonly expected: string;
     readonly result: RelationEvidence;
+    readonly durationMicroseconds: number;
 };
 
 function failedCheck(evidence: SiteEvidence, index: number): FailedCheck {
@@ -164,9 +165,13 @@ function caseResults(input: NativeCheckEvidence): readonly PerTestResult[] {
     const failure = input.error === null ? null : checkerErrorMessage(input.error);
     return input.plan.cases.map(function caseResult(testCase) {
         const key = workIdentityKey(testCase.workId);
+        const owned = sites.get(key) ?? [];
         const outcome = failure === null || testCase.execution.kind === 'skip'
-            ? caseOutcome(testCase, sites.get(key) ?? [], evidence, issues.get(key)?.[0]?.reason)
+            ? caseOutcome(testCase, owned, evidence, issues.get(key)?.[0]?.reason)
             : { kind: 'inconclusive' as const, reason: failure };
+        const durationMicroseconds = owned.reduce(function addSiteDuration(total, site) {
+            return total + (evidence.get(site)?.durationMicroseconds ?? 0) / site.owners.length;
+        }, 0);
         const [ firstLocation, ...locations ] = testCase.definitionLocations;
         return singleAttemptResult({
             id: testCase.id,
@@ -174,7 +179,7 @@ function caseResults(input: NativeCheckEvidence): readonly PerTestResult[] {
             definitionLocations: [ resolveSourceLocation(firstLocation), ...locations.map(resolveSourceLocation) ],
             outcome,
             verdict: outcome.kind,
-            durationMicroseconds: 0
+            durationMicroseconds
         }, { index: 0 });
     });
 }

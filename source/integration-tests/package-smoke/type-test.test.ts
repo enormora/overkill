@@ -267,7 +267,7 @@ const [file]=await readdir(runs);
 const record=JSON.parse(await readFile(runs+'/'+file,'utf8'));
 const facts=record.facts.family;
 const compiler=facts.preparation.compilers[0];
-if(facts.version!=='2'||compiler.version!=='7.1.0-beta'||!compiler.projectFingerprint||
+if(facts.version!=='3'||compiler.version!=='7.1.0-beta'||!compiler.projectFingerprint||
     !compiler.configuration.files.length||facts.collection.compilers[0].assertions.length!==1) {
     throw new Error('Missing original compiler evidence');
 }

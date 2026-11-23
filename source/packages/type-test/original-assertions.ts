@@ -89,13 +89,6 @@ async function ownedBody(analysis: SourceAnalysis, testCase: TestPlan['cases'][n
     if (testCase.bodyOrigin === null) {
         throw new UnsupportedEvidenceError('Selected type-test case has no callback source ownership.', undefined);
     }
-    if (
-        Object.values(testCase.controls).some(function configured(value) {
-            return value !== null;
-        })
-    ) {
-        throw new Error('Type-test cases do not support runtime execution controls.');
-    }
     try {
         return await resolveBodyOrigin(analysis, testCase.bodyOrigin);
     } catch (error: unknown) {

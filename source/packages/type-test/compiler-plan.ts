@@ -425,6 +425,18 @@ function retainCompilerPreparation(
     };
 }
 
+function validateCaseControls(plan: TestPlan): void {
+    for (const testCase of plan.cases) {
+        if (
+            testCase.execution.kind !== 'skip' && Object.values(testCase.controls).some(function configured(value) {
+                return value !== null;
+            })
+        ) {
+            throw new TypeError('Type-test cases do not support runtime execution controls.');
+        }
+    }
+}
+
 export async function prepare(
     plan: TestPlan,
     settings: unknown,
@@ -432,6 +444,7 @@ export async function prepare(
 ): Promise<CheckerPreparation> {
     const { projectRoot, signal, expandVariants } = context;
     const options = typeTestSettingsSchema.parse(settings);
+    validateCaseControls(plan);
     const adapter = await packageVersion(import.meta.url);
     const group = await resolveCompilerProjects(options, projectRoot, signal);
     await using ownership = group.ownership;

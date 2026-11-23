@@ -5,7 +5,7 @@ import { table, type TestScope, suite, test } from '@overkill-dev/test';
 import { frozenTypeProject } from '../../../../test-support/frozen-type-project.ts';
 import { observeProjectInputs, verifyProjectInputs } from '../../../../packages/type-test/frozen-inputs.ts';
 import { loadProject, disposeProject, type FrozenProject } from '../../../../packages/type-test/frozen-project.ts';
-import { projectSourceAnalysis } from '../../../../packages/type-test/native-execution.ts';
+import { projectSourceAnalysis } from '../../../../packages/type-test/project-source-analysis.ts';
 import { originalSourceFile } from '../../../../packages/type-test/source-analysis.ts';
 
 const projectFiles = {

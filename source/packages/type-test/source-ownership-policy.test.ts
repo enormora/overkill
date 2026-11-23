@@ -10,7 +10,6 @@ import {
     sourceFixture,
     sourceSymbol,
     sourceTree,
-    sourceFile,
     sourceMember,
     sourceProperty
 } from '../../test-support/native-source-fixture.ts';
@@ -22,19 +21,6 @@ function bodyOptions(body: ast.ArrowFunction): ast.ObjectLiteralExpression {
     return ast.factory.createObjectLiteralExpression([ sourceProperty('body', body) ]);
 }
 export const testNode = suite('isolated callback source ownership', [
-    test('rejects runtime controls before translating a type-test body', async function (scope) {
-        const fixture = ownedCallback('test', function (body) {
-            return [ body ];
-        });
-        const selected = fixture.plan.cases[0];
-        await scope.assert.rejects(async function () {
-            await collectOriginalAssertions(fixture.analysis, {
-                ...fixture.plan,
-                cases: [ { ...selected, controls: { ...selected.controls, timeoutMilliseconds: 1 } } ]
-            });
-        }, { message: 'Type-test cases do not support runtime execution controls.' });
-        return scope.assert.collect();
-    }),
     test('retains unknown source anchors in translation failures', async function (scope) {
         const fixture = ownedCallback('test', function (body) {
             return [ body ];
@@ -188,7 +174,7 @@ export const testNode = suite('isolated callback source ownership', [
         return scope.assert.collect();
     }),
     table({
-        title: 'recognizes adapter-owned references',
+        title: 'recognizes references by exported symbol identity',
         cases: [ 'sameType', 'assignableTo', 'assignableFrom' ] as const,
         caseTitle(name) {
             return name;
@@ -197,15 +183,9 @@ export const testNode = suite('isolated callback source ownership', [
             const name = scope.parameters;
 
             const fixture = sourceFixture();
-            const declaration = ast.factory.createFunctionDeclaration(
-                undefined,
-                undefined,
-                ast.factory.createIdentifier(name),
-                undefined,
-                []
-            );
-            sourceFile([ declaration ], '/project/packages/type-test/type-test.entry-point.ts');
-            fixture.bindName(name, sourceSymbol(name, [ declaration ]));
+            const symbol = sourceSymbol(name, []);
+            fixture.bindName(name, symbol);
+            fixture.addRelationExport(symbol);
             const reference = sourceTree(sourceMember(ast.factory.createIdentifier(name), 'expressions'));
             const result = await nativeReference(fixture.analysis, reference);
             scope.assert.deepEqual(result, {

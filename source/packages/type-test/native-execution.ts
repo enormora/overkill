@@ -13,30 +13,7 @@ import { collectOriginalAssertions, type OriginalAssertionPlan, type NativeSite 
 import { nativeCheckResult, type SiteEvidence } from './native-results.ts';
 import { evaluateSite } from './original-evidence.ts';
 
-import { createSourceAnalysis, type SourceAnalysis } from './source-analysis-port.ts';
-import { compilerFileSystem } from './compiler-file-system.ts';
-
-export function projectSourceAnalysis(project: FrozenProject): SourceAnalysis {
-    const { checker } = project.configured;
-    return createSourceAnalysis({
-        realpath: compilerFileSystem.realpath,
-        compiler: project.compiler.syntax,
-        program: project.program,
-        checker: {
-            getSymbolAtLocation: checker.getSymbolAtLocation.bind(checker),
-            getAliasedSymbol: checker.getAliasedSymbol.bind(checker),
-            getShorthandAssignmentValueSymbol: checker.getShorthandAssignmentValueSymbol.bind(checker),
-            async getResolvedSignature(node) {
-                const signature = await checker.getResolvedSignature(node);
-                return { declaration: signature.declaration };
-            },
-            async staticString(node) {
-                const value = await checker.getTypeAtLocation(node);
-                return value.isStringLiteralType() ? value.value : null;
-            }
-        }
-    });
-}
+import { projectSourceAnalysis } from './project-source-analysis.ts';
 
 function projectDiagnostic(diagnostic: Diagnostic): string {
     const position = diagnostic.startPosition;
@@ -97,40 +74,14 @@ export type CompilerCheck = {
     readonly check: (signal: AbortSignal) => Promise<CheckerExecution>;
 };
 
-type AssertionCollection = {
-    readonly plan: OriginalAssertionPlan;
-    readonly failure: Error | null;
-};
-
-async function readAssertionCollection(
-    plan: TestPlan,
-    project: FrozenProject,
-    signal: AbortSignal
-): Promise<AssertionCollection> {
-    try {
-        const assertions = await project.execute(signal, async function collectAssertions() {
-            return await collectOriginalAssertions(projectSourceAnalysis(project), plan);
-        });
-        return { plan: assertions, failure: null };
-    } catch (error: unknown) {
-        signal.throwIfAborted();
-        return {
-            plan: { modules: [], sites: [], issues: [] },
-            failure: error instanceof Error ? error : new Error('Type-test source analysis failed.', { cause: error })
-        };
-    }
-}
-
 export async function collectProject(
     plan: TestPlan,
     project: FrozenProject,
     collectionSignal: AbortSignal
 ): Promise<CompilerCheck> {
-    const { plan: assertionPlan, failure: collectionError } = await readAssertionCollection(
-        plan,
-        project,
-        collectionSignal
-    );
+    const assertionPlan = await project.execute(collectionSignal, async function collectAssertions() {
+        return await collectOriginalAssertions(projectSourceAnalysis(project), plan);
+    });
     const sourceFacts = {
         identities: plan.cases.map(function (testCase) {
             return testCase.workId;
@@ -148,9 +99,6 @@ export async function collectProject(
     };
     async function checkProject(signal: AbortSignal): Promise<readonly SiteEvidence[]> {
         await validateProject(project, signal);
-        if (collectionError !== null) {
-            throw collectionError;
-        }
         return await checkOriginalAssertions(project, assertionPlan, signal);
     }
     const facts = parseAdapterFacts(sourceFacts);

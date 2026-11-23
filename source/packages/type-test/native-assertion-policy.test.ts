@@ -18,7 +18,7 @@ import { scopeAssertions, assertionAnnotation } from './scope-assertions.ts';
 import { namedBodyParameter } from './source-ownership.ts';
 
 const adapterSource = '/project/packages/type-test/type-test.entry-point.ts';
-function ownedMatcher(declarationPath: string): SourceFixture {
+function matcher(declarationPath: string, exported: boolean): SourceFixture {
     const fixture = sourceFixture();
     const declaration = ast.factory.createFunctionDeclaration(
         undefined,
@@ -28,7 +28,11 @@ function ownedMatcher(declarationPath: string): SourceFixture {
         []
     );
     sourceFile([ declaration ], declarationPath);
-    fixture.bindName('sameType', sourceSymbol('sameType', [ declaration ]));
+    const symbol = sourceSymbol('sameType', [ declaration ]);
+    fixture.bindName('sameType', symbol);
+    if (exported) {
+        fixture.addRelationExport(symbol);
+    }
     return fixture;
 }
 function referenceCall(member: string, called: boolean): ast.Expression {
@@ -69,21 +73,21 @@ function annotatedCall(messages: readonly ast.Expression[]): ast.CallExpression 
     );
 }
 export const testNode = suite('native assertion boundary validation', [
-    test('recognizes installed adapter declaration ownership', async function (scope) {
-        const fixture = ownedMatcher('/project/node_modules/@overkill-dev/type-test/index.d.ts');
+    test('recognizes the symbol exported by the installed declaration module', async function (scope) {
+        const fixture = matcher('/project/node_modules/@overkill-dev/type-test/index.d.ts', true);
         const result = await nativeReference(fixture.analysis, referenceCall('', true));
         scope.assert.equal(result.relation, 'sameType');
         return scope.assert.collect();
     }),
-    test('rejects similarly named references from application declarations', async function (scope) {
-        const fixture = ownedMatcher('/project/application.ts');
+    test('rejects a same-name declaration at a matching path', async function (scope) {
+        const fixture = matcher(adapterSource, false);
         await scope.assert.rejects(async function () {
             return nativeReference(fixture.analysis, referenceCall('', true));
-        }, { message: /not an adapter-owned export/u });
+        }, { message: /not an export of the type-test package/u });
         return scope.assert.collect();
     }),
     test('rejects detached require methods in checker callbacks', async function (scope) {
-        const fixture = ownedMatcher(adapterSource);
+        const fixture = matcher(adapterSource, true);
         const body = sourceBody([ ast.factory.createExpressionStatement(sourceMember(
             sourceMember(
                 ast
@@ -106,7 +110,7 @@ export const testNode = suite('native assertion boundary validation', [
     test(
         'retains ordinary property reads without treating them as assertion calls',
         async function (scope) {
-            const fixture = ownedMatcher(adapterSource);
+            const fixture = matcher(adapterSource, true);
             const body = sourceBody([
                 ast.factory.createExpressionStatement(sourceMember(ast.factory.createIdentifier('scope'), 'signal'))
             ]);
@@ -123,7 +127,7 @@ export const testNode = suite('native assertion boundary validation', [
         }
     ),
     test('accepts ordinary operands at direct native assertion boundaries', async function (scope) {
-        const fixture = ownedMatcher(adapterSource);
+        const fixture = matcher(adapterSource, true);
         const call = sourceCall(sourceMember(ast.factory.createIdentifier('scope'), 'assert'), [
             sourceMember(ast.factory.createIdentifier('sameType'), 'expressions'),
             ast.factory.createStringLiteral('actual', ast.TokenFlags.None),
@@ -142,7 +146,7 @@ export const testNode = suite('native assertion boundary validation', [
         return scope.assert.collect();
     }),
     test('recognizes typed adapter references', async function (scope) {
-        const fixture = ownedMatcher(adapterSource);
+        const fixture = matcher(adapterSource, true);
         const result = await nativeReference(fixture.analysis, referenceCall('', true));
         scope.assert.equal(result.form, 'typed');
         scope.assert.equal(result.types.length, 2);
@@ -150,7 +154,7 @@ export const testNode = suite('native assertion boundary validation', [
         return scope.assert.collect();
     }),
     test('retains negated typed references', async function (scope) {
-        const fixture = ownedMatcher(adapterSource);
+        const fixture = matcher(adapterSource, true);
         const result = await nativeReference(fixture.analysis, referenceCall('not', true));
         scope.assert.true(result.negated);
         scope.assert.equal(result.form, 'typed');
@@ -165,7 +169,7 @@ export const testNode = suite('native assertion boundary validation', [
         async test(scope) {
             const member = scope.parameters;
 
-            const fixture = ownedMatcher(adapterSource);
+            const fixture = matcher(adapterSource, true);
             await scope.assert.rejects(async function () {
                 return nativeReference(fixture.analysis, referenceCall(member, false));
             }, { message: /Invalid native reference factory arguments/u });
@@ -173,7 +177,7 @@ export const testNode = suite('native assertion boundary validation', [
         }
     }),
     test('rejects unknown reference members', async function (scope) {
-        const fixture = ownedMatcher(adapterSource);
+        const fixture = matcher(adapterSource, true);
         await scope.assert.rejects(async function () {
             return nativeReference(fixture.analysis, referenceCall('unknown', false));
         }, { message: /Unsupported native assertion reference form/u });
@@ -185,7 +189,7 @@ export const testNode = suite('native assertion boundary validation', [
         return scope.assert.collect();
     }),
     test('rejects runtime operands on reference factories', async function (scope) {
-        const fixture = ownedMatcher(adapterSource);
+        const fixture = matcher(adapterSource, true);
         const reference = sourceTree(
             sourceCall(ast.factory.createIdentifier('sameType'), [
                 ast.factory.createStringLiteral('value', ast.TokenFlags.None)
@@ -200,7 +204,7 @@ export const testNode = suite('native assertion boundary validation', [
     test(
         'rejects native matcher references outside direct assertion boundaries',
         async function (scope) {
-            const fixture = ownedMatcher(adapterSource);
+            const fixture = matcher(adapterSource, true);
             const body = sourceBody([
                 ast.factory.createExpressionStatement(ast.factory.createIdentifier('sameType'))
             ]);
@@ -216,7 +220,7 @@ export const testNode = suite('native assertion boundary validation', [
         }
     ),
     test('accepts annotated assertion boundaries with a static message', async function (scope) {
-        const fixture = ownedMatcher(adapterSource);
+        const fixture = matcher(adapterSource, true);
         const call = annotatedCall([ ast.factory.createStringLiteral('type contract', ast.TokenFlags.None) ]);
         const body = sourceBody([ ast.factory.createExpressionStatement(call) ]);
         const analysis = {

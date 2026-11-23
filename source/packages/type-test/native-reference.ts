@@ -2,7 +2,7 @@ import type * as TypeScript from 'typescript-beta/ast';
 import type { Relation } from './relation-evidence.ts';
 import { UnsupportedEvidenceError } from './unsupported-evidence-error.ts';
 import type { SourceAnalysis } from './source-analysis-port.ts';
-import { sourceSymbol, sourceDeclarations } from './source-analysis.ts';
+import { sourceSymbol } from './source-analysis.ts';
 
 type BindingKind = 'relation';
 type Binding = {
@@ -20,23 +20,17 @@ export type NativeReference = Binding & {
     readonly form: ReferenceForm;
     readonly types: readonly TypeScript.TypeNode[];
 };
-function adapterDeclaration(declaration: TypeScript.Declaration): boolean {
-    const path = declaration.getSourceFile().fileName.replaceAll('\\', '/');
-    return path.endsWith('/packages/type-test/type-test.entry-point.ts') ||
-        path.includes('/node_modules/@overkill-dev/type-test/');
-}
 export async function nativeRelationBinding(
     analysis: SourceAnalysis,
     expression: TypeScript.Expression
 ): Promise<Binding | null> {
     const location = analysis.compiler.isPropertyAccessExpression(expression) ? expression.name : expression;
     const symbol = await sourceSymbol(analysis, location);
-    if (symbol === undefined) {
+    if (symbol === undefined || !Object.hasOwn(bindings, symbol.name)) {
         return null;
     }
-    const binding = bindings[symbol.name];
-    const declarations = await sourceDeclarations(symbol);
-    return binding !== undefined && declarations.some(adapterDeclaration) ? binding : null;
+    const exports = await analysis.getRelationModuleExports();
+    return exports.includes(symbol) ? bindings[symbol.name] ?? null : null;
 }
 type ReferenceBinding = {
     readonly binding: Binding;
@@ -52,7 +46,7 @@ async function referenceBinding(analysis: SourceAnalysis, original: TypeScript.E
         binding = await nativeRelationBinding(analysis, expression);
     }
     if (binding === null) {
-        throw new UnsupportedEvidenceError('Assertion reference is not an adapter-owned export.', undefined);
+        throw new UnsupportedEvidenceError('Assertion reference is not an export of the type-test package.', undefined);
     }
     return { binding, members };
 }

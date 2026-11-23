@@ -23,6 +23,7 @@ export type SourceChecker<Symbol extends SourceSymbol> = {
     readonly staticString: (node: TypeScript.Node) => Promise<string | null>;
 };
 export type SourceAnalysis = {
+    readonly getRelationModuleExports: () => Promise<readonly AnalyzedSymbol[]>;
     readonly realpath: (path: string) => string;
     readonly compiler: CompilerSyntax;
     readonly checker: SourceChecker<AnalyzedSymbol>;
@@ -32,6 +33,7 @@ export type SourceAnalysis = {
     };
 };
 type SourceInput<Symbol extends SourceSymbol> = {
+    readonly getRelationModuleExports: () => Promise<readonly Symbol[]>;
     readonly realpath: (path: string) => string;
     readonly compiler: CompilerSyntax;
     readonly checker: SourceChecker<Symbol> & {
@@ -85,8 +87,19 @@ export function createSourceAnalysis<Symbol extends SourceSymbol>(input: SourceI
         const resolved = await input.checker.getSymbolAtLocation(inputNode);
         return resolved.map(analyzed);
     }
+    let relationExports: Promise<readonly AnalyzedSymbol[]> | null = null;
+    async function readRelationExports(): Promise<readonly AnalyzedSymbol[]> {
+        const exports = await input.getRelationModuleExports();
+        return exports.map(analyzed).filter(function available(symbol) {
+            return symbol !== undefined;
+        });
+    }
     return {
         ...input,
+        async getRelationModuleExports() {
+            relationExports = relationExports ?? readRelationExports();
+            return await relationExports;
+        },
         checker: {
             ...input.checker,
             getSymbolAtLocation,
@@ -100,12 +113,14 @@ export function createSourceAnalysis<Symbol extends SourceSymbol>(input: SourceI
 }
 
 export type TypeAnalysis = {
+    readonly program: Pick<CompilerApi.Program, 'isSourceFileDefaultLibrary'>;
     readonly compiler: CompilerSyntax;
     readonly checker: {
         readonly getParameterType: CompilerApi.Checker['getParameterType'];
         readonly getReturnTypeOfSignature: CompilerApi.Checker['getReturnTypeOfSignature'];
         readonly getTypeAtLocation: CompilerApi.Checker['getTypeAtLocation'];
         readonly getTypeFromTypeNode: CompilerApi.Checker['getTypeFromTypeNode'];
+        readonly getTypeArguments: CompilerApi.Checker['getTypeArguments'];
         readonly getTypeOfSymbol: CompilerApi.Checker['getTypeOfSymbol'];
         readonly getTypePredicateOfSignature: CompilerApi.Checker['getTypePredicateOfSignature'];
         readonly isReadonlySymbol: CompilerApi.Checker['isReadonlySymbol'];
