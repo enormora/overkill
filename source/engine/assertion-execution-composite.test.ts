@@ -444,13 +444,13 @@ export const testNode = suite('Composite assertion execution', [
                 if (child.check !== 'true') {
                     throw new Error('Expected a recorded true assertion.');
                 }
-                const invoke = asynchronous
-                    ? async function () {
+                const invoke = async function () {
+                    if (asynchronous) {
                         await body.assert(borrowChildAsync, child);
-                    }
-                    : function () {
+                    } else {
                         body.assert(borrowChild, child);
-                    };
+                    }
+                };
                 try {
                     await invoke();
                 } catch (error: unknown) {

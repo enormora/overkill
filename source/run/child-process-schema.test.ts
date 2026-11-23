@@ -137,7 +137,8 @@ export const testNode = suite('child process payload schemas', [
             verdict: 'fail',
             workId: createDefaultWorkId(caseId)
         };
-        const received: unknown = JSON.parse(JSON.stringify(event));
+        const serialized = JSON.stringify(event);
+        const received: unknown = JSON.parse(serialized);
         scope.assert.deepEqual(reporterEventSchema.parse(received), received);
         return scope.assert.collect();
     }),
