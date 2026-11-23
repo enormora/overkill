@@ -100,6 +100,7 @@ const failureSchema = z.discriminatedUnion('kind', [
             'invalid-plan',
             'invalid-timeout-control',
             'invalid-require-reference',
+            'invalid-returned-builder-assertion',
             'late-assertion-activity',
             'no-assertions',
             'property-scope',

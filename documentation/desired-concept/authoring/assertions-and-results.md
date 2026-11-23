@@ -1094,15 +1094,17 @@ advancing it.
 
 #### Returned Assertion Ownership
 
-A recorded builder assertion belongs to its originating context. Reject using
-it in another case, retry, or property trial. Returning the same recorded node
-more than once cannot increase the assertion count or satisfy `plan(n)`.
-Distinct authored assertion calls remain distinct boundaries even when their
-operands happen to be equal.
+A recorded builder assertion belongs to its originating context. Returning
+it in another case, retry, or property trial fails the receiving execution
+with an `invalid-returned-builder-assertion` test-contract failure. Returning
+the same recorded node twice or using it as a composite child fails with
+the same code. Each distinct authored assertion call remains its own boundary
+even when the operands are equal.
 
-Apply recording-context ownership to builder-owned nodes. Public low-level
-assertion values remain composable under their protocol contract and are not
-rejected merely because a module exports or reuses them.
+Repeated `collect()` calls are valid snapshots. The final return includes each
+recorded assert node once, at the top level and in recording order, before
+the engine checks `plan(n)`. Public low-level assertion values remain reusable
+and composable under their lazy protocol contract.
 
 #### Protocol Validation
 

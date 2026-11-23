@@ -266,8 +266,12 @@ Assertion bodies:
 - Injected assertions observe operands at the call or async settlement.
   Native regular-expression checks preserve the caller's `lastIndex`.
 - `scope.assert.collect()` returns the non-empty list of recorded assertion
-  nodes. You can take repeated snapshots while the body is running. Directly
-  authored low-level nodes still evaluate during outcome normalization.
+  nodes. You can take repeated snapshots while the body is running. Return
+  each recorded node once, at the top level and in recording order. Returning
+  a recorded node from another case, retry, or property trial, repeating a
+  recorded node, or using one as a composite child fails the assertion
+  contract before the plan is checked. Directly authored low-level nodes
+  remain reusable and evaluate during outcome normalization.
 - Assertion recording ends when the body returns, throws, or is interrupted.
   Calls made from cleanup or escaped callbacks reject. Before the result is
   published they fail the owning result. Later calls produce a run diagnostic

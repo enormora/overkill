@@ -16,6 +16,7 @@ import type {
     FailedForeignCheck,
     SourceLocation
 } from '../assertion-protocol/assertion-node-shape.ts';
+import { unknownSourceLocation } from '../assertion-protocol/source-location.ts';
 import { serializeValue } from '../compare/serialized-value.ts';
 
 import type { AssertionTestFailure, FailOutcome, RunResult, TestContractFailure } from './run-result.ts';
@@ -390,6 +391,62 @@ export const testNode = suite('Composite assertion execution', [
             return scope.assert.collect();
         }
     ),
+    test('rejects a recorded node used as a returned composite child', async function (scope: TestScope) {
+        const result = await executeSingleBody(function (body) {
+            body.assert.true(true);
+            const [ child ] = body.assert.collect();
+            if (child.check !== 'true') {
+                throw new Error('Expected a recorded true assertion.');
+            }
+            return [ child, {
+                actual: true,
+                check: 'composite',
+                children: [ child ],
+                expected: true,
+                message: null,
+                name: 'borrowed child',
+                source: 'assert',
+                sourceLocations: [ unknownSourceLocation ],
+                summary: 'Borrowed child'
+            } ];
+        });
+        const outcome = firstFailOutcome(result);
+        scope.require.notNull(outcome);
+        scope.assert.deepEqual(outcome.failures.map(function (failure) {
+            return failure.kind === 'test-contract' ? [ failure.code, failure.actual ] : failure.kind;
+        }), [ [ 'invalid-returned-builder-assertion', 'child-reuse' ] ]);
+        return scope.assert.collect();
+    }),
+    test('retains child reuse failures from sync and async custom assertions', async function (scope: TestScope) {
+        for (const asynchronous of [ false, true ]) {
+            const result = await executeSingleBody(async function (body) {
+                body.assert.true(true);
+                const [ child ] = body.assert.collect();
+                if (child.check !== 'true') {
+                    throw new Error('Expected a recorded true assertion.');
+                }
+                const borrowChild = defineCompositeAssertion({
+                    name: 'borrowed child',
+                    assert() {
+                        return asynchronous ? Promise.resolve(child) : child;
+                    }
+                });
+                requireEngineCompositeReference(borrowChild);
+                try {
+                    await body.assert(borrowChild);
+                } catch (error: unknown) {
+                    body.assert.instanceOf(error, Error);
+                }
+                return body.assert.collect();
+            });
+            const outcome = firstFailOutcome(result);
+            scope.require.notNull(outcome);
+            scope.assert.deepEqual(outcome.failures.map(function (failure) {
+                return failure.kind === 'test-contract' ? [ failure.code, failure.actual ] : failure.kind;
+            }), [ [ 'invalid-returned-builder-assertion', 'child-reuse' ] ]);
+        }
+        return scope.assert.collect();
+    }),
     test('rejects unawaited async custom assertions at collect', async function (scope: TestScope) {
         const eventuallyOk = defineCompositeAssertion({
             async assert(check) {

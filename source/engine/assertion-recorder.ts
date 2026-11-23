@@ -19,6 +19,11 @@ import {
     type AssertionOrigin
 } from './assertion-lifetime.ts';
 import { currentLateAssertionSink } from './late-assertion-delivery.ts';
+import {
+    recordedBuilderChildFailure,
+    registerBuilderAssertion,
+    returnedBuilderOwnershipFailure
+} from './returned-builder-ownership.ts';
 
 type RecordedAssertion = {
     readonly assertion: AssertionNode | null;
@@ -338,10 +343,15 @@ function collectBuilderAssertions(
 
 function validateReturnedAssertions(
     slots: readonly BuilderAssertionSlot[],
-    assertions: readonly AssertAssertionNode[]
+    assertions: readonly AssertAssertionNode[],
+    owner: symbol
 ): TestContractFailure | null {
     if (slots.includes(null)) {
         return createPendingAsyncAssertionFailure();
+    }
+    const ownershipFailure = returnedBuilderOwnershipFailure(assertions, owner);
+    if (ownershipFailure !== null) {
+        return ownershipFailure;
     }
     return builderAssertionsInReturnedOrder(resolvedBuilderAssertions(slots), assertions)
         ? null
@@ -349,6 +359,7 @@ function validateReturnedAssertions(
 }
 
 export function createAssertionRecorder(origin: AssertionOrigin): AssertionRecorder {
+    const owner = Symbol('assertion recorder');
     const builderAssertions: BuilderAssertionSlot[] = [];
     const recordedAssertions: RecordedAssertion[] = [];
     const failures = new Set<TestContractFailure>();
@@ -432,6 +443,11 @@ export function createAssertionRecorder(origin: AssertionOrigin): AssertionRecor
 
         recordAssert(assertion) {
             lifetime.assertRecording('record an assertion');
+            const childFailure = recordedBuilderChildFailure(assertion);
+            if (childFailure !== null) {
+                failContract(childFailure);
+            }
+            registerBuilderAssertion(assertion, owner);
             recordDebugAssertion(assertion);
             builderAssertions.push(assertion);
             recordedAssertions.push({ assertion, builderAssertion: assertion });
@@ -454,6 +470,12 @@ export function createAssertionRecorder(origin: AssertionOrigin): AssertionRecor
                 },
                 resolve(assertion) {
                     lifetime.assertRecording('finish an asynchronous assertion');
+                    const childFailure = recordedBuilderChildFailure(assertion);
+                    if (childFailure !== null) {
+                        builderAssertions[builderIndex] = discardedAssertion;
+                        failContract(childFailure);
+                    }
+                    registerBuilderAssertion(assertion, owner);
                     builderAssertions[builderIndex] = assertion;
                     recordedAssertions[recordIndex] = { assertion, builderAssertion: assertion };
                     captureAssertion(assertion);
@@ -482,7 +504,7 @@ export function createAssertionRecorder(origin: AssertionOrigin): AssertionRecor
 
         returnedAssertions(assertionResult) {
             const assertions = normalizeAssertionResult(assertionResult);
-            const contractFailure = validateReturnedAssertions(builderAssertions, assertions);
+            const contractFailure = validateReturnedAssertions(builderAssertions, assertions, owner);
 
             if (contractFailure !== null) {
                 return contractFailure;

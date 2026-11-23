@@ -98,6 +98,37 @@ export const testNode = suite('property trial scopes', [
         );
         return scope.assert.collect();
     }),
+    test('retains a foreign returned node failure after the parent catches termination', async function (scope) {
+        let trials = 0;
+        const node = subjectTest('shared trial node', withProperties(async function (parent) {
+            let previous: AssertionResult | null = null;
+            try {
+                await parent.forall(gen.constant(1), function (value, sample) {
+                    trials += 1;
+                    if (previous !== null) {
+                        return previous;
+                    }
+                    sample.assert.equal(value, 1);
+                    previous = sample.assert.collect();
+                    return previous;
+                });
+            } catch (error: unknown) {
+                parent.assert.instanceOf(error, Error);
+            }
+            parent.assert.true(true);
+            return parent.assert.collect();
+        }));
+        const result = await executePropertyNode(node, propertyExecutionDefaults);
+        const outcome = result.perTest[0]?.outcome;
+        if (outcome?.kind !== 'fail') {
+            throw new Error('Expected the foreign trial node to fail its case.');
+        }
+        scope.assert.equal(trials, 2);
+        scope.assert.deepEqual(outcome.failures.map(function (failure) {
+            return failure.kind === 'test-contract' ? [ failure.code, failure.actual ] : failure.kind;
+        }), [ [ 'invalid-returned-builder-assertion', 'foreign-owner' ] ]);
+        return scope.assert.collect();
+    }),
     test('rejects malformed nested invocation definitions', async function (scope) {
         for (const definition of [ gen.constant(1), { generator: gen.constant(1), test: null } ]) {
             const node = subjectTest(
