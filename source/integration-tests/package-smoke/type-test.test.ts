@@ -234,7 +234,7 @@ export const testNode = suite('packaged native type tests', [
         const directory = await isolatedConsumer(true);
         await writeRunnerProject(directory, 'in-process');
         await writeParityProject(directory);
-        const result = await runNode(directory, [ 'parity.mjs' ]);
+        const result = await runNode(directory, [ '--permission-audit', 'parity.mjs' ]);
         scope.assert.equal(result.code, 0, { message: result.stdout + result.stderr });
         scope.assert.includes(result.stdout, 'engine and runner delivered original-source evidence');
         return scope.assert.collect();
