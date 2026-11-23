@@ -328,6 +328,20 @@ export const testNode = suite('static authoring binding analysis', [
         ]);
         return scope.assert.collect();
     }),
+    test('converges when a loop allocates objects passed to an opaque call', function (scope) {
+        const observed = observeBindings(`
+            import { test } from '@overkill-dev/test';
+            for (const item of values) {
+                const holder = { current: test };
+                opaque(holder, item);
+                probeImport(holder.current);
+            }
+            probeImport(test);
+        `);
+        scope.assert.deepEqual(observed.errors, []);
+        scope.assert.deepEqual(observed.imports, [ null, testImport ]);
+        return scope.assert.collect();
+    }),
     test('applies the repository author policy to imported and local aliases', function (scope) {
         const linter = new TSESLint.Linter();
         const messages = linter.verify(

@@ -117,9 +117,9 @@ function allocateObject(state: State, node: Allocation, properties: ReadonlyMap<
         })
     ) {
         forgetObject(state, { kind: 'object', allocation: node });
-        return undefined;
+    } else {
+        state.setObject(node, bindingValues(properties));
     }
-    state.setObject(node, bindingValues(properties));
     return { kind: 'object', allocation: node };
 }
 

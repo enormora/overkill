@@ -96,8 +96,9 @@ function reachingInputs(frame: Frame, entry: State, apply: ApplyEvent): Readonly
         const input = segmentInput(segment, outputs, initial);
         if (input !== undefined) {
             inputs.set(segment, input);
-            const output = replay(input, frame.events.get(segment) ?? [], apply, ignoreExpression);
+            const candidate = replay(input, frame.events.get(segment) ?? [], apply, ignoreExpression);
             const previous = outputs.get(segment);
+            const output = previous === undefined ? candidate : joinStates(previous, candidate);
             if (previous === undefined || !sameState(previous, output)) {
                 outputs.set(segment, output);
                 segment.nextSegments.forEach(function (successor) {
