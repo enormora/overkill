@@ -159,22 +159,37 @@ async function completeLogicalCase(input: ExecuteCaseInput, executed: ReportedCa
     };
 }
 
+function lateAssertionOutcome(
+    outcome: PerTestResult['outcome'],
+    lateFailures: readonly TestContractFailure[]
+): Extract<PerTestResult['outcome'], { readonly kind: 'fail'; }> | null {
+    const current = outcome?.kind === 'fail' ? outcome.failures : [];
+    const failures = Array.from(new Set([ ...current, ...lateFailures ]));
+    const [ first, ...rest ] = failures;
+    return first === undefined || failures.length === current.length
+        ? null
+        : { kind: 'fail', failures: [ first, ...rest ] };
+}
+
 function retainLateAssertionFailures(
     executed: ReportedCase,
     lateFailures: readonly TestContractFailure[]
 ): ReportedCase {
     const { result } = executed;
-    const current = result.outcome?.kind === 'fail' ? result.outcome.failures : [];
-    const failures = Array.from(new Set([ ...current, ...lateFailures ]));
-    const [ first, ...rest ] = failures;
-    if (first === undefined || failures.length === current.length) {
+    const outcome = lateAssertionOutcome(result.outcome ?? result.attempts[0].outcome, lateFailures);
+    if (outcome === null) {
         return executed;
     }
-    const outcome = { kind: 'fail', failures: [ first, ...rest ] } as const;
     const verdict = [ 'pass', 'inconclusive' ].includes(result.verdict) ? 'fail' : result.verdict;
+    const caseOutcome = result.outcome === null && verdict !== 'fail' ? null : outcome;
     return {
         ...executed,
-        result: { ...result, outcome, verdict, attempts: [ { ...result.attempts[0], outcome, verdict } ] }
+        result: {
+            ...result,
+            outcome: caseOutcome,
+            verdict,
+            attempts: [ { ...result.attempts[0], outcome, verdict } ]
+        }
     };
 }
 

@@ -165,8 +165,8 @@ export const testNode = suite('interrupted case cleanup', [
         fixture.clock.advanceByMilliseconds(10);
         const { result } = await running;
         gate.resolve(undefined);
-        scope.assert.equal(result.verdict, 'crashed');
-        scope.assert.partialDeepEqual<unknown, unknown>(result.outcome, {
+        scope.assert.deepEqual([ result.verdict, result.outcome ], [ 'crashed', null ]);
+        scope.assert.partialDeepEqual<unknown, unknown>(result.attempts[0].outcome, {
             kind: 'fail',
             failures: [ { code: 'late-assertion-activity', actual: { closure: 'interrupted' } } ]
         });

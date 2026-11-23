@@ -82,15 +82,22 @@ function skippedCase(
     };
 }
 
+type CompletedCaseOutcome = Pick<PerTestResult, 'outcome' | 'verdict'> & {
+    readonly attemptOutcome: TestOutcome | null;
+};
+
 function completedTerminalOutcome(
     outcome: TestOutcome | null,
     terminal: PerTestResult,
     hasLateFailures: boolean
-): Pick<PerTestResult, 'outcome' | 'verdict'> {
+): CompletedCaseOutcome {
     if (outcome === null || outcome.kind === 'pass') {
-        return { outcome: terminal.outcome, verdict: terminal.verdict };
+        return { outcome: terminal.outcome, attemptOutcome: terminal.outcome, verdict: terminal.verdict };
     }
-    return { outcome, verdict: hasLateFailures ? terminal.verdict : verdictFromOutcome(outcome) };
+    if (hasLateFailures) {
+        return { outcome: terminal.outcome, attemptOutcome: outcome, verdict: terminal.verdict };
+    }
+    return { outcome, attemptOutcome: outcome, verdict: verdictFromOutcome(outcome) };
 }
 
 function completedCaseOutcome(
@@ -98,10 +105,14 @@ function completedCaseOutcome(
     body: ExecutedBody,
     terminal: ExecutedCase | null,
     generated: boolean
-): Pick<PerTestResult, 'outcome' | 'verdict'> {
+): CompletedCaseOutcome {
     const outcome = createBodyOutcome(recorder, body, terminal !== null || generated);
     if (terminal === null) {
-        return { outcome, verdict: outcome === null ? 'runtime-policy' : verdictFromOutcome(outcome) };
+        return {
+            outcome,
+            attemptOutcome: outcome,
+            verdict: outcome === null ? 'runtime-policy' : verdictFromOutcome(outcome)
+        };
     }
     return completedTerminalOutcome(outcome, terminal.result, recorder.lateFailures().length > 0);
 }
@@ -155,26 +166,27 @@ async function executeTestBody(
     }, execution.benchmark);
     recorder.close('settled');
     const executedBody = { ...completed, runnerErrors: [ ...completed.runnerErrors, ...execution.benchmark.errors() ] };
-    const completion = completedCaseOutcome(
+    const { attemptOutcome, ...completion } = completedCaseOutcome(
         execution.recorder,
         executedBody,
         execution.interruption.result(),
         caseBodyMode(testCase.execution) === 'benchmark'
     );
     const durationMicroseconds = elapsed();
+    const result = singleAttemptResult({
+        property: caseBodyMode(testCase.execution) === 'property'
+            ? { invocations: execution.recorder.propertyEvidence() }
+            : null,
+        benchmark: execution.interruption.result()?.result.benchmark ?? execution.benchmark.result(),
+        definitionLocations: testCase.definitionLocations,
+        id: testCase.id,
+        ...completion,
+        workId: testCase.workId,
+        durationMicroseconds
+    }, { index: 0 });
 
     return {
-        result: singleAttemptResult({
-            property: caseBodyMode(testCase.execution) === 'property'
-                ? { invocations: execution.recorder.propertyEvidence() }
-                : null,
-            benchmark: execution.interruption.result()?.result.benchmark ?? execution.benchmark.result(),
-            definitionLocations: testCase.definitionLocations,
-            id: testCase.id,
-            ...completion,
-            workId: testCase.workId,
-            durationMicroseconds
-        }, { index: 0 }),
+        result: { ...result, attempts: [ { ...result.attempts[0], outcome: attemptOutcome } ] },
         runnerErrors: executedBody.runnerErrors,
         durationMicroseconds
     };
