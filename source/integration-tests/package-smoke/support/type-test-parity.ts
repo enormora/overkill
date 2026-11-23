@@ -99,14 +99,17 @@ assert.deepEqual(await projectFiles(),before);
 
 const request=${request};
 const run=runRequest=>commandLineRunner.runTests({cwd,configPath:null,runRequest});
+function diagnostics(reply) {
+    const errors=reply.runResult?.runnerErrors.map(error=>error.cause?.stack ?? error.message) ?? [];
+    return [...reply.fallbackDiagnostics,...errors].join('\\n');
+}
 parsed=0;
 snapshots=0;
 const reply=await run({...request,selection:{kind:'filter',filter:{
     kind:'any', filters:workIds.map(id=>({kind:'work-id',id}))
 }}});
-assert.ok(reply.runResult,reply.fallbackDiagnostics.join('\\n'));
-assert.equal(reply.exitCode,1,[...reply.fallbackDiagnostics,...reply.runResult.runnerErrors.map(error=>error.message)]
-    .join('\\n'));
+assert.ok(reply.runResult,diagnostics(reply));
+assert.equal(reply.exitCode,1,diagnostics(reply));
 assert.ok(parsed>0 && snapshots>0,'Expected the runner to build the original program');
 assert.deepEqual(direct.perTest.map(item=>item.workId),workIds);
 assert.deepEqual(direct.perTest.map(item=>item.verdict),['pass','fail','skip']);
@@ -143,7 +146,7 @@ for(const index of [1,2]) {
     const shard=await run({...request,record:false,shard:{index,total:2},selection:{
         kind:'filter',filter:{kind:'work-id',id:workIds[0]}
     }});
-    assert.equal(shard.exitCode,0,shard.fallbackDiagnostics.join('\\n'));
+    assert.equal(shard.exitCode,0,'Shard '+index+': '+diagnostics(shard));
     const shardEvents=events.splice(0);
     const start=shardEvents.find(event=>event.kind==='run-start');
     if(shard.runResult.perTest.length===0) {
