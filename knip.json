@@ -17,7 +17,8 @@
         "packtory.config.js",
         "overkill.config.ts",
         "tstyche.json",
-        "source/integration-tests/package-smoke/support/pack-packages.ts"
+        "source/integration-tests/package-smoke/support/pack-packages.ts",
+        "source/benchmarks/run-performance.entry-point.ts"
     ],
     "project": [
         "source/**/*.ts!",

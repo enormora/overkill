@@ -125,7 +125,7 @@ resolves one lane. Worker requests and profile caps remain visible in execution
 facts. Supervised execution and fresh workers are
 also supported. Hedging and concurrent groups are rejected.
 Default timeouts are 5000 ms for collection, 40000 ms soft, and 60000 ms hard.
-Overrides must keep soft at or below hard and hard at or below 60000 ms.
+Overrides must keep soft at or below hard.
 
 `benchmark(...)` expands named, immutable JSON workloads before selection and
 sharding. Each workload requires at least one metric budget. Return every

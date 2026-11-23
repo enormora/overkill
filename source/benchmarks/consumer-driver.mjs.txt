@@ -1,0 +1,104 @@
+import { readFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
+import { createTestPlanFromTestFiles, execute, prepareFamily } from '@overkill-dev/engine';
+import { printCompletion, verifyWork } from './consumer-evidence.mjs';
+
+const definition = JSON.parse(await readFile(new URL('./definition.json', import.meta.url), 'utf8'));
+const { workload, family, files, expected } = definition;
+const cwd = process.cwd();
+const signal = new AbortController().signal;
+
+async function executeDirect() {
+    const nodes = await Promise.all(files.map(async file => {
+        const path = resolve(file);
+        const { testNode } = await import(pathToFileURL(path).href);
+        return { file: path, testNode };
+    }));
+    const plan = createTestPlanFromTestFiles({
+        files: nodes,
+        root: { title: 'benchmark project', annotations: {}, controls: {} }
+    });
+    if (family === 'type-test') {
+        const { family: typeFamily } = await import('@overkill-dev/type-test');
+        await using prepared = await prepareFamily({
+            testPlan: plan, testFamily: typeFamily, settings: definition.settings, projectRoot: cwd, signal
+        });
+        const collected = await prepared.collect({ workIds: prepared.testPlan.cases.map(entry => entry.workId), signal });
+        return await execute(collected, {
+            signal, debug: { mode: 'off' }, retryPolicy: null, reporters: [],
+            execution: { mode: 'serial-in-process' }, runFacts: {}, startedAt: new Date().toISOString()
+        });
+    }
+    if (family === 'property') {
+        const policy = {
+            version: 1, newTrials: 16, maxSize: 100, maxDepth: 10, maxAutomaticEdges: 0,
+            maxExhaustiveValues: 0, maxWork: 10000, maxShrinkWork: 1000, maxLabels: 100, maxRetainedInputs: 100
+        };
+        const resolvePolicy = cases => cases.map(selected => ({
+            ...selected, execution: { ...selected.execution, policy: { kind: 'resolved', policy } }
+        }));
+        return await execute({
+            ...plan, cases: resolvePolicy(plan.cases), discoveredCases: resolvePolicy(plan.discoveredCases)
+        }, {
+            debug: { mode: 'off' }, retryPolicy: null, reporters: [],
+            execution: { mode: 'serial-in-process' }, runFacts: {}, startedAt: new Date(0).toISOString(),
+            propertyRun: { seed: 42n, projectRoot: cwd }
+        });
+    }
+    if (workload !== 'repeated') {
+        return await execute(plan);
+    }
+    let result = await execute(plan);
+    verifyWork(result, expected, null);
+    globalThis.gc();
+    const start = process.memoryUsage().heapUsed;
+    const startedAt = process.hrtime.bigint();
+    const startedCpu = process.cpuUsage();
+    for (let index = 0; index < 24; index += 1) {
+        result = await execute(plan);
+        verifyWork(result, expected, null);
+    }
+    const elapsed = Number((process.hrtime.bigint() - startedAt) / 1000n);
+    const cpu = process.cpuUsage(startedCpu);
+    globalThis.gc();
+    const retained = Math.max(0, process.memoryUsage().heapUsed - start);
+    process.stdout.write(`overkill-warm-batch ${elapsed} ${cpu.user + cpu.system} ${retained}\n`);
+    return result;
+}
+
+async function executeThroughRunner() {
+    const { orchestrator } = await import('@overkill-dev/run');
+    const { loadConfig } = await import('@overkill-dev/run/config');
+    const configPath = resolve('consumer-config.mjs');
+    const loaded = await loadConfig({ cwd, configPath });
+    const config = definition.hosted ? {
+        ...loaded,
+        profiles: {
+            ...loaded.profiles,
+            measured: {
+                ...loaded.profiles.measured,
+                execution: {
+                    ...loaded.profiles.measured.execution,
+                    hostProcess: { kind: 'child', nodeArguments: [ '--no-warnings' ] }
+                }
+            }
+        }
+    } : loaded;
+    const command = {
+        config, cwd, engine: { kind: 'default' },
+        request: {
+            profile: 'measured', seed: { value: 42n }, capture: 'buffered',
+            record: process.env.OVERKILL_PERFORMANCE_PRIME === 'yes', recordForMerge: false,
+            lastFailed: false, baselineUpdateMode: 'none', capabilityRestrictions: { mode: 'enabled' }, coverage: false,
+            debug: { mode: 'off', selectors: [] }, execution: { mode: 'profile-default' },
+            measureProcessUsage: null, order: 'lexical', paths: [], processBudgetOverrides: null,
+            processUsageSamplingIntervalMilliseconds: null, selection: { kind: 'all' },
+            shard: { index: 1, total: 1 }, timingCollection: 'profile-default', verbose: false, workers: null
+        }
+    };
+    return await (family === 'benchmark' ? orchestrator.bench.run(command, { timing: null }) : orchestrator.run(command));
+}
+
+const result = await (definition.route === 'engine' ? executeDirect() : executeThroughRunner());
+printCompletion(result, expected, result.context?.facts ?? null);

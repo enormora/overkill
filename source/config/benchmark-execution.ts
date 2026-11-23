@@ -1,7 +1,6 @@
 import { validateNormalizedBenchmarkHostPolicy } from './benchmark-host.ts';
 import { ConfigError } from './config-error.ts';
-import { defaultBenchmarkTimeoutPolicy } from './defaults.ts';
-import type { ProfileConfig, TimeoutPolicy, BenchmarkProfileConfig } from './types.ts';
+import type { ProfileConfig, BenchmarkProfileConfig } from './types.ts';
 
 type ProfileExecution = ProfileConfig['execution'];
 
@@ -31,11 +30,8 @@ function validateBenchmarkWorkerPool(
     }
 }
 
-export function validateBenchmarkExecution(execution: ProfileExecution, timeouts: TimeoutPolicy): void {
+export function validateBenchmarkExecution(execution: ProfileExecution): void {
     validateBenchmarkAdmission(execution);
-    if (timeouts.hardMilliseconds > defaultBenchmarkTimeoutPolicy.hardMilliseconds) {
-        throw new ConfigError('Benchmark hard timeout must not exceed 60000 milliseconds.');
-    }
     if (execution.processModel === 'worker-pool') {
         validateBenchmarkWorkerPool(execution);
     }
@@ -43,5 +39,5 @@ export function validateBenchmarkExecution(execution: ProfileExecution, timeouts
 
 export function validateBenchmarkHostExecution(profile: BenchmarkProfileConfig): void {
     validateNormalizedBenchmarkHostPolicy(profile.host);
-    validateBenchmarkExecution(profile.execution, profile.timeouts);
+    validateBenchmarkExecution(profile.execution);
 }
