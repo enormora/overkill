@@ -226,9 +226,22 @@ async function writeCompilerProject(
     );
 }
 
-async function writeFixtureFiles(directory: string, spec: PerformanceCase, files: readonly string[]): Promise<void> {
-    await Promise.all(files.map(async function (file, index) {
-        return writeFile(join(directory, file), sourceImportsFrom(directory, testFile(spec, index)));
+export function consumerCaseFiles(directory: string, spec: PerformanceCase): ReadonlyMap<string, string> {
+    const extension = spec.family === 'type-test' ? 'mts' : 'mjs';
+    const files = Array.from({ length: spec.files }, function caseFile(_value, index) {
+        const source = sourceImportsFrom(directory, testFile(spec, index));
+        return [ `file-${index}.${extension}`, source ] as const;
+    });
+    return new Map(files);
+}
+
+async function writeFixtureFiles(
+    directory: string,
+    spec: PerformanceCase,
+    files: ReadonlyMap<string, string>
+): Promise<void> {
+    await Promise.all(Array.from(files, async function writeFixture([ name, source ]) {
+        return writeFile(join(directory, name), source);
     }));
     if (spec.workload.startsWith('run-')) {
         await writeFile(
@@ -244,13 +257,9 @@ export async function writeConsumer(
     spec: PerformanceCase
 ): Promise<void> {
     await mkdir(directory, { recursive: true });
-    const files = Array.from(
-        { length: spec.files },
-        function (_value, index) {
-            return `file-${index}.${spec.family === 'type-test' ? 'mts' : 'mjs'}`;
-        }
-    );
-    await writeFixtureFiles(directory, spec, files);
+    const fixtures = consumerCaseFiles(directory, spec);
+    await writeFixtureFiles(directory, spec, fixtures);
+    const files = Array.from(fixtures.keys());
     for (const filename of [ 'consumer-config.mjs', 'consumer-driver.mjs', 'consumer-evidence.mjs' ]) {
         await writeBenchmarkTemplate(directory, filename);
     }
