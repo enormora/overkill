@@ -20,7 +20,7 @@ function aliasedAuthor(analysis: BindingAnalysis, identifier: Readonly<Tree.Iden
 
 function renamedImport(node: Readonly<Tree.ImportSpecifier>): Author | null {
     const { parent, imported, local } = node;
-    if (parent.source.value !== authoringModule || imported.type !== NodeType.Identifier) {
+    if (parent.source?.value !== authoringModule || imported.type !== NodeType.Identifier) {
         return null;
     }
     return isAuthor(imported.name) && imported.name !== local.name ? imported.name : null;
