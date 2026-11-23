@@ -53,6 +53,12 @@ export const hasDomainInvariant = defineCompositeAssertion({
 });
 ```
 
-Each composite reference records one assertion boundary. Child checks created through `check.*` are grouped diagnostics, not extra plan units.
+Each composite reference records one assertion boundary. Injected child checks
+capture their own verdict and diagnostics at the call or settlement. The
+composite captures its parent diagnostic operands at completion.
+
+Injected foreign bridges serialize arbitrary thrown values within the assertion
+budget. Live failed checks expose that value as `error.thrown` with
+`error.thrownEncoding: 'serialized'`.
 
 Error assertions and foreign bridges propagate engine control signals unchanged.

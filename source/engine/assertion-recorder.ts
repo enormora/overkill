@@ -1,4 +1,4 @@
-import { requirementPasses } from '../assertion-protocol/evaluation.ts';
+import { assertionPasses, captureAssertion } from '../assertion-protocol/evaluation.ts';
 import type {
     AssertAssertionNode,
     AssertionNode,
@@ -435,6 +435,7 @@ export function createAssertionRecorder(origin: AssertionOrigin): AssertionRecor
             recordDebugAssertion(assertion);
             builderAssertions.push(assertion);
             recordedAssertions.push({ assertion, builderAssertion: assertion });
+            captureAssertion(assertion);
         },
 
         recordPendingAssert() {
@@ -455,6 +456,7 @@ export function createAssertionRecorder(origin: AssertionOrigin): AssertionRecor
                     lifetime.assertRecording('finish an asynchronous assertion');
                     builderAssertions[builderIndex] = assertion;
                     recordedAssertions[recordIndex] = { assertion, builderAssertion: assertion };
+                    captureAssertion(assertion);
                 }
             };
         },
@@ -462,10 +464,14 @@ export function createAssertionRecorder(origin: AssertionOrigin): AssertionRecor
         recordRequire(assertion) {
             lifetime.assertRecording('record a requirement');
             recordDebugAssertion(assertion);
+            const recordIndex = recordedAssertions.length;
             recordedAssertions.push({ assertion, builderAssertion: null });
+            captureAssertion(assertion);
 
-            if (!requirementPasses(assertion)) {
-                failedRequireIndex = failedRequireIndex ?? recordedAssertions.length - 1;
+            if (!assertionPasses(assertion)) {
+                failedRequireIndex = failedRequireIndex === null
+                    ? recordIndex
+                    : Math.min(failedRequireIndex, recordIndex);
                 throw new RequireFailedSignalError();
             }
         },

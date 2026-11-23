@@ -63,8 +63,12 @@ type ResultOk = {
 };
 
 const resultOk = defineSubjectCompositeAssertion({
-    assert(check, result: ResultOk) {
-        return check.true(result.ok);
+    async assert(check, result: ResultOk) {
+        const state = { ok: result.ok };
+        const initial = check.deepEqual(state, { ok: true });
+        await Promise.resolve();
+        state.ok = false;
+        return check.group([ initial, check.deepEqual(state, { ok: false }) ]);
     },
     name: 'resultOk'
 });
@@ -365,8 +369,8 @@ export const testNode = suite('Installed engine interoperability', [
         async function (scope) {
             const testCase = createTestCase({
                 definitionLocations: [ { kind: 'unknown' } ],
-                body(testScope) {
-                    testScope.assert(resultOk, { ok: true });
+                async body(testScope) {
+                    await testScope.assert(resultOk, { ok: true });
                     return testScope.assert.collect();
                 },
                 annotations: {},

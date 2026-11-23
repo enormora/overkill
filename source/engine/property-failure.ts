@@ -1,11 +1,10 @@
 import { serializeValue, type SerializedValue } from '../compare/serialized-value.ts';
-import { assertionPasses } from '../assertion-protocol/evaluation.ts';
+import { assertionPasses, propertyAssertionBoundary } from '../assertion-protocol/evaluation.ts';
 import { resolveSourceLocation, sourceLocationFromStack } from '../assertion-protocol/source-location.ts';
 import type { AssertionNode } from '../assertion-protocol/assertion-node.ts';
 import type { SourceLocation } from '../assertion-protocol/assertion-node-shape.ts';
 import { assertionFailure } from './recorded-assertion-failure.ts';
 import type { PropertyTrialResult } from './property-execution-host.ts';
-import { propertyBoundary } from './property-trial-outcome.ts';
 
 function locationKey(location: SourceLocation): string | null {
     return location.kind === 'known' && location.line !== null && location.column !== null
@@ -77,7 +76,7 @@ export function matchPropertyFailure(
         const assertion = candidate.result.returnedAssertions.find(function matching(value) {
             return !assertionPasses(value) && assertionIdentity(value) === identity;
         });
-        return assertion === undefined ? null : { ...candidate, assertion: propertyBoundary(assertion) };
+        return assertion === undefined ? null : { ...candidate, assertion: propertyAssertionBoundary(assertion) };
     }
     return propertyFailureIdentity(candidate) === identity ? candidate : null;
 }

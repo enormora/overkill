@@ -335,12 +335,20 @@ type FailedCheck =
         readonly kind: 'composite';
     })
     | (FailedCheckBase & {
-        readonly error: {
-            readonly message: string;
-            readonly name: string;
-            readonly stack: string | null;
-            readonly thrown: unknown;
-        };
+        readonly error:
+            | {
+                readonly message: string;
+                readonly name: string;
+                readonly stack: string | null;
+                readonly thrown: unknown;
+            }
+            | {
+                readonly message: string;
+                readonly name: string;
+                readonly stack: string | null;
+                readonly thrown: SerializedValue;
+                readonly thrownEncoding: 'serialized';
+            };
         readonly kind: 'foreign';
         readonly label: string;
     });

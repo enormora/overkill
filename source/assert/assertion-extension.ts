@@ -1,3 +1,4 @@
+import { captureCompositeChild } from '../assertion-protocol/assertion-reference.ts';
 import {
     createCompositeAssertionGroup,
     createCompositeAssertionReferenceRecord,
@@ -170,58 +171,70 @@ function flattenCompositeGroupItems<Source extends AssertionSource>(
     return children;
 }
 
-export function createCompositeCheckBuilder<Source extends AssertionSource>(
+type CaptureCompositeChild = (child: CompositeAssertionChildNode<'assert'>) => void;
+
+function isChildCapture(value: unknown): value is CaptureCompositeChild {
+    return typeof value === 'function';
+}
+
+function compositeCheckBuilder<Source extends AssertionSource>(
     source: Source,
     message: string | null,
-    sourceLocations: ResolvableSourceLocations
+    sourceLocations: ResolvableSourceLocations,
+    capture: ((child: CompositeAssertionChildNode<Source>) => void) | null
 ): CompositeCheckBuilder<Source> {
+    function child<Node extends CompositeAssertionChildNode<Source>>(node: Node): Node {
+        capture?.(node);
+        return node;
+    }
+
     return {
         annotated(childMessage) {
-            return createCompositeCheckBuilder(source, childMessage, sourceLocations);
+            return compositeCheckBuilder(source, childMessage, sourceLocations, capture);
         },
 
         array(actual) {
-            return { actual, check: 'array', message, source, sourceLocations };
+            return child({ actual, check: 'array', message, source, sourceLocations });
         },
 
         arrayContainsPartial(actual, expected) {
-            return { actual, check: 'array-contains-partial', expected, message, source, sourceLocations };
+            return child({ actual, check: 'array-contains-partial', expected, message, source, sourceLocations });
         },
 
         between(actual, minimum, maximum) {
-            return { actual, check: 'between', maximum, message, minimum, source, sourceLocations };
+            return child({ actual, check: 'between', maximum, message, minimum, source, sourceLocations });
         },
 
         boolean(actual) {
-            return { actual, check: 'boolean', message, source, sourceLocations };
+            return child({ actual, check: 'boolean', message, source, sourceLocations });
         },
 
         deepEqual(actual, expected) {
-            return { actual, check: 'deep-equal', expected, message, source, sourceLocations };
+            return child({ actual, check: 'deep-equal', expected, message, source, sourceLocations });
         },
 
         defined(actual) {
-            return { actual, check: 'defined', message, source, sourceLocations };
+            return child({ actual, check: 'defined', message, source, sourceLocations });
         },
 
         empty(actual) {
-            return { actual, check: 'empty', message, source, sourceLocations };
+            return child({ actual, check: 'empty', message, source, sourceLocations });
         },
 
         endsWith(actual, expected) {
-            return { actual, check: 'ends-with', expected, message, source, sourceLocations };
+            return child({ actual, check: 'ends-with', expected, message, source, sourceLocations });
         },
 
         equal(actual, expected) {
-            return { actual, check: 'equal', expected, message, source, sourceLocations };
+            return child({ actual, check: 'equal', expected, message, source, sourceLocations });
         },
 
         fail() {
-            return { check: 'fail', message, source, sourceLocations };
+            return child({ check: 'fail', message, source, sourceLocations });
         },
 
         false(actual) {
-            return { actual, check: 'false', message, source, sourceLocations };
+            return child({ actual, check: 'false', message, source, sourceLocations });
         },
 
         async fromRejectable(label, body) {
@@ -235,7 +248,7 @@ export function createCompositeCheckBuilder<Source extends AssertionSource>(
                 result = { error: createThrownErrorRecord(error), passed: false };
             }
 
-            return createForeignAssertionNode({ label, message, result, source, sourceLocations });
+            return child(createForeignAssertionNode({ label, message, result, source, sourceLocations }));
         },
 
         fromThrowable(label, body) {
@@ -249,19 +262,19 @@ export function createCompositeCheckBuilder<Source extends AssertionSource>(
                 result = { error: createThrownErrorRecord(error), passed: false };
             }
 
-            return createForeignAssertionNode({ label, message, result, source, sourceLocations });
+            return child(createForeignAssertionNode({ label, message, result, source, sourceLocations }));
         },
 
         function(actual) {
-            return { actual, check: 'function', message, source, sourceLocations };
+            return child({ actual, check: 'function', message, source, sourceLocations });
         },
 
         greaterThan(actual, expected) {
-            return { actual, check: 'greater-than', expected, message, source, sourceLocations };
+            return child({ actual, check: 'greater-than', expected, message, source, sourceLocations });
         },
 
         greaterThanOrEqual(actual, expected) {
-            return { actual, check: 'greater-than-or-equal', expected, message, source, sourceLocations };
+            return child({ actual, check: 'greater-than-or-equal', expected, message, source, sourceLocations });
         },
 
         group(children) {
@@ -269,71 +282,71 @@ export function createCompositeCheckBuilder<Source extends AssertionSource>(
         },
 
         hasProperty(actual, key) {
-            return { actual, check: 'has-property', key, message, source, sourceLocations };
+            return child({ actual, check: 'has-property', key, message, source, sourceLocations });
         },
 
         includes(actual, expected) {
-            return { actual, check: 'includes', expected, message, source, sourceLocations };
+            return child({ actual, check: 'includes', expected, message, source, sourceLocations });
         },
 
         instanceOf(actual, expected) {
-            return { actual, check: 'instance-of', expected, message, source, sourceLocations };
+            return child({ actual, check: 'instance-of', expected, message, source, sourceLocations });
         },
 
         length(actual, expectedLength) {
-            return { actual, check: 'length', expectedLength, message, source, sourceLocations };
+            return child({ actual, check: 'length', expectedLength, message, source, sourceLocations });
         },
 
         lessThan(actual, expected) {
-            return { actual, check: 'less-than', expected, message, source, sourceLocations };
+            return child({ actual, check: 'less-than', expected, message, source, sourceLocations });
         },
 
         lessThanOrEqual(actual, expected) {
-            return { actual, check: 'less-than-or-equal', expected, message, source, sourceLocations };
+            return child({ actual, check: 'less-than-or-equal', expected, message, source, sourceLocations });
         },
 
         match(actual, pattern) {
-            return { actual, check: 'match', message, pattern, source, sourceLocations };
+            return child({ actual, check: 'match', message, pattern, source, sourceLocations });
         },
 
         membersPartialDeepEqual(actual, expected) {
-            return { actual, check: 'members-partial-deep-equal', expected, message, source, sourceLocations };
+            return child({ actual, check: 'members-partial-deep-equal', expected, message, source, sourceLocations });
         },
 
         notDeepEqual(actual, expected) {
-            return { actual, check: 'not-deep-equal', expected, message, source, sourceLocations };
+            return child({ actual, check: 'not-deep-equal', expected, message, source, sourceLocations });
         },
 
         notEmpty(actual) {
-            return { actual, check: 'not-empty', message, source, sourceLocations };
+            return child({ actual, check: 'not-empty', message, source, sourceLocations });
         },
 
         notEqual(actual, expected) {
-            return { actual, check: 'not-equal', expected, message, source, sourceLocations };
+            return child({ actual, check: 'not-equal', expected, message, source, sourceLocations });
         },
 
         notMatch(actual, pattern) {
-            return { actual, check: 'not-match', message, pattern, source, sourceLocations };
+            return child({ actual, check: 'not-match', message, pattern, source, sourceLocations });
         },
 
         notNull(actual) {
-            return { actual, check: 'not-null', message, source, sourceLocations };
+            return child({ actual, check: 'not-null', message, source, sourceLocations });
         },
 
         null(actual) {
-            return { actual, check: 'null', message, source, sourceLocations };
+            return child({ actual, check: 'null', message, source, sourceLocations });
         },
 
         number(actual) {
-            return { actual, check: 'number', message, source, sourceLocations };
+            return child({ actual, check: 'number', message, source, sourceLocations });
         },
 
         object(actual) {
-            return { actual, check: 'object', message, source, sourceLocations };
+            return child({ actual, check: 'object', message, source, sourceLocations });
         },
 
         partialDeepEqual(actual, expected) {
-            return { actual, check: 'partial-deep-equal', expected, message, source, sourceLocations };
+            return child({ actual, check: 'partial-deep-equal', expected, message, source, sourceLocations });
         },
 
         async rejects(thunk, matcher) {
@@ -344,45 +357,61 @@ export function createCompositeCheckBuilder<Source extends AssertionSource>(
                 throw observation.value;
             }
 
-            return createCompositeAssertionGroup(thrownMatcherChildren({
+            const children = thrownMatcherChildren({
                 kind: 'rejects',
                 matcher,
                 message,
                 observation,
                 source,
                 sourceLocations
-            }));
+            });
+            children.forEach(function captureChild(node) {
+                capture?.(node);
+            });
+            return createCompositeAssertionGroup(children);
         },
 
         startsWith(actual, expected) {
-            return { actual, check: 'starts-with', expected, message, source, sourceLocations };
+            return child({ actual, check: 'starts-with', expected, message, source, sourceLocations });
         },
 
         string(actual) {
-            return { actual, check: 'string', message, source, sourceLocations };
+            return child({ actual, check: 'string', message, source, sourceLocations });
         },
 
         throws(body, matcher) {
             const observation = observeThrow(body);
 
-            return createCompositeAssertionGroup(thrownMatcherChildren({
+            const children = thrownMatcherChildren({
                 kind: 'throws',
                 matcher,
                 message,
                 observation,
                 source,
                 sourceLocations
-            }));
+            });
+            children.forEach(function captureChild(node) {
+                capture?.(node);
+            });
+            return createCompositeAssertionGroup(children);
         },
 
         true(actual) {
-            return { actual, check: 'true', message, source, sourceLocations };
+            return child({ actual, check: 'true', message, source, sourceLocations });
         },
 
         undefined(actual) {
-            return { actual, check: 'undefined', message, source, sourceLocations };
+            return child({ actual, check: 'undefined', message, source, sourceLocations });
         }
     };
+}
+
+export function createCompositeCheckBuilder<Source extends AssertionSource>(
+    source: Source,
+    message: string | null,
+    sourceLocations: ResolvableSourceLocations
+): CompositeCheckBuilder<Source> {
+    return compositeCheckBuilder(source, message, sourceLocations, null);
 }
 
 export function defineCompositeAssertion<
@@ -394,8 +423,14 @@ export function defineCompositeAssertion<
         kind: 'composite',
         name: definition.name,
         run(input) {
+            const capture: unknown = Reflect.get(input, captureCompositeChild);
             return definition.assert(
-                createCompositeCheckBuilder(input.source, input.message, input.sourceLocations),
+                compositeCheckBuilder(
+                    input.source,
+                    input.message,
+                    input.sourceLocations,
+                    isChildCapture(capture) ? capture : null
+                ),
                 ...input.parameters
             );
         }

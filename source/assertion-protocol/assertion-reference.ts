@@ -7,6 +7,8 @@ import type {
     ResolvableSourceLocations
 } from './assertion-node-shape.ts';
 
+export const captureCompositeChild = Symbol.for('@overkill-dev/capture-composite-child/v1');
+
 const assertionReferenceIdentity: unique symbol = Symbol.for('OverkillAssertionReference');
 const assertionReferenceRecordIdentity: unique symbol = Symbol.for('OverkillAssertionReferenceRecord');
 const compositeGroupIdentity: unique symbol = Symbol.for('OverkillCompositeGroup');

@@ -1,3 +1,4 @@
+import { captureAssertion } from '../assertion-protocol/evaluation.ts';
 import type {
     AssertAssertionNode,
     CompositeAssertionChildNode,
@@ -5,6 +6,7 @@ import type {
     RequireAssertionNode
 } from '../assertion-protocol/assertion-node.ts';
 import {
+    captureCompositeChild,
     getAssertionReferenceRecord,
     getNarrowingAssertionReferenceRecord,
     isAssertionReference,
@@ -262,12 +264,19 @@ async function recordResolvedCompositeAssertion(input: PendingCompositeAssertion
 }
 
 function recordCompositeAssertion(input: CompositeAssertionRecordingInput): Promise<void> | void {
-    const result = input.record.run({
+    const invocation = {
         message: null,
         parameters: input.parameters,
-        source: 'assert',
+        source: 'assert' as const,
         sourceLocations: input.sourceLocations
+    };
+    Object.defineProperty(invocation, captureCompositeChild, {
+        value(child: CompositeAssertionChildNode<'assert'>) {
+            input.sink.assertRecording('record a composite assertion child');
+            captureAssertion(child);
+        }
     });
+    const result = input.record.run(invocation);
 
     if (!isPromiseLike(result)) {
         input.sink.recordAssert(createCompositeAssertionNode({

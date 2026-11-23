@@ -1,6 +1,6 @@
 import {
-    evaluateAssertion,
-    invalidDeepAssertionOperand,
+    evaluateRecordedAssertion,
+    recordedInvalidDeepAssertionOperand,
     type InvalidDeepAssertionOperand
 } from '../assertion-protocol/evaluation.ts';
 import type { AssertionNode } from '../assertion-protocol/assertion-node.ts';
@@ -18,8 +18,8 @@ function invalidDeepAssertionOperandFailure(actual: InvalidDeepAssertionOperand)
 }
 
 function evaluatedAssertionFailure(assertions: readonly AssertionNode[]): TestFailure | null {
-    const checks = assertions.flatMap(function evaluateRecordedAssertion(assertion, index) {
-        const failedCheck = evaluateAssertion(assertion, index + 1);
+    const checks = assertions.flatMap(function failedCheckAtIndex(assertion, index) {
+        const failedCheck = evaluateRecordedAssertion(assertion, index + 1);
 
         return failedCheck === null ? [] : [ failedCheck ];
     });
@@ -38,7 +38,7 @@ function evaluatedAssertionFailure(assertions: readonly AssertionNode[]): TestFa
 
 function assertionContractFailure(assertions: readonly AssertionNode[]): TestContractFailure | null {
     for (const assertion of assertions) {
-        const invalid = invalidDeepAssertionOperand(assertion);
+        const invalid = recordedInvalidDeepAssertionOperand(assertion);
 
         if (invalid !== null) {
             return invalidDeepAssertionOperandFailure(invalid);

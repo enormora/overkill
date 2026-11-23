@@ -1,7 +1,8 @@
 import { suite, test } from '@overkill-dev/test';
 
 import { observationError } from '../test-support/observation-lifetime.ts';
-import { propertyTrialWithPolicyErrors, propertyBoundary } from './property-trial-outcome.ts';
+import { propertyAssertionBoundary } from '../assertion-protocol/evaluation.ts';
+import { propertyTrialWithPolicyErrors } from './property-trial-outcome.ts';
 import type { ExecutedBody } from './body-result.ts';
 
 const body: ExecutedBody = {
@@ -41,7 +42,7 @@ export const testNode = suite('trial runtime policy completion', [
             sourceLocations: [ { kind: 'unknown' as const } ] as const
         };
         scope.assert.throws(function () {
-            propertyBoundary({
+            propertyAssertionBoundary({
                 check: 'composite',
                 actual: true,
                 expected: true,
