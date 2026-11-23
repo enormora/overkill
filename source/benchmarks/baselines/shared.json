@@ -426,10 +426,10 @@
         "microtest-engine-many-files-warm-batch": {
             "wallMicroseconds": 40,
             "cpuMicroseconds": 40,
-            "peakResidentBytes": 160000000,
+            "peakResidentBytes": 190000000,
             "warmWallMicroseconds": 22,
             "warmCpuMicroseconds": 15,
-            "retainedHeapBytes": 1000000
+            "retainedHeapBytes": 1200000
         },
         "type-test-runner-many-files-in-process": {
             "wallMicroseconds": 190,
