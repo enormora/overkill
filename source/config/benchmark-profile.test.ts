@@ -97,12 +97,14 @@ export const testNode = suite('benchmark profile configuration', [
         }
         return scope.assert.collect();
     }),
-    test('accepts a longer timeout for process benchmark sampling', function (scope) {
+    test('accepts a longer timeout for process benchmark sampling', function (scope: TestScope) {
         const timeouts = { collectionMilliseconds: 5000, softMilliseconds: 480_000, hardMilliseconds: 600_000 };
         const config = normalizeConfig({
             profiles: { startup: { testFamily: 'benchmark', files: benchmarkFiles, timeouts } }
         });
-        scope.assert.deepEqual(config.profiles.startup?.timeouts, timeouts);
+        const profile = config.profiles.startup;
+        scope.require.defined(profile);
+        scope.assert.deepEqual(profile.timeouts, timeouts);
         return scope.assert.collect();
     }),
     test('accepts normalized serial work groups', function (scope: TestScope) {
