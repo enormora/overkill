@@ -9,6 +9,38 @@ import {
 } from './worker-pool-host-protocol.ts';
 import { workerPoolHostMessageSchema, workerPoolHostCommandSchema } from './worker-pool-host-protocol-schema.ts';
 
+import { observeWorkerLateAssertions, type WorkerLateAssertionObserver } from './worker-pool-late-assertions.ts';
+
+type HostedLateAssertionDelivery = {
+    readonly observe: (token: string) => void;
+    readonly close: () => Promise<void>;
+};
+
+export function createHostedLateAssertionDelivery(
+    send: (message: WorkerPoolHostMessage) => void
+): HostedLateAssertionDelivery {
+    const observers = new Map<string, WorkerLateAssertionObserver>();
+    return {
+        observe(token) {
+            if (!observers.has(token)) {
+                observers.set(
+                    token,
+                    observeWorkerLateAssertions(token, function forward(error) {
+                        send({ kind: 'runner-error', error });
+                    })
+                );
+            }
+        },
+        async close() {
+            const active = Array.from(observers.values());
+            observers.clear();
+            await Promise.all(active.map(async function closeObserver(observer) {
+                await observer.close();
+            }));
+        }
+    };
+}
+
 type HostTransport = {
     readonly wallClock: Clock;
     readonly child: SupervisedChildProcess;

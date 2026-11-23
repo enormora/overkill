@@ -1,13 +1,13 @@
 import { withDebugAttempt } from './test-debug-context.ts';
 import { caseExecutionArtifacts } from './execution-observation.ts';
 import type { CaseReportingContext, ExecuteCaseInput, ReportedCase } from './case-attempt-context.ts';
-import { executeTimedLeakCheckedCase } from './case-body-observation.ts';
+import { observeCaseBody, type ObservedCaseBody } from './case-body-observation.ts';
 import {
     completeCaseWithAsyncLeakPolicy
 } from './execution-async-leak-policy.ts';
 import type { ReporterDelivery } from './reporter-dispatcher.ts';
 import { reportRunnerErrorEvents } from './runner-error-reporting.ts';
-import type { PerTestResult, RunnerError } from './run-result.ts';
+import type { PerTestResult, RunnerError, TestContractFailure } from './run-result.ts';
 import { retryPolicyAllowsAttempt } from './retry-policy.ts';
 import { appendAttempt, resourceCheckedAttemptResult, caseResultWithPolicyErrors } from './case-attempt-result.ts';
 
@@ -65,13 +65,17 @@ function attributeCaseAttempt(input: ExecuteCaseInput, errors: readonly RunnerEr
     });
 }
 
-async function executeAttempt(input: ExecuteCaseInput, started: boolean): Promise<ReportedCase> {
+async function executeAttempt(
+    input: ExecuteCaseInput,
+    started: boolean,
+    body: ObservedCaseBody
+): Promise<ReportedCase> {
     const startErrors = started ? [] : await reportTestStart(
         input.testCase,
         input.attempt,
         input.context.reporterDelivery
     );
-    const { endedAtMicroseconds, leakCheckedCase, startedAtMicroseconds } = await executeTimedLeakCheckedCase(input);
+    const { endedAtMicroseconds, leakCheckedCase, startedAtMicroseconds } = await body.run();
     const caseRunnerErrors = attributeCaseAttempt(input, [
         ...input.context.dependencies.globalErrorObserver.takeErrors(),
         ...leakCheckedCase.executedCase.runnerErrors,
@@ -155,6 +159,40 @@ async function completeLogicalCase(input: ExecuteCaseInput, executed: ReportedCa
     };
 }
 
+function lateAssertionOutcome(
+    outcome: PerTestResult['outcome'],
+    lateFailures: readonly TestContractFailure[]
+): Extract<PerTestResult['outcome'], { readonly kind: 'fail'; }> | null {
+    const current = outcome?.kind === 'fail' ? outcome.failures : [];
+    const failures = Array.from(new Set([ ...current, ...lateFailures ]));
+    const [ first, ...rest ] = failures;
+    return first === undefined || failures.length === current.length
+        ? null
+        : { kind: 'fail', failures: [ first, ...rest ] };
+}
+
+function retainLateAssertionFailures(
+    executed: ReportedCase,
+    lateFailures: readonly TestContractFailure[]
+): ReportedCase {
+    const { result } = executed;
+    const outcome = lateAssertionOutcome(result.outcome ?? result.attempts[0].outcome, lateFailures);
+    if (outcome === null) {
+        return executed;
+    }
+    const verdict = [ 'pass', 'inconclusive' ].includes(result.verdict) ? 'fail' : result.verdict;
+    const caseOutcome = result.outcome === null && verdict !== 'fail' ? null : outcome;
+    return {
+        ...executed,
+        result: {
+            ...result,
+            outcome: caseOutcome,
+            verdict,
+            attempts: [ { ...result.attempts[0], outcome, verdict } ]
+        }
+    };
+}
+
 async function finishAttempt(input: ExecuteCaseInput, executed: ReportedCase, retry: boolean): Promise<ReportedCase> {
     const completed = executed;
     return {
@@ -188,8 +226,12 @@ export async function executeCase(input: ExecuteCaseInput, started: boolean): Pr
             current.current.testCase,
             { index: current.current.attempt },
             async function observeCompleteAttempt() {
+                const body = observeCaseBody(current.current);
                 const observed = await withDebugAttempt(current.current, async function runAttempt() {
-                    const executed = await executeAttempt(current.current, current.started);
+                    const executed = retainLateAssertionFailures(
+                        await executeAttempt(current.current, current.started, body),
+                        body.lateFailures()
+                    );
                     const retryAllowed = canRetryCase(current.current, executed);
                     const attemptResult = retryAllowed
                         ? executed
@@ -198,10 +240,16 @@ export async function executeCase(input: ExecuteCaseInput, started: boolean): Pr
                 }, function result(value) {
                     return value.completed.result;
                 });
-                return {
-                    retry: observed.retry,
-                    completed: await finishAttempt(current.current, observed.completed, observed.retry)
-                };
+                let attempt = retainLateAssertionFailures(observed.completed, body.lateFailures());
+                const willRetry = observed.retry && canRetryCase(current.current, attempt);
+                if (observed.retry && !willRetry) {
+                    attempt = retainLateAssertionFailures(
+                        await completeLogicalCase(current.current, attempt),
+                        body.lateFailures()
+                    );
+                }
+                body.publish();
+                return { retry: willRetry, completed: await finishAttempt(current.current, attempt, willRetry) };
             }
         );
         const history = appendAttempt(

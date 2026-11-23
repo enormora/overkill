@@ -2,7 +2,7 @@ import { assertionPasses, evaluateAssertion, retainRequirementFailure } from '..
 import type { AssertAssertionNode, AssertionNode } from '../assertion-protocol/assertion-node.ts';
 import { assertionFailure } from './recorded-assertion-failure.ts';
 import type { ExecutedBody } from './body-result.ts';
-import type { RunnerError, TestFailure } from './run-result.ts';
+import type { RunnerError, TestContractFailure, TestFailure } from './run-result.ts';
 import type { PropertyTrialResult } from './property-execution-host.ts';
 
 export function propertyBoundary(assertion: AssertionNode): AssertAssertionNode {
@@ -46,7 +46,7 @@ function hasAdditionalFailures(result: ExecutedBody, failure: TestFailure | null
         });
 }
 
-export function classifyPropertyTrial(result: ExecutedBody): PropertyTrialResult {
+function classifyPropertyTrial(result: ExecutedBody): PropertyTrialResult {
     if (
         hasNativeFailure(result)
     ) {
@@ -71,6 +71,25 @@ export function classifyPropertyTrial(result: ExecutedBody): PropertyTrialResult
         };
     }
     return result.bodyError === null ? { kind: 'passed' } : { kind: 'body-error', result };
+}
+
+export function classifyPropertyTrialWithAssertionCount(
+    result: ExecutedBody,
+    validateAssertionCount: (count: number) => TestContractFailure | null
+): PropertyTrialResult {
+    const countFailure = validateAssertionCount(result.returnedAssertions.length);
+    const unsuccessful = [
+        result.contractFailures.length > 0,
+        result.inconclusiveReason !== null,
+        result.bodyError !== null,
+        result.requireFailed
+    ]
+        .includes(true);
+    return classifyPropertyTrial(
+        countFailure === null || unsuccessful
+            ? result
+            : { ...result, contractFailures: [ ...result.contractFailures, countFailure ] }
+    );
 }
 
 export function propertyTrialWithPolicyErrors(

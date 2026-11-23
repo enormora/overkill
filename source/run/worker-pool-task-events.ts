@@ -228,7 +228,7 @@ export function recordTaskPermissionFailure(
     return true;
 }
 
-async function recordReporterEventErrors(
+export async function recordReporterEventErrors(
     event: RuntimeReporterEvent,
     runtime: WorkerPoolRunRuntime
 ): Promise<void> {

@@ -264,8 +264,13 @@ Assertion bodies:
 - `scope.assert.annotated(message)(reference, ...)` annotates a custom
   assertion boundary.
 - `scope.assert.collect()` is builder-mode syntax sugar. It returns the
-  non-empty assertion list for the engine to evaluate, and is not part of
-  `AssertAssertionFacade`.
+  non-empty assertion list for the engine to evaluate. You can take repeated
+  snapshots while the body is running.
+- Assertion recording ends when the body returns, throws, or is interrupted.
+  Calls made from cleanup or escaped callbacks reject. Before the result is
+  published they fail the owning result. Later calls produce a run diagnostic
+  with the original attempt or trial identity. After run finalization they
+  emit a local warning.
 - `scope.plan(count)` must be the first test-body call and must declare a
   positive integer assertion count.
 - `FailedCheck` is discriminated by `kind`. Every failed check carries

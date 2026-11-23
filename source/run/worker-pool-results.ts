@@ -1,3 +1,4 @@
+import { retainUniqueLateAssertionDiagnostics, lateAssertionDiagnosticId } from '../engine/assertion-lifetime.ts';
 import { finalizedResourceCheckResult } from '../engine/resource-check-result.ts';
 import { workIdentityKey } from '../engine/identity.ts';
 import { currentResourceCheckBroker } from './resource-check-broker.ts';
@@ -48,19 +49,16 @@ function allTaskErrors(
     runtime: WorkerPoolRunRuntime,
     completedTaskRuns: readonly WorkerPoolTaskRun[]
 ): readonly RunnerError[] {
-    const hostRunnerErrors = runtime.pool.takeHostRunnerErrors?.() ?? [];
-
-    return [
+    return retainUniqueLateAssertionDiagnostics([
         ...runtime.collectionRunnerErrors,
         ...runtime.runState.runnerErrors(),
-        ...hostRunnerErrors,
         ...completedTaskRuns.flatMap(function toErrors(taskRun) {
             return taskRun.state.runnerErrors();
         }),
         ...runtime.taskResults.flatMap(function toErrors(result) {
             return result.runnerErrors;
         })
-    ];
+    ]);
 }
 
 function orderedPerTest(
@@ -157,12 +155,25 @@ async function reportFinalResult(
     );
 }
 
+async function retainHostErrors(runtime: WorkerPoolRunRuntime): Promise<void> {
+    const hostErrors = runtime.pool.takeHostRunnerErrors?.() ?? [];
+    runtime.runState.recordRunnerErrors(hostErrors);
+    for (const error of hostErrors) {
+        if (lateAssertionDiagnosticId(error) !== null) {
+            runtime.runState.recordRunnerErrors(
+                await runtime.reporterDelivery.reportEvent({ kind: 'runner-error', error })
+            );
+        }
+    }
+}
+
 export async function finishWorkerPoolRun(
     runtime: WorkerPoolRunRuntime,
     completedTaskRuns: readonly WorkerPoolTaskRun[],
     startedAtMicroseconds: number
 ): Promise<RunResult> {
     await runtime.reporterEvents.wait();
+    await retainHostErrors(runtime);
     const perTest = orderedPerTest(
         runtime.collectedPlan,
         [

@@ -1061,7 +1061,11 @@ Repeated collection cannot manufacture additional assertion boundaries.
 Late activity produces a durable contract failure while the owning result is
 still open. After result publication, emit an attributed runner diagnostic
 rather than silently dropping the activity or changing the published verdict.
-Resource-owned checks retain their separate lifecycle and ledger contracts.
+Late assertions observed after case publication use the run's runner-error
+stream and can fail the open run. The diagnostic preserves the original case,
+work, attempt, and trial where applicable. Calls after run finalization still
+reject and emit a local warning. Resource-owned checks retain their separate
+lifecycle and ledger contracts.
 
 #### Assertion-Time Operand Meaning
 

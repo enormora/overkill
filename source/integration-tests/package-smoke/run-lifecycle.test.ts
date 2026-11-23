@@ -111,11 +111,13 @@ try {
         'const metadata={annotations:{},controls:{},definitionLocations:[{kind:"unknown"}]};'+
         'export const testNode=createTestCase({...metadata,title:"outer case",async body(scope){'+
         'const inner=createTestCase({...metadata,title:"inner rejection",async body(innerScope){'+
+        'innerScope.assert.true(true);const assertions=innerScope.assert.collect();'+
         'Promise.reject(new Error("nested rejection"));await new Promise(resolve=>setImmediate(resolve));'+
-        'innerScope.assert.true(true);return innerScope.assert.collect();}});'+
+        'return assertions;}});'+
         'const result=await execute(createTestPlan(createRoot({...metadata,title:"inner",children:[inner]})));'+
         'scope.assert.equal(result.status,"failed");'+
         'scope.assert.equal(result.runnerErrors.length,1);'+
+        'scope.assert.equal(result.runnerErrors[0].subtype,"unhandled-rejection");'+
         'scope.assert.equal(result.runnerErrors[0].attributedTo.title,"inner rejection");'+
         'return scope.assert.collect();}});');
     for (const processModel of ['in-process','supervised-process']) {

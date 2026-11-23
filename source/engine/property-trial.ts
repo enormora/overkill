@@ -1,6 +1,6 @@
 import type { AssertionResult, AssertAssertionNode } from '../assertion-protocol/assertion-node.ts';
 import { isPropertyTermination } from './property-control-error.ts';
-import { classifyPropertyTrial, propertyTrialWithPolicyErrors } from './property-trial-outcome.ts';
+import { classifyPropertyTrialWithAssertionCount, propertyTrialWithPolicyErrors } from './property-trial-outcome.ts';
 import { createAssertionRecorder, type AssertionRecorder } from './assertion-recorder.ts';
 import { bodyResultContext, completedBody, failedBody } from './case-body-execution.ts';
 import {
@@ -12,7 +12,7 @@ import {
 import type { TestBody, TestScope } from './test-scope.ts';
 import { CaseRunnerError, type PropertyCaseEvidence, type RunnerError } from './run-result.ts';
 import type { TestPlanCase } from './test-plan.ts';
-import { createTestScopeLifecycle } from './test-scope-lifecycle.ts';
+import { runScopeBodyWithInterruption } from './test-scope-lifecycle.ts';
 
 type PropertyBoundaryContext = {
     readonly signal: AbortSignal;
@@ -39,40 +39,41 @@ async function resolvePropertyBoundary(
     }
 }
 
+type TrialExecution = {
+    readonly testCase: TestPlanCase;
+    readonly scope: TestScope;
+    readonly seed: bigint;
+    readonly owner: AssertionRecorder;
+};
+type PropertyTrialIdentity = NonNullable<AssertionRecorder['origin']['trial']>;
+
 async function evaluatePropertyTrial(
-    testCase: TestPlanCase,
-    signal: AbortSignal,
+    execution: TrialExecution,
     body: TestBody,
-    seed: bigint
+    identity: PropertyTrialIdentity,
+    cancellation: AbortSignal
 ): Promise<PropertyTrialResult> {
-    const recorder = createAssertionRecorder();
-    const lifecycle = createTestScopeLifecycle(recorder, { seed, work: testCase.workId });
-    const controller = new AbortController();
-    const trialSignal = AbortSignal.any([ signal, controller.signal ]);
-    const completion = await (async function runTrialBody() {
-        try {
-            trialSignal.throwIfAborted();
-            return { kind: 'returned', value: await lifecycle.runBody(trialSignal, body) } as const;
-        } catch (error: unknown) {
-            return { kind: 'threw', error } as const;
+    const { testCase, scope, seed, owner } = execution;
+    const recorder = createAssertionRecorder({ ...owner.origin, trial: identity });
+    const { cleanup, completion } = await runScopeBodyWithInterruption(
+        recorder,
+        { seed, work: testCase.workId },
+        body,
+        {
+            parent: scope.signal,
+            cancellation,
+            ownerInterruption: owner.interruption,
+            afterCleanup: scope.yieldToNextTurn
         }
-    })();
-    const context = bodyResultContext(recorder, testCase, await lifecycle.finish(controller), []);
-    const result = completion.kind === 'returned'
-        ? completedBody({ assertionResult: completion.value, context })
-        : failedBody({ context, error: completion.error, testCase });
-    const countFailure = recorder.validateAssertionCount(result.returnedAssertions.length);
-    const unsuccessful = [
-        result.contractFailures.length > 0,
-        result.inconclusiveReason !== null,
-        result.bodyError !== null,
-        result.requireFailed
-    ]
-        .includes(true);
-    return classifyPropertyTrial(
-        countFailure === null || unsuccessful
-            ? result
-            : { ...result, contractFailures: [ ...result.contractFailures, countFailure ] }
+    );
+    recorder.close('settled');
+    recorder.publish();
+    const context = bodyResultContext(recorder, testCase, cleanup, []);
+    return classifyPropertyTrialWithAssertionCount(
+        completion.kind === 'returned'
+            ? completedBody({ assertionResult: completion.value, context })
+            : failedBody({ context, error: completion.error, testCase }),
+        recorder.validateAssertionCount
     );
 }
 
@@ -99,12 +100,15 @@ function matchesReplayDeclaration(target: 'forall' | 'property-value', declarati
     return expected === declaration;
 }
 
-export async function runPropertyCaseBody(testCase: TestPlanCase, context: PropertyCaseBody): Promise<AssertionResult> {
+export function runPropertyCaseBody(
+    testCase: TestPlanCase,
+    context: PropertyCaseBody
+): AssertionResult | Promise<AssertionResult> {
     const { execution } = testCase;
     const { scope, body, recorder } = context;
     if (execution.kind !== 'body' || execution.bodyMode !== 'property' || execution.policy.kind !== 'resolved') {
         assertOrdinaryPropertyRun(context.run);
-        return await body(scope);
+        return body(scope);
     }
     const witness = propertyReplayWitness(context.run);
     if (witness !== null && !matchesReplayDeclaration(witness.target.kind, execution.definition.kind)) {
@@ -113,23 +117,31 @@ export async function runPropertyCaseBody(testCase: TestPlanCase, context: Prope
             cause: null
         });
     }
-    return await body(propertyScope(scope, {
+    let unlabelledTrial = 0;
+    return body(propertyScope(scope, {
         scope,
         policy: execution.policy.policy,
         ...context.run,
         workId: testCase.workId,
         async recordEvidence(evidence) {
-            recorder.recordPropertyEvidence(evidence);
-            await context.onPropertyUpdate({ invocations: recorder.propertyEvidence() });
+            if (recorder.recordPropertyEvidence(evidence)) {
+                await context.onPropertyUpdate({ invocations: recorder.propertyEvidence() });
+            }
         },
-        async evaluateTrial(trial, signal) {
+        async evaluateTrial(...[ trial, signal, coordinate ]) {
+            recorder.assertRecording('start a property trial');
+            const identity: PropertyTrialIdentity = coordinate === undefined
+                ? { kind: 'unlabelled-trial', index: unlabelledTrial }
+                : { kind: 'property', ...coordinate };
+            if (coordinate === undefined) {
+                unlabelledTrial += 1;
+            }
             const result = await evaluatePropertyTrial(
-                testCase,
-                AbortSignal.any([ scope.signal, signal ]),
+                { testCase, scope, seed: context.run.seed, owner: recorder },
                 trial,
-                context.run.seed
+                identity,
+                signal
             );
-            await scope.yieldToNextTurn();
             return propertyTrialWithPolicyErrors(result, context.takeTrialErrors());
         },
         async recordBoundary(evaluate, signal) {
@@ -140,12 +152,16 @@ export async function runPropertyCaseBody(testCase: TestPlanCase, context: Prope
                     caseSignal: scope.signal,
                     locations: testCase.definitionLocations
                 });
+                recorder.interruption.throwIfAborted();
                 pending.resolve(assertion);
                 return assertion;
             } catch (error: unknown) {
-                if (isPropertyTermination(error) && error.result.contractFailures.length > 0) {
-                    recorder.retainContractFailures(error.result.contractFailures);
+                if (
+                    isPropertyTermination(error) && error.result.contractFailures.length > 0 &&
+                    !recorder.interruption.aborted
+                ) {
                     pending.discard();
+                    recorder.retainContractFailures(error.result.contractFailures);
                 }
                 throw error;
             }

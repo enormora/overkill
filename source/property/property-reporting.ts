@@ -1,5 +1,4 @@
 import type {
-    TestBody,
     PropertyExecutionHost,
     PropertyInvocationEvidence,
     PropertyInvocationSummary
@@ -75,12 +74,14 @@ export function createPropertyReporting(
         },
         host: {
             ...host,
-            async evaluateTrial(body: TestBody, signal: AbortSignal) {
-                return await host.evaluateTrial(async function evaluateObservedTrial(scope) {
-                    work.execute();
-                    await host.recordEvidence({ ...last, summary: summary('in-progress') });
-                    return await body(scope);
-                }, signal);
+            async evaluateTrial(...[ body, signal ]) {
+                work.execute();
+                const position = propertyTrialPosition(work);
+                if (position === null) {
+                    throw new Error('Property trial position is unavailable after admission.');
+                }
+                await host.recordEvidence({ ...last, summary: summary('in-progress') });
+                return await host.evaluateTrial(body, signal, { invocation: context.identity, position });
             }
         }
     };

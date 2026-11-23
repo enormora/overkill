@@ -2,6 +2,7 @@ import { withReplayCancellation } from './replay-cancellation.ts';
 import {
     createStoredRunValue,
     createSupervisedRunState,
+    isLateAssertionDiagnostic,
     type StoredRunValue
 } from './supervised-run-state.ts';
 import type {
@@ -39,6 +40,7 @@ import {
     recordPlacementRecoveryDecisions,
     recordTaskCrash,
     recordTaskPermissionFailure,
+    recordReporterEventErrors,
     stopWorkerPoolTasks
 } from './worker-pool-task-events.ts';
 import {
@@ -317,12 +319,20 @@ function handleHostRunnerErrors(
     hostRunnerErrors: HostRunnerErrors,
     context: TaskFailureContext
 ): boolean {
-    if (hostRunnerErrors.length === 0) {
+    const fatalErrors = hostRunnerErrors.filter(function recordLateDiagnostic(error) {
+        if (!isLateAssertionDiagnostic(error)) {
+            return true;
+        }
+        context.runtime.runState.recordRunnerError(error);
+        context.runtime.reporterEvents.add(recordReporterEventErrors({ error, kind: 'runner-error' }, context.runtime));
+        return false;
+    });
+    if (fatalErrors.length === 0) {
         return false;
     }
 
     context.runtime.terminalFailure.write(true);
-    context.runtime.runState.recordRunnerErrors(hostRunnerErrors);
+    context.runtime.runState.recordRunnerErrors(fatalErrors);
     context.dispatcher.clear();
     stopWorkerPoolTasks(context.runtime, null, 'host-failure', 'Worker-pool host failed.');
 

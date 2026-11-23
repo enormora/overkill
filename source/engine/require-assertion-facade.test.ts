@@ -84,6 +84,9 @@ function createRequireRecording(): RequireRecording {
     const records: RequireAssertionNode[] = [];
     const facade = createRecordingRequireFacadeWithLocation(
         {
+            assertRecording() {
+                return undefined;
+            },
             failContract(failure) {
                 throw new Error(failure.summary);
             },

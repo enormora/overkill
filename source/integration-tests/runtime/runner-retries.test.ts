@@ -254,6 +254,86 @@ const assertHardTimeoutEvent = defineCompositeAssertion({
 
 export const testNode = suite('Runner retries', [
     table({
+        title: 'keeps a late diagnostic after the originating worker assignment completes',
+        cases: [ workerExecution, { ...workerExecution, hostProcess: { kind: 'child', nodeArguments: [] } } ],
+        caseTitle: executionTitle,
+        async test(scope) {
+            const events: ReporterEvent[] = [];
+            const result = await orchestrator.run(retryCommand(
+                scope.parameters,
+                eventReporter(function recordEvent(event) {
+                    events.push(event);
+                }),
+                'all',
+                { path: 'source/integration-tests/runtime/fixtures/worker-late-assertion.test.ts', timeouts: null }
+            ));
+
+            scope.assert.equal(result.status, 'failed');
+            scope.assert.deepEqual(
+                result.perTest.map(function caseVerdict(testResult) {
+                    return testResult.verdict;
+                }),
+                [ 'pass', 'pass' ]
+            );
+            scope.assert.length(result.runnerErrors, 1);
+            scope.assert.partialDeepEqual<unknown, unknown>(result.runnerErrors[0], {
+                cause: {
+                    kind: 'late-assertion-activity',
+                    origin: { attempt: { index: 0 }, work: result.perTest[0]?.workId }
+                }
+            });
+            scope.assert.length(
+                events.filter(function runnerError(event) {
+                    return event.kind === 'runner-error';
+                }),
+                1
+            );
+            return scope.assert.collect();
+        }
+    }),
+    table({
+        title: 'keeps a late assertion on the original retry attempt',
+        cases: executions,
+        caseTitle: executionTitle,
+        async test(scope) {
+            const events: ReporterEvent[] = [];
+            const result = await orchestrator.run(retryCommand(
+                scope.parameters,
+                eventReporter(function recordEvent(event) {
+                    events.push(event);
+                }),
+                'all',
+                { path: 'source/integration-tests/runtime/fixtures/retry-late-assertion.test.ts', timeouts: null }
+            ));
+
+            scope.assert.equal(result.status, 'failed');
+            scope.assert.deepEqual(
+                result.perTest[0]?.attempts.map(function attemptVerdict(attempt) {
+                    return attempt.verdict;
+                }) ?? [],
+                [
+                    'fail',
+                    'pass'
+                ]
+            );
+            scope.assert.equal(result.perTest[0]?.verdict, 'pass');
+            scope.assert.length(result.runnerErrors, 1);
+            scope.assert.partialDeepEqual<unknown, unknown>(result.runnerErrors[0], {
+                cause: {
+                    kind: 'late-assertion-activity',
+                    origin: { attempt: { index: 0 }, work: result.perTest[0]?.workId }
+                }
+            });
+            scope.assert.length(
+                events.filter(function runnerError(event) {
+                    return event.kind === 'runner-error';
+                }),
+                1
+            );
+            return scope.assert.collect();
+        }
+    }),
+    table({
         title: 'retries across execution envelopes',
         cases: executions.flatMap(function retryExecution(execution, index) {
             return artifactPolicies.map(function artifactRetention(policy) {

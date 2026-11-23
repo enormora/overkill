@@ -5,7 +5,7 @@ import {
     propertyReplayWitness as corpusReplayWitness,
     type PropertyCorpusSnapshot
 } from './property-corpus.ts';
-import type { PropertyInvocationEvidence } from './property-failure-evidence.ts';
+import type { PropertyTrialPosition, PropertyInvocationEvidence } from './property-failure-evidence.ts';
 import type { ExecutedBody } from './body-result.ts';
 import type { WorkId } from './identity.ts';
 import type { PropertyPolicy } from './property-node.ts';
@@ -52,12 +52,23 @@ export function propertyReplayWitness(context: PropertyRunContext): PropertyWitn
     return hasPropertyReplay(context) ? context.replay : corpusReplayWitness(propertyCorpusSnapshot(context));
 }
 
+type PropertyTrialCoordinate = {
+    readonly invocation: string;
+    readonly position: PropertyTrialPosition;
+};
+
+type CoordinatedTrial = readonly [body: TestBody, signal: AbortSignal, coordinate: PropertyTrialCoordinate];
+type UnlabelledTrial = readonly [body: TestBody, signal: AbortSignal];
+type PropertyTrialArguments = CoordinatedTrial | UnlabelledTrial;
+
+type EvaluatePropertyTrial = (...input: PropertyTrialArguments) => Promise<PropertyTrialResult>;
+
 export type PropertyExecutionHost = PropertyRunContext & {
     readonly scope: TestScope;
     readonly policy: PropertyPolicy;
     readonly workId: WorkId;
     readonly recordEvidence: (evidence: PropertyInvocationEvidence) => Promise<void>;
-    readonly evaluateTrial: (body: TestBody, signal: AbortSignal) => Promise<PropertyTrialResult>;
+    readonly evaluateTrial: EvaluatePropertyTrial;
     readonly recordBoundary: (
         evaluate: () => Promise<AssertAssertionNode>,
         signal: AbortSignal

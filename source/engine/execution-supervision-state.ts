@@ -50,9 +50,10 @@ export function createCaseCompletion(): CaseCompletion {
 export type ActiveCase = {
     readonly benchmark: BenchmarkState;
     readonly attempt: AttemptId;
-    readonly abort: () => void;
     readonly completion: CaseCompletion;
+    readonly controller: AbortController;
     readonly hardTimeout: ReturnType<Clock['setTimeout']> | null;
+    readonly closeAssertionRecording: () => void;
     readonly startedAtMicroseconds: number;
     readonly testCase: TestPlanCase;
 };
@@ -83,7 +84,7 @@ export function createExecutionSupervision(): ExecutionSupervision {
             cancelled = true;
             acceptsNewCases = false;
             for (const active of activeCases.values()) {
-                active.abort();
+                active.controller.abort();
             }
         },
         wasCancelled() {

@@ -27,12 +27,14 @@ import { isTestControlError } from './test-control-error.ts';
 const expectedArgumentSlot = 1;
 
 export type AssertAssertionSink = {
+    readonly assertRecording: (operation: string) => void;
     readonly failContract: (failure: TestContractFailure) => never;
     readonly recordAssert: (assertion: AssertAssertionNode) => void;
     readonly recordPendingAssert: () => PendingRecordedAssert;
 };
 
 export type RequireAssertionSink = {
+    readonly assertRecording: (operation: string) => void;
     readonly failContract: (failure: TestContractFailure) => never;
     readonly recordRequire: (assertion: RequireAssertionNode) => void;
 };
@@ -217,23 +219,46 @@ function createNarrowingCompositeAssertionNode<Source extends AssertionSource>(
     });
 }
 
-async function recordResolvedCompositeAssertion(input: PendingCompositeAssertionInput): Promise<void> {
+function discardRejectedComposite(input: PendingCompositeAssertionInput, error: unknown): never {
+    if (isTestControlError(error)) {
+        input.pending.discard();
+    }
+    throw error;
+}
+
+async function awaitCompositeResult(
+    input: PendingCompositeAssertionInput
+): Promise<CompositeAssertionReturn<'assert'>> {
     try {
-        const resolved = await input.result;
-        input.pending.resolve(createCompositeAssertionNode({
+        return await input.result;
+    } catch (error: unknown) {
+        return discardRejectedComposite(input, error);
+    }
+}
+
+function resolveCompositeAssertion(
+    input: PendingCompositeAssertionInput,
+    resolved: CompositeAssertionReturn<'assert'>
+): CompositeAssertionNode<'assert'> {
+    try {
+        return createCompositeAssertionNode({
             annotation: input.annotation,
             children: normalizeCompositeChildren(resolved, input.sink.failContract),
             parameters: input.parameters,
             record: input.record,
             source: 'assert',
             sourceLocations: input.sourceLocations
-        }));
+        });
     } catch (error: unknown) {
-        if (isTestControlError(error)) {
-            input.pending.discard();
-        }
-        throw error;
+        return discardRejectedComposite(input, error);
     }
+}
+
+async function recordResolvedCompositeAssertion(input: PendingCompositeAssertionInput): Promise<void> {
+    const resolved = await awaitCompositeResult(input);
+    input.sink.assertRecording('finish an asynchronous assertion');
+    const assertion = resolveCompositeAssertion(input, resolved);
+    input.pending.resolve(assertion);
 }
 
 function recordCompositeAssertion(input: CompositeAssertionRecordingInput): Promise<void> | void {
@@ -268,6 +293,7 @@ function recordCompositeAssertion(input: CompositeAssertionRecordingInput): Prom
 }
 
 export function recordAssertReference(input: AssertReferenceRecordingInput): Promise<void> | void {
+    input.sink.assertRecording('invoke a custom assertion');
     if (!isAssertionReference(input.reference)) {
         input.sink.failContract(createInvalidAssertionReferenceFailure(input.reference));
     }
@@ -295,6 +321,7 @@ export function recordAssertReference(input: AssertReferenceRecordingInput): Pro
 }
 
 export function recordRequireReference(input: RequireReferenceRecordingInput): void {
+    input.sink.assertRecording('invoke a custom requirement');
     if (!isNarrowingAssertionReference(input.reference)) {
         input.sink.failContract(
             isAssertionReference(input.reference)

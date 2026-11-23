@@ -220,6 +220,13 @@ export function completedThrowingBody(context: BodyResultContext): ExecutedBody 
         };
 }
 
+function failedContractSignal(context: BodyResultContext, error: unknown, failure: TestContractFailure): ExecutedBody {
+    if (failure.code === 'late-assertion-activity' && !context.contractFailures.includes(failure)) {
+        return bodyErrorResult(context, error);
+    }
+    return contractFailedBody(context, Array.from(new Set([ ...context.contractFailures, failure ])));
+}
+
 function nonRunnerFailedBody(input: FailedBodyInput): ExecutedBody {
     const { context, error } = input;
 
@@ -228,7 +235,7 @@ function nonRunnerFailedBody(input: FailedBodyInput): ExecutedBody {
     }
 
     if (isTestContractSignalError(error)) {
-        return contractFailedBody(context, Array.from(new Set([ ...context.contractFailures, error.failure() ])));
+        return failedContractSignal(context, error, error.failure());
     }
 
     if (

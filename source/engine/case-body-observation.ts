@@ -1,4 +1,6 @@
 import { createStoredValue } from '../stored-value.ts';
+import { createCaseAssertionRecorder } from './case-execution.ts';
+import type { AssertionRecorder } from './assertion-recorder.ts';
 import { observeCaseResourceOwners } from './resource-owner-observation.ts';
 import { caseWithAsyncLeakPolicy, type AsyncLeakCheckedCase } from './execution-async-leak-policy.ts';
 import { executeCaseBody } from './execution-supervision.ts';
@@ -34,7 +36,10 @@ async function reportBenchmarkProgress(
     }
 }
 
-async function runObservedCase(input: ExecuteCaseInput): Promise<Awaited<ReturnType<typeof executeCaseBody>>> {
+async function runObservedCase(
+    input: ExecuteCaseInput,
+    recorder: AssertionRecorder
+): Promise<Awaited<ReturnType<typeof executeCaseBody>>> {
     const retained = createStoredValue<PropertyCaseEvidence | null>(null);
     const completed = await executeCaseBody({
         seed: input.options.seed,
@@ -66,7 +71,7 @@ async function runObservedCase(input: ExecuteCaseInput): Promise<Awaited<ReturnT
         supervision: input.supervision,
         dependencies: input.context.dependencies,
         attempt: { index: input.attempt }
-    });
+    }, recorder);
     const property = interruptedPropertyEvidence(completed.result.property ?? retained.read());
     if (property === null) {
         return completed;
@@ -86,7 +91,10 @@ async function runObservedCase(input: ExecuteCaseInput): Promise<Awaited<ReturnT
     };
 }
 
-export async function executeTimedLeakCheckedCase(input: ExecuteCaseInput): Promise<TimedLeakCheckedCase> {
+async function executeTimedLeakCheckedCase(
+    input: ExecuteCaseInput,
+    recorder: AssertionRecorder
+): Promise<TimedLeakCheckedCase> {
     const startedAtMicroseconds = Number(input.context.dependencies.wallClock.currentMonotonicMicroseconds);
     const observedCase = await observeCaseResourceOwners(
         input.context.dependencies.readActiveResourceTypes,
@@ -94,7 +102,7 @@ export async function executeTimedLeakCheckedCase(input: ExecuteCaseInput): Prom
             return await input.context.dependencies.asyncLeakMonitor.runCase(
                 input.testCase,
                 async function runCase() {
-                    return await runObservedCase(input);
+                    return await runObservedCase(input, recorder);
                 }
             );
         }
@@ -116,5 +124,25 @@ export async function executeTimedLeakCheckedCase(input: ExecuteCaseInput): Prom
         endedAtMicroseconds: Number(input.context.dependencies.wallClock.currentMonotonicMicroseconds),
         leakCheckedCase,
         startedAtMicroseconds
+    };
+}
+
+export type ObservedCaseBody = {
+    readonly lateFailures: AssertionRecorder['lateFailures'];
+    readonly publish: () => void;
+    readonly run: () => Promise<TimedLeakCheckedCase>;
+};
+
+export function observeCaseBody(input: ExecuteCaseInput): ObservedCaseBody {
+    const recorder = createCaseAssertionRecorder(input.testCase, { index: input.attempt });
+    return {
+        lateFailures: recorder.lateFailures,
+        publish() {
+            recorder.close('settled');
+            recorder.publish();
+        },
+        async run() {
+            return await executeTimedLeakCheckedCase(input, recorder);
+        }
     };
 }

@@ -6,7 +6,7 @@ import { createStoredValue, type StoredValue } from '../stored-value.ts';
 import { createInterruptedCase, type InterruptedCase } from '../test-support/interrupted-case.ts';
 import { createPermissionDenialRuntimePolicy } from '../run/capability-policy.ts';
 import { createAssertionRecorder } from './assertion-recorder.ts';
-import { createTestScopeLifecycle } from './test-scope-lifecycle.ts';
+import { createTestScopeLifecycle, type TestScopeLifecycle } from './test-scope-lifecycle.ts';
 import type { ConcurrentCase } from './execution-supervision.ts';
 
 type RegistrationProbe = { readonly registerCleanup: () => void; readonly startWork: () => void; };
@@ -63,8 +63,10 @@ function createCleanupProbe(cleanup: TestScope['cleanup']): CleanupProbe {
             state.started.resolve(undefined);
             await state.cleanup.promise;
         });
+        testScope.assert.true(true);
+        const assertions = testScope.assert.collect();
         await state.body.promise;
-        return testScope.assert.collect();
+        return assertions;
     }, null);
     cleanup(fixture.stop);
     return { ...state, fixture };
@@ -132,7 +134,44 @@ const cleanupRemainsPending = defineCompositeAssertion({
     }
 });
 
+function prepareScopeLifecycle(): TestScopeLifecycle {
+    const work = {
+        familyVariant: null,
+        case: { file: null, suite: [], title: 'case', params: null },
+        runtimes: [],
+        workload: null
+    };
+    const recorder = createAssertionRecorder({ case: work.case, work, attempt: { index: 0 }, trial: null });
+    return createTestScopeLifecycle(recorder, { seed: 0n, work });
+}
+
 export const testNode = suite('interrupted case cleanup', [
+    test('closes assertions before the interruption signal is delivered', async function (scope) {
+        const gate = Promise.withResolvers<undefined>();
+        const fixture = createInterruptedCase(async function pendingBody(testScope) {
+            testScope.assert.true(true);
+            const assertions = testScope.assert.collect();
+            testScope.signal.addEventListener('abort', function recordAfterInterruption() {
+                try {
+                    testScope.assert.true(false);
+                } catch {
+                }
+            }, { once: true });
+            await gate.promise;
+            return assertions;
+        }, null);
+        scope.cleanup(fixture.stop);
+        const running = fixture.run();
+        fixture.clock.advanceByMilliseconds(10);
+        const { result } = await running;
+        gate.resolve(undefined);
+        scope.assert.deepEqual([ result.verdict, result.outcome ], [ 'crashed', null ]);
+        scope.assert.partialDeepEqual<unknown, unknown>(result.attempts[0].outcome, {
+            kind: 'fail',
+            failures: [ { code: 'late-assertion-activity', actual: { closure: 'interrupted' } } ]
+        });
+        return scope.assert.collect();
+    }),
     test('awaits reverse cleanup before returning while the body remains pending', async function (scope) {
         const probe = createCleanupProbe(scope.cleanup);
 
@@ -184,9 +223,11 @@ export const testNode = suite('interrupted case cleanup', [
                 testScope.cleanup(function recordCleanup() {
                     state.cleanups.write(state.cleanups.read() + 1);
                 });
+                testScope.assert.true(true);
+                const assertions = testScope.assert.collect();
                 process.emit(scope.parameters, new Error('fatal sentinel'), Promise.resolve());
                 await state.gate.promise;
-                return testScope.assert.collect();
+                return assertions;
             }, null);
             scope.cleanup(fixture.stop);
             const result = await fixture.run();
@@ -207,8 +248,10 @@ export const testNode = suite('interrupted case cleanup', [
             testScope.cleanup(function failCleanup() {
                 throw new Error('cleanup sentinel');
             });
+            testScope.assert.true(true);
+            const assertions = testScope.assert.collect();
             await state.gate.promise;
-            return testScope.assert.collect();
+            return assertions;
         }, {
             ...state.policy,
             async prepareAttempt() {
@@ -228,9 +271,11 @@ export const testNode = suite('interrupted case cleanup', [
             testScope.cleanup(function slowCleanup() {
                 fixture.clock.advanceByMilliseconds(150);
             });
+            testScope.assert.true(true);
+            const assertions = testScope.assert.collect();
             process.emit('unhandledRejection', new Error('fatal sentinel'), Promise.resolve());
             await gate.promise;
-            return testScope.assert.collect();
+            return assertions;
         }, null);
         scope.cleanup(fixture.stop);
         const result = await fixture.run();
@@ -267,15 +312,7 @@ export const testNode = suite('interrupted case cleanup', [
         'concurrent finalization waits for the same cleanup and retains its failures',
         async function (scope) {
             const state = { gate: Promise.withResolvers<undefined>(), controller: new AbortController(), cleanups: 0 };
-            const lifecycle = createTestScopeLifecycle(createAssertionRecorder(), {
-                seed: 0n,
-                work: {
-                    familyVariant: null,
-                    case: { file: null, suite: [], title: 'case', params: null },
-                    runtimes: [],
-                    workload: null
-                }
-            });
+            const lifecycle = prepareScopeLifecycle();
             lifecycle.createScope(state.controller.signal).cleanup(async function pendingCleanup() {
                 state.cleanups += 1;
                 await state.gate.promise;

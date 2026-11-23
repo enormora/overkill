@@ -3,6 +3,7 @@ type TestContractFailureCodeByName = {
     readonly invalidAssertionReference: 'invalid-assertion-reference';
     readonly invalidCompositeResult: 'invalid-composite-result';
     readonly invalidDeepAssertionOperand: 'invalid-deep-assertion-operand';
+    readonly lateAssertionActivity: 'late-assertion-activity';
     readonly invalidPlan: 'invalid-plan';
     readonly invalidTimeoutControl: 'invalid-timeout-control';
     readonly invalidRequireReference: 'invalid-require-reference';

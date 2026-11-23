@@ -11,6 +11,7 @@ import {
     type RunErrorScope
 } from './execution-error-ownership.ts';
 import { createExecutionObservation } from './execution-observation.ts';
+import { isTestContractSignalError } from './assertion-control-error.ts';
 import type { AttemptId, CaseId, WorkId } from './identity.ts';
 import { permissionDeniedRunnerErrorFromThrown, type RunnerError } from './run-result.ts';
 import type { TestPlanCase } from './test-plan.ts';
@@ -396,7 +397,9 @@ export function createOwnedGlobalErrorObserver(
         },
         async runBoundary(run) {
             processHookListeners.install(function receive(hook, reason) {
-                receiveHookFailure(ownership, hook, reason);
+                if (!isTestContractSignalError(reason) || reason.failure().code !== 'late-assertion-activity') {
+                    receiveHookFailure(ownership, hook, reason);
+                }
             });
             activeScopes.add(scope);
 

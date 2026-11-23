@@ -307,6 +307,23 @@ export const testNode = suite('Error assertion execution', [
                 expected: 'all async assertions awaited before collect',
                 kind: 'test-contract',
                 summary: 'Async assertion must be awaited before scope.assert.collect().'
+            },
+            {
+                actual: {
+                    kind: 'late-assertion-activity',
+                    closure: 'settled',
+                    operation: 'finish an asynchronous assertion',
+                    origin: {
+                        case: result.perTest[0]?.id,
+                        work: result.perTest[0]?.workId,
+                        attempt: { index: 0 },
+                        trial: null
+                    }
+                },
+                code: 'late-assertion-activity',
+                expected: 'an open assertion recording context',
+                kind: 'test-contract',
+                summary: 'Cannot finish an asynchronous assertion after the assertion context settled.'
             }
         ]);
 

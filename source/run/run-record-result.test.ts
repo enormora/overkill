@@ -1,9 +1,19 @@
 import { suite, test } from '@overkill-dev/test';
 
 import type { RunResult, TestOutcome } from '../packages/engine/engine.entry-point.ts';
+import { lateAssertionDiagnostic } from '../engine/assertion-lifetime.ts';
+import { completedHistoryRecord, historyWork } from '../test-support/history-record-fixture.ts';
+import { canonicalJson } from '../canonical-identity.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 
-import { recordedRunResult, serializeRunDiagnostics, parseSerializedRunDiagnostics } from './run-record-result.ts';
+import { compactRunRecord } from './compact-run-record.ts';
+import { historyRecordSchema, type HistoryRecord } from './history-record.ts';
+import {
+    recordedRunResult,
+    serializeRunDiagnostics,
+    parseSerializedRunDiagnostics,
+    type SerializedRunDiagnostics
+} from './run-record-result.ts';
 
 function opaqueFailure(): TestOutcome {
     const thrown = new Map<string, unknown>();
@@ -152,7 +162,41 @@ function resultWithOpaqueEvidence(): RunResult {
     };
 }
 
+type RetainedLateAssertion = {
+    readonly detailed: HistoryRecord;
+    readonly compact: HistoryRecord;
+    readonly runnerErrors: SerializedRunDiagnostics['runnerErrors'];
+};
+
+function retainedLateAssertion(): RetainedLateAssertion {
+    const origin = { case: historyWork.case, work: historyWork, attempt: { index: 1 }, trial: null };
+    const diagnostic = lateAssertionDiagnostic({
+        kind: 'late-assertion-activity',
+        origin,
+        operation: 'record an assertion',
+        closure: 'settled'
+    }, 'Late assertion');
+    const run = runResultFactory.build();
+    const { runnerErrors } = serializeRunDiagnostics({ ...run, runnerErrors: [ diagnostic ] });
+    const original = completedHistoryRecord('late-assertion');
+    const detailed = historyRecordSchema.parse(JSON.parse(canonicalJson({
+        ...original,
+        result: { ...original.result, status: 'failed', runnerErrors }
+    })));
+    const compact = historyRecordSchema.parse(JSON.parse(canonicalJson(compactRunRecord(detailed))));
+
+    return { detailed, compact, runnerErrors };
+}
+
 export const testNode = suite('Run record result', [
+    test('retains late assertion attribution in detailed and compact records', function (scope) {
+        const { detailed, compact, runnerErrors } = retainedLateAssertion();
+        scope.assert.deepEqual<unknown, unknown>(detailed.result?.runnerErrors, runnerErrors);
+        scope.assert.deepEqual<unknown, unknown>(compact.result?.runnerErrors, runnerErrors);
+        scope.assert.equal(compact.result?.perTest[0]?.verdict, 'pass');
+        scope.assert.equal(compact.result?.status, 'failed');
+        return scope.assert.collect();
+    }),
     test('round trips bounded diagnostic evidence without serializing it twice', function (scope) {
         const live = resultWithOpaqueEvidence();
         const diagnostics = serializeRunDiagnostics(live);

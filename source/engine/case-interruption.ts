@@ -1,5 +1,6 @@
 import { createStoredValue } from '../stored-value.ts';
 import { debugBodyStarted, debugBodyCompleted } from './test-debug-recording.ts';
+import type { AssertionRecorder } from './assertion-recorder.ts';
 import type { ExecutedCase } from './run-result.ts';
 
 type CaseBodyCompletion<Value> = {
@@ -26,10 +27,14 @@ async function completeBody<Value>(operation: () => Promise<Value>): Promise<Cas
     }
 }
 
-export function createCaseInterruption(completion: Promise<ExecutedCase> | null): CaseInterruption {
+export function createCaseInterruption(
+    completion: Promise<ExecutedCase> | null,
+    recorder: AssertionRecorder
+): CaseInterruption {
     const terminal = createStoredValue<ExecutedCase | null>(null);
     async function retainInterruption(pending: Promise<ExecutedCase>): Promise<CaseBodyCompletion<never>> {
         const result = await pending;
+        recorder.close('interrupted');
         terminal.write(result);
         return { kind: 'interrupted', result };
     }
@@ -37,6 +42,10 @@ export function createCaseInterruption(completion: Promise<ExecutedCase> | null)
     return {
         result: terminal.read,
         async run(operation) {
+            const completed = terminal.read();
+            if (completed !== null) {
+                return { kind: 'interrupted', result: completed };
+            }
             debugBodyStarted();
             const body = completeBody(operation);
             const result = interrupted === null ? await body : await Promise.race([ body, interrupted ]);

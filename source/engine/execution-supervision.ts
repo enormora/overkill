@@ -4,6 +4,7 @@ import {
     invalidTimeoutControlFailure,
     runTestCase,
     timeoutFailure,
+    withCaseAssertionRecorder,
     type RunTestCaseOptions
 } from './case-execution.ts';
 import { workIdentityKey, type AttemptId, type WorkId } from './identity.ts';
@@ -78,6 +79,7 @@ type CaseExecutionInput = {
 };
 
 type ActiveCaseInput = CaseExecutionInput & {
+    readonly assertionRecorder: NonNullable<RunTestCaseOptions['assertionRecorder']>;
     readonly benchmark: BenchmarkState;
     readonly completion: CaseCompletion;
     readonly controller: AbortController;
@@ -139,10 +141,6 @@ function failCase(
         durationMicroseconds
     }, { index: 0 });
 }
-function timeoutControlValue(testCase: TestPlanCase): unknown {
-    return testCase.controls.timeoutMilliseconds;
-}
-
 function isPositiveSafeInteger(value: unknown): value is number {
     return typeof value === 'number' && Number.isSafeInteger(value) && value > 0;
 }
@@ -155,7 +153,7 @@ function resolveSoftTimeout(
         return { kind: 'milliseconds', milliseconds: null };
     }
 
-    const controlTimeout = timeoutControlValue(testCase);
+    const controlTimeout = testCase.controls.timeoutMilliseconds;
 
     if (controlTimeout === null) {
         return { kind: 'milliseconds', milliseconds: policy.timeoutMilliseconds };
@@ -238,7 +236,8 @@ async function runTestCaseWithPolicy(
         attempt: input.attempt,
         controller: input.controller,
         runtimePolicy: input.dependencies.runtimePolicy ?? null,
-        interruption: input.completion.promise
+        interruption: input.completion.promise,
+        assertionRecorder: input.assertionRecorder
     });
 
     return casePolicyResult(
@@ -268,7 +267,8 @@ function completeActiveCasesAs(
 
     for (const [ key, activeCase ] of supervision.activeCases) {
         supervision.removeActiveCase(key);
-        activeCase.abort();
+        activeCase.closeAssertionRecording();
+        activeCase.controller.abort();
         clearSupervisionTimeout(dependencies.wallClock, activeCase.hardTimeout);
         activeCase.completion.complete(createTerminalCase(
             activeCase.testCase,
@@ -416,11 +416,12 @@ function registerActiveCase(input: ActiveCaseInput): SupervisedActiveCase {
     const activeCase: SupervisedActiveCase = {
         benchmark: input.benchmark,
         attempt: input.attempt,
-        abort() {
-            input.controller.abort();
-        },
         completion: input.completion,
+        controller: input.controller,
         hardTimeout,
+        closeAssertionRecording() {
+            input.assertionRecorder.close('interrupted');
+        },
         startedAtMicroseconds,
         testCase: input.testCase
     };
@@ -516,17 +517,6 @@ function registerCaseBodyInput(input: ActiveCaseInput, timeoutMilliseconds: numb
     };
 }
 
-function createActiveCaseInput(
-    input: CaseExecutionInput
-): ActiveCaseInput {
-    return {
-        ...input,
-        benchmark: createBenchmarkState(),
-        completion: createCaseCompletion(),
-        controller: new AbortController()
-    };
-}
-
 export function recordProcessUsageSample(input: ProcessUsageSampleInput): boolean {
     const breach = findProcessBudgetBreach(input.budgets, input.sample, input.previousSample);
 
@@ -539,7 +529,10 @@ export function recordProcessUsageSample(input: ProcessUsageSampleInput): boolea
     return true;
 }
 
-export async function executeCaseBody(input: CaseExecutionInput): Promise<ConcurrentCase> {
+export async function executeCaseBody(
+    input: CaseExecutionInput,
+    assertionRecorder: RunTestCaseOptions['assertionRecorder'] = null
+): Promise<ConcurrentCase> {
     if (input.dependencies.globalErrorObserver.hasFatalError() || !input.supervision.acceptsNewCases()) {
         return createTerminalCase(input.testCase, input.supervision.closedBoundaryVerdict(), 0, null);
     }
@@ -553,8 +546,18 @@ export async function executeCaseBody(input: CaseExecutionInput): Promise<Concur
         return invalidTimeoutCase(input.testCase, timeoutResolution.failure);
     }
 
-    return await runCaseBodyUnderSupervision(registerCaseBodyInput(
-        createActiveCaseInput(input),
-        timeoutResolution.milliseconds
-    ));
+    return await withCaseAssertionRecorder(
+        input.testCase,
+        input.attempt,
+        assertionRecorder,
+        async function run(recorder) {
+            return await runCaseBodyUnderSupervision(registerCaseBodyInput({
+                ...input,
+                assertionRecorder: recorder,
+                benchmark: createBenchmarkState(),
+                completion: createCaseCompletion(),
+                controller: new AbortController()
+            }, timeoutResolution.milliseconds));
+        }
+    );
 }
