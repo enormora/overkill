@@ -149,49 +149,49 @@
             "peakResidentBytes": 230000000
         },
         "type-test-engine-one-serial": {
-            "wallMicroseconds": 80,
-            "cpuMicroseconds": 84,
-            "peakResidentBytes": 230000000
+            "wallMicroseconds": 150,
+            "cpuMicroseconds": 230,
+            "peakResidentBytes": 510000000
         },
         "type-test-runner-one-serial": {
-            "wallMicroseconds": 270,
-            "cpuMicroseconds": 270,
-            "peakResidentBytes": 270000000
+            "wallMicroseconds": 310,
+            "cpuMicroseconds": 510,
+            "peakResidentBytes": 520000000
         },
         "type-test-cli-one-serial": {
-            "wallMicroseconds": 330,
-            "cpuMicroseconds": 320,
-            "peakResidentBytes": 270000000
+            "wallMicroseconds": 380,
+            "cpuMicroseconds": 570,
+            "peakResidentBytes": 510000000
         },
         "type-test-engine-many-suites-serial": {
-            "wallMicroseconds": 60,
-            "cpuMicroseconds": 88,
-            "peakResidentBytes": 230000000
+            "wallMicroseconds": 160,
+            "cpuMicroseconds": 240,
+            "peakResidentBytes": 510000000
         },
         "type-test-runner-many-suites-serial": {
-            "wallMicroseconds": 310,
-            "cpuMicroseconds": 310,
-            "peakResidentBytes": 240000000
+            "wallMicroseconds": 340,
+            "cpuMicroseconds": 550,
+            "peakResidentBytes": 520000000
         },
         "type-test-cli-many-suites-serial": {
-            "wallMicroseconds": 470,
-            "cpuMicroseconds": 380,
-            "peakResidentBytes": 260000000
+            "wallMicroseconds": 380,
+            "cpuMicroseconds": 580,
+            "peakResidentBytes": 520000000
         },
         "type-test-engine-many-files-serial": {
-            "wallMicroseconds": 110,
-            "cpuMicroseconds": 92,
-            "peakResidentBytes": 230000000
+            "wallMicroseconds": 160,
+            "cpuMicroseconds": 240,
+            "peakResidentBytes": 510000000
         },
         "type-test-runner-many-files-serial": {
-            "wallMicroseconds": 220,
-            "cpuMicroseconds": 300,
-            "peakResidentBytes": 260000000
+            "wallMicroseconds": 330,
+            "cpuMicroseconds": 520,
+            "peakResidentBytes": 510000000
         },
         "type-test-cli-many-files-serial": {
-            "wallMicroseconds": 230,
-            "cpuMicroseconds": 320,
-            "peakResidentBytes": 260000000
+            "wallMicroseconds": 380,
+            "cpuMicroseconds": 590,
+            "peakResidentBytes": 510000000
         },
         "benchmark-engine-one-serial": {
             "wallMicroseconds": 23,
@@ -432,14 +432,14 @@
             "retainedHeapBytes": 1000000
         },
         "type-test-runner-many-files-in-process": {
-            "wallMicroseconds": 170,
-            "cpuMicroseconds": 130,
-            "peakResidentBytes": 290000000
+            "wallMicroseconds": 190,
+            "cpuMicroseconds": 280,
+            "peakResidentBytes": 510000000
         },
         "type-test-cli-many-files-in-process": {
-            "wallMicroseconds": 110,
-            "cpuMicroseconds": 140,
-            "peakResidentBytes": 300000000
+            "wallMicroseconds": 230,
+            "cpuMicroseconds": 320,
+            "peakResidentBytes": 520000000
         },
         "benchmark-runner-one-hosted-pool": {
             "wallMicroseconds": 64,

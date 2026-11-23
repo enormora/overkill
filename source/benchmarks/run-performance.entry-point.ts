@@ -3,12 +3,7 @@ import { mkdir, readFile, realpath, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve as resolvePath } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { z } from 'zod/v4';
-import {
-    stageCompilerDeclarations,
-    writeBenchmarkTemplate,
-    writeConsumer,
-    writeStartupConsumer
-} from './consumer-fixture.ts';
+import { writeBenchmarkTemplate, writeConsumer, writeStartupConsumer } from './consumer-fixture.ts';
 import { captureReference, readReference, verifyPerformance } from './performance-evidence.ts';
 import { performanceCases, startupCases } from './performance-cases.ts';
 
@@ -107,13 +102,9 @@ if (needsNativeLauncher) {
         launcher
     ], {});
 }
-const hasTypeTests = selectedCases.some(function (spec) {
-    return spec.family === 'type-test';
-});
-const compilerPaths = hasTypeTests ? await stageCompilerDeclarations(workspace) : {};
 const cases = await Promise.all(selectedCases.map(async function (spec) {
     const directory = join(workspace, spec.id);
-    await writeConsumer(directory, modules, spec, compilerPaths);
+    await writeConsumer(directory, modules, spec);
     if (spec.workload === 'straggler') {
         await commandOutput(process.execPath, [ join(directory, 'consumer-driver.mjs') ], {
             cwd: directory,

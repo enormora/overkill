@@ -56,8 +56,8 @@ Run `npx just benchmark` for the full matrix, including the root import and
 CLI startup checks. It executes the current checkout's Overkill source and
 writes measurements and an HTML report under `target/performance`. Use a fresh
 output directory for each run. Each workload takes 20 samples. Linux
-and macOS use the same commands. The full matrix needs a C compiler and
-builds declarations from the checkout for the type-test fixtures.
+and macOS use the same commands. The full matrix needs a C compiler.
+Type-test fixtures load and check source from the checkout.
 
 CLI workloads measure file discovery, title filtering, and plan listings with
 source locations. Matching fixtures measure line, dot, and brief output against
@@ -78,7 +78,7 @@ against the shared reference and fails when a required median confidence
 interval falls outside or overlaps a threshold.
 
 CI and local runs use the same `source/benchmarks/baselines/shared.json`
-thresholds. The reference records its measurement host for provenance. Timing
+thresholds. The reference records the original capture host. Timing
 thresholds use Overkill’s CPU reference workload units. Memory thresholds use
 bytes across supported platforms and Node versions.
 

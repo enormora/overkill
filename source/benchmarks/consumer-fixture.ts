@@ -1,4 +1,4 @@
-import { cp, mkdir, readFile, symlink, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, symlink, writeFile } from 'node:fs/promises';
 import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { match } from 'ts-pattern';
@@ -17,20 +17,6 @@ const sourceImports = new Map([
     [ '@overkill-dev/test/resources', 'test/resources.entry-point.ts' ],
     [ '@overkill-dev/type-test', 'type-test/type-test.entry-point.ts' ]
 ]);
-
-const compilerModules = [
-    { alias: '#performance-engine', specifier: '@overkill-dev/engine', entry: 'engine/engine.entry-point' },
-    { alias: '#performance-test', specifier: '@overkill-dev/test', entry: 'test/test.entry-point' },
-    { alias: '#performance-type-tests', specifier: '@overkill-dev/type-test', entry: 'type-test/type-test.entry-point' }
-];
-
-function compilerFixtureImports(content: string): string {
-    return compilerModules.reduce(function replaceImport(source, { alias, specifier }) {
-        return source.replaceAll(`'${specifier}'`, function useCompilerAlias() {
-            return JSON.stringify(alias);
-        });
-    }, content);
-}
 
 function sourceImportsFrom(directory: string, content: string): string {
     return content.replaceAll(
@@ -216,50 +202,24 @@ function testFile(spec: PerformanceCase, fileIndex: number): string {
         .join('\n');
 }
 
-type CompilerPaths = Readonly<Record<string, readonly string[]>>;
-
-export async function stageCompilerDeclarations(workspace: string): Promise<CompilerPaths> {
-    const builtPackages = fileURLToPath(new URL('../../target/package-build/source/packages/', import.meta.url));
-    const typeTestPackage = join(workspace, 'type-declarations/node_modules/@overkill-dev/type-test');
-    await cp(join(builtPackages, 'type-test'), typeTestPackage, { recursive: true });
-    return Object.fromEntries(compilerModules.map(function declarationPath({ alias, specifier, entry }) {
-        const path = specifier === '@overkill-dev/type-test'
-            ? join(typeTestPackage, 'type-test.entry-point.d.ts')
-            : join(builtPackages, `${entry}.d.ts`);
-        return [ alias, [ path ] ];
-    }));
-}
-
-async function writeCompilerPackage(directory: string): Promise<void> {
-    const entries = await Promise.all(compilerModules.map(async function compilerImport({ alias, specifier }) {
-        const bridge = `./${alias.slice(1)}.mjs`;
-        await writeFile(
-            join(directory, bridge),
-            sourceImportsFrom(directory, `export * from '${specifier}';\n`)
-        );
-        return [ alias, bridge ] as const;
-    }));
-    await writeFile(join(directory, 'package.json'), JSON.stringify({ imports: Object.fromEntries(entries) }));
-}
-
 async function writeCompilerProject(
     directory: string,
     modules: string,
-    files: readonly string[],
-    paths: CompilerPaths
+    files: readonly string[]
 ): Promise<void> {
     await symlink(modules, join(directory, 'node_modules'), 'dir');
-    await writeCompilerPackage(directory);
     await writeFile(
         join(directory, 'tsconfig.json'),
         JSON.stringify({
             compilerOptions: {
                 module: 'NodeNext',
                 target: 'ESNext',
+                lib: [ 'ESNext' ],
                 strict: true,
                 skipLibCheck: true,
-                types: [],
-                paths
+                noEmit: true,
+                allowImportingTsExtensions: true,
+                types: [ 'node' ]
             },
             files
         })
@@ -268,11 +228,7 @@ async function writeCompilerProject(
 
 async function writeFixtureFiles(directory: string, spec: PerformanceCase, files: readonly string[]): Promise<void> {
     await Promise.all(files.map(async function (file, index) {
-        const content = testFile(spec, index);
-        const source = spec.family === 'type-test'
-            ? compilerFixtureImports(content)
-            : sourceImportsFrom(directory, content);
-        return writeFile(join(directory, file), source);
+        return writeFile(join(directory, file), sourceImportsFrom(directory, testFile(spec, index)));
     }));
     if (spec.workload.startsWith('run-')) {
         await writeFile(
@@ -285,8 +241,7 @@ async function writeFixtureFiles(directory: string, spec: PerformanceCase, files
 export async function writeConsumer(
     directory: string,
     modules: string,
-    spec: PerformanceCase,
-    compilerPaths: CompilerPaths
+    spec: PerformanceCase
 ): Promise<void> {
     await mkdir(directory, { recursive: true });
     const files = Array.from(
@@ -317,7 +272,7 @@ export async function writeConsumer(
         })
     );
     if (spec.family === 'type-test') {
-        await writeCompilerProject(directory, modules, files, compilerPaths);
+        await writeCompilerProject(directory, modules, files);
     }
 }
 
