@@ -5,7 +5,7 @@ import { overkillPlugin as plugin } from '../../packages/eslint-plugin/eslint-pl
 
 const ruleId = 'overkill/no-scope-escape';
 
-function diagnostics(code: string): readonly (readonly (string | number | null | undefined)[])[] {
+function diagnostics(code: string): readonly (readonly (number | string | null | undefined)[])[] {
     const linter = new TSESLint.Linter();
     return linter
         .verify(code, {
@@ -40,6 +40,23 @@ export const testNode = suite('no-scope-escape', [
             ]
                 .join('\n')),
             [ [ ruleId, 'forward', 6, 12 ], [ ruleId, 'forward', 10, 16 ] ]
+        );
+        return scope.assert.collect();
+    }),
+    test('follows TypeScript casts and skips type-only imports', function (scope) {
+        scope.assert.deepEqual(
+            diagnostics([
+                "import { test } from '@overkill-dev/test';",
+                "import type { test as TypeOnly } from '@overkill-dev/test';",
+                "TypeOnly('unclaimed', scope => helper(scope.assert));",
+                "test('known', scope => {",
+                "    const checks = scope.assert as typeof scope.assert;",
+                "    helper(checks);",
+                "    return scope.assert.collect();",
+                "});"
+            ]
+                .join('\n')),
+            [ [ ruleId, 'forward', 6, 12 ] ]
         );
         return scope.assert.collect();
     }),
