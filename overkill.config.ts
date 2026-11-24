@@ -61,7 +61,8 @@ export const config = defineConfig({
                         'source/**/*.entry-point.ts',
                         'source/**/*.type-test.ts',
                         'source/test-support/**',
-                        'source/integration-tests/**'
+                        'source/integration-tests/**',
+                        'source/eslint-plugin/**'
                     ]
                 },
                 outputs: [ 'lcov', 'text' ],

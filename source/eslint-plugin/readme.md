@@ -11,7 +11,9 @@ owning function and parameter index for this check.
 A conflicting write, unsupported expression, or unreachable use yields an
 unknown origin. Local object fields lose their facts when the object can
 escape or when an untracked write can change them. A value extracted earlier
-keeps its own origin. Repeated-read stability requires separate evidence.
+keeps its own origin. The escape rule also queries aggregate contents at
+transfer sites and retains proven alternatives when branches disagree. Repeated-read stability requires separate evidence.
 
-Parser-backed fixtures run under the runtime test profile and use TypeScript
-syntax with compiler project mode disabled.
+ESLint parser fixtures and the packed consumer test exercise this tooling under
+the integration profiles. The compiler and ESLint probe the host environment
+while loading, so the microtest coverage gate excludes the plugin sources.

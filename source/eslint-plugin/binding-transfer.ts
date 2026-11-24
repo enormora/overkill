@@ -3,6 +3,9 @@ import { AST_NODE_TYPES as NodeType, type TSESTree as Tree } from '@typescript-e
 import {
     type Allocation,
     allocationsOf,
+    alternatives,
+    possibleValues,
+    originValue,
     type BindingValues,
     bindingValues,
     forgetObject,
@@ -141,6 +144,20 @@ function clearOpaqueProperties(state: State, properties: BindingValues<string>):
     }
 }
 
+function spreadProperties(state: State, value: Value | undefined, target: BindingValues<string>): boolean {
+    if (!state.trackAlternatives || value?.kind !== 'object') {
+        return false;
+    }
+    const source = state.objects.get(value.allocation);
+    if (source === undefined) {
+        return false;
+    }
+    for (const [ key, field ] of source) {
+        target.store(key, field);
+    }
+    return true;
+}
+
 function storeProperty(
     state: State,
     properties: BindingValues<string>,
@@ -148,6 +165,9 @@ function storeProperty(
 ): void {
     const key = property.type === NodeType.Property ? propertyKey(state, property.key, property.computed) : undefined;
     const value = propertyValue(state, property);
+    if (property.type === NodeType.SpreadElement && spreadProperties(state, value, properties)) {
+        return;
+    }
     if (key === undefined) {
         forgetObject(state, value);
         clearOpaqueProperties(state, properties);
@@ -204,6 +224,35 @@ function assignedValue(state: State, node: Tree.AssignmentExpression): Value | u
     return node.operator === '=' ? state.expressions.get(node.right) : undefined;
 }
 
+const facadeMembers = new Set([ 'assert', 'require' ]);
+const bindableMembers = new Set([ ...facadeMembers, 'plan' ]);
+const facadeMethodPathLength = 2;
+
+function derivesFacade(path: readonly string[]): boolean {
+    const [ member, method ] = path;
+    return member !== undefined && facadeMembers.has(member) &&
+        path.length === facadeMethodPathLength && method === 'annotated';
+}
+
+function derivesBoundMethod(path: readonly string[]): boolean {
+    const [ member ] = path;
+    return member !== undefined && bindableMembers.has(member) && path.at(-1) === 'bind';
+}
+
+function callResult(state: State, call: Tree.CallExpression): Value | undefined {
+    const callee = state.expressions.get(call.callee);
+    const annotated = alternatives(callee).flatMap(function (value) {
+        if (value.kind !== 'origin' || value.origin.root.kind !== 'parameter') {
+            return [];
+        }
+        const { root, path } = value.origin;
+        return derivesFacade(path) || derivesBoundMethod(path) ? [ originValue(root, path.slice(0, -1)) ] : [];
+    });
+    return callee?.kind === 'alternatives'
+        ? possibleValues(annotated)
+        : annotated[0] ?? originValue({ kind: 'call', node: call }, []);
+}
+
 function expressionValue(state: State, variables: Variables, node: Tree.Node): Value | undefined {
     return match(node)
         .with({ type: NodeType.Identifier }, function (matched) {
@@ -224,6 +273,9 @@ function expressionValue(state: State, variables: Variables, node: Tree.Node): V
         })
         .with({ type: NodeType.ConditionalExpression }, { type: NodeType.LogicalExpression }, function (matched) {
             return state.expressions.get(matched);
+        })
+        .with({ type: NodeType.CallExpression }, function (matched) {
+            return callResult(state, matched);
         })
         .with({ type: NodeType.AssignmentExpression }, function (matched) {
             return assignedValue(state, matched);
