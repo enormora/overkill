@@ -12,18 +12,12 @@ type Scalar = LocalObject | OriginValue | PossibleObjects | StaticKey;
 type Value = Scalar | { readonly kind: 'alternatives'; readonly values: readonly Scalar[]; };
 
 export function alternatives(value: Value | undefined): readonly Scalar[] {
-    return value === undefined ? [] : value.kind === 'alternatives' ? value.values : [ value ];
+    if (value === undefined) {
+        return [];
+    }
+    return value.kind === 'alternatives' ? value.values : [ value ];
 }
 
-export function possibleValues(values: readonly (Value | undefined)[]): Value | undefined {
-    const unique: Scalar[] = [];
-    for (const value of values.flatMap(alternatives)) {
-        if (!unique.some(other => sameValue(value, other))) {
-            unique.push(value);
-        }
-    }
-    return unique.length === 0 ? undefined : { kind: 'alternatives', values: unique };
-}
 
 export type BindingValues<Key> = ReadonlyMap<Key, Value> & {
     readonly store: (key: Key, value: Value | undefined) => void;
@@ -87,7 +81,11 @@ export function sameValue(left: Value, right: Value): boolean {
         })
         .with({ kind: 'alternatives' }, function (matched) {
             return right.kind === 'alternatives' && matched.values.length === right.values.length &&
-                matched.values.every(value => right.values.some(other => sameValue(value, other)));
+                matched.values.every(function (value) {
+                    return right.values.some(function (other) {
+                        return sameValue(value, other);
+                    });
+                });
         })
         .with({ kind: 'key' }, function (matched) {
             return right.kind === 'key' && matched.key === right.key;
@@ -95,9 +93,25 @@ export function sameValue(left: Value, right: Value): boolean {
         .exhaustive();
 }
 
+export function possibleValues(values: readonly (Value | undefined)[]): Value | undefined {
+    const unique: Scalar[] = [];
+    for (const value of values.flatMap(alternatives)) {
+        if (
+            unique.every(function (other) {
+                return !sameValue(value, other);
+            })
+        ) {
+            unique.push(value);
+        }
+    }
+    return unique.length === 0 ? undefined : { kind: 'alternatives', values: unique };
+}
+
 export function allocationsOf(value: Value | undefined): Iterable<Allocation> {
     if (value?.kind === 'alternatives') {
-        return value.values.flatMap(item => Array.from(allocationsOf(item)));
+        return value.values.flatMap(function (item) {
+            return Array.from(allocationsOf(item));
+        });
     }
     return match(value)
         .with({ kind: 'object' }, function (matched) {
@@ -121,31 +135,58 @@ function possibleObjects(values: Iterable<Value | undefined>): Value | undefined
     return allocations.size === 0 ? undefined : { kind: 'possible-objects', allocations };
 }
 
-function mergeValues<Key>(left: ReadonlyMap<Key, Value>, right: ReadonlyMap<Key, Value>, trackAlternatives: boolean): BindingValues<Key> {
+function mergeValue(
+    first: Value | undefined,
+    second: Value | undefined,
+    trackAlternatives: boolean
+): Value | undefined {
+    if (first !== undefined && second !== undefined && sameValue(first, second)) {
+        return first;
+    }
+    return trackAlternatives ? possibleValues([ first, second ]) : possibleObjects([ first, second ]);
+}
+
+function mergeValues<Key>(
+    left: ReadonlyMap<Key, Value>,
+    right: ReadonlyMap<Key, Value>,
+    trackAlternatives: boolean
+): BindingValues<Key> {
     const merged = bindingValues<Key>(new Map());
     const keys = new Set([ ...left.keys(), ...right.keys() ]);
     for (const key of keys) {
         const first = left.get(key);
         const second = right.get(key);
-        const value = first !== undefined && second !== undefined && sameValue(first, second)
-            ? first
-            : trackAlternatives ? possibleValues([ first, second ]) : possibleObjects([ first, second ]);
-        merged.store(key, value);
+        merged.store(key, mergeValue(first, second, trackAlternatives));
     }
     return merged;
+}
+
+function mergeFields(
+    first: ReadonlyMap<string, Value> | undefined,
+    second: ReadonlyMap<string, Value> | undefined,
+    trackAlternatives: boolean
+): BindingValues<string> | null {
+    if (!trackAlternatives && (first === undefined || second === undefined)) {
+        return null;
+    }
+    return mergeValues(first ?? new Map(), second ?? new Map(), trackAlternatives);
+}
+
+function mergeAllocations(left: State, right: State, result: State): void {
+    const { trackAlternatives } = left;
+    const allocations = new Set([ ...left.objects.keys(), ...right.objects.keys() ]);
+    for (const allocation of allocations) {
+        const fields = mergeFields(left.objects.get(allocation), right.objects.get(allocation), trackAlternatives);
+        if (fields !== null) {
+            result.setObject(allocation, fields);
+        }
+    }
 }
 
 export function joinStates(left: State, right: State): State {
     const { trackAlternatives } = left;
     const result = emptyState(trackAlternatives);
-    const allocations = new Set([ ...left.objects.keys(), ...right.objects.keys() ]);
-    for (const allocation of allocations) {
-        const first = left.objects.get(allocation);
-        const second = right.objects.get(allocation);
-        if (trackAlternatives || (first !== undefined && second !== undefined)) {
-            result.setObject(allocation, mergeValues(first ?? new Map(), second ?? new Map(), trackAlternatives));
-        }
-    }
+    mergeAllocations(left, right, result);
     mergeValues(left.bindings, right.bindings, trackAlternatives).forEach(function (value, variable) {
         result.bindings.store(variable, value);
     });
@@ -193,16 +234,20 @@ function possibleProperty(state: State, value: Value | undefined, key: string | 
     return possibleObjects(properties);
 }
 
+const maximumAlternativePathLength = 3;
+
 export function propertyOf(state: State, value: Value | undefined, key: string | undefined): Value | undefined {
     if (key === undefined) {
         return possibleProperty(state, value, key);
     }
     if (value?.kind === 'alternatives') {
-        return possibleValues(value.values.map(item => propertyOf(state, item, key)));
+        return possibleValues(value.values.map(function (item) {
+            return propertyOf(state, item, key);
+        }));
     }
     return match(value)
         .with({ kind: 'origin' }, function ({ origin }) {
-            if (state.trackAlternatives && origin.path.length >= 3) {
+            if (state.trackAlternatives && origin.path.length >= maximumAlternativePathLength) {
                 return undefined;
             }
             return originValue(origin.root, [ ...origin.path, key ]);

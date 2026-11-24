@@ -10,7 +10,7 @@ type ModuleImport = { readonly kind: 'import'; readonly source: string; };
 type CallbackParameter = { readonly kind: 'parameter'; readonly owner: FunctionNode; readonly index: number; };
 
 export type BindingOrigin = {
-    readonly root: CallbackParameter | LocalFunction | ModuleImport | CallResult;
+    readonly root: CallbackParameter | CallResult | LocalFunction | ModuleImport;
     readonly path: readonly string[];
 };
 

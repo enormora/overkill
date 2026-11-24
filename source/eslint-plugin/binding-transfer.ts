@@ -224,6 +224,21 @@ function assignedValue(state: State, node: Tree.AssignmentExpression): Value | u
     return node.operator === '=' ? state.expressions.get(node.right) : undefined;
 }
 
+const facadeMembers = new Set([ 'assert', 'require' ]);
+const bindableMembers = new Set([ ...facadeMembers, 'plan' ]);
+const facadeMethodPathLength = 2;
+
+function derivesFacade(path: readonly string[]): boolean {
+    const [ member, method ] = path;
+    return member !== undefined && facadeMembers.has(member) &&
+        path.length === facadeMethodPathLength && method === 'annotated';
+}
+
+function derivesBoundMethod(path: readonly string[]): boolean {
+    const [ member ] = path;
+    return member !== undefined && bindableMembers.has(member) && path.at(-1) === 'bind';
+}
+
 function callResult(state: State, call: Tree.CallExpression): Value | undefined {
     const callee = state.expressions.get(call.callee);
     const annotated = alternatives(callee).flatMap(function (value) {
@@ -231,13 +246,7 @@ function callResult(state: State, call: Tree.CallExpression): Value | undefined 
             return [];
         }
         const { root, path } = value.origin;
-        if (path.length === 2 && (path[0] === 'assert' || path[0] === 'require') && path[1] === 'annotated') {
-            return [ originValue(root, path.slice(0, -1)) ];
-        }
-        if (path.at(-1) === 'bind' && (path[0] === 'assert' || path[0] === 'require' || path[0] === 'plan')) {
-            return [ originValue(root, path.slice(0, -1)) ];
-        }
-        return [];
+        return derivesFacade(path) || derivesBoundMethod(path) ? [ originValue(root, path.slice(0, -1)) ] : [];
     });
     return callee?.kind === 'alternatives'
         ? possibleValues(annotated)

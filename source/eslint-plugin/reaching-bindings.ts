@@ -49,7 +49,7 @@ export function createFrame(path: Readonly<TSESLint.CodePath>, node: Readonly<Tr
 }
 
 type ApplyEvent = (state: State, event: Readonly<BindingEvent>) => void;
-type ObserveExpression = (state: State, node: Readonly<Tree.Node>, stage: 'before' | 'after') => void;
+type ObserveExpression = (state: State, node: Readonly<Tree.Node>, stage: 'after' | 'before') => void;
 
 function segmentInput(
     segment: Readonly<Segment>,

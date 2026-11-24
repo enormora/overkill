@@ -1,7 +1,17 @@
 import { AST_NODE_TYPES as NodeType, TSESLint, type TSESTree as Tree } from '@typescript-eslint/utils';
 import { match } from 'ts-pattern';
 import { type BindingOrigin, isFunction, sameOrigin } from './binding-origin.ts';
-import { type Allocation, allocationsOf, alternatives, emptyState, originValue, sameValue, type State, type Value, type Variable } from './binding-state.ts';
+import {
+    type Allocation,
+    allocationsOf,
+    alternatives,
+    emptyState,
+    originValue,
+    sameValue,
+    type State,
+    type Value,
+    type Variable
+} from './binding-state.ts';
 import { bindIteration, bindPattern, transfer } from './binding-transfer.ts';
 import { type BindingEvent, createFrame, type Frame, reachingBindings } from './reaching-bindings.ts';
 
@@ -214,45 +224,82 @@ function agreeingOrigin(
     return previous !== null && origin !== null && sameOrigin(previous, origin) ? origin : null;
 }
 
-type ValueFacts = { readonly origins: BindingOrigin[]; readonly allocations: Set<Allocation>; };
+type ValueFacts = {
+    readonly origins: readonly BindingOrigin[];
+    readonly allocations: ReadonlySet<Allocation>;
+    readonly addOrigin: (origin: BindingOrigin) => void;
+    readonly addAllocation: (allocation: Allocation) => void;
+};
+
+function createValueFacts(): ValueFacts {
+    const origins: BindingOrigin[] = [];
+    const allocations = new Set<Allocation>();
+    return {
+        origins,
+        allocations,
+        addOrigin(origin) {
+            if (origins.every(function (other) { return !sameOrigin(origin, other); })) {
+                origins.push(origin);
+            }
+        },
+        addAllocation(allocation) {
+            allocations.add(allocation);
+        }
+    };
+}
+
+function addReachableOrigins(state: State, value: Value | undefined, facts: ValueFacts): void {
+    const seen = new Set<Allocation>();
+    const pending = new Set([ value ]);
+
+    function addFields(allocation: Allocation): void {
+        if (!seen.has(allocation)) {
+            seen.add(allocation);
+            const fields = state.objects.get(allocation);
+            fields?.forEach(function (field) {
+                pending.add(field);
+            });
+        }
+    }
+
+    for (const current of pending) {
+        for (const candidate of alternatives(current)) {
+            if (candidate.kind === 'origin') {
+                facts.addOrigin(candidate.origin);
+            }
+        }
+        const allocations = allocationsOf(current);
+        for (const allocation of allocations) {
+            addFields(allocation);
+        }
+    }
+}
 
 function valueFacts(state: State, value: Value | undefined, facts: ValueFacts): void {
-    const seen = new Set<Allocation>();
-    function visit(current: Value | undefined): void {
-        for (const candidate of alternatives(current)) {
-            if (candidate.kind === 'origin' && !facts.origins.some(origin => sameOrigin(origin, candidate.origin))) {
-                facts.origins.push(candidate.origin);
-            }
-        }
-        for (const allocation of allocationsOf(current)) {
-            if (!seen.has(allocation)) {
-                seen.add(allocation);
-                for (const field of state.objects.get(allocation)?.values() ?? []) {
-                    visit(field);
-                }
-            }
-        }
-    }
     for (const allocation of allocationsOf(value)) {
-        facts.allocations.add(allocation);
+        facts.addAllocation(allocation);
     }
-    visit(value);
+    addReachableOrigins(state, value, facts);
 }
 
 function analyzeBindings(bindings: LexicalBindings, root: Frame, query: Query | null): BindingAnalysis {
     const origins = new Map<Node, BindingOrigin | null>();
     const facts = new Map<Node, Map<Node, ValueFacts>>();
 
-    function observeValues(state: State, site: Node, stage: 'before' | 'after'): void {
-        for (const expression of query?.(site) ?? []) {
-            if ((expression === site) !== (stage === 'after')) {
-                continue;
+    function observeValue(state: State, site: Node, expression: Node): void {
+        const values = facts.get(site) ?? new Map<Node, ValueFacts>();
+        const result = values.get(expression) ?? createValueFacts();
+        valueFacts(state, state.expressions.get(expression), result);
+        values.set(expression, result);
+        facts.set(site, values);
+    }
+
+    function observeValues(state: State, site: Node, stage: 'after' | 'before'): void {
+        const expressions = query?.(site) ?? [];
+        for (const expression of expressions) {
+            if ((expression === site) === (stage === 'after')) {
+                observeValue(state, site, expression);
             }
-            const values = facts.get(site) ?? new Map<Node, ValueFacts>();
-            const result = values.get(expression) ?? { origins: [], allocations: new Set<Allocation>() };
-            valueFacts(state, state.expressions.get(expression), result);
-            values.set(expression, result);
-            facts.set(site, values);
         }
     }
 
@@ -315,6 +362,7 @@ export function bindingAnalysis(
     observation: { readonly query: Query; readonly visit: (node: Node) => void; } | null
 ): TSESLint.RuleListener {
     const frames: Frame[] = [];
+    const query = observation?.query ?? null;
     return {
         onCodePathStart(...[ path, node ]: readonly [never] | readonly [TSESLint.CodePath, Tree.Node]) {
             if (node !== undefined) {
@@ -343,14 +391,11 @@ export function bindingAnalysis(
         },
         onCodePathEnd() {
             const frame = frames.pop();
-            if (frame === undefined) {
-                return;
-            }
-            if (isFunction(frame.node)) {
+            if (frame !== undefined && isFunction(frame.node)) {
                 frames.at(-1)?.record({ kind: 'expression', node: frame.node });
             }
-            if (frame.node.type === NodeType.Program) {
-                complete(analyzeBindings(lexicalBindings(sourceCode), frame, observation?.query ?? null));
+            if (frame?.node.type === NodeType.Program) {
+                complete(analyzeBindings(lexicalBindings(sourceCode), frame, query));
             }
         }
     };
