@@ -18,7 +18,6 @@ export function alternatives(value: Value | undefined): readonly Scalar[] {
     return value.kind === 'alternatives' ? value.values : [ value ];
 }
 
-
 export type BindingValues<Key> = ReadonlyMap<Key, Value> & {
     readonly store: (key: Key, value: Value | undefined) => void;
 };

@@ -316,8 +316,10 @@ function reportEscapes(context: RuleContext, analysis: BindingAnalysis, nodes: R
     function reportReturn(site: Node): void {
         const value = returnedValue(site);
         const owner = enclosingFunction(site);
-        if (value !== null && owner !== null &&
-            leavesOwner(site, owner) && protectedOwners(value, site, true).includes(owner)) {
+        if (
+            value !== null && owner !== null &&
+            leavesOwner(site, owner) && protectedOwners(value, site, true).includes(owner)
+        ) {
             context.report({ node: value, messageId: 'escape' });
         }
     }

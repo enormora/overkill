@@ -5,10 +5,10 @@ Enable Overkill's authoring rules in ESLint flat config.
 ```js
 import { overkillPlugin } from '@overkill-dev/eslint-plugin';
 
-export default [{
+export default [ {
     plugins: { overkill: overkillPlugin },
     rules: { 'overkill/no-scope-escape': 'error' }
-}];
+} ];
 ```
 
 `no-scope-escape` keeps the injected scope, assertion and requirement facades,

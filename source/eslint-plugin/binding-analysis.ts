@@ -238,7 +238,11 @@ function createValueFacts(): ValueFacts {
         origins,
         allocations,
         addOrigin(origin) {
-            if (origins.every(function (other) { return !sameOrigin(origin, other); })) {
+            if (
+                origins.every(function (other) {
+                    return !sameOrigin(origin, other);
+                })
+            ) {
                 origins.push(origin);
             }
         },
@@ -297,7 +301,8 @@ function analyzeBindings(bindings: LexicalBindings, root: Frame, query: Query | 
     function observeValues(state: State, site: Node, stage: 'after' | 'before'): void {
         const expressions = query?.(site) ?? [];
         for (const expression of expressions) {
-            if ((expression === site) === (stage === 'after')) {
+            const afterExpression = expression === site;
+            if (afterExpression === (stage === 'after')) {
                 observeValue(state, site, expression);
             }
         }

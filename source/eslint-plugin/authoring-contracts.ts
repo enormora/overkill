@@ -154,8 +154,9 @@ function field(node: Node | undefined, key: string): Node | undefined {
     if (node?.type !== NodeType.ObjectExpression) {
         return undefined;
     }
-    const property = node.properties.toReversed().find(function (candidate) {
-        return candidate.type === NodeType.SpreadElement || propertyName(candidate) === key && candidate.kind === 'init';
+    const property = node.properties.findLast(function (candidate) {
+        return candidate.type === NodeType.SpreadElement ||
+            propertyName(candidate) === key && candidate.kind === 'init';
     });
     return property?.type === NodeType.Property ? property.value : undefined;
 }
@@ -195,7 +196,9 @@ function authorResolver(source: Readonly<TSESLint.SourceCode>, analysis: Binding
         if (origin === null) {
             return null;
         }
-        return origin.root.kind === 'import' ? fromImport(origin) ?? fromSignature(call) : memberOf(call, origin, authorOf);
+        return origin.root.kind === 'import'
+            ? fromImport(origin) ?? fromSignature(call)
+            : memberOf(call, origin, authorOf);
     }
 
     return authorOf;
