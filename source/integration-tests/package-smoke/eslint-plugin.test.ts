@@ -5,11 +5,11 @@ import { packageConsumer } from './support/package-consumer.ts';
 const script = `
 import { writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { Linter } from 'eslint';
-import plugin from '@overkill-dev/eslint-plugin';
-import ts from 'typescript';
+import { overkillPlugin as plugin } from '@overkill-dev/eslint-plugin';
 
-const parser = await import(process.argv[1]);
+const { Linter } = await import(${JSON.stringify(import.meta.resolve('eslint'))});
+const { default: ts } = await import(${JSON.stringify(import.meta.resolve('typescript'))});
+const parser = await import(${JSON.stringify(import.meta.resolve('@typescript-eslint/parser'))});
 
 const code = [
     "import { test, wrap } from './barrel.js';",
@@ -26,7 +26,10 @@ writeFileSync('facade.ts', [
 ].join('\\n'));
 writeFileSync('barrel.ts', "export { test, wrap } from './facade.js';");
 writeFileSync('consumer.ts', code);
-writeFileSync('config.ts', "import plugin from '@overkill-dev/eslint-plugin'; export const rule = plugin.rules['no-scope-escape'];");
+writeFileSync('config.ts', [
+    "import { overkillPlugin } from '@overkill-dev/eslint-plugin';",
+    "export const rule = overkillPlugin.rules['no-scope-escape'];"
+].join('\\n'));
 const compiler = {
     module: ts.ModuleKind.NodeNext,
     target: ts.ScriptTarget.ESNext,
@@ -68,7 +71,7 @@ export const testNode = test('loads and types the packed ESLint plugin', async f
     const output = await new Promise<string>(function runConsumer(resolve, reject) {
         execFile(
             process.execPath,
-            [ '--disable-warning=PERM0004', '--input-type=module', '--eval', script, import.meta.resolve('@typescript-eslint/parser') ],
+            [ '--disable-warning=PERM0004', '--input-type=module', '--eval', script ],
             { env: consumerEnvironment(consumerDirectory), cwd: consumerDirectory },
             function completed(error, stdout, stderr) {
                 if (error === null) {
