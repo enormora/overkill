@@ -50,10 +50,10 @@ export const testNode = suite('no-scope-escape', [
                 "import type { test as TypeOnly } from '@overkill-dev/test';",
                 "TypeOnly('unclaimed', scope => helper(scope.assert));",
                 "test('known', scope => {",
-                "    const checks = scope.assert as typeof scope.assert;",
-                "    helper(checks);",
-                "    return scope.assert.collect();",
-                "});"
+                '    const checks = scope.assert as typeof scope.assert;',
+                '    helper(checks);',
+                '    return scope.assert.collect();',
+                '});'
             ]
                 .join('\n')),
             [ [ ruleId, 'forward', 6, 12 ] ]
