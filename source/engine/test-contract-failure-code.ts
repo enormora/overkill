@@ -7,6 +7,7 @@ type TestContractFailureCodeByName = {
     readonly invalidPlan: 'invalid-plan';
     readonly invalidTimeoutControl: 'invalid-timeout-control';
     readonly invalidRequireReference: 'invalid-require-reference';
+    readonly invalidReturnedBuilderAssertion: 'invalid-returned-builder-assertion';
     readonly noAssertions: 'no-assertions';
     readonly propertyScope: 'property-scope';
     readonly propertyObservation: 'property-observation';

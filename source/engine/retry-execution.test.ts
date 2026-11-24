@@ -11,6 +11,7 @@ import {
     type RunResult
 } from '../packages/engine/engine.entry-point.ts';
 
+import type { AssertAssertionNode } from '../assertion-protocol/assertion-node.ts';
 import { createEngine, type Engine } from './engine.ts';
 import { createExecute, type ExecuteOptions } from './execution.ts';
 import { createReporterDispatcher } from './reporter-dispatcher.ts';
@@ -289,6 +290,23 @@ export const testNode = suite('Retry execution', [
         scope.require.defined(first);
         scope.require.defined(first.retried);
         scope.assert.deepEqual(first.retried, { attempts: 3, finalVerdict: 'fail' });
+        return scope.assert.collect();
+    }),
+    test('rejects a builder node returned by an earlier retry attempt', async function (scope) {
+        let previous: AssertAssertionNode | null = null;
+        const result = await executeBody(function (attempt) {
+            if (previous !== null) {
+                return previous;
+            }
+            attempt.assert.true(true);
+            attempt.assert.fail();
+            const nodes = attempt.assert.collect();
+            [ previous ] = nodes;
+            return nodes;
+        }, options);
+        const { attempts, outcome } = result.perTest[0] ?? { attempts: [], outcome: null };
+        scope.assert.equal(attempts.length, 2);
+        scope.assert.match(JSON.stringify(outcome), /"code":"invalid-returned-builder-assertion"/u);
         return scope.assert.collect();
     }),
     test('does not retry a caught assertion-contract failure', async function (scope: TestScope) {

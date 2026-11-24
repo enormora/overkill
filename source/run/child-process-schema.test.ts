@@ -111,6 +111,37 @@ export const testNode = suite('child process payload schemas', [
         scope.assert.deepEqual(familyVariant, { family: 'analysis', key: 'compiler-a' });
         return scope.assert.collect();
     }),
+    test('preserves returned assertion ownership failures in reporter events', function (scope) {
+        const caseId = { file: null, params: null, suite: [], title: 'borrowed assertion' };
+        const event = {
+            artifacts: [],
+            attempt: 0,
+            benchmark: null,
+            case: caseId,
+            completion: 'final',
+            definitionLocations,
+            durationMicroseconds: 0,
+            kind: 'test-end',
+            outcome: {
+                kind: 'fail',
+                failures: [ {
+                    actual: 'foreign-owner',
+                    code: 'invalid-returned-builder-assertion',
+                    expected: 'recorded builder assertion from this context',
+                    kind: 'test-contract',
+                    summary: 'A recorded builder assertion belongs to a different assertion context.'
+                } ]
+            },
+            property: null,
+            suitePath: [],
+            verdict: 'fail',
+            workId: createDefaultWorkId(caseId)
+        };
+        const serialized = JSON.stringify(event);
+        const received: unknown = JSON.parse(serialized);
+        scope.assert.deepEqual(reporterEventSchema.parse(received), received);
+        return scope.assert.collect();
+    }),
     test('rejects reporter events without executable identity', function (scope) {
         const caseId = { file: null, params: null, suite: [], title: 'missing identity' };
         scope.assert.false(

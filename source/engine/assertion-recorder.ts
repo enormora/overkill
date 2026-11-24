@@ -3,6 +3,7 @@ import type {
     AssertAssertionNode,
     AssertionNode,
     AssertionResult,
+    CompositeAssertionChildNode,
     RequireAssertionNode
 } from '../assertion-protocol/assertion-node.ts';
 import type { NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node-shape.ts';
@@ -31,6 +32,56 @@ type RecordedRequireMergeStep = {
 };
 
 const discardedAssertion = Symbol('discarded assertion');
+
+const builderOwners = new WeakMap<AssertAssertionNode | CompositeAssertionChildNode, symbol>();
+
+const summaryByReason = {
+    'child-reuse': 'Recorded builder assertions must be returned as top-level assertions.',
+    'duplicate-node': 'A recorded builder assertion cannot be returned more than once.',
+    'foreign-owner': 'A recorded builder assertion belongs to a different assertion context.'
+} as const;
+
+function ownershipFailure(actual: keyof typeof summaryByReason): TestContractFailure {
+    return {
+        actual,
+        code: 'invalid-returned-builder-assertion',
+        expected: 'recorded builder assertions from this context, each returned once at the top level',
+        kind: 'test-contract',
+        summary: summaryByReason[actual]
+    };
+}
+
+function recordedBuilderChildFailure(
+    assertion: AssertAssertionNode | null | undefined
+): TestContractFailure | null {
+    if (
+        assertion?.check === 'composite' && Array.isArray(assertion.children) &&
+        assertion.children.some(function isRecordedBuilder(child: CompositeAssertionChildNode) {
+            return builderOwners.has(child);
+        })
+    ) {
+        return ownershipFailure('child-reuse');
+    }
+    return null;
+}
+
+function validateReturnedBuilderNode(
+    assertion: AssertAssertionNode,
+    owner: symbol,
+    seen: ReadonlySet<AssertAssertionNode>
+): TestContractFailure | null {
+    const recordedOwner = builderOwners.get(assertion);
+    if (recordedOwner === undefined) {
+        return recordedBuilderChildFailure(assertion);
+    }
+    if (recordedOwner !== owner) {
+        return ownershipFailure('foreign-owner');
+    }
+    if (seen.has(assertion)) {
+        return ownershipFailure('duplicate-node');
+    }
+    return recordedBuilderChildFailure(assertion);
+}
 
 export type PendingRecordedAssert = {
     readonly discard: () => void;
@@ -259,7 +310,7 @@ function recordedAssertionNodes(records: readonly RecordedAssertion[]): readonly
 function createAssertionContext(
     origin: AssertionOrigin,
     retainFailure: (failure: TestContractFailure) => void
-): AssertionContext {
+): AssertionContext & { readonly owner: symbol; } {
     const reportLate = currentLateAssertionSink();
     const interruption = new AbortController();
     const lateFailures: TestContractFailure[] = [];
@@ -285,6 +336,7 @@ function createAssertionContext(
 
     return {
         origin,
+        owner: Symbol('assertion recorder'),
         interruption: interruption.signal,
         assertRecording,
         acceptsPropertyEvidence() {
@@ -338,10 +390,21 @@ function collectBuilderAssertions(
 
 function validateReturnedAssertions(
     slots: readonly BuilderAssertionSlot[],
-    assertions: readonly AssertAssertionNode[]
+    assertions: readonly AssertAssertionNode[],
+    owner: symbol
 ): TestContractFailure | null {
     if (slots.includes(null)) {
         return createPendingAsyncAssertionFailure();
+    }
+    const seen = new Set<AssertAssertionNode>();
+    for (const assertion of assertions) {
+        const failure = validateReturnedBuilderNode(assertion, owner, seen);
+        if (failure !== null) {
+            return failure;
+        }
+        if (builderOwners.has(assertion)) {
+            seen.add(assertion);
+        }
     }
     return builderAssertionsInReturnedOrder(resolvedBuilderAssertions(slots), assertions)
         ? null
@@ -353,7 +416,7 @@ export function createAssertionRecorder(origin: AssertionOrigin): AssertionRecor
     const recordedAssertions: RecordedAssertion[] = [];
     const failures = new Set<TestContractFailure>();
     const property = createPropertyEvidenceRecorder();
-    const lifetime = createAssertionContext(origin, function retainFailure(failure) {
+    const { owner, ...lifetime } = createAssertionContext(origin, function retainFailure(failure) {
         failures.add(failure);
     });
     let failedRequireIndex: number | null = null;
@@ -432,6 +495,11 @@ export function createAssertionRecorder(origin: AssertionOrigin): AssertionRecor
 
         recordAssert(assertion) {
             lifetime.assertRecording('record an assertion');
+            const childFailure = recordedBuilderChildFailure(assertion);
+            if (childFailure !== null) {
+                failContract(childFailure);
+            }
+            builderOwners.set(assertion, owner);
             recordDebugAssertion(assertion);
             builderAssertions.push(assertion);
             recordedAssertions.push({ assertion, builderAssertion: assertion });
@@ -454,6 +522,12 @@ export function createAssertionRecorder(origin: AssertionOrigin): AssertionRecor
                 },
                 resolve(assertion) {
                     lifetime.assertRecording('finish an asynchronous assertion');
+                    const childFailure = recordedBuilderChildFailure(assertion);
+                    if (childFailure !== null) {
+                        builderAssertions[builderIndex] = discardedAssertion;
+                        failContract(childFailure);
+                    }
+                    builderOwners.set(assertion, owner);
                     builderAssertions[builderIndex] = assertion;
                     recordedAssertions[recordIndex] = { assertion, builderAssertion: assertion };
                     captureAssertion(assertion);
@@ -482,7 +556,7 @@ export function createAssertionRecorder(origin: AssertionOrigin): AssertionRecor
 
         returnedAssertions(assertionResult) {
             const assertions = normalizeAssertionResult(assertionResult);
-            const contractFailure = validateReturnedAssertions(builderAssertions, assertions);
+            const contractFailure = validateReturnedAssertions(builderAssertions, assertions, owner);
 
             if (contractFailure !== null) {
                 return contractFailure;
