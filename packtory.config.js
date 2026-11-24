@@ -122,6 +122,15 @@ export const configuration = {
             bundlePeerDependencies: [ '@overkill-dev/engine' ]
         },
         {
+            name: 'eslint-plugin',
+            description: 'ESLint rules for Overkill test authoring.',
+            packageInterface: { modules: packageModules({ '.': 'main' }) },
+            mainPackageManifest: {
+                ...rootPackageJson,
+                peerDependencies: { eslint: '^10.7.0', typescript: '~6.0.3' }
+            }
+        },
+        {
             name: 'eslint-test',
             description: 'ESLint rule and configuration checks, fixtures, and generated properties.',
             packageInterface: { modules: packageModules({ '.': 'main' }) },

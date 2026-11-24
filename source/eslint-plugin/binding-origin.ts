@@ -5,11 +5,12 @@ type FunctionExpression = Readonly<Tree.ArrowFunctionExpression | Tree.FunctionE
 export type FunctionNode = FunctionExpression | Readonly<Tree.FunctionDeclaration>;
 
 type LocalFunction = { readonly kind: 'function'; readonly node: FunctionNode; };
+type CallResult = { readonly kind: 'call'; readonly node: Readonly<Tree.CallExpression>; };
 type ModuleImport = { readonly kind: 'import'; readonly source: string; };
 type CallbackParameter = { readonly kind: 'parameter'; readonly owner: FunctionNode; readonly index: number; };
 
 export type BindingOrigin = {
-    readonly root: CallbackParameter | LocalFunction | ModuleImport;
+    readonly root: CallbackParameter | LocalFunction | ModuleImport | CallResult;
     readonly path: readonly string[];
 };
 
@@ -28,6 +29,9 @@ export function sameOrigin(left: BindingOrigin, right: BindingOrigin): boolean {
         .with({ kind: 'parameter' }, function (matched) {
             return right.root.kind === 'parameter' && matched.owner === right.root.owner &&
                 matched.index === right.root.index;
+        })
+        .with({ kind: 'call' }, function (matched) {
+            return right.root.kind === 'call' && matched.node === right.root.node;
         })
         .with({ kind: 'function' }, function (matched) {
             return right.root.kind === 'function' && matched.node === right.root.node;

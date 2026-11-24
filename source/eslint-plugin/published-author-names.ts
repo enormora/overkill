@@ -48,7 +48,7 @@ export const publishedAuthorNames: TSESLint.RuleModule<'alias'> = {
                         context.report({ node: identifier, messageId: 'alias', data: { author } });
                     }
                 }
-            }),
+            }, null),
             ImportSpecifier(node) {
                 const author = renamedImport(node);
                 if (author !== null) {

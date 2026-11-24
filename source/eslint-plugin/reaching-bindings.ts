@@ -49,7 +49,7 @@ export function createFrame(path: Readonly<TSESLint.CodePath>, node: Readonly<Tr
 }
 
 type ApplyEvent = (state: State, event: Readonly<BindingEvent>) => void;
-type ObserveExpression = (state: State, node: Readonly<Tree.Node>) => void;
+type ObserveExpression = (state: State, node: Readonly<Tree.Node>, stage: 'before' | 'after') => void;
 
 function segmentInput(
     segment: Readonly<Segment>,
@@ -74,9 +74,12 @@ function replay(
 ): State {
     const state = copyState(input);
     for (const event of events) {
+        if (event.kind === 'expression') {
+            observe(state, event.node, 'before');
+        }
         apply(state, event);
         if (event.kind === 'expression') {
-            observe(state, event.node);
+            observe(state, event.node, 'after');
         }
     }
     return state;

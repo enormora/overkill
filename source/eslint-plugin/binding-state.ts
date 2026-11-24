@@ -8,7 +8,22 @@ type StaticKey = { readonly kind: 'key'; readonly key: string; };
 type LocalObject = { readonly kind: 'object'; readonly allocation: Allocation; };
 type OriginValue = { readonly kind: 'origin'; readonly origin: BindingOrigin; };
 type PossibleObjects = { readonly kind: 'possible-objects'; readonly allocations: ReadonlySet<Allocation>; };
-type Value = LocalObject | OriginValue | PossibleObjects | StaticKey;
+type Scalar = LocalObject | OriginValue | PossibleObjects | StaticKey;
+type Value = Scalar | { readonly kind: 'alternatives'; readonly values: readonly Scalar[]; };
+
+export function alternatives(value: Value | undefined): readonly Scalar[] {
+    return value === undefined ? [] : value.kind === 'alternatives' ? value.values : [ value ];
+}
+
+export function possibleValues(values: readonly (Value | undefined)[]): Value | undefined {
+    const unique: Scalar[] = [];
+    for (const value of values.flatMap(alternatives)) {
+        if (!unique.some(other => sameValue(value, other))) {
+            unique.push(value);
+        }
+    }
+    return unique.length === 0 ? undefined : { kind: 'alternatives', values: unique };
+}
 
 export type BindingValues<Key> = ReadonlyMap<Key, Value> & {
     readonly store: (key: Key, value: Value | undefined) => void;
@@ -28,6 +43,7 @@ export function bindingValues<Key>(entries: ReadonlyMap<Key, Value>): BindingVal
 }
 
 export type State = {
+    readonly trackAlternatives: boolean;
     readonly bindings: BindingValues<Variable>;
     readonly expressions: BindingValues<Readonly<Tree.Node>>;
     readonly objects: ReadonlyMap<Allocation, BindingValues<string>>;
@@ -35,9 +51,10 @@ export type State = {
     readonly deleteObject: (allocation: Allocation) => void;
 };
 
-export function emptyState(): State {
+export function emptyState(trackAlternatives: boolean): State {
     const objects = new Map<Allocation, BindingValues<string>>();
     return {
+        trackAlternatives,
         bindings: bindingValues(new Map()),
         expressions: bindingValues(new Map()),
         objects,
@@ -68,6 +85,10 @@ export function sameValue(left: Value, right: Value): boolean {
                     return right.allocations.has(allocation);
                 });
         })
+        .with({ kind: 'alternatives' }, function (matched) {
+            return right.kind === 'alternatives' && matched.values.length === right.values.length &&
+                matched.values.every(value => right.values.some(other => sameValue(value, other)));
+        })
         .with({ kind: 'key' }, function (matched) {
             return right.kind === 'key' && matched.key === right.key;
         })
@@ -75,6 +96,9 @@ export function sameValue(left: Value, right: Value): boolean {
 }
 
 export function allocationsOf(value: Value | undefined): Iterable<Allocation> {
+    if (value?.kind === 'alternatives') {
+        return value.values.flatMap(item => Array.from(allocationsOf(item)));
+    }
     return match(value)
         .with({ kind: 'object' }, function (matched) {
             return [ matched.allocation ];
@@ -97,7 +121,7 @@ function possibleObjects(values: Iterable<Value | undefined>): Value | undefined
     return allocations.size === 0 ? undefined : { kind: 'possible-objects', allocations };
 }
 
-function mergeValues<Key>(left: ReadonlyMap<Key, Value>, right: ReadonlyMap<Key, Value>): BindingValues<Key> {
+function mergeValues<Key>(left: ReadonlyMap<Key, Value>, right: ReadonlyMap<Key, Value>, trackAlternatives: boolean): BindingValues<Key> {
     const merged = bindingValues<Key>(new Map());
     const keys = new Set([ ...left.keys(), ...right.keys() ]);
     for (const key of keys) {
@@ -105,31 +129,34 @@ function mergeValues<Key>(left: ReadonlyMap<Key, Value>, right: ReadonlyMap<Key,
         const second = right.get(key);
         const value = first !== undefined && second !== undefined && sameValue(first, second)
             ? first
-            : possibleObjects([ first, second ]);
+            : trackAlternatives ? possibleValues([ first, second ]) : possibleObjects([ first, second ]);
         merged.store(key, value);
     }
     return merged;
 }
 
 export function joinStates(left: State, right: State): State {
-    const result = emptyState();
-    for (const [ allocation, properties ] of left.objects) {
-        const other = right.objects.get(allocation);
-        if (other !== undefined) {
-            result.setObject(allocation, mergeValues(properties, other));
+    const { trackAlternatives } = left;
+    const result = emptyState(trackAlternatives);
+    const allocations = new Set([ ...left.objects.keys(), ...right.objects.keys() ]);
+    for (const allocation of allocations) {
+        const first = left.objects.get(allocation);
+        const second = right.objects.get(allocation);
+        if (trackAlternatives || (first !== undefined && second !== undefined)) {
+            result.setObject(allocation, mergeValues(first ?? new Map(), second ?? new Map(), trackAlternatives));
         }
     }
-    mergeValues(left.bindings, right.bindings).forEach(function (value, variable) {
+    mergeValues(left.bindings, right.bindings, trackAlternatives).forEach(function (value, variable) {
         result.bindings.store(variable, value);
     });
-    mergeValues(left.expressions, right.expressions).forEach(function (value, node) {
+    mergeValues(left.expressions, right.expressions, trackAlternatives).forEach(function (value, node) {
         result.expressions.store(node, value);
     });
     return result;
 }
 
 export function copyState(state: State): State {
-    const result = emptyState();
+    const result = emptyState(state.trackAlternatives);
     for (const [ variable, value ] of state.bindings) {
         result.bindings.store(variable, value);
     }
@@ -170,8 +197,14 @@ export function propertyOf(state: State, value: Value | undefined, key: string |
     if (key === undefined) {
         return possibleProperty(state, value, key);
     }
+    if (value?.kind === 'alternatives') {
+        return possibleValues(value.values.map(item => propertyOf(state, item, key)));
+    }
     return match(value)
         .with({ kind: 'origin' }, function ({ origin }) {
+            if (state.trackAlternatives && origin.path.length >= 3) {
+                return undefined;
+            }
             return originValue(origin.root, [ ...origin.path, key ]);
         })
         .with({ kind: 'object' }, function ({ allocation }) {

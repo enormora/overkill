@@ -1,11 +1,16 @@
 import { AST_NODE_TYPES as NodeType, TSESLint, type TSESTree as Tree } from '@typescript-eslint/utils';
 import { match } from 'ts-pattern';
 import { type BindingOrigin, isFunction, sameOrigin } from './binding-origin.ts';
-import { emptyState, originValue, sameValue, type State, type Value, type Variable } from './binding-state.ts';
+import { type Allocation, allocationsOf, alternatives, emptyState, originValue, sameValue, type State, type Value, type Variable } from './binding-state.ts';
 import { bindIteration, bindPattern, transfer } from './binding-transfer.ts';
 import { type BindingEvent, createFrame, type Frame, reachingBindings } from './reaching-bindings.ts';
 
+type Node = Readonly<Tree.Node>;
+type Query = (site: Node) => readonly Node[];
+
 export type BindingAnalysis = {
+    readonly originsWithin: (value: Node, at: Node) => readonly BindingOrigin[];
+    readonly allocationsAt: (value: Node, at: Node) => readonly Allocation[];
     readonly originOf: (use: Readonly<Tree.Node>) => BindingOrigin | null;
 };
 
@@ -23,8 +28,8 @@ function importValue(definition: Readonly<TSESLint.Scope.Definition>): Value | u
     }
     const root = { kind: 'import' as const, source: definition.parent.source.value };
     return match(definition.node)
-        .with({ type: NodeType.ImportSpecifier, importKind: 'value' }, function (node) {
-            return originValue(root, [ namedExport(node) ]);
+        .with({ type: NodeType.ImportSpecifier }, function (node) {
+            return node.importKind === 'type' ? undefined : originValue(root, [ namedExport(node) ]);
         })
         .with({ type: NodeType.ImportDefaultSpecifier }, function () {
             return originValue(root, [ 'default' ]);
@@ -44,7 +49,7 @@ function readsOnly(variable: Readonly<Variable>): boolean {
 }
 
 type LexicalBindings = {
-    readonly entry: (frame: Frame, captures: ReadonlyMap<Variable, Value>) => State;
+    readonly entry: (frame: Frame, captures: ReadonlyMap<Variable, Value>, trackAlternatives: boolean) => State;
     readonly apply: (state: State, event: Readonly<BindingEvent>) => void;
     readonly constants: ReadonlyMap<Readonly<Tree.VariableDeclarator>, readonly Variable[]>;
 };
@@ -130,8 +135,8 @@ function lexicalBindings(sourceCode: Readonly<TSESLint.SourceCode>): LexicalBind
 
     return {
         constants: index.constants,
-        entry(frame, inherited) {
-            const state = emptyState();
+        entry(frame, inherited, trackAlternatives) {
+            const state = emptyState(trackAlternatives);
             const declared = index.declarations.get(frame.node) ?? [];
             const entries = Array.from(index.imports).concat(Array.from(inherited), Array.from(declared));
             for (const [ variable, value ] of entries) {
@@ -209,28 +214,83 @@ function agreeingOrigin(
     return previous !== null && origin !== null && sameOrigin(previous, origin) ? origin : null;
 }
 
-function analyzeBindings(bindings: LexicalBindings, root: Frame): BindingAnalysis {
-    const origins = new Map<Readonly<Tree.Node>, BindingOrigin | null>();
+type ValueFacts = { readonly origins: BindingOrigin[]; readonly allocations: Set<Allocation>; };
 
-    function analyze(frame: Frame, inherited: ReadonlyMap<Variable, Value>): void {
-        const entry = bindings.entry(frame, inherited);
-        const captures = observeCaptures(bindings, entry, inherited);
-        reachingBindings(frame, entry, bindings.apply, function (state, node) {
-            const value = state.expressions.get(node);
-            const origin = value?.kind === 'origin' ? value.origin : null;
-            origins.set(node, agreeingOrigin(origins.get(node), origin));
-            captures.observe(state, node);
-        });
-        const captured = captures.proven();
-        for (const child of frame.children) {
-            analyze(child, captured);
+function valueFacts(state: State, value: Value | undefined, facts: ValueFacts): void {
+    const seen = new Set<Allocation>();
+    function visit(current: Value | undefined): void {
+        for (const candidate of alternatives(current)) {
+            if (candidate.kind === 'origin' && !facts.origins.some(origin => sameOrigin(origin, candidate.origin))) {
+                facts.origins.push(candidate.origin);
+            }
+        }
+        for (const allocation of allocationsOf(current)) {
+            if (!seen.has(allocation)) {
+                seen.add(allocation);
+                for (const field of state.objects.get(allocation)?.values() ?? []) {
+                    visit(field);
+                }
+            }
+        }
+    }
+    for (const allocation of allocationsOf(value)) {
+        facts.allocations.add(allocation);
+    }
+    visit(value);
+}
+
+function analyzeBindings(bindings: LexicalBindings, root: Frame, query: Query | null): BindingAnalysis {
+    const origins = new Map<Node, BindingOrigin | null>();
+    const facts = new Map<Node, Map<Node, ValueFacts>>();
+
+    function observeValues(state: State, site: Node, stage: 'before' | 'after'): void {
+        for (const expression of query?.(site) ?? []) {
+            if ((expression === site) !== (stage === 'after')) {
+                continue;
+            }
+            const values = facts.get(site) ?? new Map<Node, ValueFacts>();
+            const result = values.get(expression) ?? { origins: [], allocations: new Set<Allocation>() };
+            valueFacts(state, state.expressions.get(expression), result);
+            values.set(expression, result);
+            facts.set(site, values);
         }
     }
 
-    analyze(root, new Map());
+    function analyze(frame: Frame, inherited: ReadonlyMap<Variable, Value>, trackAlternatives: boolean): void {
+        const entry = bindings.entry(frame, inherited, trackAlternatives);
+        const captures = observeCaptures(bindings, entry, inherited);
+        reachingBindings(frame, entry, bindings.apply, function (state, node, stage) {
+            if (trackAlternatives) {
+                observeValues(state, node, stage);
+            }
+            if (stage === 'after') {
+                if (!trackAlternatives) {
+                    const value = state.expressions.get(node);
+                    const origin = value?.kind === 'origin' ? value.origin : null;
+                    origins.set(node, agreeingOrigin(origins.get(node), origin));
+                }
+                captures.observe(state, node);
+            }
+        });
+        const captured = captures.proven();
+        for (const child of frame.children) {
+            analyze(child, captured, trackAlternatives);
+        }
+    }
+
+    analyze(root, new Map(), false);
+    if (query !== null) {
+        analyze(root, new Map(), true);
+    }
     return {
         originOf(use) {
             return origins.get(use) ?? null;
+        },
+        originsWithin(value, at) {
+            return facts.get(at)?.get(value)?.origins ?? [];
+        },
+        allocationsAt(value, at) {
+            return Array.from(facts.get(at)?.get(value)?.allocations ?? []);
         }
     };
 }
@@ -251,7 +311,8 @@ function iterationBody(node: Readonly<Tree.Node>): Readonly<Tree.ForInStatement 
 
 export function bindingAnalysis(
     sourceCode: Readonly<TSESLint.SourceCode>,
-    complete: (analysis: BindingAnalysis) => void
+    complete: (analysis: BindingAnalysis) => void,
+    observation: { readonly query: Query; readonly visit: (node: Node) => void; } | null
 ): TSESLint.RuleListener {
     const frames: Frame[] = [];
     return {
@@ -269,6 +330,7 @@ export function bindingAnalysis(
             frames.at(-1)?.leave(segment);
         },
         '*'(node: Readonly<Tree.Node>) {
+            observation?.visit(node);
             const loop = iterationBody(node);
             if (loop !== undefined) {
                 frames.at(-1)?.record({ kind: 'iteration', node: loop });
@@ -288,7 +350,7 @@ export function bindingAnalysis(
                 frames.at(-1)?.record({ kind: 'expression', node: frame.node });
             }
             if (frame.node.type === NodeType.Program) {
-                complete(analyzeBindings(lexicalBindings(sourceCode), frame));
+                complete(analyzeBindings(lexicalBindings(sourceCode), frame, observation?.query ?? null));
             }
         }
     };

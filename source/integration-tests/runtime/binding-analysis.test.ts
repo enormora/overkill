@@ -127,7 +127,7 @@ function observeBindings(code: string): Observations {
             return {
                 ...bindingAnalysis(context.sourceCode, function (analysis) {
                     observed = probe(analysis, calls);
-                }),
+                }, null),
                 CallExpression(node) {
                     calls.push(node);
                 }
