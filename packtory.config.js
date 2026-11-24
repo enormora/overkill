@@ -223,7 +223,7 @@ export const configuration = {
                 resourceLifecycle: moduleRoot('packages/run/resource-lifecycle.entry-point'),
                 snapshotPreparation: { javaScript: 'run/snapshot-preparation.js' },
                 transcriptStore: moduleRoot('packages/run/transcript-store.entry-point'),
-                workerPoolWorker: { javaScript: 'run/worker-pool-worker.js' }
+                workerPoolWorker: { javaScript: 'run/worker-pool-bootstrap.entry-point.js' }
             },
             packageInterface: {
                 modules: packageModules({

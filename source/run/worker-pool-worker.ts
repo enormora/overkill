@@ -395,8 +395,6 @@ function attachmentTaskCommand(task: WorkerPoolTask): WorkerPoolCommand | null {
     return taskHasAttachmentCommand(task) ? task.command : null;
 }
 
-export const workerPoolEntryPointUrl = import.meta.url;
-
 export async function runWorkerPoolTask(
     task: WorkerPoolTask,
     runtime: WorkerTaskRuntime
