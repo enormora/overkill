@@ -82,7 +82,7 @@ export const testNode = suite('selected family fact recollection', [
                 return { selected: workIds.length };
             }
         });
-        scope.assert.deepEqual<unknown, unknown>(result.facts.family?.collection, { selected: selection.length });
+        scope.assert.deepEqual<unknown, unknown>(result.facts.family.collection, { selected: selection.length });
         scope.assert.equal(fixture.commands.length, 0);
         return scope.assert.collect();
     }),

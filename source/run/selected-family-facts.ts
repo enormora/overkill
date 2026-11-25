@@ -82,6 +82,20 @@ async function collectSelectedFamily(
     return validateFrozenFamilyCollection(metadata, collection.collectedPlan.family, collection.runnerErrors);
 }
 
+async function selectedFamilyMetadata(
+    run: ResolvedRun,
+    metadata: CollectedFamilyMetadata,
+    selection: readonly ResolvedRun['facts']['cases'][number]['workId'][],
+    input: FamilyCollectionRequest
+): Promise<CollectedFamilyMetadata> {
+    const collectAnalysis = run.facts.implementations === null ? input.collectAnalysis : null;
+    const actual = collectAnalysis === null
+        ? await collectSelectedFamily(run, metadata, selection, input)
+        : { ...metadata, facts: { ...metadata.facts, collection: await collectAnalysis(selection) } };
+    validateRecordedFamilyFacts(actual.facts);
+    return actual;
+}
+
 export async function resolveSelectedFamilyFacts(
     run: ResolvedRun,
     input: FamilyCollectionInput,
@@ -97,11 +111,7 @@ export async function resolveSelectedFamilyFacts(
     if (selection.length === 0) {
         return run;
     }
-    const collectAnalysis = run.facts.implementations === null ? input.collectAnalysis : null;
-    const actual = collectAnalysis === null
-        ? await collectSelectedFamily(run, metadata, selection, { ...input, signal })
-        : { ...metadata, facts: { ...metadata.facts, collection: await collectAnalysis(selection) } };
-    validateRecordedFamilyFacts(actual.facts);
+    const actual = await selectedFamilyMetadata(run, metadata, selection, { ...input, signal });
     return {
         ...run,
         facts: { ...run.facts, family: actual.facts },

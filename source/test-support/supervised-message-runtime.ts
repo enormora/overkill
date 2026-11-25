@@ -2,6 +2,7 @@ import type { TestScope } from '@overkill-dev/test';
 import { createStoredRunValue, collectedCasesByKey } from '../run/supervised-run-state.ts';
 import {
     handleChildMessage,
+    type ExecutionChildMessage,
     createReporterEventQueue,
     type SupervisedRunRuntime
 } from '../run/supervised-run-runtime.ts';
@@ -14,19 +15,17 @@ import type {
     ProcessUsageSnapshot,
     WorkId
 } from '../run/run-engine-primitives.ts';
-import type { SupervisedChildMessage } from '../run/supervised-protocol.ts';
 import { fakeWorkerRuntime, createCollectedPlan } from './worker-pool-execution-state.ts';
 import { attachmentCoordinationForWork, captureCoordinatedAttachment } from './attachment-coordination.ts';
 import { createFakeSupervisedChildProcess } from './fake-supervised-child-process.ts';
 import { runResultFactory } from './run-result-factory.ts';
 
-type RuntimeChildMessage = Exclude<SupervisedChildMessage, { readonly kind: 'timing'; }>;
 export type SupervisedMessageFixture = {
     readonly runtime: SupervisedRunRuntime;
     readonly plan: CollectedRunPlan;
     readonly work: WorkId;
     readonly reported: readonly ReporterEvent[];
-    readonly receive: (message: RuntimeChildMessage) => void;
+    readonly receive: (message: ExecutionChildMessage) => void;
     readonly capture: () => Promise<RunArtifact>;
 };
 function firstCollectedWork(plan: CollectedRunPlan): WorkId {

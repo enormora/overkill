@@ -1,25 +1,17 @@
 import { declareImplementations } from '../engine/body-reference-plan.ts';
-import type { Engine, TestPlan, TestPlanCollectionPolicy, FamilyValue, WorkId } from '../packages/engine/engine.entry-point.ts';
+import type { Engine, TestPlan, TestPlanCollectionPolicy } from '../packages/engine/engine.entry-point.ts';
 import { bindWireReplayPlan } from './replay-wire.ts';
 import type { ReplayWire } from './run-types.ts';
 import { defaultRunEngine, calibrationCapturePlan } from './default-run-engine.ts';
 import { collectRetainedHostAnalysis, transferHostFamilyPlan, registerImportedHostFamilyPlan, registerHostFamilyPlan } from './host-family-plan.ts';
 import { resolveTestPlanCollectionPolicy, assertTestPlanCollectionPolicy } from './run-selection.ts';
 import type { RunEngineModuleLoader } from './run-engine-selection.ts';
-import type { SupervisedChildCommand } from './supervised-protocol.ts';
+import type { CollectSupervisedAnalysis, SupervisedChildCommand } from './supervised-protocol.ts';
 
-import { withAnalysisDeadline, withAnalysisSignal } from './analysis-deadline.ts';
-
-export async function collectHostAnalysis(
-    plan: TestPlan,
-    workIds: readonly WorkId[],
-    timeoutMilliseconds: number
-): Promise<FamilyValue> {
-    return await withAnalysisDeadline(timeoutMilliseconds, 'Selected analysis exceeded collection timeout.', async function collect(signal) {
-        return await withAnalysisSignal(signal, async function collectRetained() {
-            return await collectRetainedHostAnalysis(plan, workIds);
-        });
-    });
+export function collectHostAnalysis(plan: TestPlan, timeoutMilliseconds: number): CollectSupervisedAnalysis {
+    return async function collect(workIds) {
+        return await collectRetainedHostAnalysis(plan, workIds, timeoutMilliseconds);
+    };
 }
 
 type HostFamilyFields = 'family' | 'implementationContext' | 'implementations' | 'testFamily';

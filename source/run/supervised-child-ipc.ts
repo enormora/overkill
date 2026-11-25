@@ -8,7 +8,7 @@ import {
     supervisedCancellationCorrelationId,
     type SupervisedAssignmentCommand,
     type SupervisedChildCommand,
-    type SupervisedAnalysisSelection,
+    type SupervisedWorkCommand,
     type SupervisedParentMessage,
     type CollectSupervisedAnalysis
 } from './supervised-protocol.ts';
@@ -47,7 +47,7 @@ function readCommand(message: unknown): SupervisedChildCommand {
     }
     throw new Error('Expected a supervised child command.');
 }
-function readAssignment(message: unknown): SupervisedAssignmentCommand | SupervisedAnalysisSelection {
+function readAssignment(message: unknown): SupervisedWorkCommand {
     const decoded = supervisedParentMessage(message);
     if (decoded?.kind === 'assign' || decoded?.kind === 'select-analysis') {
         return decoded;
@@ -55,20 +55,33 @@ function readAssignment(message: unknown): SupervisedAssignmentCommand | Supervi
     throw new Error('Expected a supervised child assignment.');
 }
 async function receiveParentMessage<Message>(read: (message: unknown) => Message): Promise<Message> {
+    if (!process.connected) {
+        throw new Error('Supervised parent disconnected.');
+    }
     return new Promise(function waitForParentMessage(resolve, reject) {
-        const listener = function receiveMessage(message: unknown): void {
-            if (envelopeMessage(message, supervisedCancellationCorrelationId, supervisedCancellationSchema) !== null) {
-                return;
-            }
-            process.off('message', listener);
-            try {
-                resolve(read(message));
-            } catch (error: unknown) {
-                reject(error instanceof Error ? error : new Error('Invalid parent IPC payload.'));
+        const listeners = {
+            disconnected: function loseParent() {
+                process.off('message', listeners.message);
+                reject(new Error('Supervised parent disconnected.'));
+            },
+            message: function receiveMessage(message: unknown) {
+                if (
+                    envelopeMessage(message, supervisedCancellationCorrelationId, supervisedCancellationSchema) !== null
+                ) {
+                    return;
+                }
+                process.off('message', listeners.message);
+                process.off('disconnect', listeners.disconnected);
+                try {
+                    resolve(read(message));
+                } catch (error: unknown) {
+                    reject(error instanceof Error ? error : new Error('Invalid parent IPC payload.'));
+                }
             }
         };
-        ownedMessageListeners.add(listener);
-        process.on('message', listener);
+        ownedMessageListeners.add(listeners.message);
+        process.on('message', listeners.message);
+        process.once('disconnect', listeners.disconnected);
     });
 }
 export async function receiveCommand(): Promise<SupervisedChildCommand> {

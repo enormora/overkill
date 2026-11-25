@@ -2,7 +2,7 @@ import {
     createResultFromResolutionError,
     reportCollectionErrorResult
 } from './run-collection-error-result.ts';
-import { createResolvedRunFromCollection } from './run-collected-resolution.ts';
+import { createResolvedRunFromCollection, type CollectionResolvedRunInput } from './run-collected-resolution.ts';
 import type {
     ResolvedRunInput
 } from './run-input-resolution.ts';
@@ -19,7 +19,6 @@ import { collectSupervisedRun } from './supervised-run-collection.ts';
 import {
     runSupervisedCommand
 } from './supervised-run.ts';
-import type { CollectSupervisedAnalysis } from './supervised-protocol.ts';
 import type { CollectedRunPlan, ResolvedRun, RunCommand, RunInvocationOptions } from './run-types.ts';
 
 type RunResult = Awaited<ReturnType<RunOrchestratorDependencies['execute']>>;
@@ -49,7 +48,7 @@ type CollectedExecution = {
 type SupervisedResolution = {
     readonly allowEmptySelection: boolean;
     readonly collection: CollectedExecution;
-    readonly collectAnalysis: CollectSupervisedAnalysis | null;
+    readonly collectAnalysis: CollectionResolvedRunInput['collectAnalysis'];
     readonly command: RunCommand;
     readonly dependencies: RunOrchestratorDependencies;
     readonly expectedDirectPlan: Awaited<ReturnType<typeof createExpectedDirectEntrypointPlan>>;

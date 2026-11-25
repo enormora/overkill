@@ -122,7 +122,8 @@ export type SupervisedAnalysisSelection = {
     readonly kind: 'select-analysis';
     readonly workIds: readonly WorkId[];
 };
-export type SupervisedParentMessage = SupervisedChildCommand | SupervisedAssignmentCommand | SupervisedAnalysisSelection;
+export type SupervisedWorkCommand = SupervisedAnalysisSelection | SupervisedAssignmentCommand;
+export type SupervisedParentMessage = SupervisedChildCommand | SupervisedWorkCommand;
 export type CollectSupervisedAnalysis = (workIds: readonly WorkId[]) => Promise<AnalysisCollection>;
 
 function hasAssignedWork(assignment: SupervisedAssignmentCommand): assignment is WorkAssignmentCommand {
@@ -148,11 +149,11 @@ export type SupervisedChildMessage = {
     readonly kind: 'collected';
     readonly runnerErrors: readonly RunResult['runnerErrors'][number][];
 } | {
-    readonly kind: 'analysis-collected';
-    readonly collection: AnalysisCollection;
-} | {
     readonly event: ReporterEvent;
     readonly kind: 'event';
+} | {
+    readonly kind: 'analysis-collected';
+    readonly collection: AnalysisCollection;
 } | {
     readonly kind: 'execution-checkpoint';
     readonly data: RunExecutionTransport['data'];
@@ -171,8 +172,8 @@ export type SupervisedChildMessage = {
 };
 
 export function supervisedChildEnvelope(
-    message: SupervisedParentMessage | SupervisedChildMessage
-): ChildProcessEnvelope<SupervisedParentMessage | SupervisedChildMessage> {
+    message: SupervisedChildMessage | SupervisedParentMessage
+): ChildProcessEnvelope<SupervisedChildMessage | SupervisedParentMessage> {
     return childProcessEnvelope(supervisedChildCorrelationId, message);
 }
 

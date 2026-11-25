@@ -3,7 +3,12 @@ import {
     type ExecutionGlobalErrorObserver
 } from '../engine/execution-global-error-observer.ts';
 import { withAnalysisDeadline, withAnalysisOwnership, withAnalysisSignal } from './analysis-deadline.ts';
-import { collectHostAnalysis, createHostTestPlan, resolveHostEngine, type HostEngineLoading } from './host-test-plan.ts';
+import {
+    collectHostAnalysis,
+    createHostTestPlan,
+    resolveHostEngine,
+    type HostEngineLoading
+} from './host-test-plan.ts';
 import { runExecutionFailure } from './execution-failure.ts';
 import type { RunnerError, TestPlan } from './run-engine-primitives.ts';
 import { RunCollectionError } from './run-errors.ts';
@@ -14,7 +19,11 @@ import {
 } from './run-test-plan.ts';
 import { validateFrozenPolicySource } from './frozen-policy-validation.ts';
 import { withFileModuleBoundary } from './file-module-boundary.ts';
-import { frozenSupervisedPolicy, type SupervisedChildCommand, type CollectSupervisedAnalysis } from './supervised-protocol.ts';
+import {
+    frozenSupervisedPolicy,
+    type SupervisedChildCommand,
+    type CollectSupervisedAnalysis
+} from './supervised-protocol.ts';
 
 export type SupervisedChildTestPlanDependencies = HostEngineLoading & {
     readonly discoverRunFiles: RunTestPlanInput['discoverRunFiles'];
@@ -145,9 +154,7 @@ export function collectChildAnalysis(
     command: SupervisedChildCommand,
     plan: TestPlan
 ): CollectSupervisedAnalysis {
-    return async function collect(workIds) {
-        return await collectHostAnalysis(plan, workIds, command.collectionTimeoutMilliseconds);
-    };
+    return collectHostAnalysis(plan, command.collectionTimeoutMilliseconds);
 }
 
 export async function validateSupervisedPolicy(

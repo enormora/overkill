@@ -98,14 +98,24 @@ export function registerHostFamilyPlan(
     return plan;
 }
 
-export async function collectRetainedHostAnalysis(plan: TestPlan, workIds: readonly WorkId[]): Promise<FamilyValue> {
+export async function collectRetainedHostAnalysis(
+    plan: TestPlan,
+    workIds: readonly WorkId[],
+    timeoutMilliseconds: number
+): Promise<FamilyValue> {
     const prepared = families.get(plan)?.retainedAnalysis ?? null;
     if (prepared === null) {
         throw new TypeError('Expected an analysis session.');
     }
-    const collected = await prepared.collect({ workIds, signal: analysisSignal() });
-    analysisCollections.set(prepared, collected);
-    return collected.facts.collection;
+    return await withAnalysisDeadline(
+        timeoutMilliseconds,
+        'Selected analysis exceeded collection timeout.',
+        async function collect(signal) {
+            const collected = await prepared.collect({ workIds, signal });
+            analysisCollections.set(prepared, collected);
+            return collected.facts.collection;
+        }
+    );
 }
 
 function assertAnalysisAssignment(selected: TestPlan, collected: CollectedFamily): void {
@@ -174,7 +184,10 @@ export async function executeHostFamily(
         const prepared = family.retainedAnalysis;
         const retained = prepared === null ? undefined : analysisCollections.get(prepared);
         if (retained === undefined) {
-            return await executeRecreatedFamily({ family, selected, driver, analysis, options: admittedOptions }, signal);
+            return await executeRecreatedFamily(
+                { family, selected, driver, analysis, options: admittedOptions },
+                signal
+            );
         }
         assertAnalysisAssignment(selected, retained);
         return await executePreparedFamilyWithDriver(family.engine, retained, { ...admittedOptions, signal }, driver);
@@ -209,13 +222,15 @@ export async function registerImportedHostFamilyPlan(
     const { projectRoot, processModel: placement } = definition;
     const signal = analysisSignal();
     await using ownership = new AsyncDisposableStack();
-    const prepared = ownership.use(await preparePlacedFamily(engine, {
-        testPlan: source,
-        testFamily: binding.testFamily,
-        binding,
-        projectRoot,
-        signal
-    }, placement));
+    const prepared = ownership.use(
+        await preparePlacedFamily(engine, {
+            testPlan: source,
+            testFamily: binding.testFamily,
+            binding,
+            projectRoot,
+            signal
+        }, placement)
+    );
     await recordFamilyCatalog(prepared, definition, signal);
     const lifetime = binding.testFamily.features.execution === 'analysis' ? analysisOwnership() : undefined;
     lifetime?.use(ownership.move());

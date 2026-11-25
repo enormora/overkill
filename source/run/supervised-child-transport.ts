@@ -196,7 +196,7 @@ type AnalysisSelectionRequest = {
     readonly failure: () => Promise<Error>;
     readonly timeoutMilliseconds: number;
 };
-type AnalysisSelection = {
+export type AnalysisSelection = {
     readonly awaitingResponse: () => boolean;
     readonly receive: (message: SelectedAnalysis) => void;
     readonly request: (

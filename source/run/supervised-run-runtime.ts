@@ -47,7 +47,7 @@ import type {
     // eslint-disable-next-line import/max-dependencies -- This orchestration boundary consumes the resource-check protocol directly.
 } from './supervised-protocol.ts';
 
-type ExecutionChildMessage = Exclude<SupervisedChildMessage, { readonly kind: 'analysis-collected' | 'timing'; }>;
+export type ExecutionChildMessage = Exclude<SupervisedChildMessage, { readonly kind: 'analysis-collected' | 'timing'; }>;
 
 export type ReporterEventQueue = {
     readonly add: (eventReport: Promise<void>) => void;
