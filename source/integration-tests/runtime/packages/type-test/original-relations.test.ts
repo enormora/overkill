@@ -140,7 +140,7 @@ async function originalTypes(project: FrozenProject, directory: string): Promise
     const types = new Map<string, Type>();
     for (const statement of source.statements) {
         if (project.compiler.syntax.isTypeAliasDeclaration(statement)) {
-            types.set(statement.name.text, await project.configured.checker.getTypeFromTypeNode(statement.type));
+            types.set(statement.name.text, await project.checker.getTypeFromTypeNode(statement.type));
         }
     }
     return types;

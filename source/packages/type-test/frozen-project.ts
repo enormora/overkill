@@ -1,7 +1,7 @@
 import { setTimeout as yieldToTimers } from 'node:timers/promises';
 import { resolve } from 'node:path';
 import { readFile } from 'node:fs/promises';
-import type { API, Snapshot, Project, ParsedCommandLine } from 'typescript-beta/async';
+import type { API, Project, ParsedCommandLine } from 'typescript-beta/async';
 import {
     closeCompilerConnection,
     createCompilerLifetime,
@@ -21,9 +21,7 @@ import type { TypeAnalysis } from './source-analysis-port.ts';
 
 type CapturedProject = {
     readonly compiler: InstalledCompiler;
-    readonly api: API;
-    readonly snapshot: Snapshot;
-    readonly configured: Project;
+    readonly checker: Project['checker'];
     readonly projectConfigPath: string;
     readonly project: ParsedCommandLine;
     readonly program: Project['program'];
@@ -48,8 +46,13 @@ export async function checkCompilerCancellation(signal: AbortSignal): Promise<vo
     signal.throwIfAborted();
 }
 export const fingerprint = sourceFingerprint;
-function configuredProject(snapshot: Snapshot, path: string): Project {
-    const project = snapshot.getConfiguredProject(path);
+async function openProject(input: ProjectSession, parsed: ParsedCommandLine): Promise<Project> {
+    if (!parsed.projectReferences?.length && parsed.typeAcquisition?.enable !== true) {
+        const program = await input.api.createProgram(parsed.fileNames, parsed.options);
+        return program.getProject();
+    }
+    const snapshot = await input.api.createSnapshot({ openProjects: [ input.projectConfigPath ] });
+    const project = snapshot.getConfiguredProject(input.projectConfigPath);
     if (project === undefined) {
         throw new Error('Original configured project is unavailable.');
     }
@@ -69,22 +72,19 @@ async function captureProject(
     input: ProjectSession
 ): Promise<CapturedProject> {
     const project = await parseProject(input);
-    const snapshot = await input.api.createSnapshot({ openProjects: [ input.projectConfigPath ] });
+    const { program, checker } = await openProject(input, project);
     input.signal.throwIfAborted();
-    const configured = configuredProject(snapshot, input.projectConfigPath);
-    const paths = await configured.program.getSourceFileNames();
+    const paths = await program.getSourceFileNames();
     input.signal.throwIfAborted();
     for (const path of paths) {
         input.observation.fs.realpath(path);
     }
     return {
         compiler: input.compiler,
-        api: input.api,
-        snapshot,
-        configured,
+        checker,
         projectConfigPath: input.projectConfigPath,
         project,
-        program: configured.program,
+        program,
         observation: input.observation,
         inputs: input.observation.snapshot(),
         projectText: await readFile(input.projectConfigPath, 'utf8')
@@ -135,7 +135,7 @@ export function originalProjectFacts(project: FrozenProject): unknown {
 }
 
 export function typeAnalysis(project: FrozenProject): TypeAnalysis {
-    return { program: project.program, compiler: project.compiler.syntax, checker: project.configured.checker };
+    return { program: project.program, compiler: project.compiler.syntax, checker: project.checker };
 }
 
 export async function disposeProject(project: FrozenProject): Promise<void> {
