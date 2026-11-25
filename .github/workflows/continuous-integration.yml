@@ -36,6 +36,7 @@ jobs:
                   node --input-type=module <<'PROFILE'
                   import { readFileSync, writeFileSync } from 'node:fs';
                   import { resolve } from 'node:path';
+                  import ts from 'typescript';
                   import { performanceCases } from './source/benchmarks/performance-cases.ts';
                   import { writeConsumer } from './source/benchmarks/consumer-fixture.ts';
                   const targets = {
@@ -57,12 +58,12 @@ jobs:
                   for (const [file, names] of Object.entries(targets)) {
                     let source = readFileSync(file, 'utf8');
                     for (const name of names) {
-                      const header = new RegExp('((?:export )?(async )?function ' + name + ')(\\([\\s\\S]*?\\n?\\)(?:\\s*:\\s*[^;]+?)?\\s*\\{)\\n');
-                      const match = source.match(header);
-                      if (!match) throw new Error('Missing function ' + name + ' in ' + file);
-                      const start = match.index + match[0].length;
-                      const close = source.indexOf('\n}', start);
-                      if (close < 0) throw new Error('Missing function boundary ' + name);
+                      const parsed = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true);
+                      const declaration = parsed.statements.find(statement =>
+                        ts.isFunctionDeclaration(statement) && statement.name?.text === name);
+                      if (!declaration?.body) throw new Error('Missing function body ' + name + ' in ' + file);
+                      const start = declaration.body.getStart(parsed) + 1;
+                      const close = declaration.body.end - 1;
                       source = source.slice(0, start)
                         + '    const stageStarted = performance.now();\n    const stageCpu = process.cpuUsage();\n    try {\n'
                         + source.slice(start, close)
