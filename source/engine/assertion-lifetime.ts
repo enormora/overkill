@@ -22,7 +22,7 @@ export type AssertionOrigin = {
     readonly trial: PropertyTrialIdentity | null;
 };
 
-export type AssertionClosure = 'interrupted' | 'settled';
+type AssertionClosure = 'interrupted' | 'settled';
 
 type AssertionBody<Value> = () => Promise<Value> | Value;
 
@@ -141,7 +141,7 @@ export type LateAssertionActivity = {
     readonly closure: AssertionClosure;
 };
 
-export function lateAssertionFailure(activity: LateAssertionActivity): TestContractFailure {
+function lateAssertionFailure(activity: LateAssertionActivity): TestContractFailure {
     return Object.freeze({
         actual: activity,
         code: 'late-assertion-activity',
