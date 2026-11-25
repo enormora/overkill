@@ -31,51 +31,30 @@ jobs:
                   node-version-file: package.json
             - name: Install dependencies
               run: npm ci
-            - name: Attribute native project creation with batched sources
+            - name: Check out the performance baseline
+              uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+              with:
+                  ref: 98b24f25ed84b60bfa16935df7795cbc934fb9b7
+                  path: target/performance-baseline-source
+                  persist-credentials: false
+            - name: Benchmark the baseline
+              working-directory: target/performance-baseline-source
               run: |
-                  node --input-type=module <<'PROFILE'
-                  import { performanceCases } from './source/benchmarks/performance-cases.ts';
-                  import { writeConsumer } from './source/benchmarks/consumer-fixture.ts';
-                  import { observeProjectInputs, verifyProjectInputs } from './source/packages/type-test/frozen-inputs.ts';
-                  import { compilerFileSystem } from './source/packages/type-test/compiler-file-system.ts';
-                  import { API } from 'typescript-beta/async';
-                  import { createFileSystemLayer } from 'typescript-beta/fs';
-                  import { resolve } from 'node:path';
-                  import { isDeepStrictEqual } from 'node:util';
-                  const root = resolve('target/performance/stage-profile');
-                  const config = resolve(root,'tsconfig.json');
-                  const workload = performanceCases.find(entry => entry.id === 'type-test-cli-many-files-serial');
-                  await writeConsumer(root,resolve('node_modules'),workload);
-                  let known;
-                  let sources;
-                  const signal = new AbortController().signal;
-                  for (const mode of ['observed','canonical-layer','all-layer','canonical-layer','observed']) {
-                      const observation = observeProjectInputs();
-                      const api = new API({ cwd:root,fs:observation.fs,runExternalCode:false });
-                      const parsed = await api.parseConfigFile(config);
-                      const started = performance.now();
-                      let layer;
-                      let loaded = 0;
-                      if (mode !== 'observed') {
-                          verifyProjectInputs(known,signal);
-                          const files = known.files.filter(entry => entry.value !== null &&
-                              (mode === 'all-layer' || compilerFileSystem.realpath(entry.path) === entry.path));
-                          layer = createFileSystemLayer(files.map(entry=>[entry.path,observation.fs.readFile(entry.path)]));
-                          loaded = files.length;
-                      }
-                      const opened = performance.now();
-                      const parameters = { rootFiles:parsed.fileNames,compilerOptions:parsed.options };
-                      const program = (await api.createSnapshot({createPrograms:[parameters],fileSystem:layer})).operation.createdPrograms[0];
-                      const names = await program.getSourceFileNames();
-                      for (const path of names) observation.fs.realpath(path);
-                      const recorded = observation.snapshot();
-                      known ??= recorded;
-                      sources ??= names;
-                      const extras = Object.fromEntries(Object.entries(recorded).map(([group,entries])=>{
-                          const knownPaths = new Map(known[group].map(({path,value})=>[path,value]));
-                          return [group,entries.filter(({path,value})=>!knownPaths.has(path) || !isDeepStrictEqual(knownPaths.get(path),value)).length];
-                      }));
-                      console.log(JSON.stringify({mode,loaded,read:Math.round(opened-started),create:Math.round(performance.now()-opened),sameSources:isDeepStrictEqual(names,sources),extras}));
-                      await api.close();
-                  }
-                  PROFILE
+                  npm ci
+                  node build-benchmark-html.js
+                  node source/benchmarks/run-performance.entry-point.ts compare ../performance/baseline type-test-cli-many-files-serial source/benchmarks/baselines/shared.json
+            - name: Benchmark the checkout
+              run: |
+                  node build-benchmark-html.js
+                  node source/benchmarks/run-performance.entry-point.ts compare target/performance/full type-test-cli-many-files-serial source/benchmarks/baselines/shared.json
+            - name: Retain performance evidence
+              if: ${{ !cancelled() }}
+              uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+              with:
+                  name: performance
+                  path: |
+                      target/performance/full/report.html
+                      target/performance/full/measurements.json
+                      target/performance/full/state
+                      target/performance/baseline/report.html
+                      target/performance/baseline/measurements.json
