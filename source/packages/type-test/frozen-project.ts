@@ -25,6 +25,7 @@ type CapturedProject = {
     readonly projectConfigPath: string;
     readonly project: ParsedCommandLine;
     readonly program: Project['program'];
+    readonly diagnosticProgram: () => Promise<Project['program']>;
     readonly inputs: FrozenInputs;
     readonly observation: ProjectInputObservation;
     readonly projectText: string;
@@ -46,11 +47,7 @@ export async function checkCompilerCancellation(signal: AbortSignal): Promise<vo
     signal.throwIfAborted();
 }
 export const fingerprint = sourceFingerprint;
-async function openProject(input: ProjectSession, parsed: ParsedCommandLine): Promise<Project> {
-    if (!parsed.projectReferences?.length && parsed.typeAcquisition?.enable !== true) {
-        const program = await input.api.createProgram(parsed.fileNames, parsed.options);
-        return program.getProject();
-    }
+async function openConfiguredProject(input: ProjectSession): Promise<Project> {
     const snapshot = await input.api.createSnapshot({ openProjects: [ input.projectConfigPath ] });
     const project = snapshot.getConfiguredProject(input.projectConfigPath);
     if (project === undefined) {
@@ -72,7 +69,10 @@ async function captureProject(
     input: ProjectSession
 ): Promise<CapturedProject> {
     const project = await parseProject(input);
-    const { program, checker } = await openProject(input, project);
+    const standalone = (project.projectReferences?.length ?? 0) === 0 && project.typeAcquisition?.enable !== true;
+    const { program, checker } = standalone
+        ? (await input.api.createProgram(project.fileNames, project.options)).getProject()
+        : await openConfiguredProject(input);
     input.signal.throwIfAborted();
     const paths = await program.getSourceFileNames();
     input.signal.throwIfAborted();
@@ -85,6 +85,9 @@ async function captureProject(
         projectConfigPath: input.projectConfigPath,
         project,
         program,
+        async diagnosticProgram() {
+            return standalone ? (await openConfiguredProject(input)).program : program;
+        },
         observation: input.observation,
         inputs: input.observation.snapshot(),
         projectText: await readFile(input.projectConfigPath, 'utf8')

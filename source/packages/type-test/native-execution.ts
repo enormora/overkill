@@ -27,18 +27,19 @@ function projectDiagnostic(diagnostic: Diagnostic): string {
 }
 
 async function validateProject(project: FrozenProject, signal: AbortSignal): Promise<void> {
+    const program = await project.diagnosticProgram();
     const diagnostics: Diagnostic[] = [];
     for (
         const read of [
-            project.program.getConfigFileParsingDiagnostics,
-            project.program.getGlobalDiagnostics,
-            project.program.getProgramDiagnostics,
-            project.program.getSyntacticDiagnostics,
-            project.program.getSemanticDiagnostics
+            program.getConfigFileParsingDiagnostics,
+            program.getGlobalDiagnostics,
+            program.getProgramDiagnostics,
+            program.getSyntacticDiagnostics,
+            program.getSemanticDiagnostics
         ]
     ) {
         signal.throwIfAborted();
-        diagnostics.push(...await read.call(project.program));
+        diagnostics.push(...await read.call(program));
     }
     if (diagnostics.length > 0) {
         throw new Error(diagnostics.map(projectDiagnostic).join('\n'), { cause: diagnostics });
