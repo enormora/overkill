@@ -171,7 +171,7 @@ export async function verifyInstalledCompiler(compiler: InstalledCompiler, signa
             throw new Error('Compiler resolution changed after preparation.');
         }
     }
-    await Promise.all(compiler.files.map(function verify(file) {
+    await Promise.all(compiler.files.map(async function verify(file) {
         return readCompilerFile(async function verifyFingerprint() {
             signal.throwIfAborted();
             if (await fingerprint(file.path) !== file.fingerprint) {

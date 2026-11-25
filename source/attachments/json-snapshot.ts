@@ -22,7 +22,7 @@ class JsonByteLimitError extends Error {
 function createJsonSnapshotBudget(maxBytes: number): JsonSnapshotBudget {
     const ancestors = new Set<JsonContainer>();
     const remaining = createStoredValue(maxBytes);
-    const bounded = Number.isFinite(maxBytes);
+    const bounded = maxBytes !== Number.POSITIVE_INFINITY;
     function reserve(bytes: number): void {
         if (bytes > remaining.read()) {
             throw new JsonByteLimitError();
