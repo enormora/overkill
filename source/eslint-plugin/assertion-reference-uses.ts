@@ -63,10 +63,11 @@ function localAssignment(
         return false;
     }
     const { left } = assignment;
-    return left.type === NodeType.MemberExpression
-        ? (!left.computed || left.property.type === NodeType.Literal) &&
-            analysis.allocationsAt(left.object, assignment).length === 1
-        : localBindingTarget(left, bindings);
+    if (left.type !== NodeType.MemberExpression) {
+        return localBindingTarget(left, bindings);
+    }
+    const staticKey = !left.computed || left.property.type === NodeType.Literal;
+    return staticKey && analysis.allocationsAt(left.object, assignment).length === 1;
 }
 
 function carriesReference(parent: Node, value: Node, analysis: BindingAnalysis): boolean {

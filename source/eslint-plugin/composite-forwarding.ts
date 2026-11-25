@@ -64,8 +64,9 @@ function isDefinitionProperty(
         return false;
     }
     const key = propertyName(property);
-    return key === 'assert' || key === 'name' && property.value.type === NodeType.Literal &&
-            typeof property.value.value === 'string';
+    const { value } = property;
+    const fixedName = value.type === NodeType.Literal && typeof value.value === 'string';
+    return key === 'assert' || key === 'name' && fixedName;
 }
 
 function localCallback(property: Readonly<Tree.Property> | undefined, analysis: BindingAnalysis): FunctionNode | null {
@@ -105,10 +106,11 @@ function isLiteral(node: Node): boolean {
         })
         .with({ type: NodeType.ObjectExpression }, function ({ properties }) {
             return properties.every(function (property) {
-                return property.type === NodeType.Property && property.kind === 'init' &&
-                    propertyName(property) !== null && propertyName(property) !== '__proto__' && isLiteral(
-                        property.value
-                    );
+                if (property.type !== NodeType.Property || property.kind !== 'init') {
+                    return false;
+                }
+                const key = propertyName(property);
+                return key !== null && key !== '__proto__' && isLiteral(property.value);
             });
         })
         .otherwise(function () {
@@ -142,9 +144,12 @@ function directBinding(node: Node): boolean {
 }
 
 function operand(node: Node, body: FunctionNode, analysis: BindingAnalysis): boolean {
+    if (isLiteral(node)) {
+        return true;
+    }
     const origin = analysis.originOf(node);
-    return isLiteral(node) || directReference(node) &&
-            origin?.root.kind === 'parameter' && origin.root.owner === body && origin.root.index > 0;
+    const forwarded = origin?.root.kind === 'parameter' && origin.root.owner === body && origin.root.index > 0;
+    return directReference(node) && forwarded;
 }
 
 function callOrigin(node: Node, analysis: BindingAnalysis): Readonly<Tree.CallExpression> | null {
