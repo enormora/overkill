@@ -21,6 +21,7 @@ type Query = (site: Node) => readonly Node[];
 export type BindingAnalysis = {
     readonly originsWithin: (value: Node, at: Node) => readonly BindingOrigin[];
     readonly allocationsAt: (value: Node, at: Node) => readonly Allocation[];
+    readonly observed: (use: Node) => boolean;
     readonly originOf: (use: Readonly<Tree.Node>) => BindingOrigin | null;
 };
 
@@ -335,6 +336,9 @@ function analyzeBindings(bindings: LexicalBindings, root: Frame, query: Query | 
         analyze(root, new Map(), true);
     }
     return {
+        observed(use) {
+            return origins.has(use);
+        },
         originOf(use) {
             return origins.get(use) ?? null;
         },

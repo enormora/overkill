@@ -20,7 +20,11 @@ const engineAuthors = [
     'createWorkloadTestCase'
 ] as const;
 
+const compositeFactory = 'defineCompositeAssertion';
+
 const authoringExports = [
+    [ '@overkill-dev/assert', [ compositeFactory ] ],
+    [ '@overkill-dev/test/assert', [ compositeFactory ] ],
     [ testPackage, [ ...testAuthors, 'createTestFacade' ] ],
     [ `${testPackage}/compatibility`, [ 'throwingTest' ] ],
     [ `${testPackage}/resources`, wrappers ],
@@ -120,7 +124,50 @@ function declaredAuthors(program: ts.Program): ReadonlyMap<ts.SignatureDeclarati
 
 const signaturesByProgram = new WeakMap<ts.Program, ReadonlyMap<ts.SignatureDeclaration, Author>>();
 
-function typedAuthor(sourceCode: Readonly<TSESLint.SourceCode>): (call: Call) => Author | null {
+function registeredSignatures(program: ts.Program): ReadonlyMap<ts.SignatureDeclaration, Author> {
+    const signatures = signaturesByProgram.get(program) ?? declaredAuthors(program);
+    signaturesByProgram.set(program, signatures);
+    return signatures;
+}
+
+function importsFrom(statement: ts.Statement, source: string): statement is ts.ImportDeclaration {
+    return ts.isImportDeclaration(statement) && ts.isStringLiteral(statement.moduleSpecifier) &&
+        statement.moduleSpecifier.text === source;
+}
+
+function importedSymbol(
+    checker: ts.TypeChecker,
+    file: ts.SourceFile,
+    source: string,
+    name: string | undefined
+): ts.Symbol | undefined {
+    const statement = file.statements.find(function (candidate): candidate is ts.ImportDeclaration {
+        return importsFrom(candidate, source);
+    });
+    const module = statement === undefined ? undefined : checker.getSymbolAtLocation(statement.moduleSpecifier);
+    return module === undefined ? undefined : checker.getExportsOfModule(module).find(function (symbol) {
+        return symbol.getName() === name;
+    });
+}
+
+function importedDeclaration(
+    checker: ts.TypeChecker,
+    file: ts.SourceFile,
+    origin: BindingOrigin,
+    declaration: ts.SignatureDeclaration
+): boolean {
+    if (origin.root.kind !== 'import' || origin.path.length !== 1) {
+        return false;
+    }
+    const exported = importedSymbol(checker, file, origin.root.source, origin.path[0]);
+    if (exported === undefined) {
+        return false;
+    }
+    const target = (exported.flags & ts.SymbolFlags.Alias) === 0 ? exported : checker.getAliasedSymbol(exported);
+    return (target.declarations ?? []).includes(declaration);
+}
+
+function typedAuthor(sourceCode: Readonly<TSESLint.SourceCode>): (call: Call, origin: BindingOrigin) => Author | null {
     const { program, esTreeNodeToTSNodeMap } = sourceCode.parserServices ?? {};
     if (program === null || program === undefined || esTreeNodeToTSNodeMap === undefined) {
         return function () {
@@ -128,19 +175,21 @@ function typedAuthor(sourceCode: Readonly<TSESLint.SourceCode>): (call: Call) =>
         };
     }
     const checker = program.getTypeChecker();
-    return function (call) {
+    return function (call, origin) {
         const node = esTreeNodeToTSNodeMap.get(call);
-        if (!ts.isCallExpression(node)) {
-            return null;
-        }
-        const declaration = checker.getResolvedSignature(node)?.getDeclaration();
+        const declaration = resolvedCallDeclaration(node, checker);
         if (declaration === undefined) {
             return null;
         }
-        const signatures = signaturesByProgram.get(program) ?? declaredAuthors(program);
-        signaturesByProgram.set(program, signatures);
-        return signatures.get(declaration) ?? null;
+        const author = registeredSignatures(program).get(declaration) ?? null;
+        return author === compositeFactory && !importedDeclaration(checker, node.getSourceFile(), origin, declaration)
+            ? null
+            : author;
     };
+}
+
+function resolvedCallDeclaration(node: ts.Node, checker: ts.TypeChecker): ts.SignatureDeclaration | undefined {
+    return ts.isCallExpression(node) ? checker.getResolvedSignature(node)?.getDeclaration() : undefined;
 }
 
 function propertyName(property: Readonly<Tree.Property>): unknown {
@@ -184,7 +233,7 @@ function authorResolver(source: Readonly<TSESLint.SourceCode>, analysis: Binding
                 return listed(engineAuthors, origin.path[0]);
             })
             .with('createTestFacade', function () {
-                return fromSignature(call);
+                return fromSignature(call, origin);
             })
             .otherwise(function () {
                 return null;
@@ -197,7 +246,7 @@ function authorResolver(source: Readonly<TSESLint.SourceCode>, analysis: Binding
             return null;
         }
         return origin.root.kind === 'import'
-            ? fromImport(origin) ?? fromSignature(call)
+            ? fromImport(origin) ?? fromSignature(call, origin)
             : memberOf(call, origin, authorOf);
     }
 
@@ -317,4 +366,15 @@ export function scopeParameters(
         }
     }
     return owners;
+}
+
+export function compositeAssertionFactories(
+    source: Readonly<TSESLint.SourceCode>,
+    analysis: BindingAnalysis,
+    calls: readonly Call[]
+): readonly Call[] {
+    const resolve = authorResolver(source, analysis);
+    return calls.filter(function (call) {
+        return resolve(call) === compositeFactory;
+    });
 }
