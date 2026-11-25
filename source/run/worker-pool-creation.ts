@@ -1,6 +1,7 @@
 import { mkdtempDisposable, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { readProcessEnvironment } from './node-host-readers.ts';
 import { loadTinypoolConstructor, type TinypoolInstance } from './tinypool-node-compatibility.ts';
 import { workerPoolEntryPointUrl } from './worker-pool-bootstrap.entry-point.ts';
 import type { WorkerPoolCreationOptions } from './run-orchestrator-dependencies.ts';
