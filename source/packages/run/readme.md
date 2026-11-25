@@ -489,9 +489,7 @@ artifact.
 `workerLifecycle: 'reuse'` reuses worker threads between units.
 `workerLifecycle: 'fresh-worker-per-unit'` creates disposable isolation per
 unit. The first execution in a Node pool can populate its temporary compile
-cache. Later workers use it in read-only mode and can share the runner's
-startup modules for the lifetime of the pool. Test modules are loaded
-separately in every worker.
+cache. Later workers use the cache in read-only mode.
 `supervised-process` remains available when a single process-isolated
 child boundary is preferred.
 
