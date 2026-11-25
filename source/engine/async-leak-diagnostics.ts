@@ -191,9 +191,7 @@ export function createAsyncLeakMonitor(): AsyncLeakMonitor {
             }
         },
         promiseResolve: releasePromise
-    });
-
-    hook.enable();
+    }).enable();
     observation.register(function stopPromiseObservation() {
         hook.disable();
         stopResourceAllocations();

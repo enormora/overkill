@@ -209,10 +209,15 @@ export type AssertionContext = {
     readonly acceptsPropertyEvidence: () => boolean;
 };
 
+type OwnedAssertionContext = {
+    readonly owner: symbol;
+    readonly lifetime: AssertionContext;
+};
+
 export function createAssertionContext(
     origin: AssertionOrigin,
     retainFailure: (failure: TestContractFailure) => void
-): { readonly owner: symbol; readonly lifetime: AssertionContext; } {
+): OwnedAssertionContext {
     const reportLate = currentLateAssertionSink();
     const interruption = new AbortController();
     const lateFailures: TestContractFailure[] = [];
