@@ -12,4 +12,5 @@ const moduleLoading = createModuleLoading({
     }
 });
 
+export const { withModuleHooks } = moduleLoading;
 export const { withModuleLoadingScope, resolveModuleUrl, withModuleDelivery, isDeliveredModuleImport } = moduleLoading;
