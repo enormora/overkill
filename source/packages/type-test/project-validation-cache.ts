@@ -1,29 +1,13 @@
-import { lstat, mkdir } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { withRunnerInfrastructure } from '../../execution-ownership.ts';
 import { createNodeFileStore } from '../../file-store.ts';
+import { privateCacheDirectory } from '../../private-cache-directory.ts';
 import { fingerprint, originalProjectFacts, type FrozenProject } from './frozen-project.ts';
 
 export type RememberProjectValidation = (save: () => Promise<void>) => void;
 
 const files = createNodeFileStore();
-const privateDirectoryMode = 0o700;
-const groupAndOtherModeRange = 0o100;
 const cacheFormatVersion = 1;
-
-async function validationDirectory(): Promise<string | null> {
-    const user = process.getuid?.();
-    if (user === undefined) {
-        return null;
-    }
-    const directory = join(tmpdir(), `overkill-type-test-validation-${user}`);
-    await mkdir(directory, { mode: privateDirectoryMode, recursive: true });
-    const info = await lstat(directory);
-    return info.isDirectory() && info.uid === user && info.mode % groupAndOtherModeRange === 0
-        ? directory
-        : null;
-}
 
 function projectValidationKey(project: FrozenProject): string {
     return fingerprint(JSON.stringify([
@@ -45,7 +29,7 @@ type ValidationEntry = {
 };
 
 async function validationEntry(project: FrozenProject): Promise<ValidationEntry | null> {
-    const directory = await validationDirectory();
+    const directory = await privateCacheDirectory('overkill-type-test-validation');
     if (directory === null) {
         return null;
     }

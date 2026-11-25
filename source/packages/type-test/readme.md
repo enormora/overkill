@@ -257,7 +257,8 @@ includes its share of assertion evaluation. Shared project validation is
 recorded in run timings. On systems with Unix user IDs, repeated runs can
 reuse successful project diagnostics from a private temporary cache when
 the compiler, configuration, and observed inputs match. Each run verifies
-those inputs and evaluates its selected assertions.
+those inputs and evaluates its selected assertions. Supervised analysis can
+also reuse compiled Node.js modules when coverage collection is disabled.
 
 The type-test adapter artifact retains site evidence and diagnostics, including
 inconclusive sites in a case that already failed.

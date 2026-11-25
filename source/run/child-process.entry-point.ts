@@ -18,6 +18,8 @@ export const childProcessEntryPointUrl = import.meta.url;
 async function runSupervisedRole(): Promise<void> {
     if (process.argv.includes(analysisProcessGroupArgument)) {
         await startAnalysisOwnerMonitor(fileURLToPath(childProcessEntryPointUrl));
+        const { enableAnalysisCompileCache } = await import('./analysis-compile-cache.ts');
+        await enableAnalysisCompileCache();
     }
     await import('./supervised-child.entry-point.ts');
 }
