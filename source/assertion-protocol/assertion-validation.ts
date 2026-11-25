@@ -1,5 +1,5 @@
 import { types } from 'node:util';
-import { unknownSourceLocation } from './source-location.ts';
+import { resolveSourceLocation, unknownSourceLocation } from './source-location.ts';
 import type {
     AssertionNode,
     CompositeAssertionChildNode
@@ -246,7 +246,7 @@ function providerValue(provider: () => unknown): unknown {
 function resolveLocation(entry: ResolvableSourceLocation, index: number): SourceLocation {
     return typeof entry === 'function'
         ? location(providerValue(entry), `sourceLocations[${index}]`, [])
-        : entry;
+        : resolveSourceLocation(entry);
 }
 
 function resolveLocations(locations: ResolvableSourceLocations): ResolvedLocations {
