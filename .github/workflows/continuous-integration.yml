@@ -218,7 +218,9 @@ jobs:
             - name: Install dependencies
               run: npm ci
             - name: Benchmark the checkout
-              run: npx just benchmark
+              run: |
+                  node build-benchmark-html.js
+                  node source/benchmarks/run-performance.entry-point.ts compare target/performance/full type-test-cli-many-files-serial source/benchmarks/baselines/shared.json
             - name: Retain performance evidence
               if: ${{ !cancelled() }}
               uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
