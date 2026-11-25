@@ -1,10 +1,38 @@
 import { isAbsolute } from 'node:path';
 import { z } from 'zod/v4';
 import { workIdSchema } from '../engine/identity-schema.ts';
-import { snapshotFamilyValue } from '../engine/test-family.ts';
+import { maxJsonDepth } from '../attachments/json-snapshot.ts';
+import type { FamilyValue } from '../engine/test-family.ts';
 import type { FrozenFamilyDefinition } from './family-catalog.ts';
 
-export const familyValueSchema = z.json().transform(snapshotFamilyValue);
+function invalidFamilyEvidence(reason: string): never {
+    throw new TypeError('Family settings require lossless, acyclic JSON.', {
+        cause: new TypeError('Portable inputs require lossless, acyclic JSON.', {
+            cause: new TypeError(reason)
+        })
+    });
+}
+
+function freezeFamilyEvidence(value: FamilyValue, depth: number): void {
+    if (typeof value !== 'object' || value === null) {
+        if (Object.is(value, -0)) {
+            invalidFamilyEvidence('Portable inputs require lossless JSON numbers.');
+        }
+        return;
+    }
+    if (depth > maxJsonDepth) {
+        invalidFamilyEvidence('Attachments require finite, acyclic JSON values with depth at most 64.');
+    }
+    for (const child of Object.values(value)) {
+        freezeFamilyEvidence(child, depth + 1);
+    }
+    Object.freeze(value);
+}
+
+export const familyValueSchema = z.json().transform(function freeze(value) {
+    freezeFamilyEvidence(value, 0);
+    return value;
+});
 export const frozenFamilyDefinitionSchema: z.ZodType<FrozenFamilyDefinition> = z.strictObject({
     checkpoint: z
         .strictObject({

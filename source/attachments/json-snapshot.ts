@@ -11,7 +11,7 @@ type JsonSnapshotBudget = {
     readonly leave: (value: JsonContainer) => void;
     readonly contains: (value: JsonContainer) => boolean;
 };
-const maxJsonDepth = 64;
+export const maxJsonDepth = 64;
 const containerBytes = 2;
 class JsonByteLimitError extends Error {
     public constructor() {
@@ -76,21 +76,19 @@ function objectSnapshot(
     depth: number,
     visit: JsonVisit
 ): ReadonlyDeep<JsonValue> {
-    const entries: Record<string, ReadonlyDeep<JsonValue>> = {};
-    const keys = Reflect.ownKeys(value).filter(function enumerableKey(key) {
-        return Object.getOwnPropertyDescriptor(value, key)?.enumerable === true;
-    });
-    for (const [ index, key ] of keys.entries()) {
+    const entries: [string, ReadonlyDeep<JsonValue>][] = [];
+    for (const key of Reflect.ownKeys(value)) {
+        const descriptor = Object.getOwnPropertyDescriptor(value, key);
+        if (descriptor?.enumerable !== true) {
+            continue;
+        }
         if (typeof key !== 'string') {
             throw new TypeError('JSON attachments cannot contain symbol keys.');
         }
-        budget.reserveValue(key, 1 + (index === 0 ? 0 : 1));
-        Object.defineProperty(entries, key, {
-            enumerable: true,
-            value: visit(descriptorValue(Object.getOwnPropertyDescriptor(value, key)), depth + 1)
-        });
+        budget.reserveValue(key, 1 + (entries.length === 0 ? 0 : 1));
+        entries.push([ key, visit(descriptorValue(descriptor), depth + 1) ]);
     }
-    return Object.freeze(entries);
+    return Object.freeze(Object.fromEntries(entries));
 }
 function isContainer(value: unknown): value is JsonContainer {
     return typeof value === 'object' && value !== null;
