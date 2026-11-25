@@ -68,7 +68,7 @@ async function parseProject(input: ProjectSession): Promise<ParsedCommandLine> {
 async function openAnalysisProject(
     input: ProjectSession,
     parsed: ParsedCommandLine
-): Promise<Pick<CapturedProject, 'program' | 'checker' | 'diagnosticProgram'>> {
+): Promise<Pick<CapturedProject, 'checker' | 'diagnosticProgram' | 'program'>> {
     const standalone = (parsed.projectReferences?.length ?? 0) === 0 && parsed.typeAcquisition?.enable !== true;
     if (standalone) {
         const program = await input.api.createProgram(parsed.fileNames, parsed.options);
