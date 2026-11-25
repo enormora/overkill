@@ -18,7 +18,7 @@ function readFile(path: string): string | undefined {
 }
 function directoryExists(path: string): boolean {
     try {
-        return statSync(path).isDirectory();
+        return statSync(path, { throwIfNoEntry: false })?.isDirectory() ?? false;
     } catch (error) {
         if (missing(error)) {
             return false;
@@ -43,8 +43,8 @@ function realpath(path: string): string {
 }
 function stat(path: string): FileSystemStat | undefined {
     try {
-        const value = statSync(path);
-        return { mode: value.mode, size: value.size, mtime: value.mtime };
+        const value = statSync(path, { throwIfNoEntry: false });
+        return value === undefined ? undefined : { mode: value.mode, size: value.size, mtime: value.mtime };
     } catch (error) {
         if (missing(error)) {
             return undefined;
@@ -59,6 +59,11 @@ export const compilerFileSystem = {
     realpath,
     stat,
     fileExists(path: string): boolean {
-        return existsSync(path) && !directoryExists(path);
+        try {
+            const value = statSync(path, { throwIfNoEntry: false });
+            return value !== undefined && !value.isDirectory();
+        } catch {
+            return false;
+        }
     }
 };

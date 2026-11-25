@@ -171,12 +171,14 @@ export async function verifyInstalledCompiler(compiler: InstalledCompiler, signa
             throw new Error('Compiler resolution changed after preparation.');
         }
     }
-    for (const file of compiler.files) {
-        signal.throwIfAborted();
-        if (await fingerprint(file.path) !== file.fingerprint) {
-            throw new Error('Compiler implementation changed after preparation.');
-        }
-    }
+    await Promise.all(compiler.files.map(function verify(file) {
+        return readCompilerFile(async function verifyFingerprint() {
+            signal.throwIfAborted();
+            if (await fingerprint(file.path) !== file.fingerprint) {
+                throw new Error('Compiler implementation changed after preparation.');
+            }
+        });
+    }));
 }
 async function loadCompiler(input: Installation): Promise<InstalledCompiler> {
     const native = nativeSchema.parse(
