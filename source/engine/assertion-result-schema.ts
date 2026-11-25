@@ -94,6 +94,7 @@ const failureSchema = z.discriminatedUnion('kind', [
         actual: z.unknown(),
         code: z.enum([
             'dead-builder-assertion',
+            'invalid-assertion-protocol',
             'invalid-assertion-reference',
             'invalid-composite-result',
             'invalid-deep-assertion-operand',

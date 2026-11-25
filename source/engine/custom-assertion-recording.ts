@@ -1,4 +1,13 @@
-import { captureAssertion } from '../assertion-protocol/evaluation.ts';
+import {
+    admitCompositeChild,
+    assertCompositeChild,
+    dataField,
+    invalidAssertionProtocol,
+    InvalidAssertionProtocolError,
+    nonEmptyProtocolItems,
+    protocolObject
+} from '../assertion-protocol/assertion-validation.ts';
+import { captureAssertion, transferAssertionObservation } from '../assertion-protocol/evaluation.ts';
 import type {
     AssertAssertionNode,
     CompositeAssertionChildNode,
@@ -7,6 +16,7 @@ import type {
 } from '../assertion-protocol/assertion-node.ts';
 import {
     captureCompositeChild,
+    prepareCompositeGroup,
     getAssertionReferenceRecord,
     getNarrowingAssertionReferenceRecord,
     isAssertionReference,
@@ -22,6 +32,7 @@ import type {
     NonEmptyReadonlyArray,
     ResolvableSourceLocations
 } from '../assertion-protocol/assertion-node-shape.ts';
+import { assertionProtocolFailure } from './assertion-protocol-failure.ts';
 import type { TestContractFailure } from './run-result.ts';
 import type { PendingRecordedAssert } from './assertion-recorder.ts';
 import { isTestControlError } from './test-control-error.ts';
@@ -114,7 +125,7 @@ function createInvalidRequireReferenceFailure(actual: unknown): TestContractFail
 
 function createInvalidCompositeResultFailure(actual: unknown): TestContractFailure {
     return {
-        actual,
+        actual: typeof actual,
         code: 'invalid-composite-result',
         expected: 'composite assertion child or group',
         kind: 'test-contract',
@@ -125,13 +136,14 @@ function createInvalidCompositeResultFailure(actual: unknown): TestContractFailu
 function isPromiseLike<Source extends AssertionSource>(
     value: unknown
 ): value is Promise<CompositeAssertionReturn<Source>> {
-    return typeof value === 'object' && value !== null && typeof Reflect.get(value, 'then') === 'function';
+    return protocolObject(value) && !Object.hasOwn(value, 'check') &&
+        !isCompositeAssertionGroup(value) && typeof Reflect.get(value, 'then') === 'function';
 }
 
 function isCompositeAssertionChildNode<Source extends AssertionSource>(
     value: unknown
 ): value is CompositeAssertionChildNode<Source> {
-    return typeof value === 'object' && value !== null && Object.hasOwn(value, 'check');
+    return protocolObject(value) && Object.hasOwn(value, 'check');
 }
 
 function assertionArguments(parameters: readonly unknown[]): readonly [unknown, unknown] {
@@ -166,21 +178,83 @@ function customSummary(
     return defaultCustomSummary(record.name);
 }
 
-function normalizeCompositeChildren<Source extends AssertionSource>(
-    result: CompositeAssertionReturn<Source>,
-    failContract: (failure: TestContractFailure) => never
-): NonEmptyReadonlyArray<CompositeAssertionChildNode<Source>> {
-    if (isCompositeAssertionGroup<Source>(result)) {
-        return result.children;
+function parseGroupChildren(group: unknown): readonly [unknown, ...unknown[]] {
+    if (!protocolObject(group)) {
+        throw invalidAssertionProtocol('group', 'expected a protocol record');
     }
+    return nonEmptyProtocolItems(dataField(group, 'children', 'group.children'), 'group.children');
+}
 
-    if (isCompositeAssertionChildNode<Source>(result)) {
+function groupResult<Source extends AssertionSource>(
+    group: unknown,
+    source: Source
+): NonEmptyReadonlyArray<CompositeAssertionChildNode<Source>> {
+    const [ first, ...rest ] = parseGroupChildren(group);
+    assertCompositeChild(first, source, 'group.children[0]');
+    return [
+        first,
+        ...rest.map(function validate(child, index) {
+            assertCompositeChild(child, source, `group.children[${index + 1}]`);
+            return child;
+        })
+    ];
+}
+
+function isProtocolGroup(value: unknown): boolean {
+    return protocolObject(value) && isCompositeAssertionGroup(value);
+}
+
+function normalizeCompositeChildren(
+    result: CompositeAssertionReturn<'assert'>,
+    failContract: (failure: TestContractFailure) => never
+): NonEmptyReadonlyArray<CompositeAssertionChildNode<'assert'>> {
+    if (isProtocolGroup(result)) {
+        try {
+            return groupResult(result, 'assert');
+        } catch (error) {
+            if (!(error instanceof InvalidAssertionProtocolError)) {
+                throw error;
+            }
+            const failure = error.diagnostic().path === 'group.children'
+                ? createInvalidCompositeResultFailure(result)
+                : assertionProtocolFailure(error);
+            return failContract(failure);
+        }
+    }
+    if (isCompositeAssertionChildNode<'assert'>(result)) {
         return [ result ];
     }
-
     return failContract(createInvalidCompositeResultFailure(result));
 }
 
+function flattenValidatedGroup(items: unknown): NonEmptyReadonlyArray<CompositeAssertionChildNode<'assert'>> {
+    const children = nonEmptyProtocolItems(items, 'group').flatMap(function prepareItem(item, index) {
+        if (isProtocolGroup(item)) {
+            return groupResult(item, 'assert');
+        }
+        assertCompositeChild(item, 'assert', `group[${index}]`);
+        return [ item ];
+    });
+    const [ first, ...rest ] = children;
+    if (first === undefined) {
+        throw invalidAssertionProtocol('group', 'expected at least one child');
+    }
+    return [ first, ...rest ];
+}
+
+function validatedGroup(
+    items: unknown,
+    sink: AssertAssertionSink
+): NonEmptyReadonlyArray<CompositeAssertionChildNode<'assert'>> {
+    try {
+        return flattenValidatedGroup(items);
+    } catch (error) {
+        if (!(error instanceof InvalidAssertionProtocolError)) {
+            throw error;
+        }
+        return sink.failContract(assertionProtocolFailure(error));
+    }
+}
 function createCompositeAssertionNode<Source extends AssertionSource>(
     input: CompositeAssertionNodeInput<Source>
 ): CompositeAssertionNode<Source> {
@@ -270,10 +344,26 @@ function recordCompositeAssertion(input: CompositeAssertionRecordingInput): Prom
         source: 'assert' as const,
         sourceLocations: input.sourceLocations
     };
-    Object.defineProperty(invocation, captureCompositeChild, {
-        value(child: CompositeAssertionChildNode<'assert'>) {
-            input.sink.assertRecording('record a composite assertion child');
-            captureAssertion(child);
+    Object.defineProperties(invocation, {
+        [captureCompositeChild]: {
+            value(child: CompositeAssertionChildNode<'assert'>) {
+                input.sink.assertRecording('record a composite assertion child');
+                try {
+                    const admitted = admitCompositeChild(child, 'assert', 'child');
+                    captureAssertion(admitted);
+                    transferAssertionObservation(admitted, child);
+                } catch (error) {
+                    if (!(error instanceof InvalidAssertionProtocolError)) {
+                        throw error;
+                    }
+                    input.sink.failContract(assertionProtocolFailure(error));
+                }
+            }
+        },
+        [prepareCompositeGroup]: {
+            value(items: unknown) {
+                return validatedGroup(items, input.sink);
+            }
         }
     });
     const result = input.record.run(invocation);

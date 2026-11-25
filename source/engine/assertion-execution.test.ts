@@ -436,11 +436,8 @@ export const testNode = suite('Assertion execution', [
         return scope.assert.collect();
     }),
     test('counts distinct recorded calls and reused lazy protocol nodes', async function (scope) {
-        let actual = false;
         const lazy: AssertAssertionNode = {
-            get actual() {
-                return actual;
-            },
+            actual: false,
             check: 'true',
             message: null,
             source: 'assert',
@@ -455,7 +452,7 @@ export const testNode = suite('Assertion execution', [
             if (second === undefined) {
                 throw new Error('Expected a second recorded assertion.');
             }
-            actual = true;
+            Object.assign(lazy, { actual: true });
             return [ lazy, first, second, lazy ];
         });
 

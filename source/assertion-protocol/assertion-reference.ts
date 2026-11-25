@@ -9,6 +9,8 @@ import type {
 
 export const captureCompositeChild = Symbol.for('@overkill-dev/capture-composite-child/v1');
 
+export const prepareCompositeGroup = Symbol.for('@overkill-dev/prepare-composite-group/v1');
+
 const assertionReferenceIdentity: unique symbol = Symbol.for('OverkillAssertionReference');
 const assertionReferenceRecordIdentity: unique symbol = Symbol.for('OverkillAssertionReferenceRecord');
 const compositeGroupIdentity: unique symbol = Symbol.for('OverkillCompositeGroup');
@@ -216,7 +218,8 @@ export function isNarrowingAssertionReference(value: unknown): value is Narrowin
 export function isCompositeAssertionGroup<Source extends AssertionSource>(
     value: unknown
 ): value is CompositeAssertionGroup<Source> {
-    return typeof value === 'object' && value !== null && Object.hasOwn(value, compositeGroupIdentity);
+    return typeof value === 'object' && value !== null &&
+        Object.getOwnPropertyDescriptor(value, compositeGroupIdentity)?.value === true;
 }
 
 export function createCompositeAssertionGroup<Source extends AssertionSource>(

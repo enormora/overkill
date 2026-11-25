@@ -43,7 +43,11 @@ export function evaluateGreaterThan(assertion: NumericComparisonAssertionNode): 
         isFiniteNumber(assertion.expected) &&
         assertion.actual > assertion.expected;
 
-    return assertionOutcome(assertion.actual, `> ${assertion.expected}`, passed);
+    return assertionOutcome(
+        assertion.actual,
+        typeof assertion.expected === 'number' ? `> ${assertion.expected}` : assertion.expected,
+        passed
+    );
 }
 
 export function evaluateGreaterThanOrEqual(assertion: NumericComparisonAssertionNode): AssertionOutcome {
@@ -51,7 +55,11 @@ export function evaluateGreaterThanOrEqual(assertion: NumericComparisonAssertion
         isFiniteNumber(assertion.expected) &&
         assertion.actual >= assertion.expected;
 
-    return assertionOutcome(assertion.actual, `>= ${assertion.expected}`, passed);
+    return assertionOutcome(
+        assertion.actual,
+        typeof assertion.expected === 'number' ? `>= ${assertion.expected}` : assertion.expected,
+        passed
+    );
 }
 
 export function evaluateLessThan(assertion: NumericComparisonAssertionNode): AssertionOutcome {
@@ -59,7 +67,11 @@ export function evaluateLessThan(assertion: NumericComparisonAssertionNode): Ass
         isFiniteNumber(assertion.expected) &&
         assertion.actual < assertion.expected;
 
-    return assertionOutcome(assertion.actual, `< ${assertion.expected}`, passed);
+    return assertionOutcome(
+        assertion.actual,
+        typeof assertion.expected === 'number' ? `< ${assertion.expected}` : assertion.expected,
+        passed
+    );
 }
 
 export function evaluateLessThanOrEqual(assertion: NumericComparisonAssertionNode): AssertionOutcome {
@@ -67,5 +79,9 @@ export function evaluateLessThanOrEqual(assertion: NumericComparisonAssertionNod
         isFiniteNumber(assertion.expected) &&
         assertion.actual <= assertion.expected;
 
-    return assertionOutcome(assertion.actual, `<= ${assertion.expected}`, passed);
+    return assertionOutcome(
+        assertion.actual,
+        typeof assertion.expected === 'number' ? `<= ${assertion.expected}` : assertion.expected,
+        passed
+    );
 }

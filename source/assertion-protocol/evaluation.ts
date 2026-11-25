@@ -22,7 +22,7 @@ import type {
     FailedCompositeCheck
 } from './assertion-node-shape.ts';
 import { assertionEvaluatorByCheck, type AssertionNodeByCheck } from './assertions/dispatch.ts';
-import { resolveSourceLocations } from './source-location.ts';
+import { resolveAssertionLocation, type ProtocolRecord } from './assertion-validation.ts';
 
 type DeepAssertionCheckByName = {
     readonly arrayContainsPartial: 'array-contains-partial';
@@ -208,7 +208,7 @@ type AssertionObservationByKind = {
 
 type Observation = AssertionObservationByKind[keyof AssertionObservationByKind];
 
-type AssertionObservations = WeakMap<EvaluatedNode, Observation>;
+type AssertionObservations = WeakMap<ProtocolRecord, Observation>;
 
 const observationsKey = Symbol.for('@overkill-dev/assertion-observations/v1');
 
@@ -227,6 +227,18 @@ function sharedObservations(): AssertionObservations {
 }
 
 const observations = sharedObservations();
+
+export function transferAssertionObservation(original: ProtocolRecord, admitted: ProtocolRecord): void {
+    const observation = observations.get(original);
+    if (observation !== undefined) {
+        observations.set(admitted, observation);
+    }
+}
+
+function resolveSourceLocations(locations: ResolvableSourceLocations): FailedCheck['sourceLocations'] {
+    const [ first, ...remaining ] = locations;
+    return [ resolveAssertionLocation(first), ...remaining.map(resolveAssertionLocation) ];
+}
 
 function evaluateForeignAssertion(
     assertion: ForeignAssertionNode,

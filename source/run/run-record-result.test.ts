@@ -59,6 +59,13 @@ function opaqueFailure(): TestOutcome {
                 kind: 'test-contract',
                 summary: 'Invalid plan'
             },
+            {
+                actual: { path: 'return[0].children[0]', reason: 'structural cycle' },
+                code: 'invalid-assertion-protocol',
+                expected: 'valid assertion protocol data',
+                kind: 'test-contract',
+                summary: 'Invalid assertion protocol.'
+            },
             { deadlineMilliseconds: 1, elapsedMilliseconds: 2, kind: 'timeout' }
         ]
     };
@@ -203,6 +210,7 @@ export const testNode = suite('Run record result', [
         const encoded = JSON.stringify(diagnostics);
         const restored = parseSerializedRunDiagnostics(JSON.parse(encoded));
         scope.assert.equal(JSON.stringify(restored), encoded);
+        scope.assert.match(encoded, /return\[0\]\.children\[0\].*"code":"invalid-assertion-protocol"/u);
         scope.assert.includes(encoded, '"file":"case.test.ts"');
         scope.assert.equal(typeof live.perTest[0]?.definitionLocations[0], 'function');
         scope.assert.throws(function rejectRawCause() {

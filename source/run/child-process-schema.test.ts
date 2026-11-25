@@ -111,7 +111,7 @@ export const testNode = suite('child process payload schemas', [
         scope.assert.deepEqual(familyVariant, { family: 'analysis', key: 'compiler-a' });
         return scope.assert.collect();
     }),
-    test('preserves returned assertion ownership failures in reporter events', function (scope) {
+    test('preserves assertion contract failures in reporter events', function (scope) {
         const caseId = { file: null, params: null, suite: [], title: 'borrowed assertion' };
         const event = {
             artifacts: [],
@@ -137,9 +137,21 @@ export const testNode = suite('child process payload schemas', [
             verdict: 'fail',
             workId: createDefaultWorkId(caseId)
         };
-        const serialized = JSON.stringify(event);
-        const received: unknown = JSON.parse(serialized);
-        scope.assert.deepEqual(reporterEventSchema.parse(received), received);
+        const outcomes = [ event.outcome, {
+            kind: 'fail',
+            failures: [ {
+                actual: { path: 'return[0].check', reason: 'unsupported check' },
+                code: 'invalid-assertion-protocol',
+                expected: 'valid assertion protocol data',
+                kind: 'test-contract',
+                summary: 'Invalid assertion protocol.'
+            } ]
+        } ];
+        for (const outcome of outcomes) {
+            const serialized = JSON.stringify({ ...event, outcome });
+            const received: unknown = JSON.parse(serialized);
+            scope.assert.deepEqual(reporterEventSchema.parse(received), received);
+        }
         return scope.assert.collect();
     }),
     test('rejects reporter events without executable identity', function (scope) {

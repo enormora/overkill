@@ -1,4 +1,4 @@
-import { captureCompositeChild } from '../assertion-protocol/assertion-reference.ts';
+import { captureCompositeChild, prepareCompositeGroup } from '../assertion-protocol/assertion-reference.ts';
 import {
     createCompositeAssertionGroup,
     createCompositeAssertionReferenceRecord,
@@ -177,12 +177,24 @@ function isChildCapture(value: unknown): value is CaptureCompositeChild {
     return typeof value === 'function';
 }
 
+type PrepareCompositeGroup = (items: unknown) => NonEmptyReadonlyArray<CompositeAssertionChildNode<'assert'>>;
+
+function isGroupPreparation(value: unknown): value is PrepareCompositeGroup {
+    return typeof value === 'function';
+}
+
+type CompositeCheckHooks<Source extends AssertionSource> = {
+    readonly capture: ((child: CompositeAssertionChildNode<Source>) => void) | null;
+    readonly prepareGroup: ((items: unknown) => NonEmptyReadonlyArray<CompositeAssertionChildNode<Source>>) | null;
+};
+
 function compositeCheckBuilder<Source extends AssertionSource>(
     source: Source,
     message: string | null,
     sourceLocations: ResolvableSourceLocations,
-    capture: ((child: CompositeAssertionChildNode<Source>) => void) | null
+    hooks: CompositeCheckHooks<Source>
 ): CompositeCheckBuilder<Source> {
+    const { capture, prepareGroup } = hooks;
     function child<Node extends CompositeAssertionChildNode<Source>>(node: Node): Node {
         capture?.(node);
         return node;
@@ -190,7 +202,7 @@ function compositeCheckBuilder<Source extends AssertionSource>(
 
     return {
         annotated(childMessage) {
-            return compositeCheckBuilder(source, childMessage, sourceLocations, capture);
+            return compositeCheckBuilder(source, childMessage, sourceLocations, hooks);
         },
 
         array(actual) {
@@ -278,7 +290,9 @@ function compositeCheckBuilder<Source extends AssertionSource>(
         },
 
         group(children) {
-            return createCompositeAssertionGroup(flattenCompositeGroupItems(children));
+            return createCompositeAssertionGroup(
+                prepareGroup === null ? flattenCompositeGroupItems(children) : prepareGroup(children)
+            );
         },
 
         hasProperty(actual, key) {
@@ -411,7 +425,7 @@ export function createCompositeCheckBuilder<Source extends AssertionSource>(
     message: string | null,
     sourceLocations: ResolvableSourceLocations
 ): CompositeCheckBuilder<Source> {
-    return compositeCheckBuilder(source, message, sourceLocations, null);
+    return compositeCheckBuilder(source, message, sourceLocations, { capture: null, prepareGroup: null });
 }
 
 export function defineCompositeAssertion<
@@ -424,12 +438,16 @@ export function defineCompositeAssertion<
         name: definition.name,
         run(input) {
             const capture: unknown = Reflect.get(input, captureCompositeChild);
+            const prepare: unknown = Reflect.get(input, prepareCompositeGroup);
             return definition.assert(
                 compositeCheckBuilder(
                     input.source,
                     input.message,
                     input.sourceLocations,
-                    isChildCapture(capture) ? capture : null
+                    {
+                        capture: isChildCapture(capture) ? capture : null,
+                        prepareGroup: isGroupPreparation(prepare) ? prepare : null
+                    }
                 ),
                 ...input.parameters
             );
