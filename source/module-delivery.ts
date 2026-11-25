@@ -18,25 +18,12 @@ type ModuleLoadingHooks = {
     ) => Result;
 };
 
-async function runModuleHooks<Value>(
-    runtime: ModuleLoadingRuntime,
-    hooks: RegisterHooksOptions,
-    operation: () => Promise<Value>
-): Promise<Value> {
-    const registration = runtime.register(hooks);
-    try {
-        return await operation();
-    } finally {
-        registration.deregister();
-    }
-}
-
 async function runModuleLoadingScope<Value>(
     runtime: ModuleLoadingRuntime,
     hooks: ModuleLoadingHooks,
     operation: () => Promise<Value>
 ): Promise<Value> {
-    return await runModuleHooks(runtime, {
+    const registration = runtime.register({
         resolve(specifier, context, nextResolve) {
             return hooks.resolve(specifier, context.parentURL, function () {
                 return nextResolve(specifier, context);
@@ -47,7 +34,12 @@ async function runModuleLoadingScope<Value>(
                 return nextLoad(url, context);
             });
         }
-    }, operation);
+    });
+    try {
+        return await operation();
+    } finally {
+        registration.deregister();
+    }
 }
 
 export type DeliveredModule = {
@@ -377,7 +369,6 @@ function isDeliveredModuleImport(runtime: ModuleLoadingRuntime, value: unknown):
 }
 
 export type ModuleLoading = {
-    readonly withModuleHooks: <Value>(hooks: RegisterHooksOptions, operation: () => Promise<Value>) => Promise<Value>;
     readonly withModuleLoadingScope: <Value>(
         hooks: ModuleLoadingHooks,
         operation: () => Promise<Value>
@@ -391,9 +382,6 @@ export type ModuleLoading = {
 };
 export function createModuleLoading(runtime: ModuleLoadingRuntime): ModuleLoading {
     return {
-        async withModuleHooks<Value>(hooks: RegisterHooksOptions, operation: () => Promise<Value>): Promise<Value> {
-            return await runModuleHooks(runtime, hooks, operation);
-        },
         async withModuleLoadingScope<Value>(
             hooks: ModuleLoadingHooks,
             operation: () => Promise<Value>

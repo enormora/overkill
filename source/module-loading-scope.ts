@@ -1,10 +1,9 @@
-// eslint-disable-next-line node/no-unsupported-features/node-builtins -- Synchronous hooks are supported on the pinned Node version.
-import { registerHooks } from 'node:module';
+import { registerModuleHooks } from './module-hook-registration.ts';
 import { createModuleLoading } from './module-delivery.ts';
 
 const moduleLoading = createModuleLoading({
     root: globalThis,
-    register: registerHooks,
+    register: registerModuleHooks,
     resolve: import.meta.resolve,
     async load(url) {
         const namespace: unknown = await import(url);
@@ -12,5 +11,4 @@ const moduleLoading = createModuleLoading({
     }
 });
 
-export const { withModuleHooks } = moduleLoading;
 export const { withModuleLoadingScope, resolveModuleUrl, withModuleDelivery, isDeliveredModuleImport } = moduleLoading;

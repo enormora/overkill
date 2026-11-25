@@ -1,5 +1,5 @@
 import type { LoadFnOutput, RegisterHooksOptions, ResolveFnOutput, ResolveHookContext } from 'node:module';
-import { withModuleHooks } from '../module-loading-scope.ts';
+import { registerModuleHooks } from '../module-hook-registration.ts';
 import type { runTask } from './worker-pool-worker.ts';
 
 export type BootstrapModules = {
@@ -69,8 +69,12 @@ export async function loadWorkerBootstrap(cache: BootstrapModules | null): Promi
     readonly modules: BootstrapModules | null;
 }> {
     const { observed, hooks } = bootstrapModuleHooks(cache);
-    const { runTask: execute } = await withModuleHooks(hooks, async function load() {
-        return await import('./worker-pool-worker.ts');
-    });
-    return { execute, modules: cache === null ? observed : null };
+    const registration = registerModuleHooks(hooks);
+    const modules = cache === null ? observed : null;
+    try {
+        const { runTask: execute } = await import('./worker-pool-worker.ts');
+        return { execute, modules };
+    } finally {
+        registration.deregister();
+    }
 }
