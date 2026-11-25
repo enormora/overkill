@@ -254,7 +254,10 @@ Only selected cases contribute assertion evidence. TypeScript can still report
 diagnostics anywhere in the original project, including unselected source.
 Case-start events mark entry to the compiler check. Each case's duration
 includes its share of assertion evaluation. Shared project validation is
-recorded in run timings.
+recorded in run timings. On systems with Unix user IDs, repeated runs can
+reuse successful project diagnostics from a private temporary cache when
+the compiler, configuration, and observed inputs match. Each run verifies
+those inputs and evaluates its selected assertions.
 
 The type-test adapter artifact retains site evidence and diagnostics, including
 inconclusive sites in a case that already failed.

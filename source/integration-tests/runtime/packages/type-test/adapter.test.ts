@@ -5,6 +5,7 @@ import { table, suite, test } from '@overkill-dev/test';
 import {
     type NativeProjectResult,
     runNativeProject,
+    recheckNativeProject,
     runMatrixTypeProject,
     runPrefixedTypeProject,
     runChangedTypeProject,
@@ -48,6 +49,18 @@ const bindingCases = `const nodes=[test('bindings',scope=>{
     scope.assert(same.expressions,value,value);
     scope.assert(same.not<string,number>());
     scope.assert(assignableFrom<string,'literal'>());
+    return scope.assert.collect();
+})];`;
+
+const repeatedChecks = `import type { Value } from './dependency.ts';
+const {Program}=await import('typescript-beta/async');
+const diagnostics=Program.prototype.getGlobalDiagnostics;
+Program.prototype.getGlobalDiagnostics=async function readDiagnostics(this:import('typescript-beta/async').Program){
+    events.push('project-diagnostics');
+    return await diagnostics.call(this);
+};
+const nodes=[test('valid',scope=>{
+    scope.assert(same<Value,{readonly value:string}>());
     return scope.assert.collect();
 })];`;
 
@@ -299,6 +312,15 @@ test('excluded',scope=>{
         scope.assert.includes(result.errors.join('\n'), 'TS2578');
         scope.assert.deepEqual(result.diagnostics, []);
         scope.assert.equal(result.checkerFacts?.compilers[0]?.evidence, undefined);
+        return scope.assert.collect();
+    }),
+    test('rechecks project diagnostics when unselected inputs change across runs', async function (scope) {
+        const [ initial, repeat, changed ] = await recheckNativeProject(scope.cleanup, repeatedChecks);
+        scope.assert.equal(initial.status, 'passed', { message: initial.errors.join('\n') });
+        scope.assert.equal(repeat.status, 'passed', { message: repeat.errors.join('\n') });
+        scope.assert.true(initial.events.includes('project-diagnostics'));
+        scope.assert.equal(repeat.events.includes('project-diagnostics'), !Object.hasOwn(process, 'getuid'));
+        scope.assert.includes(changed.errors.join('\n'), 'TS2322');
         return scope.assert.collect();
     }),
     test('excludes unselected failing bodies', async function (scope) {

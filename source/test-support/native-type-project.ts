@@ -4,6 +4,7 @@ import { join, resolve as resolvePath } from 'node:path';
 import TypeScript from 'typescript';
 import { z } from 'zod';
 import type { TestScope } from '@overkill-dev/test';
+import { readProcessEnvironment } from '../run/node-host-readers.ts';
 import type { TypeTestSettings } from '../packages/type-test/profile-settings.ts';
 
 const readOnlyProjectMode = 0o555;
@@ -162,12 +163,12 @@ console.log(JSON.stringify({
 }));`;
 }
 
-async function executeProject(path: string): Promise<string> {
+async function executeProject(path: string, temporaryDirectory: string): Promise<string> {
     return new Promise(function execute(resolve, reject) {
         execFile(
             process.execPath,
             [ '--disable-warning=PERM0004', '--enable-source-maps', path ],
-            { timeout: 90_000 },
+            { timeout: 90_000, env: { ...readProcessEnvironment(process), TMPDIR: temporaryDirectory } },
             function completed(error, stdout, stderr) {
                 if (error !== null) {
                     reject(
@@ -243,7 +244,13 @@ function throwIfExecuted(): void { throw new Error('Imported static body ran.');
     return await writeCompiledProject(directory, sourceName, source);
 }
 
-async function runProject(cleanup: TestScope['cleanup'], request: ProjectRequest): Promise<NativeProjectResult> {
+type NativeProject = {
+    readonly directory: string;
+    readonly path: string;
+    readonly temporaryDirectory: string;
+};
+
+async function createProject(cleanup: TestScope['cleanup'], request: ProjectRequest): Promise<NativeProject> {
     await mkdir(join(process.cwd(), 'target'), { recursive: true });
     const directory = await mkdtemp(join(process.cwd(), 'target/native-type-'));
     cleanup(async function removeProject() {
@@ -251,10 +258,20 @@ async function runProject(cleanup: TestScope['cleanup'], request: ProjectRequest
         await rm(directory, { recursive: true, force: true });
     });
     const path = await writeProject(directory, request);
+    const temporaryDirectory = join(directory, 'temporary');
+    await mkdir(temporaryDirectory);
     if (request.change === null) {
         await chmod(directory, readOnlyProjectMode);
     }
-    return resultSchema.parse(JSON.parse(await executeProject(path)));
+    return { directory, path, temporaryDirectory };
+}
+
+async function projectResult(project: NativeProject): Promise<NativeProjectResult> {
+    return resultSchema.parse(JSON.parse(await executeProject(project.path, project.temporaryDirectory)));
+}
+
+async function runProject(cleanup: TestScope['cleanup'], request: ProjectRequest): Promise<NativeProjectResult> {
+    return await projectResult(await createProject(cleanup, request));
 }
 
 export async function runNativeProject(
@@ -270,6 +287,27 @@ export async function runNativeProject(
         change: null,
         prefix: ''
     });
+}
+
+export async function recheckNativeProject(
+    cleanup: TestScope['cleanup'],
+    definitions: string
+): Promise<readonly [NativeProjectResult, NativeProjectResult, NativeProjectResult]> {
+    const project = await createProject(cleanup, {
+        compiler: { kind: 'package', specifier: 'typescript-beta', version: '7.1.0-beta' },
+        definitions,
+        titles: null,
+        compiled: false,
+        change: null,
+        prefix: ''
+    });
+    const initial = await projectResult(project);
+    const repeat = await projectResult(project);
+    await writeFile(
+        join(project.directory, 'dependency.ts'),
+        "export type Value = { readonly value: string }; export const invalid: number = 'wrong';"
+    );
+    return [ initial, repeat, await projectResult(project) ];
 }
 
 export async function runCompiledTypeProject(
