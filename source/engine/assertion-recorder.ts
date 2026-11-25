@@ -292,7 +292,7 @@ function admitOnlyRecordedAssertion(
     active: readonly RecordedAssertion[],
     slots: readonly BuilderAssertionSlot[]
 ): readonly AssertionNode[] | null {
-    const [ first ] = active;
+    const first = active[0];
     if (first === undefined || active.length !== 1 || slots.length !== 1) {
         return null;
     }
@@ -322,7 +322,7 @@ export function createAssertionRecorder(origin: AssertionOrigin): AssertionRecor
     const recordedAssertions: RecordedAssertion[] = [];
     const failures = new Set<TestContractFailure>();
     const property = createPropertyEvidenceRecorder();
-    const { owner, ...lifetime } = createAssertionContext(origin, function retainFailure(failure) {
+    const { owner, lifetime } = createAssertionContext(origin, function retainFailure(failure) {
         failures.add(failure);
     });
     let failedRequireIndex: number | null = null;

@@ -55,10 +55,6 @@ export type InvalidDeepAssertionOperand = {
     readonly type: PrimitiveValueType;
 };
 
-type AssertionEvaluation = AssertionOutcome & {
-    readonly summary: string;
-};
-
 type DeepAssertionNode = Extract<AssertionNode | CompositeAssertionChildNode, { readonly check: DeepAssertionCheck; }>;
 
 type DeepOperandFinder = (
@@ -298,10 +294,7 @@ function evaluateLeafAssertion(
     id: string,
     capture: boolean
 ): FailureEvidence | null {
-    const evaluation: AssertionEvaluation = {
-        ...evaluateAssertionNode(assertion.check, capture ? withPrivatePattern(assertion) : assertion),
-        summary: assertionSummary(assertion)
-    };
+    const evaluation = evaluateAssertionNode(assertion.check, capture ? withPrivatePattern(assertion) : assertion);
 
     if (evaluation.passed) {
         return null;
@@ -316,7 +309,7 @@ function evaluateLeafAssertion(
         path: evaluation.path,
         source: assertion.source,
         sourceLocations: assertion.sourceLocations,
-        summary: evaluation.summary
+        summary: assertionSummary(assertion)
     };
 }
 

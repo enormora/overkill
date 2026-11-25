@@ -455,21 +455,17 @@ export function assertCompositeChild<Source extends AssertionSource>(
     admitCompositeChild(value, source, path);
 }
 
-function builtInLocation(entry: ResolvableSourceLocation, index: number): ResolvableSourceLocation {
+function builtInLocation(entry: unknown, index: number): ResolvableSourceLocation {
     return isLocationProvider(entry) ? entry : location(entry, `sourceLocations[${index}]`, []);
 }
 
 function builtInLocations(locations: ResolvableSourceLocations): ResolvableSourceLocations {
-    const [ first, ...remaining ] = locations;
-    if (remaining.length === 0) {
-        return [ builtInLocation(first, 0) ];
+    const first = builtInLocation(locations[0], 0);
+    const normalized: [ResolvableSourceLocation, ...ResolvableSourceLocation[]] = [ first ];
+    for (let index = 1; index < locations.length; index += 1) {
+        normalized.push(builtInLocation(locations[index], index));
     }
-    return [
-        builtInLocation(first, 0),
-        ...remaining.map(function normalize(entry, index) {
-            return builtInLocation(entry, index + 1);
-        })
-    ];
+    return normalized;
 }
 
 function validateBuiltInFields(assertion: AssertionNode, fields: Readonly<Record<string, FieldRule>>): void {
@@ -504,6 +500,18 @@ export function matchesDataField(original: ProtocolRecord, key: PropertyKey, exp
     return descriptor !== undefined && Object.hasOwn(descriptor, 'value') && Object.is(descriptor.value, expected);
 }
 
+function matchesLocationEntries(
+    original: ProtocolRecord,
+    expected: ResolvableSourceLocations
+): boolean {
+    if (expected.length === 1) {
+        return matchesDataField(original, 0, expected[0]);
+    }
+    return expected.every(function unchangedLocation(entry, index) {
+        return matchesDataField(original, index, entry);
+    });
+}
+
 function matchesLocations(original: ProtocolRecord, expected: ResolvableSourceLocations): boolean {
     const descriptor = Object.getOwnPropertyDescriptor(original, 'sourceLocations');
     if (descriptor === undefined || !Object.hasOwn(descriptor, 'value')) {
@@ -511,16 +519,32 @@ function matchesLocations(original: ProtocolRecord, expected: ResolvableSourceLo
     }
     const locations: unknown = descriptor.value;
     return protocolObject(locations) && Array.isArray(locations) && locations.length === expected.length &&
-        expected.every(function unchangedLocation(entry, index) {
-            return matchesDataField(locations, index, entry);
-        });
+        matchesLocationEntries(locations, expected);
+}
+
+function matchesLeafFields(
+    original: ProtocolRecord,
+    recorded: AssertionNode,
+    fields: Readonly<Record<string, FieldRule>>
+): boolean {
+    for (const key of Object.keys(fields)) {
+        if (!matchesDataField(original, key, Reflect.get(recorded, key))) {
+            return false;
+        }
+    }
+    return true;
 }
 
 export function matchesRecordedLeaf(original: ProtocolRecord, recorded: AssertionNode): boolean {
     if (recorded.check === 'composite' || !matchesLocations(original, recorded.sourceLocations)) {
         return false;
     }
-    return Object.keys(recorded).every(function unchangedField(key) {
-        return key === 'sourceLocations' || matchesDataField(original, key, Reflect.get(recorded, key));
-    });
+    if (
+        !matchesDataField(original, 'check', recorded.check) ||
+        !matchesDataField(original, 'message', recorded.message) ||
+        !matchesDataField(original, 'source', recorded.source)
+    ) {
+        return false;
+    }
+    return matchesLeafFields(original, recorded, fieldsByCheck[recorded.check]);
 }

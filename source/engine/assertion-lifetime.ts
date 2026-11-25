@@ -212,7 +212,7 @@ export type AssertionContext = {
 export function createAssertionContext(
     origin: AssertionOrigin,
     retainFailure: (failure: TestContractFailure) => void
-): AssertionContext & { readonly owner: symbol; } {
+): { readonly owner: symbol; readonly lifetime: AssertionContext; } {
     const reportLate = currentLateAssertionSink();
     const interruption = new AbortController();
     const lateFailures: TestContractFailure[] = [];
@@ -237,27 +237,29 @@ export function createAssertionContext(
     }
 
     return {
-        origin,
         owner: Symbol('assertion recorder'),
-        interruption: interruption.signal,
-        assertRecording,
-        acceptsPropertyEvidence() {
-            return state.kind === 'recording' || state.kind === 'closed' && state.closure === 'settled';
-        },
-        lateFailures() {
-            return lateFailures.slice();
-        },
-        close(reason) {
-            if (state.kind === 'recording') {
-                state = { kind: 'closed', closure: reason };
-                if (reason === 'interrupted') {
-                    interruption.abort();
+        lifetime: {
+            origin,
+            interruption: interruption.signal,
+            assertRecording,
+            acceptsPropertyEvidence() {
+                return state.kind === 'recording' || state.kind === 'closed' && state.closure === 'settled';
+            },
+            lateFailures() {
+                return lateFailures.slice();
+            },
+            close(reason) {
+                if (state.kind === 'recording') {
+                    state = { kind: 'closed', closure: reason };
+                    if (reason === 'interrupted') {
+                        interruption.abort();
+                    }
                 }
-            }
-        },
-        publish() {
-            if (state.kind === 'closed') {
-                state = { kind: 'published', closure: state.closure };
+            },
+            publish() {
+                if (state.kind === 'closed') {
+                    state = { kind: 'published', closure: state.closure };
+                }
             }
         }
     };
