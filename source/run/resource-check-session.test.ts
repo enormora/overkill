@@ -1,4 +1,4 @@
-import { table, suite, test, testDouble } from '@overkill-dev/test';
+import { type TestScope, table, suite, test, testDouble } from '@overkill-dev/test';
 
 import { createDeterministicClock, type DeterministicClock } from '@enormora/clock';
 
@@ -204,6 +204,25 @@ export const testNode = suite('resource observation session policy', [
             interval,
             cause: { kind: 'string', value: 'stop', truncation: null }
         } ]);
+        return scope.assert.collect();
+    }),
+    test('publishes cyclic checkpoint causes as portable evidence', function (scope: TestScope) {
+        const fixture = scenario();
+        const cause: Record<string, unknown> = { detail: 'observation failed' };
+        cause.cycle = cause;
+        fixture.session.delivery.checkpoint({
+            ...snapshot,
+            errors: [ { interval, target: 'service-target', cause } ]
+        });
+        const checkpoint = fixture.sent.find(function (frame) {
+            return frame.kind === 'checkpoint';
+        });
+        scope.assert.false(fixture.connection.destroyed);
+        scope.require.defined(checkpoint);
+        const [ error ] = checkpoint.snapshot.errors;
+        scope.require.defined(error);
+        scope.assert.equal(error.target, 'service-target');
+        scope.assert.true(JSON.stringify(error.cause).includes('observation failed'));
         return scope.assert.collect();
     }),
     test('destroys the channel when checkpoint delivery fails', function (scope) {
