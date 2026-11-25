@@ -65,7 +65,8 @@ if (syntaxDiagnostics.length !== 1 || syntaxDiagnostics[0].ruleId !== rule) {
 const syntaxComposite = linter.verify([
     "import * as assert from '@overkill-dev/assert';",
     "import { test } from '@overkill-dev/test';",
-    "const isOk = assert.defineCompositeAssertion({ name: 'ok', assert: (check, status) => check.equal(status, 200) });",
+    "const isOk = assert.defineCompositeAssertion({ name: 'ok',",
+    "    assert: (check, status) => check.equal(status, 200) });",
     "test('composite', scope => scope.assert(isOk, 200));"
 ].join('\\n'), [settings]);
 if (syntaxComposite.length !== 1 || syntaxComposite[0].ruleId !== compositeRule || syntaxComposite[0].line !== 3) {

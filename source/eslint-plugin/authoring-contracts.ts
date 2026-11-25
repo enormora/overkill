@@ -48,9 +48,12 @@ function fromImport(origin: BindingOrigin): Author | null {
         : null;
 }
 
+function exportTarget(checker: ts.TypeChecker, symbol: Readonly<ts.Symbol>): ts.Symbol {
+    return symbol.declarations?.some(ts.isExportSpecifier) === true ? checker.getAliasedSymbol(symbol) : symbol;
+}
+
 function typeAt(checker: ts.TypeChecker, symbol: Readonly<ts.Symbol>): ts.Type {
-    const target = symbol.declarations?.some(ts.isExportSpecifier) === true ? checker.getAliasedSymbol(symbol) : symbol;
-    return checker.getTypeOfSymbol(target);
+    return checker.getTypeOfSymbol(exportTarget(checker, symbol));
 }
 
 function moduleSpecifier(statement: Readonly<ts.Statement>): ts.Expression | undefined {
@@ -137,7 +140,7 @@ function importsFrom(statement: ts.Statement, source: string): statement is ts.I
 
 function importedSymbol(
     checker: ts.TypeChecker,
-    file: ts.SourceFile,
+    file: Readonly<ts.SourceFile>,
     source: string,
     name: string | undefined
 ): ts.Symbol | undefined {
@@ -152,9 +155,9 @@ function importedSymbol(
 
 function importedDeclaration(
     checker: ts.TypeChecker,
-    file: ts.SourceFile,
+    file: Readonly<ts.SourceFile>,
     origin: BindingOrigin,
-    declaration: ts.SignatureDeclaration
+    declaration: Readonly<ts.SignatureDeclaration>
 ): boolean {
     if (origin.root.kind !== 'import' || origin.path.length !== 1) {
         return false;
@@ -163,8 +166,12 @@ function importedDeclaration(
     if (exported === undefined) {
         return false;
     }
-    const target = (exported.flags & ts.SymbolFlags.Alias) === 0 ? exported : checker.getAliasedSymbol(exported);
+    const target = exportTarget(checker, exported);
     return (target.declarations ?? []).includes(declaration);
+}
+
+function resolvedCallDeclaration(node: ts.Node, checker: ts.TypeChecker): ts.SignatureDeclaration | undefined {
+    return ts.isCallExpression(node) ? checker.getResolvedSignature(node)?.getDeclaration() : undefined;
 }
 
 function typedAuthor(sourceCode: Readonly<TSESLint.SourceCode>): (call: Call, origin: BindingOrigin) => Author | null {
@@ -186,10 +193,6 @@ function typedAuthor(sourceCode: Readonly<TSESLint.SourceCode>): (call: Call, or
             ? null
             : author;
     };
-}
-
-function resolvedCallDeclaration(node: ts.Node, checker: ts.TypeChecker): ts.SignatureDeclaration | undefined {
-    return ts.isCallExpression(node) ? checker.getResolvedSignature(node)?.getDeclaration() : undefined;
 }
 
 function propertyName(property: Readonly<Tree.Property>): unknown {

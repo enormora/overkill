@@ -6,9 +6,9 @@ import type { BindingOrigin } from './binding-origin.ts';
 
 type Node = Readonly<Tree.Node>;
 type Call = Readonly<Tree.CallExpression>;
-type Reference = TSESLint.Scope.Reference;
+type Reference = Readonly<TSESLint.Scope.Reference>;
 
-type Use = 'forward' | 'assert' | 'unknown';
+type Use = 'assert' | 'forward' | 'unknown';
 
 function wrapper(parent: Node, node: Node): boolean {
     return match(parent)
@@ -33,6 +33,10 @@ function exported(node: Node): boolean {
         node.parent?.type === NodeType.ExportDefaultDeclaration;
 }
 
+function hasDeclaration(reference: Reference | undefined): boolean {
+    return (reference?.resolved?.defs.length ?? 0) > 0;
+}
+
 function localBindingTarget(node: Node, bindings: ReadonlyMap<Node, Reference>): boolean {
     if (node.type === NodeType.Identifier) {
         return hasDeclaration(bindings.get(node));
@@ -48,10 +52,6 @@ function localBindingTarget(node: Node, bindings: ReadonlyMap<Node, Reference>):
         });
     }
     return false;
-}
-
-function hasDeclaration(reference: Reference | undefined): boolean {
-    return (reference?.resolved?.defs.length ?? 0) > 0;
 }
 
 function localAssignment(
@@ -94,7 +94,7 @@ function readsLocalProperty(parent: Node, value: Node, analysis: BindingAnalysis
 function terminalUse(parent: Node, value: Node, analysis: BindingAnalysis): Use {
     return match(parent)
         .with({ type: NodeType.VariableDeclarator }, function (declaration) {
-            return declaration.init === value && !exported(declaration.parent) ? 'forward' : 'unknown';
+            return Object.is(declaration.init, value) && !exported(declaration.parent) ? 'forward' : 'unknown';
         })
         .with({ type: NodeType.ExpressionStatement }, function () {
             return value.type === NodeType.AssignmentExpression ? 'forward' : 'unknown';
@@ -104,7 +104,12 @@ function terminalUse(parent: Node, value: Node, analysis: BindingAnalysis): Use 
         });
 }
 
-function aliasesOnWrite(parent: Node, value: Node, analysis: BindingAnalysis, bindings: ReadonlyMap<Node, Reference>): boolean {
+function aliasesOnWrite(
+    parent: Node,
+    value: Node,
+    analysis: BindingAnalysis,
+    bindings: ReadonlyMap<Node, Reference>
+): boolean {
     return parent.type === NodeType.AssignmentExpression && parent.right === value &&
         localAssignment(parent, analysis, bindings);
 }
@@ -116,7 +121,8 @@ function disposition(
     assertions: ReadonlySet<Node>
 ): Use {
     let value = node;
-    for (let parent = value.parent; parent !== undefined; parent = value.parent) {
+    let { parent } = value;
+    while (parent !== undefined) {
         if (assertions.has(value) && parent.type === NodeType.CallExpression) {
             return 'assert';
         }
@@ -124,6 +130,7 @@ function disposition(
             return terminalUse(parent, value, analysis);
         }
         value = parent;
+        ({ parent } = value);
     }
     return 'unknown';
 }
@@ -132,6 +139,16 @@ function factoryOf(origin: BindingOrigin | null, factories: ReadonlySet<Call>): 
     return origin?.root.kind === 'call' && origin.path.length === 0 && factories.has(origin.root.node)
         ? origin.root.node
         : null;
+}
+
+function assertionReceiver(origin: BindingOrigin | null, owners: ReturnType<typeof scopeParameters>): boolean {
+    if (origin?.root.kind !== 'parameter' || origin.path.length !== 1 || origin.path[0] !== 'assert') {
+        return false;
+    }
+    const { owner, index } = origin.root;
+    return owners.some(function (parameter) {
+        return parameter.body === owner && parameter.index === index;
+    });
 }
 
 function assertionArguments(
@@ -150,19 +167,10 @@ function assertionArguments(
     }));
 }
 
-function assertionReceiver(origin: BindingOrigin | null, owners: ReturnType<typeof scopeParameters>): boolean {
-    if (origin?.root.kind !== 'parameter' || origin.path.length !== 1 || origin.path[0] !== 'assert') {
-        return false;
-    }
-    const { owner, index } = origin.root;
-    return owners.some(function (parameter) {
-        return parameter.body === owner && parameter.index === index;
-    });
-}
-
 function sourceBindings(source: Readonly<TSESLint.SourceCode>): ReadonlyMap<Node, Reference> {
     const bindings = new Map<Node, Reference>();
-    for (const scope of source.scopeManager?.scopes ?? []) {
+    const scopes = source.scopeManager?.scopes ?? [];
+    for (const scope of scopes) {
         for (const variable of scope.variables) {
             variable.references.forEach(function (reference) {
                 if (reference.resolved === variable) {
@@ -225,7 +233,8 @@ function countReferenceUses(
     }
 
     function recordUnresolved(reference: Reference): void {
-        for (const { writeExpr = null } of reference.resolved?.references ?? []) {
+        const references = reference.resolved?.references ?? [];
+        for (const { writeExpr = null } of references) {
             if (writeExpr !== null) {
                 possibleFactories(writeExpr).forEach(function (factory) {
                     unsafe.add(factory);
@@ -246,7 +255,7 @@ function countReferenceUses(
     }
 
     function recordMember(node: Readonly<Tree.MemberExpression>): void {
-        if (node.parent?.type !== NodeType.AssignmentExpression || node.parent.left !== node) {
+        if (node.parent.type !== NodeType.AssignmentExpression || node.parent.left !== node) {
             record(node, possibleFactories(node));
         }
     }
@@ -263,10 +272,15 @@ function countReferenceUses(
     };
 }
 
+type AssertionSites = {
+    readonly calls: readonly Call[];
+    readonly members: readonly Readonly<Tree.MemberExpression>[];
+};
+
 export function singleAssertionUses(
     source: Readonly<TSESLint.SourceCode>,
     analysis: BindingAnalysis,
-    sites: { readonly calls: readonly Call[]; readonly members: readonly Readonly<Tree.MemberExpression>[]; },
+    sites: AssertionSites,
     factories: ReadonlySet<Call>
 ): ReadonlySet<Call> {
     const assertions = assertionArguments(source, analysis, sites.calls);

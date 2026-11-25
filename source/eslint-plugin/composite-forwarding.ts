@@ -2,11 +2,13 @@ import { AST_NODE_TYPES as NodeType, type TSESTree as Tree } from '@typescript-e
 import { match } from 'ts-pattern';
 import type { CompositeCheckBuilder } from '../assert/assertion-extension.ts';
 import type { BindingAnalysis } from './binding-analysis.ts';
-import type { FunctionNode } from './binding-origin.ts';
+import type { BindingOrigin, FunctionNode } from './binding-origin.ts';
 
 type Node = Readonly<Tree.Node>;
 
-const builtInChecks = {
+type BuiltInCheck = Exclude<keyof CompositeCheckBuilder, 'annotated' | 'fromRejectable' | 'fromThrowable' | 'group'>;
+
+const builtInChecks: Readonly<Record<BuiltInCheck, true>> = {
     array: true,
     arrayContainsPartial: true,
     between: true,
@@ -44,7 +46,7 @@ const builtInChecks = {
     throws: true,
     true: true,
     undefined: true
-} satisfies Record<Exclude<keyof CompositeCheckBuilder, 'annotated' | 'fromRejectable' | 'fromThrowable' | 'group'>, true>;
+};
 
 function propertyName(property: Readonly<Tree.Property>): string | null {
     if (property.key.type === NodeType.Identifier && !property.computed) {
@@ -55,13 +57,20 @@ function propertyName(property: Readonly<Tree.Property>): string | null {
         : null;
 }
 
-function isDefinitionProperty(property: Readonly<Tree.Property | Tree.SpreadElement>): property is Readonly<Tree.Property> {
+function isDefinitionProperty(
+    property: Readonly<Tree.Property | Tree.SpreadElement>
+): property is Readonly<Tree.Property> {
     if (property.type !== NodeType.Property || property.kind !== 'init') {
         return false;
     }
     const key = propertyName(property);
     return key === 'assert' || key === 'name' && property.value.type === NodeType.Literal &&
-        typeof property.value.value === 'string';
+            typeof property.value.value === 'string';
+}
+
+function localCallback(property: Readonly<Tree.Property> | undefined, analysis: BindingAnalysis): FunctionNode | null {
+    const origin = property === undefined ? null : analysis.originOf(property.value);
+    return origin?.root.kind === 'function' && origin.path.length === 0 ? origin.root.node : null;
 }
 
 function assertionBody(factory: Readonly<Tree.CallExpression>, analysis: BindingAnalysis): FunctionNode | null {
@@ -78,11 +87,6 @@ function assertionBody(factory: Readonly<Tree.CallExpression>, analysis: Binding
     });
     const callback = callbacks.length === 1 ? callbacks[0] : undefined;
     return localCallback(callback, analysis);
-}
-
-function localCallback(property: Readonly<Tree.Property> | undefined, analysis: BindingAnalysis): FunctionNode | null {
-    const origin = property === undefined ? null : analysis.originOf(property.value);
-    return origin?.root.kind === 'function' && origin.path.length === 0 ? origin.root.node : null;
 }
 
 function isLiteral(node: Node): boolean {
@@ -102,7 +106,9 @@ function isLiteral(node: Node): boolean {
         .with({ type: NodeType.ObjectExpression }, function ({ properties }) {
             return properties.every(function (property) {
                 return property.type === NodeType.Property && property.kind === 'init' &&
-                    propertyName(property) !== null && propertyName(property) !== '__proto__' && isLiteral(property.value);
+                    propertyName(property) !== null && propertyName(property) !== '__proto__' && isLiteral(
+                        property.value
+                    );
             });
         })
         .otherwise(function () {
@@ -138,7 +144,7 @@ function directBinding(node: Node): boolean {
 function operand(node: Node, body: FunctionNode, analysis: BindingAnalysis): boolean {
     const origin = analysis.originOf(node);
     return isLiteral(node) || directReference(node) &&
-        origin?.root.kind === 'parameter' && origin.root.owner === body && origin.root.index > 0;
+            origin?.root.kind === 'parameter' && origin.root.owner === body && origin.root.index > 0;
 }
 
 function callOrigin(node: Node, analysis: BindingAnalysis): Readonly<Tree.CallExpression> | null {
@@ -149,7 +155,21 @@ function callOrigin(node: Node, analysis: BindingAnalysis): Readonly<Tree.CallEx
     return origin?.root.kind === 'call' && origin.path.length === 0 ? origin.root.node : null;
 }
 
-function builderMethod(call: Readonly<Tree.CallExpression>, body: FunctionNode, analysis: BindingAnalysis): string | null {
+type BuilderParameter = Extract<BindingOrigin['root'], { readonly kind: 'parameter'; }>;
+
+function parameterMethod(
+    parameter: BuilderParameter,
+    body: FunctionNode,
+    path: readonly string[]
+): string | null {
+    return parameter.owner === body && parameter.index === 0 && path.length === 1 ? path[0] ?? null : null;
+}
+
+function builderMethod(
+    call: Readonly<Tree.CallExpression>,
+    body: FunctionNode,
+    analysis: BindingAnalysis
+): string | null {
     if (call.optional || !directReference(call.callee)) {
         return null;
     }
@@ -160,14 +180,6 @@ function builderMethod(call: Readonly<Tree.CallExpression>, body: FunctionNode, 
     return parameterMethod(method.root, body, method.path);
 }
 
-function parameterMethod(
-    parameter: { readonly owner: FunctionNode; readonly index: number; },
-    body: FunctionNode,
-    path: readonly string[]
-): string | null {
-    return parameter.owner === body && parameter.index === 0 && path.length === 1 ? path[0] ?? null : null;
-}
-
 function singleGroupChild(call: Readonly<Tree.CallExpression>): Node | null {
     const [ children ] = call.arguments;
     return call.arguments.length === 1 && children?.type === NodeType.ArrayExpression && children.elements.length === 1
@@ -175,38 +187,57 @@ function singleGroupChild(call: Readonly<Tree.CallExpression>): Node | null {
         : null;
 }
 
+type ReturnedChecks = {
+    readonly nodes: ReadonlySet<Node>;
+    readonly record: (node: Node) => void;
+};
+
+function forwardedMethod(
+    name: string,
+    call: Readonly<Tree.CallExpression>,
+    body: FunctionNode,
+    analysis: BindingAnalysis
+): string | null {
+    const forwardsOperands = call.arguments.every(function (argument) {
+        return operand(argument, body, analysis);
+    });
+    return Object.hasOwn(builtInChecks, name) && forwardsOperands ? name : null;
+}
+
 function forwardedCheck(
-    node: Node,
+    node: Node | null,
     body: FunctionNode,
     analysis: BindingAnalysis,
-    returnedCalls: Set<Node>
+    returnedChecks: ReturnedChecks
 ): string | null {
-    const call = callOrigin(node, analysis);
-    if (call === null || returnedCalls.has(call)) {
+    const call = node === null ? null : callOrigin(node, analysis);
+    if (call === null || returnedChecks.nodes.has(call)) {
         return null;
     }
     const name = builderMethod(call, body, analysis);
     if (name === null) {
         return null;
     }
-    returnedCalls.add(call);
-    return returnedCheck(name, call, body, { analysis, returnedCalls });
+    returnedChecks.record(call);
+    return name === 'group'
+        ? forwardedCheck(singleGroupChild(call), body, analysis, returnedChecks)
+        : forwardedMethod(name, call, body, analysis);
 }
 
-function returnedCheck(
-    name: string,
-    call: Readonly<Tree.CallExpression>,
+function forwardsInitializer(
+    node: Node,
     body: FunctionNode,
-    context: { readonly analysis: BindingAnalysis; readonly returnedCalls: Set<Node>; }
-): string | null {
-    const { analysis, returnedCalls } = context;
-    if (name === 'group') {
-        const child = singleGroupChild(call);
-        return child === null ? null : forwardedCheck(child, body, analysis, returnedCalls);
+    analysis: BindingAnalysis,
+    returnedCalls: ReadonlySet<Node>
+): boolean {
+    if (directReference(node)) {
+        const origin = analysis.originOf(node);
+        if (origin?.root.kind === 'parameter') {
+            return origin.root.owner === body;
+        }
     }
-    return Object.hasOwn(builtInChecks, name) && call.arguments.every(function (argument) {
-        return operand(argument, body, analysis);
-    }) ? name : null;
+    const call = callOrigin(node, analysis);
+    return call !== null && returnedCalls.has(call);
 }
 
 function transparentDeclaration(
@@ -224,22 +255,16 @@ function transparentDeclaration(
         });
 }
 
-function forwardsInitializer(node: Node, body: FunctionNode, analysis: BindingAnalysis, returnedCalls: ReadonlySet<Node>): boolean {
-    if (directReference(node)) {
-        const origin = analysis.originOf(node);
-        if (origin?.root.kind === 'parameter') {
-            return origin.root.owner === body;
-        }
-    }
-    const call = callOrigin(node, analysis);
-    return call !== null && returnedCalls.has(call);
-}
-
 function unawaited(node: Node | null): Node | null {
     return node?.type === NodeType.AwaitExpression ? node.argument : node;
 }
 
-function returnedExpression(body: FunctionNode): { readonly statements: readonly Node[]; readonly result: Node | null; } {
+type ReturnedExpression = {
+    readonly statements: readonly Node[];
+    readonly result: Node | null;
+};
+
+function returnedExpression(body: FunctionNode): ReturnedExpression {
     if (body.body.type !== NodeType.BlockStatement) {
         return { statements: [], result: unawaited(body.body) };
     }
@@ -256,9 +281,23 @@ function forwardingBody(factory: Readonly<Tree.CallExpression>, analysis: Bindin
     return body === null || body.generator || !body.params.every(directBinding) ? null : body;
 }
 
-export function forwardedBuiltIn(factory: Readonly<Tree.CallExpression>, analysis: BindingAnalysis): string | null {
-    const body = forwardingBody(factory, analysis);
-    return body === null ? null : forwardedBody(body, analysis);
+type CompositeForwarding = {
+    readonly analysis: BindingAnalysis;
+    readonly returnedCalls: ReadonlySet<Node>;
+};
+
+function confirmsForwarding(
+    body: FunctionNode,
+    statements: readonly Node[],
+    check: string,
+    context: CompositeForwarding
+): boolean {
+    if (body.async && check !== 'rejects') {
+        return false;
+    }
+    return statements.every(function (statement) {
+        return transparentDeclaration(statement, body, context.analysis, context.returnedCalls);
+    });
 }
 
 function forwardedBody(body: FunctionNode, analysis: BindingAnalysis): string | null {
@@ -267,20 +306,16 @@ function forwardedBody(body: FunctionNode, analysis: BindingAnalysis): string | 
         return null;
     }
     const returnedCalls = new Set<Node>();
-    const check = forwardedCheck(result, body, analysis, returnedCalls);
+    const check = forwardedCheck(result, body, analysis, {
+        nodes: returnedCalls,
+        record(node) {
+            returnedCalls.add(node);
+        }
+    });
     return check !== null && confirmsForwarding(body, statements, check, { analysis, returnedCalls }) ? check : null;
 }
 
-function confirmsForwarding(
-    body: FunctionNode,
-    statements: readonly Node[],
-    check: string,
-    context: { readonly analysis: BindingAnalysis; readonly returnedCalls: ReadonlySet<Node>; }
-): boolean {
-    if (body.async && check !== 'rejects') {
-        return false;
-    }
-    return statements.every(function (statement) {
-        return transparentDeclaration(statement, body, context.analysis, context.returnedCalls);
-    });
+export function forwardedBuiltIn(factory: Readonly<Tree.CallExpression>, analysis: BindingAnalysis): string | null {
+    const body = forwardingBody(factory, analysis);
+    return body === null ? null : forwardedBody(body, analysis);
 }
