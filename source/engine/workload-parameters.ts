@@ -1,5 +1,5 @@
 import type { JsonObject, JsonValue, ReadonlyDeep } from 'type-fest';
-import { snapshotValidatedJson } from '../attachments/json-snapshot.ts';
+import { snapshotValidatedJsonValue } from '../attachments/json-snapshot.ts';
 
 export type WorkloadParameters = ReadonlyDeep<JsonObject>;
 type JsonParameterContainer = Readonly<Record<PropertyKey, unknown>> | readonly unknown[];
@@ -61,7 +61,7 @@ function validateParameterValue(value: unknown): void {
 
 function snapshotParameters(value: unknown): ReadonlyDeep<JsonValue> {
     try {
-        return snapshotValidatedJson(value, validateParameterValue).value;
+        return snapshotValidatedJsonValue(value, validateParameterValue);
     } catch (error: unknown) {
         throw new TypeError('workload() requires lossless, acyclic JSON parameters with depth at most 64.', {
             cause: error

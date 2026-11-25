@@ -5,6 +5,7 @@ type JsonSnapshot = { readonly value: ReadonlyDeep<JsonValue>; readonly encoded:
 type JsonContainer = Readonly<Record<PropertyKey, unknown>> | readonly unknown[];
 type JsonVisit = (value: unknown, depth: number) => ReadonlyDeep<JsonValue>;
 type JsonSnapshotBudget = {
+    readonly reserveValue: (value: boolean | number | string | null, separatorBytes: number) => void;
     readonly reserve: (bytes: number) => void;
     readonly enter: (value: JsonContainer) => void;
     readonly leave: (value: JsonContainer) => void;
@@ -21,12 +22,19 @@ class JsonByteLimitError extends Error {
 function createJsonSnapshotBudget(maxBytes: number): JsonSnapshotBudget {
     const ancestors = new Set<JsonContainer>();
     const remaining = createStoredValue(maxBytes);
+    const bounded = Number.isFinite(maxBytes);
+    function reserve(bytes: number): void {
+        if (bytes > remaining.read()) {
+            throw new JsonByteLimitError();
+        }
+        remaining.write(remaining.read() - bytes);
+    }
     return {
-        reserve(bytes) {
-            if (bytes > remaining.read()) {
-                throw new JsonByteLimitError();
+        reserve,
+        reserveValue(value, separatorBytes) {
+            if (bounded) {
+                reserve(Buffer.byteLength(JSON.stringify(value)) + separatorBytes);
             }
-            remaining.write(remaining.read() - bytes);
         },
         enter(value) {
             ancestors.add(value);
@@ -76,7 +84,7 @@ function objectSnapshot(
         if (typeof key !== 'string') {
             throw new TypeError('JSON attachments cannot contain symbol keys.');
         }
-        budget.reserve(Buffer.byteLength(JSON.stringify(key)) + 1 + (index === 0 ? 0 : 1));
+        budget.reserveValue(key, 1 + (index === 0 ? 0 : 1));
         Object.defineProperty(entries, key, {
             enumerable: true,
             value: visit(descriptorValue(Object.getOwnPropertyDescriptor(value, key)), depth + 1)
@@ -112,7 +120,7 @@ function createJsonVisit(budget: JsonSnapshotBudget, validate: (value: unknown) 
     return function visit(value, depth) {
         validate(value);
         if (scalar(value)) {
-            budget.reserve(Buffer.byteLength(JSON.stringify(value)));
+            budget.reserveValue(value, 0);
             return value;
         }
         if (!isContainer(value)) {
@@ -132,8 +140,14 @@ function boundedJsonSnapshot(value: unknown, maxBytes: number): JsonSnapshot {
     })(value, 0);
     return { value: copy, encoded: JSON.stringify(copy) };
 }
+export function snapshotValidatedJsonValue(
+    value: unknown,
+    validate: (value: unknown) => void
+): ReadonlyDeep<JsonValue> {
+    return createJsonVisit(createJsonSnapshotBudget(Number.POSITIVE_INFINITY), validate)(value, 0);
+}
 export function snapshotValidatedJson(value: unknown, validate: (value: unknown) => void): JsonSnapshot {
-    const copy = createJsonVisit(createJsonSnapshotBudget(Number.POSITIVE_INFINITY), validate)(value, 0);
+    const copy = snapshotValidatedJsonValue(value, validate);
     return { value: copy, encoded: JSON.stringify(copy) };
 }
 export function snapshotJson(value: unknown, maxBytes: number): JsonSnapshot | null {

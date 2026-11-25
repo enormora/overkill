@@ -1,4 +1,4 @@
-import { snapshotValidatedJson } from './attachments/json-snapshot.ts';
+import { snapshotValidatedJsonValue } from './attachments/json-snapshot.ts';
 
 export type PortableValue = boolean | number | string | readonly PortableValue[] | {
     readonly [key: string]: PortableValue;
@@ -42,25 +42,12 @@ function validatePortableValue(value: unknown): void {
     });
 }
 
-function freezePortableValue(value: PortableValue): void {
-    if (typeof value === 'object' && value !== null) {
-        Object.values(value).forEach(freezePortableValue);
-        Object.freeze(value);
-    }
-}
-
-function validatedPortableSnapshot(value: unknown): PortableValue {
-    try {
-        return snapshotValidatedJson(value, validatePortableValue).value;
-    } catch (error: unknown) {
-        throw new TypeError('Portable inputs require lossless, acyclic JSON.', { cause: error });
-    }
-}
-
 export function snapshotPortableValue<Value extends PortableValue>(value: Value): Value;
 export function snapshotPortableValue(value: unknown): PortableValue;
 export function snapshotPortableValue(value: unknown): PortableValue {
-    const snapshot = validatedPortableSnapshot(value);
-    freezePortableValue(snapshot);
-    return snapshot;
+    try {
+        return snapshotValidatedJsonValue(value, validatePortableValue);
+    } catch (error: unknown) {
+        throw new TypeError('Portable inputs require lossless, acyclic JSON.', { cause: error });
+    }
 }
