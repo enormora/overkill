@@ -451,6 +451,13 @@ For `no-single-use-trivial-assertion`, count source references, not runtime
 executions. A single use in a table callback remains one reference. Exported
 assertions, composites grouping several checks, narrowing references, and
 custom diagnostic formatting are outside the trivial-forwarder case.
+Follow provable local aliases to the source uses they feed. An alias transfer
+does not count as another use, and an export through an alias preserves the
+definition. Report only when the sole use is a proven assertion invocation.
+Preserve opaque transfers whose consumers could retain or expose the reference.
+
+Forwarding can include fixed literals and direct static property reads from
+parameters. Preserve wrappers that compute operands or add diagnostic behavior.
 Runtime usage counts cannot establish export visibility or source reuse.
 
 `no-self-comparison` requires stable operand identity. Identical source text
