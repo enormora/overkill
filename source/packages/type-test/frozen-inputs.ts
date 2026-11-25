@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { hash } from 'node:crypto';
 import { isDeepStrictEqual } from 'node:util';
 import type { APIOptions } from 'typescript-beta/async';
 import { compilerFileSystem } from './compiler-file-system.ts';
@@ -19,7 +19,7 @@ export type FrozenInputs = {
     readonly realPaths: readonly PathObservation<string>[];
 };
 export function sourceFingerprint(text: string): string {
-    return createHash('sha256').update(text).digest('hex');
+    return hash('sha256', text);
 }
 
 function observations<Value>(values: ReadonlyMap<string, Value>): readonly PathObservation<Value>[] {

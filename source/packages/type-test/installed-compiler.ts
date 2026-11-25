@@ -2,7 +2,7 @@ import { createRequire } from 'node:module';
 import { readFile, realpath, readdir } from 'node:fs/promises';
 import { dirname, resolve, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { createHash } from 'node:crypto';
+import { hash } from 'node:crypto';
 import { z } from 'zod';
 import pLimit from 'p-limit';
 import type * as NativeApi from 'typescript-beta/async';
@@ -57,7 +57,8 @@ const syntaxSchema = z.custom<typeof Ast>(function syntaxModule(value) {
         );
 });
 async function fingerprint(path: string): Promise<string> {
-    return createHash('sha256').update(await readFile(path)).digest('hex');
+    const contents = await readFile(path);
+    return hash('sha256', contents);
 }
 async function compilerFile(path: string): Promise<CompilerFile> {
     return { path: await realpath(path), fingerprint: await fingerprint(path) };

@@ -1,5 +1,6 @@
 /* eslint node/no-sync: "off" -- The native compiler requires synchronous filesystem callbacks. */
 import { readFileSync, existsSync, readdirSync, realpathSync, statSync, type Stats } from 'node:fs';
+import { resolve } from 'node:path';
 import type { FileSystemStat } from 'typescript-beta/fs';
 
 function missing(error: unknown): boolean {
@@ -42,6 +43,11 @@ function entries(path: string): string[] {
     }
 }
 function realpath(path: string): string {
+    if (resolve(path) === path) {
+        try {
+            return realpathSync.native(path);
+        } catch {}
+    }
     return existsSync(path) ? realpathSync(path) : path;
 }
 function stat(path: string): FileSystemStat | undefined {
