@@ -13,6 +13,7 @@ import {
 } from './supervised-run-state.ts';
 
 import { analysisProcessGroupArgument } from './supervised-process-group.ts';
+import { analysisCompileEnvironment } from './analysis-compile-cache.ts';
 
 export type SupervisedChildCoverage = {
     readonly environment: {
@@ -347,7 +348,7 @@ export function createSupervisedChildProcessStarter(
                 ...analysis ? { detached: true } : {},
                 cwd: options.cwd,
                 env: options.coverage === null
-                    ? environment
+                    ? await analysisCompileEnvironment(analysis, environment)
                     : { ...environment, ...options.coverage.environment },
                 execArgv: await supervisedChildExecArgv(options, dependencies),
                 stdio: [ 'ignore', 'pipe', 'pipe', 'ipc' ]
