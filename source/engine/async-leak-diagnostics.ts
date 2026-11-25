@@ -1,6 +1,6 @@
-import asyncHooks, { AsyncLocalStorage } from 'node:async_hooks';
+import asyncHooks, { AsyncLocalStorage, type AsyncHook } from 'node:async_hooks';
 import { observeResourceOwnerAllocations } from './resource-owner-observation.ts';
-import { createExecutionObservation } from './execution-observation.ts';
+import { createExecutionObservation, type ExecutionObservation } from './execution-observation.ts';
 import type { CaseId, WorkId } from './identity.ts';
 import type { RunnerError } from './run-result.ts';
 import type { TestPlanCase } from './test-plan.ts';
@@ -166,34 +166,42 @@ function countPendingPromises(
     return count;
 }
 
+function observePendingPromises(
+    pendingPromises: Map<number, ActiveCase>,
+    activeCaseStorage: AsyncLocalStorage<ActiveCase>,
+    observation: ExecutionObservation
+): AsyncHook {
+    function releasePromise(asyncId: number): void {
+        pendingPromises.delete(asyncId);
+    }
+    const createHookKey = 'createHook';
+    const hook = asyncHooks[createHookKey]({
+        destroy: releasePromise,
+        init(asyncId, type, triggerAsyncId) {
+            if (type !== 'PROMISE' || !observation.accepts()) {
+                return;
+            }
+
+            releasePromise(triggerAsyncId);
+            const activeCase = activeCaseStorage.getStore();
+
+            if (activeCase !== undefined) {
+                pendingPromises.set(asyncId, activeCase);
+            }
+        },
+        promiseResolve: releasePromise
+    });
+    hook.enable();
+    return hook;
+}
+
 export function createAsyncLeakMonitor(): AsyncLeakMonitor {
     const activeCaseStorage = new AsyncLocalStorage<ActiveCase>();
     const observation = createExecutionObservation();
     const stopResourceAllocations = observeResourceOwnerAllocations();
     const pendingPromises = new Map<number, ActiveCase>();
     const attempts = new WeakMap<TestPlanCase, ActiveCase>();
-    function releasePromise(asyncId: number): void {
-        pendingPromises.delete(asyncId);
-    }
-    const createHookKey = 'createHook';
-    const hook = asyncHooks
-        [createHookKey]({
-            destroy: releasePromise,
-            init(asyncId, type, triggerAsyncId) {
-                if (type !== 'PROMISE' || !observation.accepts()) {
-                    return;
-                }
-
-                releasePromise(triggerAsyncId);
-                const activeCase = activeCaseStorage.getStore();
-
-                if (activeCase !== undefined) {
-                    pendingPromises.set(asyncId, activeCase);
-                }
-            },
-            promiseResolve: releasePromise
-        })
-        .enable();
+    const hook = observePendingPromises(pendingPromises, activeCaseStorage, observation);
     observation.register(function stopPromiseObservation() {
         hook.disable();
         stopResourceAllocations();
