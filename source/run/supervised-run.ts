@@ -441,18 +441,14 @@ async function reportRunStartForPlannedCases(
     await reportRunStart(runtime, collectedPlan, startedAtMs);
 }
 
-async function dispatchLiveRun(
-    runtime: SupervisedRunRuntime,
-    plan: CollectedRunPlan,
-    retainedAnalysis: boolean
-): Promise<void> {
+async function dispatchLiveRun(runtime: SupervisedRunRuntime, hasFamily: boolean, retained: boolean): Promise<void> {
     if (runtime.terminalFailure.read()) {
         return;
     }
-    if (plan.family !== null) {
+    if (hasFamily) {
         runtime.timeout.start();
     }
-    await sendAssignmentForPlan(runtime, retainedAnalysis);
+    await sendAssignmentForPlan(runtime, retained);
 }
 
 async function executeCollectedLiveRun(liveRun: SupervisedLiveRun, resolvedRun: ResolvedRun): Promise<RunResult> {
@@ -462,7 +458,7 @@ async function executeCollectedLiveRun(liveRun: SupervisedLiveRun, resolvedRun: 
     liveRun.runtime.write(runtime);
     runtime.state.recordRunnerErrors(resolvedRun.collectionRunnerErrors);
     await reportRunStartForPlannedCases(runtime, collectedPlan, startedAt.epochMilliseconds);
-    await dispatchLiveRun(runtime, collectedPlan, liveRun.analysisSelection.collected());
+    await dispatchLiveRun(runtime, collectedPlan.family !== null, liveRun.analysisSelection.collected());
     await liveRun.finishedSignal.promise;
 
     return await finishSupervisedRuntime(runtime, startedAt.monotonicMicroseconds);

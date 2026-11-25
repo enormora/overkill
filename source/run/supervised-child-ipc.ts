@@ -86,6 +86,19 @@ async function receiveParentMessage<Message>(read: (message: unknown) => Message
 export async function receiveCommand(): Promise<SupervisedChildCommand> {
     return receiveParentMessage(readCommand);
 }
+function acknowledgeAnalysisCollection(
+    assignment: SupervisedWorkCommand,
+    collection: Awaited<ReturnType<CollectSupervisedAnalysis>>
+): SupervisedAssignmentCommand {
+    if (assignment.kind !== 'assign') {
+        throw new Error('Expected an assignment after collecting analysis.');
+    }
+    if (assignedAnalysisCollection(assignment) !== analysisCollectionFingerprint(collection)) {
+        throw new TypeError('Frozen analysis assignment changed; collect a new run.');
+    }
+    return { ...assignment, analysisCollection: collection };
+}
+
 export async function receiveAssignment(collect: CollectSupervisedAnalysis): Promise<SupervisedAssignmentCommand> {
     const message = await receiveParentMessage(readAssignment);
     if (message.kind === 'assign') {
@@ -94,13 +107,7 @@ export async function receiveAssignment(collect: CollectSupervisedAnalysis): Pro
     const collection = await collect(message.workIds);
     send({ kind: 'analysis-collected', collection });
     const assignment = await receiveParentMessage(readAssignment);
-    if (assignment.kind !== 'assign') {
-        throw new Error('Expected an assignment after collecting analysis.');
-    }
-    if (assignedAnalysisCollection(assignment) !== analysisCollectionFingerprint(collection)) {
-        throw new TypeError('Frozen analysis assignment changed; collect a new run.');
-    }
-    return { ...assignment, analysisCollection: collection };
+    return acknowledgeAnalysisCollection(assignment, collection);
 }
 
 export const flushSupervisedMessages = outbox.flush;

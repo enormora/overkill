@@ -79,14 +79,13 @@ function objectSnapshot(
     const entries: [string, ReadonlyDeep<JsonValue>][] = [];
     for (const key of Reflect.ownKeys(value)) {
         const descriptor = Object.getOwnPropertyDescriptor(value, key);
-        if (descriptor?.enumerable !== true) {
-            continue;
+        if (descriptor?.enumerable === true) {
+            if (typeof key !== 'string') {
+                throw new TypeError('JSON attachments cannot contain symbol keys.');
+            }
+            budget.reserveValue(key, 1 + (entries.length === 0 ? 0 : 1));
+            entries.push([ key, visit(descriptorValue(descriptor), depth + 1) ]);
         }
-        if (typeof key !== 'string') {
-            throw new TypeError('JSON attachments cannot contain symbol keys.');
-        }
-        budget.reserveValue(key, 1 + (entries.length === 0 ? 0 : 1));
-        entries.push([ key, visit(descriptorValue(descriptor), depth + 1) ]);
     }
     return Object.freeze(Object.fromEntries(entries));
 }
