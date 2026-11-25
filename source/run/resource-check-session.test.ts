@@ -218,11 +218,9 @@ export const testNode = suite('resource observation session policy', [
             return frame.kind === 'checkpoint';
         });
         scope.assert.false(fixture.connection.destroyed);
-        scope.require.defined(checkpoint);
-        const [ error ] = checkpoint.snapshot.errors;
-        scope.require.defined(error);
-        scope.assert.equal(error.target, 'service-target');
-        scope.assert.true(JSON.stringify(error.cause).includes('observation failed'));
+        const error = checkpoint?.snapshot.errors[0];
+        scope.assert.equal(error?.target, 'service-target');
+        scope.assert.true(JSON.stringify(error?.cause ?? null).includes('observation failed'));
         return scope.assert.collect();
     }),
     test('destroys the channel when checkpoint delivery fails', function (scope) {

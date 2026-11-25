@@ -2,13 +2,12 @@ import { randomUUID } from 'node:crypto';
 import type { Clock } from '@enormora/clock';
 import { match } from 'ts-pattern';
 import { workIdentityKey } from '../engine/identity.ts';
-import { serializeValue } from '../compare/serialized-value.ts';
 import type { ResourceCheckDelivery } from '../resource-check-delivery.ts';
 import { createStoredValue, type StoredValue } from '../stored-value.ts';
 import type { ResourceCheckInterval, ResourceCheckSnapshot } from '../resource-check-protocol.ts';
 import { withRunnerInfrastructure } from '../execution-ownership.ts';
 import type { ResourceCheckFrame } from './resource-check-channel.ts';
-import { serializeResourceCheckSnapshot } from './resource-check-serialization.ts';
+import { serializeResourceCheckSnapshot, serializeResourceCheckStop } from './resource-check-serialization.ts';
 
 export type ResourceCheckConnection = {
     readonly destroyed: boolean;
@@ -172,7 +171,7 @@ function delivery(state: ClientState, run: string): ResourceCheckDelivery {
             checkpoint(state, snapshot);
         },
         stop(owner, interval, cause) {
-            state.send.read()({ kind: 'stop', owner, interval, cause: serializeValue(cause) });
+            state.send.read()(serializeResourceCheckStop({ kind: 'stop', owner, interval, cause }));
         },
         active(interval, abort) {
             const key = JSON.stringify([ workIdentityKey(interval.work), interval.attempt.index ]);

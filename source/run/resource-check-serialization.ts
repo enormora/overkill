@@ -4,6 +4,7 @@ import { serializeValue, type SerializedValue } from '../compare/serialized-valu
 import { serializedValueSchema } from '../compare/serialized-value-schema.ts';
 import { resourceCheckSnapshotSchema } from '../engine/assertion-result-schema.ts';
 import type { ResourceCheckSnapshot } from '../resource-check-protocol.ts';
+import type { ResourceCheckFrame } from './resource-check-channel.ts';
 
 export function serializeFailedCheck(check: FailedCheck, convert: (value: unknown) => SerializedValue): FailedCheck {
     if (check.kind === 'foreign') {
@@ -61,4 +62,10 @@ const serializedSnapshotSchema = z.lazy(function resourceCheck() {
 
 export function serializeResourceCheckSnapshot(snapshot: ResourceCheckSnapshot): ResourceCheckSnapshot {
     return serializedSnapshotSchema.parse(convertResourceCheckSnapshot(snapshot, serializeValue));
+}
+
+type StopFrame = Extract<ResourceCheckFrame, { readonly kind: 'stop'; }>;
+
+export function serializeResourceCheckStop(frame: StopFrame): StopFrame {
+    return { ...frame, cause: serializeValue(frame.cause) };
 }
