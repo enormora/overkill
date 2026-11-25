@@ -19,8 +19,6 @@ import {
 } from './frozen-inputs.ts';
 import type { TypeAnalysis } from './source-analysis-port.ts';
 
-export { frozenInputFacts } from './frozen-inputs.ts';
-
 type CapturedProject = {
     readonly compiler: InstalledCompiler;
     readonly checker: Project['checker'];

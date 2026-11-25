@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import type { JsonValue, ReadonlyDeep } from 'type-fest';
 
-const parsedContainers = new WeakSet<object>();
+const parsedContainers = new WeakSet();
 
 const adapterFactsSchema: z.ZodType<ReadonlyDeep<JsonValue>> = z.lazy(function () {
     return z.union([

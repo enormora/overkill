@@ -1,14 +1,15 @@
 import type { JsonValue, ReadonlyDeep } from 'type-fest';
-import type { FamilyPreparationInput } from '../../engine/test-family.ts';
 import {
     createRunResult,
     workIdentityKey,
+    type FamilyPreparationInput,
     type RuntimeId,
     type WorkloadId,
     type TestPlan,
     type RunResult
 } from '../engine/engine.entry-point.ts';
 import { parseAdapterFacts } from '../../config/adapter-facts.ts';
+import { frozenInputFacts } from './frozen-inputs.ts';
 import { packageVersion, type PackageVersion } from '../../package-version.ts';
 import {
     checkCompilerCancellation,
@@ -17,7 +18,6 @@ import {
     verifyFrozenProject,
     originalProjectFacts,
     fingerprint,
-    frozenInputFacts,
     type FrozenProject
 } from './frozen-project.ts';
 import { collectProject, type CompilerCheck } from './native-execution.ts';

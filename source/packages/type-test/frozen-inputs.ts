@@ -24,13 +24,13 @@ export function sourceFingerprint(text: string): string {
 }
 
 function observations<Value>(values: ReadonlyMap<string, Value>): readonly PathObservation<Value>[] {
-    return Object.freeze(
-        Array.from(values, function observation([ path, value ]) {
-            return Object.freeze({ path, value });
-        }).toSorted(function byPath(left, right) {
-            return left.path.localeCompare(right.path);
-        })
-    );
+    const entries = Array.from(values, function observation([ path, value ]) {
+        return Object.freeze({ path, value });
+    });
+    const sorted = entries.toSorted(function byPath(left, right) {
+        return left.path.localeCompare(right.path);
+    });
+    return Object.freeze(sorted);
 }
 
 export type ProjectInputObservation = {

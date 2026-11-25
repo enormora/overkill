@@ -1,11 +1,11 @@
 import type { Diagnostic } from 'typescript-beta/async';
 import type { TestPlan } from '../engine/engine.entry-point.ts';
 import { parseAdapterFacts } from '../../config/adapter-facts.ts';
+import { frozenInputFacts } from './frozen-inputs.ts';
 import type { CheckerExecution } from './checker-plan.ts';
 import {
     verifyFrozenProject,
     fingerprint,
-    frozenInputFacts,
     originalProjectFacts,
     typeAnalysis,
     type FrozenProject
