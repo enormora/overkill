@@ -176,22 +176,24 @@ export function createAsyncLeakMonitor(): AsyncLeakMonitor {
         pendingPromises.delete(asyncId);
     }
     const createHookKey = 'createHook';
-    const hook = asyncHooks[createHookKey]({
-        destroy: releasePromise,
-        init(asyncId, type, triggerAsyncId) {
-            if (type !== 'PROMISE' || !observation.accepts()) {
-                return;
-            }
+    const hook = asyncHooks
+        [createHookKey]({
+            destroy: releasePromise,
+            init(asyncId, type, triggerAsyncId) {
+                if (type !== 'PROMISE' || !observation.accepts()) {
+                    return;
+                }
 
-            releasePromise(triggerAsyncId);
-            const activeCase = activeCaseStorage.getStore();
+                releasePromise(triggerAsyncId);
+                const activeCase = activeCaseStorage.getStore();
 
-            if (activeCase !== undefined) {
-                pendingPromises.set(asyncId, activeCase);
-            }
-        },
-        promiseResolve: releasePromise
-    }).enable();
+                if (activeCase !== undefined) {
+                    pendingPromises.set(asyncId, activeCase);
+                }
+            },
+            promiseResolve: releasePromise
+        })
+        .enable();
     observation.register(function stopPromiseObservation() {
         hook.disable();
         stopResourceAllocations();
