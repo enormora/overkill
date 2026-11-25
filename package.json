@@ -74,7 +74,7 @@
         "@types/convert-source-map": "2.0.3",
         "@types/proper-lockfile": "4.1.4",
         "@typescript-eslint/parser": "8.73.0",
-        "dependency-cruiser": "18.8.0",
+        "dependency-cruiser": "18.9.0",
         "jscpd": "5.4.3",
         "knip": "6.47.0",
         "packtory": "0.0.115",
