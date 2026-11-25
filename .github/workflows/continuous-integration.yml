@@ -31,30 +31,57 @@ jobs:
                   node-version-file: package.json
             - name: Install dependencies
               run: npm ci
-            - name: Check out the performance baseline
-              uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-              with:
-                  ref: 98b24f25ed84b60bfa16935df7795cbc934fb9b7
-                  path: target/performance-baseline-source
-                  persist-credentials: false
-            - name: Benchmark the baseline
-              working-directory: target/performance-baseline-source
+            - name: Profile production type-test stages
               run: |
-                  npm ci
-                  node build-benchmark-html.js
-                  node source/benchmarks/run-performance.entry-point.ts compare ../performance/baseline type-test-cli-many-files-serial source/benchmarks/baselines/shared.json
-            - name: Benchmark the checkout
-              run: |
-                  node build-benchmark-html.js
-                  node source/benchmarks/run-performance.entry-point.ts compare target/performance/full type-test-cli-many-files-serial source/benchmarks/baselines/shared.json
-            - name: Retain performance evidence
-              if: ${{ !cancelled() }}
-              uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-              with:
-                  name: performance
-                  path: |
-                      target/performance/full/report.html
-                      target/performance/full/measurements.json
-                      target/performance/full/state
-                      target/performance/baseline/report.html
-                      target/performance/baseline/measurements.json
+                  node --input-type=module <<'PROFILE'
+                  import { readFileSync, writeFileSync } from 'node:fs';
+                  import { resolve } from 'node:path';
+                  import { performanceCases } from './source/benchmarks/performance-cases.ts';
+                  import { writeConsumer } from './source/benchmarks/consumer-fixture.ts';
+                  const targets = {
+                    'source/packages/type-test/frozen-project.ts': ['parseProject','openAnalysisProject','captureProject','loadProject','verifyProjectSources','verifyFrozenProject'],
+                    'source/packages/type-test/installed-compiler.ts': ['compilerFiles','installation','loadCompiler','verifyCompilerResolution','verifyCompilerContents','verifyInstalledCompiler','resolveInstalledCompiler'],
+                    'source/packages/type-test/frozen-inputs.ts': ['verifyProjectInputs'],
+                    'source/packages/type-test/original-assertions.ts': ['collectOriginalAssertions'],
+                    'source/packages/type-test/native-execution.ts': ['validateProject','checkOriginalAssertions','collectProject'],
+                    'source/packages/type-test/compiler-plan.ts': ['collectCompilerGroups','checkCompilerGroups','prepare'],
+                    'source/config/adapter-facts.ts': ['parseAdapterFacts'],
+                    'source/run/supervised-run.ts': ['runSupervisedCommand','createLiveRun','executeCollectedLiveRun'],
+                  };
+                  const output = JSON.stringify(resolve('target/performance/app-stage-times.jsonl'));
+                  const helper = "import { appendFileSync as appendStage } from 'node:fs';\n"
+                    + 'function recordStage(name: string, start: number, previous: NodeJS.CpuUsage): void {\n'
+                    + '    const cpu = process.cpuUsage(previous);\n'
+                    + '    appendStage(' + output + ', JSON.stringify({ pid: process.pid, name, end: Date.now(), wall: Math.round(performance.now() - start), cpu: Math.round((cpu.user + cpu.system) / 1000) }) + "\\n");\n'
+                    + '}\n';
+                  for (const [file, names] of Object.entries(targets)) {
+                    let source = readFileSync(file, 'utf8');
+                    for (const name of names) {
+                      const header = new RegExp('((?:export )?(async )?function ' + name + ')(\\([\\s\\S]*?\\n?\\)(?:\\s*:\\s*[^;]+?)?\\s*\\{)\\n');
+                      const match = source.match(header);
+                      if (!match) throw new Error('Missing function ' + name + ' in ' + file);
+                      const start = match.index + match[0].length;
+                      const close = source.indexOf('\n}', start);
+                      if (close < 0) throw new Error('Missing function boundary ' + name);
+                      source = source.slice(0, start)
+                        + '    const stageStarted = performance.now();\n    const stageCpu = process.cpuUsage();\n    try {\n'
+                        + source.slice(start, close)
+                        + '\n    } finally { recordStage(' + JSON.stringify(name) + ', stageStarted, stageCpu); }'
+                        + source.slice(close);
+                    }
+                    writeFileSync(file, helper + source);
+                  }
+                  const workload = performanceCases.find(entry => entry.id === 'type-test-cli-many-files-serial');
+                  if (!workload) throw new Error('Missing original benchmark workload');
+                  await writeConsumer(resolve('target/performance/stage-profile'), resolve('node_modules'), workload);
+                  PROFILE
+                  project="$PWD"
+                  for phase in cold warm; do
+                      : > "$project/target/performance/app-stage-times.jsonl"
+                      (
+                          cd target/performance/stage-profile
+                          env -i PATH="$PATH" LANG=C TZ=UTC node --permission-audit --allow-inspector --disable-warning=PERM0004 "$project/source/packages/test/overkill.entry-point.ts" run --config consumer-config.mjs --profile measured --seed 42 --order lexical
+                      )
+                      printf '%s\n' "$phase"
+                      cat "$project/target/performance/app-stage-times.jsonl"
+                  done
