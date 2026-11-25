@@ -10,7 +10,9 @@ import { originalSourceFile } from '../../../../packages/type-test/source-analys
 
 const projectFiles = {
     'tsconfig.json': '{"extends":"./base.json","files":["case.ts"]}',
-    'base.json': '{"compilerOptions":{"strict":true,"types":[],"noLib":true,"paths":{"@fixture/value":["./value.d.ts"]}}}',
+    'base.json': JSON.stringify({
+        compilerOptions: { strict: true, types: [], noLib: true, paths: { '@fixture/value': [ './value.d.ts' ] } }
+    }),
     'case.ts': "import type { Value } from '@fixture/value'; export type Result = Value;",
     'value.d.ts': 'export type Value = string;'
 };

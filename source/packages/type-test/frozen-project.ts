@@ -65,29 +65,46 @@ async function parseProject(input: ProjectSession): Promise<ParsedCommandLine> {
     return project;
 }
 
-async function captureProject(
-    input: ProjectSession
-): Promise<CapturedProject> {
+async function openAnalysisProject(
+    input: ProjectSession,
+    parsed: ParsedCommandLine
+): Promise<Pick<CapturedProject, 'program' | 'checker' | 'diagnosticProgram'>> {
+    const standalone = (parsed.projectReferences?.length ?? 0) === 0 && parsed.typeAcquisition?.enable !== true;
+    if (standalone) {
+        const program = await input.api.createProgram(parsed.fileNames, parsed.options);
+        return {
+            program,
+            checker: program.getProject().checker,
+            async diagnosticProgram() {
+                const configured = await openConfiguredProject(input);
+                return configured.program;
+            }
+        };
+    }
+    const { program, checker } = await openConfiguredProject(input);
+    return {
+        program,
+        checker,
+        async diagnosticProgram() {
+            return program;
+        }
+    };
+}
+
+async function captureProject(input: ProjectSession): Promise<CapturedProject> {
     const project = await parseProject(input);
-    const standalone = (project.projectReferences?.length ?? 0) === 0 && project.typeAcquisition?.enable !== true;
-    const { program, checker } = standalone
-        ? (await input.api.createProgram(project.fileNames, project.options)).getProject()
-        : await openConfiguredProject(input);
+    const analysis = await openAnalysisProject(input, project);
     input.signal.throwIfAborted();
-    const paths = await program.getSourceFileNames();
+    const paths = await analysis.program.getSourceFileNames();
     input.signal.throwIfAborted();
     for (const path of paths) {
         input.observation.fs.realpath(path);
     }
     return {
         compiler: input.compiler,
-        checker,
+        ...analysis,
         projectConfigPath: input.projectConfigPath,
         project,
-        program,
-        async diagnosticProgram() {
-            return standalone ? (await openConfiguredProject(input)).program : program;
-        },
         observation: input.observation,
         inputs: input.observation.snapshot(),
         projectText: await readFile(input.projectConfigPath, 'utf8')

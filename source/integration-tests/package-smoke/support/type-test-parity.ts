@@ -34,7 +34,7 @@ export function evidence(result) {
 function parityProgram(request: string): string {
     return `import assert from 'node:assert/strict';
 import {channel} from 'node:diagnostics_channel';
-import {access,readFile,readdir,realpath} from 'node:fs/promises';
+import {access,readFile,readdir,realpath,writeFile} from 'node:fs/promises';
 import {join,relative} from 'node:path';
 import {API,Program} from 'typescript-beta/async';
 import * as engine from '@overkill-dev/engine';
@@ -59,9 +59,17 @@ API.prototype.parseConfigFile=async function(path,...args) {
     return configuration;
 };
 API.prototype.createSnapshot=async function(options,...args) {
-    assert.deepEqual(options,{openProjects:[project]});
     const snapshot=await createSnapshot.call(this,options,...args);
-    const program=snapshot.getConfiguredProject(project).program;
+    let program;
+    if(options.createPrograms===undefined) {
+        assert.deepEqual(options,{openProjects:[project]});
+        program=snapshot.getConfiguredProject(project).program;
+    } else {
+        assert.equal(options.createPrograms.length,1);
+        assert.deepEqual(options.createPrograms[0].rootFiles,[source]);
+        assert.equal(options.createPrograms[0].compilerOptions.configFilePath,project);
+        [program]=snapshot.operation.createdPrograms;
+    }
     const names=await program.getSourceFileNames();
     assert.deepEqual(names.filter(path=>!relative(cwd,path).startsWith('node_modules/') &&
         !relative(cwd,path).startsWith('../')),[source]);
@@ -168,6 +176,7 @@ function observeCompiler({process:child}) {
         child.once('close',()=>compilerProcesses.delete(child));
     });
 }
+await writeFile(project,(await readFile(project,'utf8'))+'\\n');
 const cancellation=new AbortController();
 const semanticDiagnostics=Program.prototype.getSemanticDiagnostics;
 const processesAtRunEnd=[];
