@@ -17,6 +17,7 @@ import {
     verifyFrozenProject,
     originalProjectFacts,
     fingerprint,
+    frozenInputFacts,
     type FrozenProject
 } from './frozen-project.ts';
 import { collectProject, type CompilerCheck } from './native-execution.ts';
@@ -410,7 +411,7 @@ function compilerPreparationFacts(
                 projectConfigPath: project.projectConfigPath,
                 projectFingerprint: fingerprint(project.projectText),
                 configuration: originalProjectFacts(project),
-                inputs: project.inputs
+                inputs: frozenInputFacts(project.inputs)
             };
         })
     });

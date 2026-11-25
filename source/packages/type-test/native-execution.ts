@@ -5,6 +5,7 @@ import type { CheckerExecution } from './checker-plan.ts';
 import {
     verifyFrozenProject,
     fingerprint,
+    frozenInputFacts,
     originalProjectFacts,
     typeAnalysis,
     type FrozenProject
@@ -95,7 +96,7 @@ export async function collectProject(
         sources: assertionPlan.modules.map(function original(module) {
             return { path: module.path, fingerprint: fingerprint(module.originalText) };
         }),
-        inputs: project.observation.snapshot(),
+        inputs: frozenInputFacts(project.observation.snapshot()),
         issues: assertionPlan.issues,
         assertions: assertionPlan.sites.map(assertionFacts)
     };
@@ -124,7 +125,7 @@ export async function collectProject(
                     result: nativeCheckResult({ plan, assertionPlan, checked, error: null, started }),
                     facts: parseAdapterFacts({
                         ...sourceFacts,
-                        inputs: project.observation.snapshot(),
+                        inputs: frozenInputFacts(project.observation.snapshot()),
                         evidence: checked.map(function (entry) {
                             return {
                                 ...assertionFacts(entry.site),
