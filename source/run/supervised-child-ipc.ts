@@ -1,9 +1,8 @@
 import { supervisedCancellationSchema, supervisedParentMessageSchema } from './supervised-parent-message-schema.ts';
 import { createChildProcessOutbox } from './child-process-outbox.ts';
+import { analysisCollectionFingerprint, envelopeMessage } from './child-process-protocol.ts';
 import {
-    envelopeMessage
-} from './child-process-protocol.ts';
-import {
+    assignedAnalysisCollection,
     supervisedChildCorrelationId,
     supervisedCancellationCorrelationId,
     type SupervisedAssignmentCommand,
@@ -92,12 +91,16 @@ export async function receiveAssignment(collect: CollectSupervisedAnalysis): Pro
     if (message.kind === 'assign') {
         return message;
     }
-    send({ kind: 'analysis-collected', collection: await collect(message.workIds) });
+    const collection = await collect(message.workIds);
+    send({ kind: 'analysis-collected', collection });
     const assignment = await receiveParentMessage(readAssignment);
     if (assignment.kind !== 'assign') {
         throw new Error('Expected an assignment after collecting analysis.');
     }
-    return assignment;
+    if (assignedAnalysisCollection(assignment) !== analysisCollectionFingerprint(collection)) {
+        throw new TypeError('Frozen analysis assignment changed; collect a new run.');
+    }
+    return { ...assignment, analysisCollection: collection };
 }
 
 export const flushSupervisedMessages = outbox.flush;

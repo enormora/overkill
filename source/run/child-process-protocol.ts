@@ -1,4 +1,6 @@
+import { hash } from 'node:crypto';
 import { z } from 'zod/v4';
+import type { FamilyValue } from '../engine/test-family.ts';
 
 const childProcessMessageKind = 'overkill-child-message';
 
@@ -13,6 +15,10 @@ export type ChildProcessEnvelope<Message> = {
     readonly kind: typeof childProcessMessageKind;
     readonly message: Message;
 };
+
+export function analysisCollectionFingerprint(value: FamilyValue): string {
+    return hash('sha256', JSON.stringify(value));
+}
 
 function isRecord(value: unknown): value is Readonly<Record<PropertyKey, unknown>> {
     return typeof value === 'object' && value !== null;

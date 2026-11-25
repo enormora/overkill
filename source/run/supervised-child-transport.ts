@@ -1,7 +1,7 @@
 import type { Clock } from '@enormora/clock';
 import { resolvedPropertyCorpus } from './property-corpus-execution.ts';
 import { supervisedWorkloadInputs, type SupervisedRunRuntime } from './supervised-run-runtime.ts';
-import { childProcessEnvelope, envelopeMessage } from './child-process-protocol.ts';
+import { analysisCollectionFingerprint, childProcessEnvelope, envelopeMessage } from './child-process-protocol.ts';
 import { observeChildShutdown, startChildShutdown } from './child-process-shutdown.ts';
 import { recordChildProtocolFailure, recordPrematureChildExit } from './supervised-child-failure.ts';
 import { isSupervisedAnalysis, kill, type SupervisedChildProcess } from './supervised-child-process.ts';
@@ -198,6 +198,7 @@ type AnalysisSelectionRequest = {
 };
 export type AnalysisSelection = {
     readonly awaitingResponse: () => boolean;
+    readonly collected: () => boolean;
     readonly receive: (message: SelectedAnalysis) => void;
     readonly request: (
         input: AnalysisSelectionRequest,
@@ -220,7 +221,9 @@ async function awaitAnalysisResponse(
 
 export function createAnalysisSelection(): AnalysisSelection {
     const response = createStoredRunValue<SelectionResponse | null>(null);
+    const collected = createStoredRunValue(false);
     return {
+        collected: collected.read,
         awaitingResponse() {
             return response.read() !== null;
         },
@@ -235,7 +238,9 @@ export function createAnalysisSelection(): AnalysisSelection {
             });
             const timeout = input.clock.setTimeout(input.expire, input.timeoutMilliseconds);
             try {
-                return await awaitAnalysisResponse(input, workIds, received);
+                const collection = await awaitAnalysisResponse(input, workIds, received);
+                collected.write(true);
+                return collection;
             } finally {
                 input.clock.clearTimeout(timeout);
                 response.write(null);
@@ -244,13 +249,17 @@ export function createAnalysisSelection(): AnalysisSelection {
     };
 }
 
-export async function sendAssignmentForPlan(runtime: SupervisedRunRuntime): Promise<void> {
+export async function sendAssignmentForPlan(runtime: SupervisedRunRuntime, retainedAnalysis: boolean): Promise<void> {
     const corpus = await resolvedPropertyCorpus(runtime.resolvedRun);
     sendSupervisedCommand(runtime.child, {
         corpus,
         implementations: runtime.resolvedRun.facts.implementations,
         ...isSupervisedAnalysis(runtime.resolvedRun)
-            ? { analysisCollection: runtime.resolvedRun.facts.family.collection }
+            ? {
+                analysisCollection: retainedAnalysis
+                    ? analysisCollectionFingerprint(runtime.resolvedRun.facts.family.collection)
+                    : runtime.resolvedRun.facts.family.collection
+            }
             : {},
         assignedWork: runtime.resolvedRun.facts.cases.map(function toWorkId(testCase) {
             return testCase.workId;
