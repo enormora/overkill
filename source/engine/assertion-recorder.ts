@@ -8,6 +8,7 @@ import type { NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node
 import {
     admitRecordedAssertion,
     admitReturnedAssertions,
+    admitSingleRecordedReturn,
     capturedBuilderAssertion,
     recordBuilderOwner,
     requireRecordedAssertion,
@@ -286,6 +287,36 @@ function validateReturnedAssertions(
         : createDeadBuilderAssertionFailure();
 }
 
+function admitOnlyRecordedAssertion(
+    value: unknown,
+    active: readonly RecordedAssertion[],
+    slots: readonly BuilderAssertionSlot[]
+): readonly AssertionNode[] | null {
+    const [ first ] = active;
+    if (first === undefined || active.length !== 1 || slots.length !== 1) {
+        return null;
+    }
+    return admitSingleRecordedReturn(value, first.builderAssertion, first.assertion);
+}
+
+function returnedAssertionNodes(
+    assertionResult: unknown,
+    active: readonly RecordedAssertion[],
+    builderAssertions: readonly BuilderAssertionSlot[],
+    owner: symbol
+): TestContractFailure | readonly AssertionNode[] {
+    const admitted = admitReturnedAssertions(assertionResult);
+    if (admitted.kind === 'rejected') {
+        return admitted.failure;
+    }
+    const { assertions, originals } = admitted.value;
+    const failure = validateReturnedAssertions(builderAssertions, assertions, owner, originals);
+    if (failure !== null) {
+        return failure;
+    }
+    return assertions.length === 0 ? createNoAssertionsFailure() : mergeRecordedRequires(active, assertions);
+}
+
 export function createAssertionRecorder(origin: AssertionOrigin): AssertionRecorder {
     const builderAssertions: BuilderAssertionSlot[] = [];
     const recordedAssertions: RecordedAssertion[] = [];
@@ -370,7 +401,7 @@ export function createAssertionRecorder(origin: AssertionOrigin): AssertionRecor
 
         recordAssert(assertion) {
             lifetime.assertRecording('record an assertion');
-            const admitted = requireRecordedAssertion(assertion, 'assert', failContract);
+            const admitted = requireRecordedAssertion(assertion, failContract);
             recordBuilderOwner(assertion, owner, admitted);
             recordDebugAssertion(admitted);
             builderAssertions.push(assertion);
@@ -409,7 +440,7 @@ export function createAssertionRecorder(origin: AssertionOrigin): AssertionRecor
 
         recordRequire(assertion) {
             lifetime.assertRecording('record a requirement');
-            const admitted = requireRecordedAssertion(assertion, 'require', failContract);
+            const admitted = requireRecordedAssertion(assertion, failContract);
             recordDebugAssertion(admitted);
             const recordIndex = recordedAssertions.length;
             recordedAssertions.push({ assertion: admitted, builderAssertion: null });
@@ -428,18 +459,9 @@ export function createAssertionRecorder(origin: AssertionOrigin): AssertionRecor
         },
 
         returnedAssertions(assertionResult) {
-            const admitted = admitReturnedAssertions(assertionResult);
-            if (admitted.kind === 'rejected') {
-                return admitted.failure;
-            }
-            const { assertions, originals } = admitted.value;
-            const failure = validateReturnedAssertions(builderAssertions, assertions, owner, originals);
-            if (failure !== null) {
-                return failure;
-            }
-            return assertions.length === 0
-                ? createNoAssertionsFailure()
-                : mergeRecordedRequires(activeRecords(), assertions);
+            const active = activeRecords();
+            const single = admitOnlyRecordedAssertion(assertionResult, active, builderAssertions);
+            return single ?? returnedAssertionNodes(assertionResult, active, builderAssertions, owner);
         },
 
         validateAssertionCount(reachedAssertionCount) {

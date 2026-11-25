@@ -22,7 +22,7 @@ import type {
     FailedCompositeCheck
 } from './assertion-node-shape.ts';
 import { assertionEvaluatorByCheck, type AssertionNodeByCheck } from './assertions/dispatch.ts';
-import { resolveAssertionLocation, type ProtocolRecord } from './assertion-validation.ts';
+import { resolveAssertionLocations, type ProtocolRecord } from './assertion-validation.ts';
 
 type DeepAssertionCheckByName = {
     readonly arrayContainsPartial: 'array-contains-partial';
@@ -235,11 +235,6 @@ export function transferAssertionObservation(original: ProtocolRecord, admitted:
     }
 }
 
-function resolveSourceLocations(locations: ResolvableSourceLocations): FailedCheck['sourceLocations'] {
-    const [ first, ...remaining ] = locations;
-    return [ resolveAssertionLocation(first), ...remaining.map(resolveAssertionLocation) ];
-}
-
 function evaluateForeignAssertion(
     assertion: ForeignAssertionNode,
     id: string,
@@ -262,7 +257,7 @@ function evaluateForeignAssertion(
         label: assertion.label,
         path: [],
         source: assertion.source,
-        sourceLocations: capture ? assertion.sourceLocations : resolveSourceLocations(assertion.sourceLocations),
+        sourceLocations: assertion.sourceLocations,
         summary: assertion.message ?? assertion.summary
     };
 }
@@ -320,7 +315,7 @@ function evaluateLeafAssertion(
         kind: 'leaf',
         path: evaluation.path,
         source: assertion.source,
-        sourceLocations: capture ? assertion.sourceLocations : resolveSourceLocations(assertion.sourceLocations),
+        sourceLocations: assertion.sourceLocations,
         summary: evaluation.summary
     };
 }
@@ -364,7 +359,7 @@ function evaluateEvidence(
         kind: 'composite',
         path: [],
         source: assertion.source,
-        sourceLocations: capture ? assertion.sourceLocations : resolveSourceLocations(assertion.sourceLocations),
+        sourceLocations: assertion.sourceLocations,
         summary: assertionSummary(assertion)
     };
 }
@@ -383,7 +378,7 @@ function rebaseFailure(failure: FailureEvidence, id: string, source: AssertionSo
 }
 
 function materializeFailure(failure: FailureEvidence): FailedCheck {
-    const sourceLocations = resolveSourceLocations(failure.sourceLocations);
+    const sourceLocations = resolveAssertionLocations(failure.sourceLocations);
     if (failure.kind !== 'composite') {
         return { ...failure, sourceLocations };
     }
@@ -443,14 +438,18 @@ function observedFailure(observation: Observation): FailureEvidence | null {
     return observation.kind === 'evaluated' ? observation.failure : null;
 }
 
+const passedObservation: Observation = { kind: 'evaluated', failure: null };
+
 function captureObservation(
     assertion: EvaluatedNode,
     evaluateChild: (child: CompositeAssertionChildNode, id: string) => FailureEvidence | null
 ): Observation {
     const operand = findInvalidOperand(assertion, assertionObservation);
-    return operand === null
-        ? { kind: 'evaluated', failure: evaluateEvidence(assertion, '1', true, evaluateChild) }
-        : { kind: 'invalid', operand };
+    if (operand !== null) {
+        return { kind: 'invalid', operand };
+    }
+    const failure = evaluateEvidence(assertion, '1', true, evaluateChild);
+    return failure === null ? passedObservation : { kind: 'evaluated', failure };
 }
 
 function observeSafely(

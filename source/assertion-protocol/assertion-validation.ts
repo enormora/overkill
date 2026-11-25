@@ -1,10 +1,16 @@
 import { types } from 'node:util';
-import { resolveSourceLocation } from './source-location.ts';
+import { unknownSourceLocation } from './source-location.ts';
 import type {
     AssertionNode,
     CompositeAssertionChildNode
 } from './assertion-node.ts';
-import type { AssertionSource, ResolvableSourceLocation, SourceLocation } from './assertion-node-shape.ts';
+import type {
+    AssertionSource,
+    NonEmptyReadonlyArray,
+    ResolvableSourceLocation,
+    ResolvableSourceLocations,
+    SourceLocation
+} from './assertion-node-shape.ts';
 import type { AssertionNodeByCheck } from './assertions/dispatch.ts';
 
 export type ProtocolRecord = Readonly<Record<string, unknown>>;
@@ -225,27 +231,33 @@ function location(value: unknown, path: string, ancestors: readonly ProtocolReco
     });
 }
 
-const admittedProviders = new WeakSet();
+type ResolvedLocations = InvalidAssertionProtocolError | NonEmptyReadonlyArray<SourceLocation>;
 
-function isAdmittedProvider(value: unknown): value is () => SourceLocation {
-    return typeof value === 'function' && admittedProviders.has(value);
-}
-
-export function resolveAssertionLocation(value: ResolvableSourceLocation): SourceLocation {
-    return isAdmittedProvider(value) ? value() : resolveSourceLocation(value);
-}
+const resolvedLocations = new WeakMap<ResolvableSourceLocations, ResolvedLocations>();
 
 function providerValue(provider: () => unknown): unknown {
     try {
         return provider();
     } catch {
-        return { kind: 'unknown' };
+        return unknownSourceLocation;
     }
 }
 
-function parseProvidedLocation(provider: () => unknown, path: string): InvalidAssertionProtocolError | SourceLocation {
+function resolveLocation(entry: ResolvableSourceLocation, index: number): SourceLocation {
+    return typeof entry === 'function'
+        ? location(providerValue(entry), `sourceLocations[${index}]`, [])
+        : entry;
+}
+
+function resolveLocations(locations: ResolvableSourceLocations): ResolvedLocations {
     try {
-        return location(providerValue(provider), path, []);
+        const [ first, ...remaining ] = locations;
+        return [
+            resolveLocation(first, 0),
+            ...remaining.map(function resolveForwarded(entry, index) {
+                return resolveLocation(entry, index + 1);
+            })
+        ];
     } catch (error) {
         if (!(error instanceof InvalidAssertionProtocolError)) {
             throw error;
@@ -254,17 +266,13 @@ function parseProvidedLocation(provider: () => unknown, path: string): InvalidAs
     }
 }
 
-function locationProvider(provider: () => unknown, path: string): () => SourceLocation {
-    let resolved: InvalidAssertionProtocolError | SourceLocation | null = null;
-    function resolveLocation(): SourceLocation {
-        resolved = resolved ?? parseProvidedLocation(provider, path);
-        if (resolved instanceof InvalidAssertionProtocolError) {
-            throw resolved;
-        }
-        return resolved;
+export function resolveAssertionLocations(locations: ResolvableSourceLocations): NonEmptyReadonlyArray<SourceLocation> {
+    const resolved = resolvedLocations.get(locations) ?? resolveLocations(locations);
+    resolvedLocations.set(locations, resolved);
+    if (resolved instanceof InvalidAssertionProtocolError) {
+        throw resolved;
     }
-    admittedProviders.add(resolveLocation);
-    return resolveLocation;
+    return resolved;
 }
 
 function foreignError(value: unknown, path: string, ancestors: readonly ProtocolRecord[]): ProtocolRecord {
@@ -306,7 +314,7 @@ function isBuiltInCheck(check: string): check is keyof typeof fieldsByCheck {
     return Object.hasOwn(fieldsByCheck, check);
 }
 
-function isLocationProvider(value: unknown): value is () => unknown {
+function isLocationProvider(value: unknown): value is () => SourceLocation {
     return typeof value === 'function';
 }
 
@@ -319,7 +327,7 @@ function nodeLocations(record: ProtocolRecord, admission: NodeAdmission): readon
             if (!isLocationProvider(entry)) {
                 return location(entry, entryPath, [ ...ancestors, record ]);
             }
-            return isAdmittedProvider(entry) ? entry : locationProvider(entry, entryPath);
+            return entry;
         });
 }
 
@@ -334,6 +342,23 @@ function nodeMessage(record: ProtocolRecord, path: string): string | null {
 function isAllowedBuiltInCheck(check: string, admission: NodeAdmission): check is keyof typeof fieldsByCheck {
     return isBuiltInCheck(check) &&
         (admission.child || admission.source === 'assert' || requireChecks.has(check));
+}
+
+function readLeafFields(
+    record: ProtocolRecord,
+    fields: Readonly<Record<string, FieldRule>>,
+    path: string
+): ProtocolRecord {
+    const admitted: Record<string, unknown> = {};
+    for (const key of Object.keys(fields)) {
+        const fieldPath = `${path}.${key}`;
+        const value = dataField(record, key, fieldPath);
+        if (fields[key]?.(value) !== true) {
+            throw invalidAssertionProtocol(fieldPath, 'invalid value for this check');
+        }
+        admitted[key] = value;
+    }
+    return admitted;
 }
 
 function leafFields(record: ProtocolRecord, check: string, admission: NodeAdmission): ProtocolRecord {
@@ -351,17 +376,7 @@ function leafFields(record: ProtocolRecord, check: string, admission: NodeAdmiss
     if (!isAllowedBuiltInCheck(check, admission)) {
         throw invalidAssertionProtocol(`${path}.check`, 'unsupported check for this assertion position');
     }
-    const fields: Readonly<Record<string, FieldRule>> = fieldsByCheck[check];
-    return Object.fromEntries(
-        Object.entries(fields).map(function admitField([ key, accepts ]): readonly [string, unknown] {
-            const fieldPath = `${path}.${key}`;
-            const value = dataField(record, key, fieldPath);
-            if (!accepts(value)) {
-                throw invalidAssertionProtocol(fieldPath, 'invalid value for this check');
-            }
-            return [ key, value ];
-        })
-    );
+    return readLeafFields(record, fieldsByCheck[check], path);
 }
 
 function compositeFields(
@@ -438,4 +453,74 @@ export function assertCompositeChild<Source extends AssertionSource>(
     path: string
 ): asserts value is CompositeAssertionChildNode<Source> {
     admitCompositeChild(value, source, path);
+}
+
+function builtInLocation(entry: ResolvableSourceLocation, index: number): ResolvableSourceLocation {
+    return isLocationProvider(entry) ? entry : location(entry, `sourceLocations[${index}]`, []);
+}
+
+function builtInLocations(locations: ResolvableSourceLocations): ResolvableSourceLocations {
+    const [ first, ...remaining ] = locations;
+    if (remaining.length === 0) {
+        return [ builtInLocation(first, 0) ];
+    }
+    return [
+        builtInLocation(first, 0),
+        ...remaining.map(function normalize(entry, index) {
+            return builtInLocation(entry, index + 1);
+        })
+    ];
+}
+
+function validateBuiltInFields(assertion: AssertionNode, fields: Readonly<Record<string, FieldRule>>): void {
+    for (const key of Object.keys(fields)) {
+        if (fields[key]?.(Reflect.get(assertion, key)) !== true) {
+            throw invalidAssertionProtocol(`assertion.${key}`, 'invalid value for this check');
+        }
+    }
+}
+
+function validateBuiltInArguments(assertion: AssertionNode): void {
+    if (assertion.check === 'composite') {
+        throw invalidAssertionProtocol('assertion.check', 'expected a built-in check');
+    }
+    const fields: Readonly<Record<string, FieldRule>> = fieldsByCheck[assertion.check];
+    if (fields === actualFields || fields === comparisonFields) {
+        return;
+    }
+    validateBuiltInFields(assertion, fields);
+}
+
+export function admitBuiltInAssertion<Node extends AssertionNode>(assertion: Node): Node {
+    if (assertion.message !== null && typeof assertion.message !== 'string') {
+        throw invalidAssertionProtocol('assertion.message', 'expected a string or null');
+    }
+    validateBuiltInArguments(assertion);
+    return { ...assertion, sourceLocations: builtInLocations(assertion.sourceLocations) };
+}
+
+export function matchesDataField(original: ProtocolRecord, key: PropertyKey, expected: unknown): boolean {
+    const descriptor = Object.getOwnPropertyDescriptor(original, key);
+    return descriptor !== undefined && Object.hasOwn(descriptor, 'value') && Object.is(descriptor.value, expected);
+}
+
+function matchesLocations(original: ProtocolRecord, expected: ResolvableSourceLocations): boolean {
+    const descriptor = Object.getOwnPropertyDescriptor(original, 'sourceLocations');
+    if (descriptor === undefined || !Object.hasOwn(descriptor, 'value')) {
+        return false;
+    }
+    const locations: unknown = descriptor.value;
+    return protocolObject(locations) && Array.isArray(locations) && locations.length === expected.length &&
+        expected.every(function unchangedLocation(entry, index) {
+            return matchesDataField(locations, index, entry);
+        });
+}
+
+export function matchesRecordedLeaf(original: ProtocolRecord, recorded: AssertionNode): boolean {
+    if (recorded.check === 'composite' || !matchesLocations(original, recorded.sourceLocations)) {
+        return false;
+    }
+    return Object.keys(recorded).every(function unchangedField(key) {
+        return key === 'sourceLocations' || matchesDataField(original, key, Reflect.get(recorded, key));
+    });
 }

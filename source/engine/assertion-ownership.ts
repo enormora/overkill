@@ -1,7 +1,10 @@
 import {
     admitAssertion,
+    admitBuiltInAssertion,
     invalidAssertionProtocol,
     InvalidAssertionProtocolError,
+    matchesDataField,
+    matchesRecordedLeaf,
     protocolItems,
     protocolObject,
     type ProtocolRecord
@@ -119,6 +122,24 @@ type AdmittedReturn = {
     readonly originals: OriginalNodes;
 };
 
+function uniquelyReturns(value: unknown, original: AssertAssertionNode): boolean {
+    if (value === original) {
+        return true;
+    }
+    return protocolObject(value) && Array.isArray(value) && value.length === 1 && matchesDataField(value, 0, original);
+}
+
+export function admitSingleRecordedReturn(
+    value: unknown,
+    original: AssertAssertionNode | null,
+    recorded: AssertionNode | null
+): readonly AssertionNode[] | null {
+    if (recorded?.source !== 'assert' || original === null || !uniquelyReturns(value, original)) {
+        return null;
+    }
+    return matchesRecordedLeaf(original, recorded) ? [ recorded ] : null;
+}
+
 function parseReturnedAssertions(value: unknown): AdmittedReturn {
     const originals: OriginalNodes = new WeakMap();
     const values = protocolObject(value) && Array.isArray(value) ? protocolItems(value, 'return') : [ value ];
@@ -127,7 +148,11 @@ function parseReturnedAssertions(value: unknown): AdmittedReturn {
         if (!protocolObject(original)) {
             throw invalidAssertionProtocol(path, 'expected a protocol record');
         }
-        return { original, node: admitAssertion(original, 'assert', path, originals) };
+        const captured = capturedBuilderAssertion(original);
+        const node = captured !== undefined && matchesRecordedLeaf(original, captured)
+            ? captured
+            : admitAssertion(original, 'assert', path, originals);
+        return { original, node };
     });
     return { assertions, originals };
 }
@@ -169,11 +194,18 @@ export function admitRecordedAssertion<Source extends AssertionNode['source']>(
     preserveChildObservations(admitted.value, originals);
     return admitted;
 }
-export function requireRecordedAssertion<Source extends AssertionNode['source']>(
-    original: AssertionNode,
-    source: Source,
+export function requireRecordedAssertion<Node extends AssertionNode>(
+    original: Node,
     failContract: (failure: TestContractFailure) => never
-): Extract<AssertionNode, { readonly source: Source; }> {
-    const admitted = admitRecordedAssertion(original, source);
+): Node;
+export function requireRecordedAssertion(
+    original: AssertionNode,
+    failContract: (failure: TestContractFailure) => never
+): AssertionNode {
+    const admitted = original.check === 'composite'
+        ? admitRecordedAssertion(original, original.source)
+        : admission(function parseBuiltIn() {
+            return admitBuiltInAssertion(original);
+        });
     return admitted.kind === 'accepted' ? admitted.value : failContract(admitted.failure);
 }

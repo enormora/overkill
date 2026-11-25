@@ -1,6 +1,6 @@
 import { serializeValue, type SerializedValue } from '../compare/serialized-value.ts';
 import { assertionPasses, propertyAssertionBoundary } from '../assertion-protocol/evaluation.ts';
-import { resolveAssertionLocation } from '../assertion-protocol/assertion-validation.ts';
+import { resolveAssertionLocations } from '../assertion-protocol/assertion-validation.ts';
 import { sourceLocationFromStack } from '../assertion-protocol/source-location.ts';
 import type { AssertionNode } from '../assertion-protocol/assertion-node.ts';
 import type { SourceLocation } from '../assertion-protocol/assertion-node-shape.ts';
@@ -14,7 +14,7 @@ function locationKey(location: SourceLocation): string | null {
 }
 
 function assertionIdentity(assertion: AssertionNode): string | null {
-    const location = locationKey(resolveAssertionLocation(assertion.sourceLocations[0]));
+    const location = locationKey(resolveAssertionLocations(assertion.sourceLocations)[0]);
     return location === null ? null : JSON.stringify([
         assertion.check,
         assertion.check === 'composite' ? assertion.name : null,

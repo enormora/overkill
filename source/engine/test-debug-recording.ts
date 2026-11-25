@@ -1,5 +1,5 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
-import { resolveSourceLocations } from '../assertion-protocol/source-location.ts';
+import { resolveAssertionLocations } from '../assertion-protocol/assertion-validation.ts';
 import type { AssertionNode } from '../assertion-protocol/assertion-node.ts';
 import type { SourceLocation } from '../assertion-protocol/assertion-node-shape.ts';
 import { serializeValue, defaultSerializationBudget, type SerializedValue } from '../compare/serialized-value.ts';
@@ -76,7 +76,7 @@ function snapshotLocation(location: SourceLocation): SourceLocation {
 }
 function assertionLocations(assertion: AssertionNode): TimelineEntry['sourceLocations'] {
     try {
-        return resolveSourceLocations(assertion.sourceLocations).map(snapshotLocation);
+        return resolveAssertionLocations(assertion.sourceLocations).map(snapshotLocation);
     } catch {
         return [];
     }

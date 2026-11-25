@@ -67,6 +67,24 @@ export const testNode = suite('Assertion protocol validation', [
         scope.assert.equal(reads, 0);
         return scope.assert.collect();
     }),
+    test('rejects an accessor added to a collected builder assertion', async function (scope) {
+        let reads = 0;
+        const result = await executeEngineCase(function (body) {
+            body.assert.true(true);
+            const returned = body.assert.collect();
+            Object.defineProperty(returned[0], 'actual', {
+                get() {
+                    reads += 1;
+                    return true;
+                }
+            });
+            return returned;
+        });
+        const [ failure ] = failures(result);
+        scope.assert.equal(failure?.kind === 'test-contract' ? failure.code : null, 'invalid-assertion-protocol');
+        scope.assert.equal(reads, 0);
+        return scope.assert.collect();
+    }),
     test('keeps malformed location providers lazy for passing cyclic comparisons', async function (scope) {
         let calls = 0;
         const node = cyclicComparison();
