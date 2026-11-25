@@ -1,9 +1,32 @@
 import { spawn } from 'node:child_process';
+import { privateCacheDirectory } from '../private-cache-directory.ts';
 import { childRoleArgument } from './child-process-roles.ts';
 
 export const analysisOwnerRole = 'analysis-owner';
 export const analysisProcessGroupArgument = '--own-analysis-group';
 export const analysisOwnerPipe = 4;
+
+async function analysisCacheDirectory(): Promise<string | null> {
+    try {
+        return await privateCacheDirectory('overkill-analysis-compile-cache');
+    } catch {
+        return null;
+    }
+}
+
+export async function analysisCompileEnvironment(
+    analysis: boolean,
+    environment: Readonly<Record<string, string>>
+): Promise<Readonly<Record<string, string>>> {
+    if (
+        !analysis || environment.NODE_COMPILE_CACHE !== undefined ||
+        environment.NODE_DISABLE_COMPILE_CACHE === '1' || environment.NODE_V8_COVERAGE !== undefined
+    ) {
+        return environment;
+    }
+    const directory = await analysisCacheDirectory();
+    return directory === null ? environment : { ...environment, NODE_COMPILE_CACHE: directory };
+}
 
 export async function startAnalysisOwnerMonitor(entryPoint: string): Promise<void> {
     const owner = spawn(process.execPath, [

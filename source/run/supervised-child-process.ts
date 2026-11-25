@@ -12,8 +12,7 @@ import {
     type SupervisedRunState
 } from './supervised-run-state.ts';
 
-import { analysisProcessGroupArgument } from './supervised-process-group.ts';
-import { analysisCompileEnvironment } from './analysis-compile-cache.ts';
+import { analysisCompileEnvironment, analysisProcessGroupArgument } from './supervised-process-group.ts';
 
 export type SupervisedChildCoverage = {
     readonly environment: {
