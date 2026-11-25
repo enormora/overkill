@@ -217,22 +217,8 @@ jobs:
                   node-version-file: package.json
             - name: Install dependencies
               run: npm ci
-            - name: Check out the performance baseline
-              uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-              with:
-                  ref: 98b24f25ed84b60bfa16935df7795cbc934fb9b7
-                  path: target/performance-baseline-source
-                  persist-credentials: false
-            - name: Benchmark the baseline
-              working-directory: target/performance-baseline-source
-              run: |
-                  npm ci
-                  node build-benchmark-html.js
-                  node source/benchmarks/run-performance.entry-point.ts compare ../performance/baseline type-test-cli-many-files-serial source/benchmarks/baselines/shared.json
             - name: Benchmark the checkout
-              run: |
-                  node build-benchmark-html.js
-                  node source/benchmarks/run-performance.entry-point.ts compare target/performance/full type-test-cli-many-files-serial source/benchmarks/baselines/shared.json
+              run: npx just benchmark
             - name: Retain performance evidence
               if: ${{ !cancelled() }}
               uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -242,5 +228,3 @@ jobs:
                       target/performance/full/report.html
                       target/performance/full/measurements.json
                       target/performance/full/state
-                      target/performance/baseline/report.html
-                      target/performance/baseline/measurements.json
