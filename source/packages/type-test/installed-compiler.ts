@@ -165,13 +165,19 @@ function verifyLoadedImplementation(input: Installation): void {
         throw new Error('Compiler implementation changed after loading; restart the execution host.');
     }
 }
-export async function verifyInstalledCompiler(compiler: InstalledCompiler, signal: AbortSignal): Promise<void> {
+async function verifyCompilerResolution(
+    compiler: InstalledCompiler,
+    signal: AbortSignal
+): Promise<void> {
     for (const entry of compiler.resolutions) {
         signal.throwIfAborted();
         if (await resolutionTarget(entry.path) !== entry.target) {
             throw new Error('Compiler resolution changed after preparation.');
         }
     }
+}
+
+async function verifyCompilerContents(compiler: InstalledCompiler, signal: AbortSignal): Promise<void> {
     await Promise.all(compiler.files.map(async function verify(file) {
         return readCompilerFile(async function verifyFingerprint() {
             signal.throwIfAborted();
@@ -181,6 +187,18 @@ export async function verifyInstalledCompiler(compiler: InstalledCompiler, signa
         });
     }));
 }
+export async function verifyInstalledCompiler(compiler: InstalledCompiler, signal: AbortSignal): Promise<void> {
+    const results = await Promise.allSettled([
+        verifyCompilerResolution(compiler, signal),
+        verifyCompilerContents(compiler, signal)
+    ]);
+    for (const result of results) {
+        if (result.status === 'rejected') {
+            throw result.reason;
+        }
+    }
+}
+
 async function loadCompiler(input: Installation): Promise<InstalledCompiler> {
     const native = nativeSchema.parse(
         await import(pathToFileURL(input.require.resolve(`${input.specifier}/async`)).href)

@@ -166,13 +166,11 @@ export async function disposeProject(project: FrozenProject): Promise<void> {
 
 type AssertionSourceInput = { readonly path: string; readonly originalText: string; };
 
-export async function verifyFrozenProject(
+async function verifyProjectSources(
     project: FrozenProject,
     modules: readonly AssertionSourceInput[],
     signal: AbortSignal
 ): Promise<void> {
-    signal.throwIfAborted();
-    await verifyInstalledCompiler(project.compiler, signal);
     if (await readFile(project.projectConfigPath, 'utf8') !== project.projectText) {
         throw new Error('Type-test project configuration changed after collection.');
     }
@@ -181,6 +179,23 @@ export async function verifyFrozenProject(
         signal.throwIfAborted();
         if (fingerprint(await readFile(module.path, 'utf8')) !== fingerprint(module.originalText)) {
             throw new Error(`Type-test source changed after collection: ${module.path}`);
+        }
+    }
+}
+
+export async function verifyFrozenProject(
+    project: FrozenProject,
+    modules: readonly AssertionSourceInput[],
+    signal: AbortSignal
+): Promise<void> {
+    signal.throwIfAborted();
+    const results = await Promise.allSettled([
+        verifyInstalledCompiler(project.compiler, signal),
+        verifyProjectSources(project, modules, signal)
+    ]);
+    for (const result of results) {
+        if (result.status === 'rejected') {
+            throw result.reason;
         }
     }
 }
