@@ -31,58 +31,51 @@ jobs:
                   node-version-file: package.json
             - name: Install dependencies
               run: npm ci
-            - name: Profile production type-test stages
+            - name: Attribute native project creation with batched sources
               run: |
                   node --input-type=module <<'PROFILE'
-                  import { readFileSync, writeFileSync } from 'node:fs';
-                  import { resolve } from 'node:path';
-                  import ts from 'typescript';
                   import { performanceCases } from './source/benchmarks/performance-cases.ts';
                   import { writeConsumer } from './source/benchmarks/consumer-fixture.ts';
-                  const targets = {
-                    'source/packages/type-test/frozen-project.ts': ['parseProject','openAnalysisProject','captureProject','loadProject','verifyProjectSources','verifyFrozenProject'],
-                    'source/packages/type-test/installed-compiler.ts': ['compilerFiles','installation','loadCompiler','verifyCompilerResolution','verifyCompilerContents','verifyInstalledCompiler','resolveInstalledCompiler'],
-                    'source/packages/type-test/frozen-inputs.ts': ['verifyProjectInputs'],
-                    'source/packages/type-test/original-assertions.ts': ['collectOriginalAssertions'],
-                    'source/packages/type-test/native-execution.ts': ['validateProject','checkOriginalAssertions','collectProject'],
-                    'source/packages/type-test/compiler-plan.ts': ['collectCompilerGroups','checkCompilerGroups','prepare'],
-                    'source/config/adapter-facts.ts': ['parseAdapterFacts'],
-                    'source/run/supervised-run.ts': ['runSupervisedCommand','createLiveRun','executeCollectedLiveRun'],
-                  };
-                  const output = JSON.stringify(resolve('target/performance/app-stage-times.jsonl'));
-                  const helper = "import { appendFileSync as appendStage } from 'node:fs';\n"
-                    + 'function recordStage(name: string, start: number, previous: NodeJS.CpuUsage): void {\n'
-                    + '    const cpu = process.cpuUsage(previous);\n'
-                    + '    appendStage(' + output + ', JSON.stringify({ pid: process.pid, name, end: Date.now(), wall: Math.round(performance.now() - start), cpu: Math.round((cpu.user + cpu.system) / 1000) }) + "\\n");\n'
-                    + '}\n';
-                  for (const [file, names] of Object.entries(targets)) {
-                    let source = readFileSync(file, 'utf8');
-                    for (const name of names) {
-                      const parsed = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true);
-                      const declaration = parsed.statements.find(statement =>
-                        ts.isFunctionDeclaration(statement) && statement.name?.text === name);
-                      if (!declaration?.body) throw new Error('Missing function body ' + name + ' in ' + file);
-                      const start = declaration.body.getStart(parsed) + 1;
-                      const close = declaration.body.end - 1;
-                      source = source.slice(0, start)
-                        + '    const stageStarted = performance.now();\n    const stageCpu = process.cpuUsage();\n    try {\n'
-                        + source.slice(start, close)
-                        + '\n    } finally { recordStage(' + JSON.stringify(name) + ', stageStarted, stageCpu); }'
-                        + source.slice(close);
-                    }
-                    writeFileSync(file, helper + source);
-                  }
+                  import { observeProjectInputs, verifyProjectInputs } from './source/packages/type-test/frozen-inputs.ts';
+                  import { compilerFileSystem } from './source/packages/type-test/compiler-file-system.ts';
+                  import { API } from 'typescript-beta/async';
+                  import { createFileSystemLayer } from 'typescript-beta/fs';
+                  import { resolve } from 'node:path';
+                  import { isDeepStrictEqual } from 'node:util';
+                  const root = resolve('target/performance/stage-profile');
+                  const config = resolve(root,'tsconfig.json');
                   const workload = performanceCases.find(entry => entry.id === 'type-test-cli-many-files-serial');
-                  if (!workload) throw new Error('Missing original benchmark workload');
-                  await writeConsumer(resolve('target/performance/stage-profile'), resolve('node_modules'), workload);
+                  await writeConsumer(root,resolve('node_modules'),workload);
+                  let known;
+                  let sources;
+                  const signal = new AbortController().signal;
+                  for (const mode of ['observed','canonical-layer','all-layer','canonical-layer','observed']) {
+                      const observation = observeProjectInputs();
+                      const api = new API({ cwd:root,fs:observation.fs,runExternalCode:false });
+                      const parsed = await api.parseConfigFile(config);
+                      const started = performance.now();
+                      let layer;
+                      let loaded = 0;
+                      if (mode !== 'observed') {
+                          verifyProjectInputs(known,signal);
+                          const files = known.files.filter(entry => entry.value !== null &&
+                              (mode === 'all-layer' || compilerFileSystem.realpath(entry.path) === entry.path));
+                          layer = createFileSystemLayer(files.map(entry=>[entry.path,observation.fs.readFile(entry.path)]));
+                          loaded = files.length;
+                      }
+                      const opened = performance.now();
+                      const parameters = { rootFiles:parsed.fileNames,compilerOptions:parsed.options };
+                      const program = (await api.createSnapshot({createPrograms:[parameters],fileSystem:layer})).operation.createdPrograms[0];
+                      const names = await program.getSourceFileNames();
+                      for (const path of names) observation.fs.realpath(path);
+                      const recorded = observation.snapshot();
+                      known ??= recorded;
+                      sources ??= names;
+                      const extras = Object.fromEntries(Object.entries(recorded).map(([group,entries])=>{
+                          const knownPaths = new Map(known[group].map(({path,value})=>[path,value]));
+                          return [group,entries.filter(({path,value})=>!knownPaths.has(path) || !isDeepStrictEqual(knownPaths.get(path),value)).length];
+                      }));
+                      console.log(JSON.stringify({mode,loaded,read:Math.round(opened-started),create:Math.round(performance.now()-opened),sameSources:isDeepStrictEqual(names,sources),extras}));
+                      await api.close();
+                  }
                   PROFILE
-                  project="$PWD"
-                  for phase in cold warm; do
-                      : > "$project/target/performance/app-stage-times.jsonl"
-                      (
-                          cd target/performance/stage-profile
-                          env -i PATH="$PATH" LANG=C TZ=UTC node --permission-audit --allow-inspector --disable-warning=PERM0004 "$project/source/packages/test/overkill.entry-point.ts" run --config consumer-config.mjs --profile measured --seed 42 --order lexical
-                      )
-                      printf '%s\n' "$phase"
-                      cat "$project/target/performance/app-stage-times.jsonl"
-                  done
