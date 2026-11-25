@@ -142,7 +142,9 @@ import { channel } from 'node:diagnostics_channel';
 import { writeFileSync } from 'node:fs';
 const compilers = [];
 channel('child_process').subscribe(({process: child}) => {
-    if (child.spawnargs.includes('--api')) compilers.push(child);
+    child.once('spawn', () => {
+        if (child.spawnargs.includes('--api')) compilers.push(child);
+    });
 });
 process.on('message', (envelope) => {
     if (envelope.correlationId !== 'supervised-run' || envelope.message?.kind !== 'assign') return;
