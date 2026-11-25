@@ -9,7 +9,6 @@ import {
     type RunResult
 } from '../engine/engine.entry-point.ts';
 import { parseAdapterFacts } from '../../config/adapter-facts.ts';
-import { frozenInputFacts } from './frozen-inputs.ts';
 import { packageVersion, type PackageVersion } from '../../package-version.ts';
 import {
     checkCompilerCancellation,
@@ -411,7 +410,7 @@ function compilerPreparationFacts(
                 projectConfigPath: project.projectConfigPath,
                 projectFingerprint: fingerprint(project.projectText),
                 configuration: originalProjectFacts(project),
-                inputs: frozenInputFacts(project.inputs)
+                inputs: project.inputFacts()
             };
         })
     });

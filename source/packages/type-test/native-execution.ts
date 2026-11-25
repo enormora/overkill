@@ -1,7 +1,6 @@
 import type { Diagnostic } from 'typescript-beta/async';
 import type { TestPlan } from '../engine/engine.entry-point.ts';
 import { parseAdapterFacts } from '../../config/adapter-facts.ts';
-import { frozenInputFacts } from './frozen-inputs.ts';
 import type { CheckerExecution } from './checker-plan.ts';
 import {
     verifyFrozenProject,
@@ -96,7 +95,7 @@ export async function collectProject(
         sources: assertionPlan.modules.map(function original(module) {
             return { path: module.path, fingerprint: fingerprint(module.originalText) };
         }),
-        inputs: frozenInputFacts(project.observation.snapshot()),
+        inputs: project.inputFacts(),
         issues: assertionPlan.issues,
         assertions: assertionPlan.sites.map(assertionFacts)
     };
@@ -125,7 +124,7 @@ export async function collectProject(
                     result: nativeCheckResult({ plan, assertionPlan, checked, error: null, started }),
                     facts: parseAdapterFacts({
                         ...sourceFacts,
-                        inputs: frozenInputFacts(project.observation.snapshot()),
+                        inputs: project.inputFacts(),
                         evidence: checked.map(function (entry) {
                             return {
                                 ...assertionFacts(entry.site),

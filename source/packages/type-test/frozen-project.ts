@@ -11,6 +11,7 @@ import { openCompiler } from './compiler-process.entry-point.ts';
 import type { CompilerSelection } from './profile-settings.ts';
 import { resolveInstalledCompiler, verifyInstalledCompiler, type InstalledCompiler } from './installed-compiler.ts';
 import {
+    frozenInputFacts,
     observeProjectInputs,
     verifyProjectInputs,
     sourceFingerprint,
@@ -27,6 +28,7 @@ type CapturedProject = {
     readonly program: Project['program'];
     readonly diagnosticProgram: () => Promise<Project['program']>;
     readonly inputs: FrozenInputs;
+    readonly inputFacts: () => ReturnType<typeof frozenInputFacts>;
     readonly observation: ProjectInputObservation;
     readonly projectText: string;
 };
@@ -107,6 +109,9 @@ async function captureProject(input: ProjectSession): Promise<CapturedProject> {
         project,
         observation: input.observation,
         inputs: input.observation.snapshot(),
+        inputFacts() {
+            return frozenInputFacts(input.observation.snapshot());
+        },
         projectText: await readFile(input.projectConfigPath, 'utf8')
     };
 }
