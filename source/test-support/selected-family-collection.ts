@@ -150,6 +150,7 @@ export async function selectedFamilyCollection(
     return {
         run,
         input: {
+            collectAnalysis: null,
             ...fixture.input,
             command: fixture.command,
             dependencies,

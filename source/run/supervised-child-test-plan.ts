@@ -2,8 +2,9 @@ import {
     createExecutionGlobalErrorObserver,
     type ExecutionGlobalErrorObserver
 } from '../engine/execution-global-error-observer.ts';
-import { withAnalysisDeadline, withAnalysisSignal } from './analysis-deadline.ts';
-import { createHostTestPlan, resolveHostEngine, type HostEngineLoading } from './host-test-plan.ts';
+import { withAnalysisDeadline, withAnalysisOwnership, withAnalysisSignal } from './analysis-deadline.ts';
+import { collectHostAnalysis, createHostTestPlan, resolveHostEngine, type HostEngineLoading } from './host-test-plan.ts';
+import { runExecutionFailure } from './execution-failure.ts';
 import type { RunnerError, TestPlan } from './run-engine-primitives.ts';
 import { RunCollectionError } from './run-errors.ts';
 import {
@@ -13,8 +14,7 @@ import {
 } from './run-test-plan.ts';
 import { validateFrozenPolicySource } from './frozen-policy-validation.ts';
 import { withFileModuleBoundary } from './file-module-boundary.ts';
-import { frozenSupervisedPolicy, type SupervisedChildCommand } from './supervised-protocol.ts';
-import { runExecutionFailure } from './execution-failure.ts';
+import { frozenSupervisedPolicy, type SupervisedChildCommand, type CollectSupervisedAnalysis } from './supervised-protocol.ts';
 
 export type SupervisedChildTestPlanDependencies = HostEngineLoading & {
     readonly discoverRunFiles: RunTestPlanInput['discoverRunFiles'];
@@ -132,6 +132,22 @@ export async function createSupervisedChildTestPlan(
         );
     }
     return await createChildTestPlan(command, dependencies);
+}
+
+export async function withChildAnalysisOwnership<Value>(
+    command: SupervisedChildCommand,
+    operation: () => Promise<Value>
+): Promise<Value> {
+    return command.analysis === true ? await withAnalysisOwnership(operation) : await operation();
+}
+
+export function collectChildAnalysis(
+    command: SupervisedChildCommand,
+    plan: TestPlan
+): CollectSupervisedAnalysis {
+    return async function collect(workIds) {
+        return await collectHostAnalysis(plan, workIds, command.collectionTimeoutMilliseconds);
+    };
 }
 
 export async function validateSupervisedPolicy(

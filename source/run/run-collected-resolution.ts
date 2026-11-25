@@ -1,4 +1,4 @@
-import { resolveSelectedFamilyFacts } from './selected-family-facts.ts';
+import { resolveSelectedFamilyFacts, type SelectedAnalysisCollector } from './selected-family-facts.ts';
 import {
     assertReplaySelection,
     propertyReplayContext,
@@ -49,6 +49,7 @@ type CollectedResolvedRunInput = ResolvedRunInput & {
 export type CollectionResolvedRunInput = ResolvedRunInput & {
     readonly allowEmptySelection: boolean;
     readonly collection: RunCollection;
+    readonly collectAnalysis: SelectedAnalysisCollector;
     readonly command: RunCommand;
     readonly dependencies: RunOrchestratorDependencies;
     readonly durationHistoryIndex: CollectionDurationHistoryIndex;

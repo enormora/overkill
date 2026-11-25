@@ -9,6 +9,7 @@ import {
     createWorkerPoolCommand,
     type WorkerPoolCommandInput
 } from './run-isolated-command.ts';
+import type { CollectSupervisedAnalysis } from './supervised-protocol.ts';
 import { collectSupervisedRun } from './supervised-run-collection.ts';
 import { collectWorkerPoolRun } from './worker-pool-run.ts';
 
@@ -16,7 +17,9 @@ type FamilyCollectionPolicy = Pick<
     WorkerPoolCommandInput,
     'benchmarkNormalization' | 'files' | 'profile' | 'projectRoot'
 >;
+export type SelectedAnalysisCollector = CollectSupervisedAnalysis | null;
 type FamilyCollectionInput = FamilyCollectionPolicy & {
+    readonly collectAnalysis: SelectedAnalysisCollector;
     readonly command: RunCommand;
     readonly dependencies: RunOrchestratorDependencies;
 };
@@ -76,9 +79,7 @@ async function collectSelectedFamily(
             null,
             input.signal
         );
-    const actual = validateFrozenFamilyCollection(metadata, collection.collectedPlan.family, collection.runnerErrors);
-    validateRecordedFamilyFacts(actual.facts);
-    return actual;
+    return validateFrozenFamilyCollection(metadata, collection.collectedPlan.family, collection.runnerErrors);
 }
 
 export async function resolveSelectedFamilyFacts(
@@ -96,7 +97,11 @@ export async function resolveSelectedFamilyFacts(
     if (selection.length === 0) {
         return run;
     }
-    const actual = await collectSelectedFamily(run, metadata, selection, { ...input, signal });
+    const collectAnalysis = run.facts.implementations === null ? input.collectAnalysis : null;
+    const actual = collectAnalysis === null
+        ? await collectSelectedFamily(run, metadata, selection, { ...input, signal })
+        : { ...metadata, facts: { ...metadata.facts, collection: await collectAnalysis(selection) } };
+    validateRecordedFamilyFacts(actual.facts);
     return {
         ...run,
         facts: { ...run.facts, family: actual.facts },

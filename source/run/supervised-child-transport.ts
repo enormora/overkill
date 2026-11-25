@@ -7,13 +7,14 @@ import { recordChildProtocolFailure, recordPrematureChildExit } from './supervis
 import { isSupervisedAnalysis, kill, type SupervisedChildProcess } from './supervised-child-process.ts';
 import {
     supervisedChildCorrelationId,
+    type CollectSupervisedAnalysis,
+    type SupervisedAnalysisSelection,
     supervisedCancellationCorrelationId,
     type SupervisedChildMessage,
-    type SupervisedChildCommand,
-    type SupervisedAssignmentCommand
+    type SupervisedParentMessage
 } from './supervised-protocol.ts';
 import { supervisedChildMessageSchema } from './supervised-child-message-schema.ts';
-import type { StoredRunValue, SupervisedRunState } from './supervised-run-state.ts';
+import { createStoredRunValue, type StoredRunValue, type SupervisedRunState } from './supervised-run-state.ts';
 
 type SupervisedTransport = {
     readonly analysis?: boolean;
@@ -181,9 +182,66 @@ export function observeSupervisedTransport(transport: SupervisedTransport): (rea
 }
 export function sendSupervisedCommand(
     child: SupervisedChildProcess,
-    command: SupervisedAssignmentCommand | SupervisedChildCommand
+    command: SupervisedParentMessage
 ): void {
     child.send(childProcessEnvelope(supervisedChildCorrelationId, command));
+}
+
+type SelectedAnalysis = Extract<SupervisedChildMessage, { readonly kind: 'analysis-collected'; }>;
+type SelectionResponse = (message: SelectedAnalysis) => void;
+type AnalysisSelectionRequest = {
+    readonly child: SupervisedChildProcess;
+    readonly clock: Clock;
+    readonly expire: () => void;
+    readonly failure: () => Promise<Error>;
+    readonly timeoutMilliseconds: number;
+};
+type AnalysisSelection = {
+    readonly awaitingResponse: () => boolean;
+    readonly receive: (message: SelectedAnalysis) => void;
+    readonly request: (
+        input: AnalysisSelectionRequest,
+        workIds: SupervisedAnalysisSelection['workIds']
+    ) => ReturnType<CollectSupervisedAnalysis>;
+};
+
+async function awaitAnalysisResponse(
+    input: AnalysisSelectionRequest,
+    workIds: SupervisedAnalysisSelection['workIds'],
+    response: Promise<SelectedAnalysis>
+): ReturnType<CollectSupervisedAnalysis> {
+    sendSupervisedCommand(input.child, { kind: 'select-analysis', workIds });
+    const selected = await Promise.race([ response, input.failure() ]);
+    if (selected instanceof Error) {
+        throw selected;
+    }
+    return selected.collection;
+}
+
+export function createAnalysisSelection(): AnalysisSelection {
+    const response = createStoredRunValue<SelectionResponse | null>(null);
+    return {
+        awaitingResponse() {
+            return response.read() !== null;
+        },
+        receive(message) {
+            const respond = response.read();
+            response.write(null);
+            respond?.(message);
+        },
+        async request(input, workIds) {
+            const received = new Promise<SelectedAnalysis>(function receiveSelection(resolve) {
+                response.write(resolve);
+            });
+            const timeout = input.clock.setTimeout(input.expire, input.timeoutMilliseconds);
+            try {
+                return await awaitAnalysisResponse(input, workIds, received);
+            } finally {
+                input.clock.clearTimeout(timeout);
+                response.write(null);
+            }
+        }
+    };
 }
 
 export async function sendAssignmentForPlan(runtime: SupervisedRunRuntime): Promise<void> {

@@ -4,16 +4,24 @@ import { preparePlacedFamily, executePreparedFamilyWithDriver, type Engine } fro
 import { builtinTestFamily, isBuiltinFamilyId } from '../engine/builtin-test-families.ts';
 import type { ExecuteOptions, ExecutionDriver } from '../engine/execution.ts';
 import { bindFamilySettings, type BoundFamilySettings, type FamilyValue } from '../engine/test-family.ts';
-import { analysisSignal, expectedAnalysisCollection, withAnalysisDeadline } from './analysis-deadline.ts';
+import {
+    analysisOwnership,
+    analysisSignal,
+    expectedAnalysisCollection,
+    withAnalysisDeadline
+} from './analysis-deadline.ts';
 import { familyCatalogSnapshot } from './family-work-catalog.ts';
 import { familyCatalog, setFamilyCatalog, type FrozenFamilyDefinition } from './family-catalog.ts';
 import { assertFrozenFamilyPreparation } from './family-resolution.ts';
 
 type TestPlan = ReturnType<Engine['createTestPlan']>;
 type RunResult = Awaited<ReturnType<Engine['execute']>>;
-type FamilyPreparationFacts = Awaited<ReturnType<typeof preparePlacedFamily>>['facts'];
+type PreparedFamily = Awaited<ReturnType<typeof preparePlacedFamily>>;
+type CollectedFamily = Awaited<ReturnType<PreparedFamily['collect']>>;
+type WorkId = TestPlan['cases'][number]['workId'];
+type FamilyPreparationFacts = PreparedFamily['facts'];
 
-const families = new WeakMap<TestPlan, {
+type RegisteredFamily = {
     readonly placement: 'in-process' | 'supervised-process' | 'worker-pool';
     readonly source: TestPlan;
     readonly engine: Engine;
@@ -21,7 +29,11 @@ const families = new WeakMap<TestPlan, {
     readonly expected: FamilyPreparationFacts | null;
     readonly catalog: TestPlan;
     readonly projectRoot: string;
-}>();
+    readonly retainedAnalysis: PreparedFamily | null;
+};
+
+const families = new WeakMap<TestPlan, RegisteredFamily>();
+const analysisCollections = new WeakMap<PreparedFamily, CollectedFamily>();
 
 function analysisHostOptions(options: ExecuteOptions): ExecuteOptions {
     const selected = { ...options };
@@ -80,9 +92,68 @@ export function registerHostFamilyPlan(
         projectRoot,
         expected: null,
         catalog: plan,
-        placement: 'in-process'
+        placement: 'in-process',
+        retainedAnalysis: null
     });
     return plan;
+}
+
+export async function collectRetainedHostAnalysis(plan: TestPlan, workIds: readonly WorkId[]): Promise<FamilyValue> {
+    const prepared = families.get(plan)?.retainedAnalysis ?? null;
+    if (prepared === null) {
+        throw new TypeError('Expected an analysis session.');
+    }
+    const collected = await prepared.collect({ workIds, signal: analysisSignal() });
+    analysisCollections.set(prepared, collected);
+    return collected.facts.collection;
+}
+
+function assertAnalysisAssignment(selected: TestPlan, collected: CollectedFamily): void {
+    const work = selected.cases.map(function identity(testCase) {
+        return testCase.workId;
+    });
+    const collectedWork = collected.testPlan.cases.map(function identity(testCase) {
+        return testCase.workId;
+    });
+    if (
+        !isDeepStrictEqual(work, collectedWork) ||
+        !isDeepStrictEqual(expectedAnalysisCollection(), collected.facts.collection) ||
+        (implementationPlan(selected)?.catalog ?? null) !== null
+    ) {
+        throw new TypeError('Frozen analysis assignment changed; collect a new run.');
+    }
+}
+
+type HostFamilyExecution = {
+    readonly family: RegisteredFamily;
+    readonly selected: TestPlan;
+    readonly driver: ExecutionDriver;
+    readonly options: ExecuteOptions;
+    readonly analysis: boolean;
+};
+
+async function executeRecreatedFamily(input: HostFamilyExecution, signal: AbortSignal): Promise<RunResult> {
+    const { family, selected, driver, options, analysis } = input;
+    const implementations = implementationPlan(selected);
+    await using prepared = await preparePlacedFamily(family.engine, {
+        testPlan: implementations === null ? family.source : setImplementationPlan(family.source, implementations),
+        testFamily: family.binding.testFamily,
+        binding: family.binding,
+        projectRoot: family.projectRoot,
+        signal
+    }, family.placement);
+    validatePreparedCatalog(family.expected, family.catalog, prepared);
+    const collected = await prepared.collect({
+        workIds: selected.cases.map(function identity(testCase) {
+            return testCase.workId;
+        }),
+        signal
+    });
+    const expected = expectedAnalysisCollection();
+    if (analysis && expected !== undefined && !isDeepStrictEqual(expected, collected.facts.collection)) {
+        throw new TypeError('Frozen analysis collection changed; collect a new run.');
+    }
+    return await executePreparedFamilyWithDriver(family.engine, collected, { ...options, signal }, driver);
 }
 
 export async function executeHostFamily(
@@ -91,41 +162,41 @@ export async function executeHostFamily(
     driver: ExecutionDriver,
     options: ExecuteOptions
 ): Promise<RunResult> {
-    const registered = families.get(source);
-    if (registered === undefined) {
+    const family = families.get(source);
+    if (family === undefined) {
         return await driver(selected, options);
     }
-    const family = registered;
     const analysis = family.binding.testFamily.features.execution === 'analysis';
     const timeout = analysis ? options.timeoutPolicy?.timeoutMilliseconds ?? null : null;
     async function execute(signal: AbortSignal): Promise<RunResult> {
-        const implementations = implementationPlan(selected);
-        await using prepared = await preparePlacedFamily(family.engine, {
-            testPlan: implementations === null ? family.source : setImplementationPlan(family.source, implementations),
-            testFamily: family.binding.testFamily,
-            binding: family.binding,
-            projectRoot: family.projectRoot,
-            signal
-        }, family.placement);
-        validatePreparedCatalog(family.expected, family.catalog, prepared);
-        const collected = await prepared.collect({
-            workIds: selected.cases.map(function identity(testCase) {
-                return testCase.workId;
-            }),
-            signal
-        });
-        const expected = expectedAnalysisCollection();
-        if (analysis && expected !== undefined && !isDeepStrictEqual(expected, collected.facts.collection)) {
-            throw new TypeError('Frozen analysis collection changed; collect a new run.');
+        const admittedOptions = analysis ? analysisHostOptions(options) : options;
+        const prepared = family.retainedAnalysis;
+        const retained = prepared === null ? undefined : analysisCollections.get(prepared);
+        if (retained === undefined) {
+            return await executeRecreatedFamily({ family, selected, driver, analysis, options: admittedOptions }, signal);
         }
-        const admittedOptions = analysis
-            ? analysisHostOptions(options)
-            : options;
-        return await executePreparedFamilyWithDriver(family.engine, collected, { ...admittedOptions, signal }, driver);
+        assertAnalysisAssignment(selected, retained);
+        return await executePreparedFamilyWithDriver(family.engine, retained, { ...admittedOptions, signal }, driver);
     }
     return timeout === null
         ? await execute(analysisSignal())
         : await withAnalysisDeadline(timeout, 'Analysis checking exceeded soft timeout.', execute);
+}
+
+async function recordFamilyCatalog(
+    prepared: PreparedFamily,
+    definition: FrozenFamilyDefinition,
+    signal: AbortSignal
+): Promise<void> {
+    const catalog = familyCatalogSnapshot(prepared.testPlan);
+    validateDefinitionCheckpoint(definition, prepared.facts, catalog);
+    const collected = definition.selection === null || definition.selection.length === 0
+        ? null
+        : await prepared.collect({ workIds: definition.selection, signal });
+    setFamilyCatalog(prepared.testPlan, {
+        definition: { ...definition, selection: null, checkpoint: { preparation: prepared.facts, catalog } },
+        facts: collected?.facts ?? { ...prepared.facts, collection: null }
+    });
 }
 
 export async function registerImportedHostFamilyPlan(
@@ -136,23 +207,17 @@ export async function registerImportedHostFamilyPlan(
 ): Promise<TestPlan> {
     const { projectRoot, processModel: placement } = definition;
     const signal = analysisSignal();
-    await using prepared = await preparePlacedFamily(engine, {
+    await using ownership = new AsyncDisposableStack();
+    const prepared = ownership.use(await preparePlacedFamily(engine, {
         testPlan: source,
         testFamily: binding.testFamily,
         binding,
         projectRoot,
         signal
-    }, placement);
-    const catalog = familyCatalogSnapshot(prepared.testPlan);
-    validateDefinitionCheckpoint(definition, prepared.facts, catalog);
-    const collected = definition.selection === null || definition.selection.length === 0
-        ? null
-        : await prepared.collect({ workIds: definition.selection, signal });
-    const facts = collected?.facts ?? { ...prepared.facts, collection: null };
-    setFamilyCatalog(prepared.testPlan, {
-        definition: { ...definition, selection: null, checkpoint: { preparation: prepared.facts, catalog } },
-        facts
-    });
+    }, placement));
+    await recordFamilyCatalog(prepared, definition, signal);
+    const lifetime = binding.testFamily.features.execution === 'analysis' ? analysisOwnership() : undefined;
+    lifetime?.use(ownership.move());
     families.set(prepared.testPlan, {
         source,
         engine,
@@ -160,7 +225,8 @@ export async function registerImportedHostFamilyPlan(
         projectRoot,
         placement,
         expected: prepared.facts,
-        catalog: prepared.testPlan
+        catalog: prepared.testPlan,
+        retainedAnalysis: lifetime === undefined ? null : prepared
     });
     return prepared.testPlan;
 }

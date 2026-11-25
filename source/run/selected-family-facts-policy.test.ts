@@ -68,6 +68,24 @@ export const testNode = suite('selected family fact recollection', [
             return scope.assert.collect();
         }
     }),
+    test('uses facts from the live analysis child', async function (scope: TestScope) {
+        const source = sources[0];
+        scope.require.defined(source);
+        const fixture = await selectedFamilyCollection('supervised', source, 'pass');
+        const selection = fixture.run.facts.cases.map(function identity(value) {
+            return value.workId;
+        });
+        const result = await resolveSelectedFamilyFacts(fixture.run, {
+            ...fixture.input,
+            async collectAnalysis(workIds) {
+                scope.assert.deepEqual(workIds, selection);
+                return { selected: workIds.length };
+            }
+        });
+        scope.assert.deepEqual<unknown, unknown>(result.facts.family?.collection, { selected: selection.length });
+        scope.assert.equal(fixture.commands.length, 0);
+        return scope.assert.collect();
+    }),
     test('does not recollect a family when no cases are selected', async function (scope: TestScope) {
         const source = sources[0];
         scope.require.defined(source);

@@ -13,6 +13,7 @@ export const supervisedChildMessageSchema: z.ZodType<SupervisedChildMessage> = z
         collectedPlan: collectedRunPlanSchema,
         runnerErrors: z.array(runnerErrorSchema)
     }),
+    z.strictObject({ kind: z.literal('analysis-collected'), collection: z.json() }),
     z.strictObject({ kind: z.literal('event'), event: reporterEventSchema }),
     z.strictObject({ kind: z.literal('result'), result: runResultSchema }),
     z.strictObject({ kind: z.literal('sample'), sample: processUsageSnapshotSchema }),

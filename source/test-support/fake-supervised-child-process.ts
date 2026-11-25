@@ -209,6 +209,9 @@ export function createFakeSupervisedChildProcess(input: FakeSupervisedChildProce
                 return;
             }
 
+            if (parentMessage?.kind === 'select-analysis') {
+                throw new Error('Unexpected analysis selection in a fake supervised child.');
+            }
             if (parentMessage !== null) {
                 receiveRunCommand(parentMessage);
             }

@@ -7,7 +7,10 @@ import {
     supervisedChildCorrelationId,
     supervisedCancellationCorrelationId,
     type SupervisedAssignmentCommand,
-    type SupervisedChildCommand
+    type SupervisedChildCommand,
+    type SupervisedAnalysisSelection,
+    type SupervisedParentMessage,
+    type CollectSupervisedAnalysis
 } from './supervised-protocol.ts';
 import type { SupervisedChildHost } from './supervised-child.ts';
 
@@ -33,20 +36,20 @@ export async function disconnect(): Promise<void> {
     await outbox.disconnect();
 }
 
-function supervisedParentMessage(message: unknown): SupervisedAssignmentCommand | SupervisedChildCommand | null {
+function supervisedParentMessage(message: unknown): SupervisedParentMessage | null {
     return envelopeMessage(message, supervisedChildCorrelationId, supervisedParentMessageSchema);
 }
 
 function readCommand(message: unknown): SupervisedChildCommand {
     const decoded = supervisedParentMessage(message);
-    if (decoded !== null && decoded.kind !== 'assign') {
+    if (decoded !== null && decoded.kind !== 'assign' && decoded.kind !== 'select-analysis') {
         return decoded;
     }
     throw new Error('Expected a supervised child command.');
 }
-function readAssignment(message: unknown): SupervisedAssignmentCommand {
+function readAssignment(message: unknown): SupervisedAssignmentCommand | SupervisedAnalysisSelection {
     const decoded = supervisedParentMessage(message);
-    if (decoded?.kind === 'assign') {
+    if (decoded?.kind === 'assign' || decoded?.kind === 'select-analysis') {
         return decoded;
     }
     throw new Error('Expected a supervised child assignment.');
@@ -71,8 +74,17 @@ async function receiveParentMessage<Message>(read: (message: unknown) => Message
 export async function receiveCommand(): Promise<SupervisedChildCommand> {
     return receiveParentMessage(readCommand);
 }
-export async function receiveAssignment(): Promise<SupervisedAssignmentCommand> {
-    return receiveParentMessage(readAssignment);
+export async function receiveAssignment(collect: CollectSupervisedAnalysis): Promise<SupervisedAssignmentCommand> {
+    const message = await receiveParentMessage(readAssignment);
+    if (message.kind === 'assign') {
+        return message;
+    }
+    send({ kind: 'analysis-collected', collection: await collect(message.workIds) });
+    const assignment = await receiveParentMessage(readAssignment);
+    if (assignment.kind !== 'assign') {
+        throw new Error('Expected an assignment after collecting analysis.');
+    }
+    return assignment;
 }
 
 export const flushSupervisedMessages = outbox.flush;

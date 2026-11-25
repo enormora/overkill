@@ -140,14 +140,17 @@ async function wedgeCompilerOnExecution(directory: string): Promise<void> {
         `
 import { channel } from 'node:diagnostics_channel';
 import { writeFileSync } from 'node:fs';
-let compilers = 0;
+const compilers = [];
 channel('child_process').subscribe(({process: child}) => {
-    child.once('spawn', () => {
-        if (!child.spawnargs.includes('--api') || ++compilers !== 2) return;
-        writeFileSync('wedged-processes.json', JSON.stringify([process.pid, child.pid]));
-        child.kill('SIGSTOP');
-        Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0);
-    });
+    if (child.spawnargs.includes('--api')) compilers.push(child);
+});
+process.on('message', (envelope) => {
+    if (envelope.correlationId !== 'supervised-run' || envelope.message?.kind !== 'assign') return;
+    const [child] = compilers;
+    if (compilers.length !== 1 || child.exitCode !== null) throw new Error('Expected the original compiler session.');
+    writeFileSync('wedged-processes.json', JSON.stringify([process.pid, child.pid]));
+    child.kill('SIGSTOP');
+    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0);
 });`
     );
 }

@@ -23,6 +23,7 @@ function collectionInput(empty: boolean): CollectionResolvedRunInput {
         dependencies: fixture.dependencies,
         durationHistoryIndex: null,
         planKind: 'supervised',
+        collectAnalysis: null,
         collection: { collectedPlan: plan, runnerErrors: [] }
     };
 }

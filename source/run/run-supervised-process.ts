@@ -19,6 +19,7 @@ import { collectSupervisedRun } from './supervised-run-collection.ts';
 import {
     runSupervisedCommand
 } from './supervised-run.ts';
+import type { CollectSupervisedAnalysis } from './supervised-protocol.ts';
 import type { CollectedRunPlan, ResolvedRun, RunCommand, RunInvocationOptions } from './run-types.ts';
 
 type RunResult = Awaited<ReturnType<RunOrchestratorDependencies['execute']>>;
@@ -48,6 +49,7 @@ type CollectedExecution = {
 type SupervisedResolution = {
     readonly allowEmptySelection: boolean;
     readonly collection: CollectedExecution;
+    readonly collectAnalysis: CollectSupervisedAnalysis | null;
     readonly command: RunCommand;
     readonly dependencies: RunOrchestratorDependencies;
     readonly expectedDirectPlan: Awaited<ReturnType<typeof createExpectedDirectEntrypointPlan>>;
@@ -72,7 +74,8 @@ async function resolvedSupervisedExecution(
     resolution: SupervisedResolution,
     signal: Readonly<AbortSignal> | null
 ): Promise<ResolvedRun> {
-    const { allowEmptySelection, collection, command, dependencies, expectedDirectPlan, input } = resolution;
+    const { input } = resolution;
+    const { allowEmptySelection, collection, collectAnalysis, command, dependencies, expectedDirectPlan } = resolution;
 
     assertExpectedDirectEntrypointCollection(expectedDirectPlan, collection.collectedPlan);
 
@@ -83,6 +86,7 @@ async function resolvedSupervisedExecution(
         benchmarkNormalization: input.benchmarkNormalization,
         allowEmptySelection,
         collection,
+        collectAnalysis,
         command,
         config: input.config,
         dependencies,
@@ -128,6 +132,7 @@ export async function createSupervisedResolvedRun(
     return await resolvedSupervisedExecution({
         allowEmptySelection: input.request.lastFailed,
         collection,
+        collectAnalysis: null,
         command,
         dependencies,
         expectedDirectPlan,
@@ -146,10 +151,11 @@ async function runSupervisedExecution(execution: SupervisedExecution): Promise<R
             normalization: input.benchmarkNormalization
         }),
         dependencies,
-        async function createResolvedRunAfterCollection(collection): Promise<ResolvedRun> {
+        async function createResolvedRunAfterCollection(collection, collectAnalysis): Promise<ResolvedRun> {
             const run = await resolvedSupervisedExecution({
                 allowEmptySelection: true,
                 collection,
+                collectAnalysis,
                 command,
                 dependencies,
                 expectedDirectPlan,
