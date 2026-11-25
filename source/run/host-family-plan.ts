@@ -162,10 +162,11 @@ export async function executeHostFamily(
     driver: ExecutionDriver,
     options: ExecuteOptions
 ): Promise<RunResult> {
-    const family = families.get(source);
-    if (family === undefined) {
+    const registered = families.get(source);
+    if (registered === undefined) {
         return await driver(selected, options);
     }
+    const family = registered;
     const analysis = family.binding.testFamily.features.execution === 'analysis';
     const timeout = analysis ? options.timeoutPolicy?.timeoutMilliseconds ?? null : null;
     async function execute(signal: AbortSignal): Promise<RunResult> {
