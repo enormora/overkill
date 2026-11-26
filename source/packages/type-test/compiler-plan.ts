@@ -1,8 +1,8 @@
 import type { JsonValue, ReadonlyDeep } from 'type-fest';
-import type { FamilyPreparationInput } from '../../engine/test-family.ts';
 import {
     createRunResult,
     workIdentityKey,
+    type FamilyPreparationInput,
     type RuntimeId,
     type WorkloadId,
     type TestPlan,
@@ -118,6 +118,22 @@ function orderedCompilerResults(plan: TestPlan, results: readonly RunResult[]): 
     });
 }
 
+async function checkGroups(groups: readonly CompilerCheck[], signal: AbortSignal): Promise<{
+    readonly results: readonly CheckerExecution[];
+    readonly savedValidations: readonly (() => Promise<void>)[];
+}> {
+    const results: CheckerExecution[] = [];
+    const savedValidations: (() => Promise<void>)[] = [];
+    for (const group of groups) {
+        results.push(
+            await group.check(signal, function remember(save) {
+                savedValidations.push(save);
+            })
+        );
+    }
+    return { results, savedValidations };
+}
+
 async function checkCompilerGroups(
     groups: readonly CompilerCheck[],
     verifyInputs: (signal: AbortSignal) => Promise<void>,
@@ -131,13 +147,13 @@ async function checkCompilerGroups(
         }
     }
     await verify();
-    const results: CheckerExecution[] = [];
-    for (const group of groups) {
-        results.push(await group.check(signal));
-    }
+    const { results, savedValidations } = await checkGroups(groups, signal);
     await checkCompilerCancellation(signal);
     await verify();
     signal.throwIfAborted();
+    await Promise.all(savedValidations.map(async function persist(save) {
+        await save();
+    }));
     return results;
 }
 
@@ -394,7 +410,7 @@ function compilerPreparationFacts(
                 projectConfigPath: project.projectConfigPath,
                 projectFingerprint: fingerprint(project.projectText),
                 configuration: originalProjectFacts(project),
-                inputs: project.inputs
+                inputs: project.inputFacts()
             };
         })
     });

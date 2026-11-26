@@ -2,7 +2,7 @@ import { createRequire } from 'node:module';
 import { readFile, realpath, readdir } from 'node:fs/promises';
 import { dirname, resolve, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { createHash } from 'node:crypto';
+import { hash } from 'node:crypto';
 import { z } from 'zod';
 import pLimit from 'p-limit';
 import type * as NativeApi from 'typescript-beta/async';
@@ -57,7 +57,8 @@ const syntaxSchema = z.custom<typeof Ast>(function syntaxModule(value) {
         );
 });
 async function fingerprint(path: string): Promise<string> {
-    return createHash('sha256').update(await readFile(path)).digest('hex');
+    const contents = await readFile(path);
+    return hash('sha256', contents);
 }
 async function compilerFile(path: string): Promise<CompilerFile> {
     return { path: await realpath(path), fingerprint: await fingerprint(path) };
@@ -164,20 +165,40 @@ function verifyLoadedImplementation(input: Installation): void {
         throw new Error('Compiler implementation changed after loading; restart the execution host.');
     }
 }
-export async function verifyInstalledCompiler(compiler: InstalledCompiler, signal: AbortSignal): Promise<void> {
+async function verifyCompilerResolution(
+    compiler: InstalledCompiler,
+    signal: AbortSignal
+): Promise<void> {
     for (const entry of compiler.resolutions) {
         signal.throwIfAborted();
         if (await resolutionTarget(entry.path) !== entry.target) {
             throw new Error('Compiler resolution changed after preparation.');
         }
     }
-    for (const file of compiler.files) {
-        signal.throwIfAborted();
-        if (await fingerprint(file.path) !== file.fingerprint) {
-            throw new Error('Compiler implementation changed after preparation.');
+}
+
+async function verifyCompilerContents(compiler: InstalledCompiler, signal: AbortSignal): Promise<void> {
+    await Promise.all(compiler.files.map(async function verify(file) {
+        return readCompilerFile(async function verifyFingerprint() {
+            signal.throwIfAborted();
+            if (await fingerprint(file.path) !== file.fingerprint) {
+                throw new Error('Compiler implementation changed after preparation.');
+            }
+        });
+    }));
+}
+export async function verifyInstalledCompiler(compiler: InstalledCompiler, signal: AbortSignal): Promise<void> {
+    const results = await Promise.allSettled([
+        verifyCompilerResolution(compiler, signal),
+        verifyCompilerContents(compiler, signal)
+    ]);
+    for (const result of results) {
+        if (result.status === 'rejected') {
+            throw result.reason;
         }
     }
 }
+
 async function loadCompiler(input: Installation): Promise<InstalledCompiler> {
     const native = nativeSchema.parse(
         await import(pathToFileURL(input.require.resolve(`${input.specifier}/async`)).href)

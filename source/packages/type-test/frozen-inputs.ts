@@ -1,6 +1,7 @@
-import { createHash } from 'node:crypto';
+import { hash } from 'node:crypto';
 import { isDeepStrictEqual } from 'node:util';
 import type { APIOptions } from 'typescript-beta/async';
+import { parseAdapterFacts } from '../../config/adapter-facts.ts';
 import { compilerFileSystem } from './compiler-file-system.ts';
 
 type PathObservation<Value> = {
@@ -19,17 +20,17 @@ export type FrozenInputs = {
     readonly realPaths: readonly PathObservation<string>[];
 };
 export function sourceFingerprint(text: string): string {
-    return createHash('sha256').update(text).digest('hex');
+    return hash('sha256', text);
 }
 
 function observations<Value>(values: ReadonlyMap<string, Value>): readonly PathObservation<Value>[] {
-    return Array
-        .from(values, function observation([ path, value ]) {
-            return { path, value };
-        })
-        .toSorted(function byPath(left, right) {
-            return left.path.localeCompare(right.path);
-        });
+    const entries = Array.from(values, function observation([ path, value ]) {
+        return Object.freeze({ path, value });
+    });
+    const sorted = entries.toSorted(function byPath(left, right) {
+        return left.path.localeCompare(right.path);
+    });
+    return Object.freeze(sorted);
 }
 
 export type ProjectInputObservation = {
@@ -42,11 +43,13 @@ function accessibleEntries(path: string): DirectoryEntries {
     for (const name of compilerFileSystem.entries(path)) {
         (compilerFileSystem.directoryExists(`${path}/${name}`) ? directories : files).push(name);
     }
-    return { files, directories };
+    return Object.freeze({ files: Object.freeze(files), directories: Object.freeze(directories) });
 }
 
 function statObservation(stat: ReturnType<typeof compilerFileSystem.stat>): StatObservation | null {
-    return stat === undefined ? null : { mode: stat.mode, size: stat.size, mtime: stat.mtime.getTime() };
+    return stat === undefined
+        ? null
+        : Object.freeze({ mode: stat.mode, size: stat.size, mtime: stat.mtime.getTime() });
 }
 
 type ObservedValues<Value> = {
@@ -56,18 +59,23 @@ type ObservedValues<Value> = {
 
 export function observeProjectInputs(): ProjectInputObservation {
     let drift: Error | null = null;
+    let inputs: FrozenInputs | null = null;
     function observe<Value>(): ObservedValues<Value> {
         const values = new Map<string, Value>();
+        let captured: readonly PathObservation<Value>[] | null = null;
         return {
             record(path: string, value: Value) {
-                if (values.has(path) && !isDeepStrictEqual(values.get(path), value)) {
-                    drift = drift ?? new Error(`Type-test input changed after collection: ${path}`);
-                } else {
+                if (!values.has(path)) {
                     values.set(path, value);
+                    captured = null;
+                    inputs = null;
+                } else if (!isDeepStrictEqual(values.get(path), value)) {
+                    drift = drift ?? new Error(`Type-test input changed after collection: ${path}`);
                 }
             },
             snapshot() {
-                return observations(values);
+                captured = captured ?? observations(values);
+                return captured;
             }
         };
     }
@@ -126,27 +134,45 @@ export function observeProjectInputs(): ProjectInputObservation {
             if (drift !== null) {
                 throw drift;
             }
-            return {
+            inputs = inputs ?? Object.freeze({
                 files: observed.files.snapshot(),
                 directories: observed.directories.snapshot(),
                 probes: observed.probes.snapshot(),
                 directoryEntries: observed.directoryEntries.snapshot(),
                 stats: observed.stats.snapshot(),
                 realPaths: observed.realPaths.snapshot()
-            };
+            });
+            return inputs;
         }
     };
 }
 
+const recordedInputs = new WeakMap<FrozenInputs, ReturnType<typeof parseAdapterFacts>>();
+
+export function frozenInputFacts(inputs: FrozenInputs): ReturnType<typeof parseAdapterFacts> {
+    const existing = recordedInputs.get(inputs);
+    if (existing !== undefined) {
+        return existing;
+    }
+    const facts = parseAdapterFacts(inputs);
+    recordedInputs.set(inputs, facts);
+    return facts;
+}
+
 export function verifyProjectInputs(inputs: FrozenInputs, signal: AbortSignal): void {
+    const verifiedFiles = new Set<string>();
     const current = {
         files(path: string) {
             const text = compilerFileSystem.readFile(path);
-            return text === undefined ? null : sourceFingerprint(text);
+            if (text === undefined) {
+                return null;
+            }
+            verifiedFiles.add(path);
+            return sourceFingerprint(text);
         },
         directories: compilerFileSystem.directoryExists,
         probes(path: string) {
-            return compilerFileSystem.fileExists(path);
+            return verifiedFiles.has(path) || compilerFileSystem.fileExists(path);
         },
         directoryEntries: accessibleEntries,
         stats(path: string) {

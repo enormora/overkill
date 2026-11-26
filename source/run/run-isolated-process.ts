@@ -75,6 +75,7 @@ async function createResolvedExecutionRun(resolution: ExecutionResolutionInput):
         benchmarkNormalization: resolution.input.benchmarkNormalization,
         allowEmptySelection: resolution.allowEmptySelection,
         collection: resolution.collection,
+        collectAnalysis: null,
         command: resolution.command,
         config: resolution.input.config,
         dependencies: resolution.dependencies,

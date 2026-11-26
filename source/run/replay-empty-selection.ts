@@ -25,6 +25,7 @@ async function executeEmptyReplay(
     const collected = await createResolvedRunFromCollection({
         ...options.input,
         ...options,
+        collectAnalysis: null,
         collection: { collectedPlan: replay.record.replayPlan, runnerErrors: [] },
         durationHistoryIndex: null,
         allowEmptySelection: true,

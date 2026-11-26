@@ -87,7 +87,10 @@ async function observeCollection(
         const interrupt = observeSupervisedTransport({
             analysis: runtime.command.analysis === true,
             accept(message) {
-                if (runtime.collected.read() !== null || message.kind === 'result') {
+                if (
+                    runtime.collected.read() !== null || message.kind === 'result' ||
+                    message.kind === 'analysis-collected'
+                ) {
                     return false;
                 }
                 return message.kind !== 'event' || message.event.kind === 'runner-error';

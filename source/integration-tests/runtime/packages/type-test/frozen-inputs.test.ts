@@ -10,8 +10,10 @@ import { originalSourceFile } from '../../../../packages/type-test/source-analys
 
 const projectFiles = {
     'tsconfig.json': '{"extends":"./base.json","files":["case.ts"]}',
-    'base.json': '{"compilerOptions":{"strict":true,"types":[],"noLib":true}}',
-    'case.ts': "import type { Value } from './value.js'; export type Result = Value;",
+    'base.json': JSON.stringify({
+        compilerOptions: { strict: true, types: [], noLib: true, paths: { '@fixture/value': [ './value.d.ts' ] } }
+    }),
+    'case.ts': "import type { Value } from '@fixture/value'; export type Result = Value;",
     'value.d.ts': 'export type Value = string;'
 };
 async function linkedProject(cleanup: TestScope['cleanup'], signal: AbortSignal): Promise<{
@@ -133,6 +135,30 @@ export const testNode = suite('frozen compiler inputs', [
         scope.assert.throws(function () {
             verifyProjectInputs(frozen.inputs, scope.signal);
         }, { message: /input changed/u });
+        return scope.assert.collect();
+    }),
+    test('preserves the source location of compiler option diagnostics', async function (scope) {
+        const directory = await frozenTypeProject(scope.cleanup, {
+            'tsconfig.json': '{"compilerOptions":{"types":[],"baseUrl":"."},"files":["case.ts"]}',
+            'case.ts': 'export type Value = string;'
+        });
+        const configPath = join(directory, 'tsconfig.json');
+        const frozen = await loadProject(
+            configPath,
+            { kind: 'package', specifier: 'typescript-beta', version: '7.1.0-beta' },
+            process.cwd(),
+            scope.signal
+        );
+        scope.cleanup(async function () {
+            await disposeProject(frozen);
+        });
+        const program = await frozen.diagnosticProgram();
+        const diagnostics = await program.getProgramDiagnostics();
+        const removedOption = diagnostics.find(function isRemovedOption(diagnostic) {
+            return diagnostic.code === 5102;
+        });
+        scope.assert.equal(removedOption?.fileName, configPath);
+        scope.assert.equal(removedOption?.startPosition?.line, 0);
         return scope.assert.collect();
     }),
     test('detects newly created resolution candidates', async function (scope) {

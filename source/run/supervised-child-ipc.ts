@@ -1,15 +1,18 @@
 import { supervisedCancellationSchema, supervisedParentMessageSchema } from './supervised-parent-message-schema.ts';
 import { createChildProcessOutbox } from './child-process-outbox.ts';
+import { analysisCollectionFingerprint, envelopeMessage } from './child-process-protocol.ts';
 import {
-    envelopeMessage
-} from './child-process-protocol.ts';
-import {
+    assignedAnalysisCollection,
     supervisedChildCorrelationId,
     supervisedCancellationCorrelationId,
     type SupervisedAssignmentCommand,
-    type SupervisedChildCommand
+    type SupervisedChildCommand,
+    type SupervisedWorkCommand,
+    type SupervisedParentMessage,
+    type CollectSupervisedAnalysis
 } from './supervised-protocol.ts';
 import type { SupervisedChildHost } from './supervised-child.ts';
+import type { CollectedFamilyMetadata } from './family-catalog.ts';
 
 const cancellation = new AbortController();
 export const cancellationSignal: AbortSignal = cancellation.signal;
@@ -25,54 +28,123 @@ const outbox = createChildProcessOutbox(supervisedChildCorrelationId, {
     send: process.send?.bind(process) ?? null
 });
 
-export function send(message: Parameters<SupervisedChildHost['send']>[0]): void {
-    outbox.send(message);
+type ChildMessage = Parameters<SupervisedChildHost['send']>[0];
+
+function sharesPreparation(
+    checkpoint: NonNullable<CollectedFamilyMetadata['definition']['checkpoint']>,
+    facts: CollectedFamilyMetadata['facts']
+): boolean {
+    const { preparation } = checkpoint;
+    return preparation.id === facts.id && preparation.version === facts.version &&
+        Object.is(preparation.settings, facts.settings) && Object.is(preparation.preparation, facts.preparation);
+}
+
+function encodeCollectedPreparation(message: ChildMessage): unknown {
+    if (message.kind !== 'collected') {
+        return message;
+    }
+    const { collectedPlan } = message;
+    const { family } = collectedPlan;
+    if (family === null) {
+        return message;
+    }
+    const { checkpoint } = family.definition;
+    if (checkpoint === null || !sharesPreparation(checkpoint, family.facts)) {
+        return message;
+    }
+    return {
+        ...message,
+        collectedPlan: {
+            ...collectedPlan,
+            family: {
+                ...family,
+                definition: { ...family.definition, checkpoint: { ...checkpoint, preparation: 'family-facts' } }
+            }
+        }
+    };
+}
+
+export function send(message: ChildMessage): void {
+    outbox.send(encodeCollectedPreparation(message));
 }
 
 export async function disconnect(): Promise<void> {
     await outbox.disconnect();
 }
 
-function supervisedParentMessage(message: unknown): SupervisedAssignmentCommand | SupervisedChildCommand | null {
+function supervisedParentMessage(message: unknown): SupervisedParentMessage | null {
     return envelopeMessage(message, supervisedChildCorrelationId, supervisedParentMessageSchema);
 }
 
 function readCommand(message: unknown): SupervisedChildCommand {
     const decoded = supervisedParentMessage(message);
-    if (decoded !== null && decoded.kind !== 'assign') {
+    if (decoded !== null && decoded.kind !== 'assign' && decoded.kind !== 'select-analysis') {
         return decoded;
     }
     throw new Error('Expected a supervised child command.');
 }
-function readAssignment(message: unknown): SupervisedAssignmentCommand {
+function readAssignment(message: unknown): SupervisedWorkCommand {
     const decoded = supervisedParentMessage(message);
-    if (decoded?.kind === 'assign') {
+    if (decoded?.kind === 'assign' || decoded?.kind === 'select-analysis') {
         return decoded;
     }
     throw new Error('Expected a supervised child assignment.');
 }
 async function receiveParentMessage<Message>(read: (message: unknown) => Message): Promise<Message> {
+    if (!process.connected) {
+        throw new Error('Supervised parent disconnected.');
+    }
     return new Promise(function waitForParentMessage(resolve, reject) {
-        const listener = function receiveMessage(message: unknown): void {
-            if (envelopeMessage(message, supervisedCancellationCorrelationId, supervisedCancellationSchema) !== null) {
-                return;
-            }
-            process.off('message', listener);
-            try {
-                resolve(read(message));
-            } catch (error: unknown) {
-                reject(error instanceof Error ? error : new Error('Invalid parent IPC payload.'));
+        const listeners = {
+            disconnected: function loseParent() {
+                process.off('message', listeners.message);
+                reject(new Error('Supervised parent disconnected.'));
+            },
+            message: function receiveMessage(message: unknown) {
+                if (
+                    envelopeMessage(message, supervisedCancellationCorrelationId, supervisedCancellationSchema) !== null
+                ) {
+                    return;
+                }
+                process.off('message', listeners.message);
+                process.off('disconnect', listeners.disconnected);
+                try {
+                    resolve(read(message));
+                } catch (error: unknown) {
+                    reject(error instanceof Error ? error : new Error('Invalid parent IPC payload.'));
+                }
             }
         };
-        ownedMessageListeners.add(listener);
-        process.on('message', listener);
+        ownedMessageListeners.add(listeners.message);
+        process.on('message', listeners.message);
+        process.once('disconnect', listeners.disconnected);
     });
 }
 export async function receiveCommand(): Promise<SupervisedChildCommand> {
     return receiveParentMessage(readCommand);
 }
-export async function receiveAssignment(): Promise<SupervisedAssignmentCommand> {
-    return receiveParentMessage(readAssignment);
+function acknowledgeAnalysisCollection(
+    assignment: SupervisedWorkCommand,
+    collection: Awaited<ReturnType<CollectSupervisedAnalysis>>
+): SupervisedAssignmentCommand {
+    if (assignment.kind !== 'assign') {
+        throw new Error('Expected an assignment after collecting analysis.');
+    }
+    if (assignedAnalysisCollection(assignment) !== analysisCollectionFingerprint(collection)) {
+        throw new TypeError('Frozen analysis assignment changed; collect a new run.');
+    }
+    return { ...assignment, analysisCollection: collection };
+}
+
+export async function receiveAssignment(collect: CollectSupervisedAnalysis): Promise<SupervisedAssignmentCommand> {
+    const message = await receiveParentMessage(readAssignment);
+    if (message.kind === 'assign') {
+        return message;
+    }
+    const collection = await collect(message.workIds);
+    send({ kind: 'analysis-collected', collection });
+    const assignment = await receiveParentMessage(readAssignment);
+    return acknowledgeAnalysisCollection(assignment, collection);
 }
 
 export const flushSupervisedMessages = outbox.flush;

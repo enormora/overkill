@@ -11,6 +11,7 @@ import { defaultIntegrationProfile } from './run-command-factory.ts';
 export type FamilyCollectionScenario = 'checkpoint' | 'error' | 'missing' | 'pass' | 'preparation';
 type IsolatedResolvedRun = ResolvedRun & { readonly plan: Exclude<ResolvedRun['plan'], { readonly kind: 'local'; }>; };
 type SelectedFamilyInput = ResolvedRunInput & {
+    readonly collectAnalysis: null;
     readonly command: RunCommand;
     readonly dependencies: RunOrchestratorDependencies;
 };
@@ -150,6 +151,7 @@ export async function selectedFamilyCollection(
     return {
         run,
         input: {
+            collectAnalysis: null,
             ...fixture.input,
             command: fixture.command,
             dependencies,

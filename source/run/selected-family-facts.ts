@@ -9,6 +9,7 @@ import {
     createWorkerPoolCommand,
     type WorkerPoolCommandInput
 } from './run-isolated-command.ts';
+import type { CollectSupervisedAnalysis } from './supervised-protocol.ts';
 import { collectSupervisedRun } from './supervised-run-collection.ts';
 import { collectWorkerPoolRun } from './worker-pool-run.ts';
 
@@ -16,7 +17,9 @@ type FamilyCollectionPolicy = Pick<
     WorkerPoolCommandInput,
     'benchmarkNormalization' | 'files' | 'profile' | 'projectRoot'
 >;
+export type SelectedAnalysisCollector = CollectSupervisedAnalysis | null;
 type FamilyCollectionInput = FamilyCollectionPolicy & {
+    readonly collectAnalysis: SelectedAnalysisCollector;
     readonly command: RunCommand;
     readonly dependencies: RunOrchestratorDependencies;
 };
@@ -76,7 +79,19 @@ async function collectSelectedFamily(
             null,
             input.signal
         );
-    const actual = validateFrozenFamilyCollection(metadata, collection.collectedPlan.family, collection.runnerErrors);
+    return validateFrozenFamilyCollection(metadata, collection.collectedPlan.family, collection.runnerErrors);
+}
+
+async function selectedFamilyMetadata(
+    run: ResolvedRun,
+    metadata: CollectedFamilyMetadata,
+    selection: readonly ResolvedRun['facts']['cases'][number]['workId'][],
+    input: FamilyCollectionRequest
+): Promise<CollectedFamilyMetadata> {
+    const collectAnalysis = run.facts.implementations === null ? input.collectAnalysis : null;
+    const actual = collectAnalysis === null
+        ? await collectSelectedFamily(run, metadata, selection, input)
+        : { ...metadata, facts: { ...metadata.facts, collection: await collectAnalysis(selection) } };
     validateRecordedFamilyFacts(actual.facts);
     return actual;
 }
@@ -96,7 +111,7 @@ export async function resolveSelectedFamilyFacts(
     if (selection.length === 0) {
         return run;
     }
-    const actual = await collectSelectedFamily(run, metadata, selection, { ...input, signal });
+    const actual = await selectedFamilyMetadata(run, metadata, selection, { ...input, signal });
     return {
         ...run,
         facts: { ...run.facts, family: actual.facts },

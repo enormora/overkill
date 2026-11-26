@@ -9,7 +9,7 @@ const entryExtension = import.meta.url.endsWith('.ts') ? '.ts' : '.d.ts';
 const relationEntry = fileURLToPath(new URL(`./type-test.entry-point${entryExtension}`, import.meta.url));
 
 async function relationModuleExports(project: FrozenProject): Promise<readonly CompilerSymbol[]> {
-    const { checker } = project.configured;
+    const { checker } = project;
     const direct = await checker.getSymbolOfSourceFile(relationEntry);
     if (direct !== undefined) {
         return await checker.getExportsOfModule(direct);
@@ -27,7 +27,7 @@ async function relationModuleExports(project: FrozenProject): Promise<readonly C
 }
 
 export function projectSourceAnalysis(project: FrozenProject): SourceAnalysis {
-    const { checker } = project.configured;
+    const { checker } = project;
     return createSourceAnalysis({
         getRelationModuleExports: async function readExports() {
             return await relationModuleExports(project);

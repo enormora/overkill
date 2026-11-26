@@ -118,6 +118,13 @@ type LegacyCaseAssignmentCommand = {
 };
 
 export type SupervisedAssignmentCommand = LegacyCaseAssignmentCommand | WorkAssignmentCommand;
+export type SupervisedAnalysisSelection = {
+    readonly kind: 'select-analysis';
+    readonly workIds: readonly WorkId[];
+};
+export type SupervisedWorkCommand = SupervisedAnalysisSelection | SupervisedAssignmentCommand;
+export type SupervisedParentMessage = SupervisedChildCommand | SupervisedWorkCommand;
+export type CollectSupervisedAnalysis = (workIds: readonly WorkId[]) => Promise<AnalysisCollection>;
 
 function hasAssignedWork(assignment: SupervisedAssignmentCommand): assignment is WorkAssignmentCommand {
     return Object.hasOwn(assignment, 'assignedWork');
@@ -145,6 +152,9 @@ export type SupervisedChildMessage = {
     readonly event: ReporterEvent;
     readonly kind: 'event';
 } | {
+    readonly kind: 'analysis-collected';
+    readonly collection: AnalysisCollection;
+} | {
     readonly kind: 'execution-checkpoint';
     readonly data: RunExecutionTransport['data'];
 } | {
@@ -162,8 +172,8 @@ export type SupervisedChildMessage = {
 };
 
 export function supervisedChildEnvelope(
-    message: SupervisedAssignmentCommand | SupervisedChildCommand | SupervisedChildMessage
-): ChildProcessEnvelope<SupervisedAssignmentCommand | SupervisedChildCommand | SupervisedChildMessage> {
+    message: SupervisedChildMessage | SupervisedParentMessage
+): ChildProcessEnvelope<SupervisedChildMessage | SupervisedParentMessage> {
     return childProcessEnvelope(supervisedChildCorrelationId, message);
 }
 

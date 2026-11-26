@@ -31,7 +31,9 @@ import {
     withSupervisedLateAssertionDelivery
 } from './run-support.ts';
 import {
+    collectChildAnalysis,
     createSupervisedChildTestPlan,
+    withChildAnalysisOwnership,
     validateSupervisedPolicy,
     runnerErrorFromSupervisedChildFailure,
     runObservedSupervisedChildCommand,
@@ -46,6 +48,7 @@ import {
     supervisedAssignedPlan,
     assignedPropertyCorpus,
     supervisedAssignedWork,
+    type CollectSupervisedAnalysis,
     type SupervisedAssignmentCommand,
     type SupervisedChildCommand,
     type SupervisedChildMessage,
@@ -77,7 +80,7 @@ export type SupervisedChildHost = RuntimeCapabilityPolicyDependencies & {
     readonly dropBodyReadPermission: (command: SupervisedRunCommand) => void;
     readonly loadRunEngineModule: SupervisedChildTestPlanDependencies['loadRunEngineModule'];
     readonly loadRunTestModules: SupervisedChildTestPlanDependencies['loadRunTestModules'];
-    readonly receiveAssignment: () => Promise<SupervisedAssignmentCommand>;
+    readonly receiveAssignment: (collect: CollectSupervisedAnalysis) => Promise<SupervisedAssignmentCommand>;
     readonly receiveCommand: () => Promise<SupervisedChildCommand>;
     readonly send: (message: SupervisedChildMessage) => void;
     readonly flush: () => Promise<void>;
@@ -297,6 +300,27 @@ async function executeAssignment(input: SupervisedAssignmentExecution): Promise<
     });
 }
 
+function selectChildAnalysis(
+    command: SupervisedRunCommand,
+    host: SupervisedChildHost,
+    plan: TestPlan
+): CollectSupervisedAnalysis {
+    const collectSelection = collectChildAnalysis(command, plan);
+    return async function selectAnalysis(workIds) {
+        return await withRuntimePolicy(function createChildPolicy() {
+            return createRuntimePolicy(command, host);
+        }, async function collectSelectedAnalysis(policy) {
+            try {
+                return await policy.runLoad(async function observeCollection() {
+                    return await collectSelection(workIds);
+                });
+            } finally {
+                sendRuntimePolicyErrors(host, policy);
+            }
+        });
+    };
+}
+
 async function run(
     command: SupervisedRunCommand,
     host: SupervisedChildHost,
@@ -307,7 +331,7 @@ async function run(
     const startedAtMs = wallClock.currentUnixEpochMilliseconds;
     const collectedPlan = await collect(command, host);
     sendCollectedPlan(collectedPlan, host);
-    const assignment = await host.receiveAssignment();
+    const assignment = await host.receiveAssignment(selectChildAnalysis(command, host, collectedPlan.testPlan));
     const selected = select === null
         ? collectedPlan
         : { ...collectedPlan, testPlan: await select(collectedPlan.testPlan, assignment) };
@@ -370,7 +394,9 @@ async function completeReceivedCommand(
         });
         sendRunResult(host, result);
     } else {
-        const result = await run(command, host, dependencies, null);
+        const result = await withChildAnalysisOwnership(command, async function executeRun() {
+            return await run(command, host, dependencies, null);
+        });
         stopObserving();
         sendRunResult(host, result);
     }

@@ -1,7 +1,7 @@
 import { setTimeout as yieldToTimers } from 'node:timers/promises';
 import { resolve } from 'node:path';
 import { readFile } from 'node:fs/promises';
-import type { API, Snapshot, Project, ParsedCommandLine } from 'typescript-beta/async';
+import type { API, Project, ParsedCommandLine } from 'typescript-beta/async';
 import {
     closeCompilerConnection,
     createCompilerLifetime,
@@ -11,6 +11,7 @@ import { openCompiler } from './compiler-process.entry-point.ts';
 import type { CompilerSelection } from './profile-settings.ts';
 import { resolveInstalledCompiler, verifyInstalledCompiler, type InstalledCompiler } from './installed-compiler.ts';
 import {
+    frozenInputFacts,
     observeProjectInputs,
     verifyProjectInputs,
     sourceFingerprint,
@@ -21,13 +22,13 @@ import type { TypeAnalysis } from './source-analysis-port.ts';
 
 type CapturedProject = {
     readonly compiler: InstalledCompiler;
-    readonly api: API;
-    readonly snapshot: Snapshot;
-    readonly configured: Project;
+    readonly checker: Project['checker'];
     readonly projectConfigPath: string;
     readonly project: ParsedCommandLine;
     readonly program: Project['program'];
+    readonly diagnosticProgram: () => Promise<Project['program']>;
     readonly inputs: FrozenInputs;
+    readonly inputFacts: () => ReturnType<typeof frozenInputFacts>;
     readonly observation: ProjectInputObservation;
     readonly projectText: string;
 };
@@ -48,8 +49,9 @@ export async function checkCompilerCancellation(signal: AbortSignal): Promise<vo
     signal.throwIfAborted();
 }
 export const fingerprint = sourceFingerprint;
-function configuredProject(snapshot: Snapshot, path: string): Project {
-    const project = snapshot.getConfiguredProject(path);
+async function openConfiguredProject(input: ProjectSession): Promise<Project> {
+    const snapshot = await input.api.createSnapshot({ openProjects: [ input.projectConfigPath ] });
+    const project = snapshot.getConfiguredProject(input.projectConfigPath);
     if (project === undefined) {
         throw new Error('Original configured project is unavailable.');
     }
@@ -65,28 +67,51 @@ async function parseProject(input: ProjectSession): Promise<ParsedCommandLine> {
     return project;
 }
 
-async function captureProject(
-    input: ProjectSession
-): Promise<CapturedProject> {
+async function openAnalysisProject(
+    input: ProjectSession,
+    parsed: ParsedCommandLine
+): Promise<Pick<CapturedProject, 'checker' | 'diagnosticProgram' | 'program'>> {
+    const standalone = (parsed.projectReferences?.length ?? 0) === 0 && parsed.typeAcquisition?.enable !== true;
+    if (standalone) {
+        const program = await input.api.createProgram(parsed.fileNames, parsed.options);
+        return {
+            program,
+            checker: program.getProject().checker,
+            async diagnosticProgram() {
+                const configured = await openConfiguredProject(input);
+                return configured.program;
+            }
+        };
+    }
+    const { program, checker } = await openConfiguredProject(input);
+    return {
+        program,
+        checker,
+        async diagnosticProgram() {
+            return program;
+        }
+    };
+}
+
+async function captureProject(input: ProjectSession): Promise<CapturedProject> {
     const project = await parseProject(input);
-    const snapshot = await input.api.createSnapshot({ openProjects: [ input.projectConfigPath ] });
+    const analysis = await openAnalysisProject(input, project);
     input.signal.throwIfAborted();
-    const configured = configuredProject(snapshot, input.projectConfigPath);
-    const paths = await configured.program.getSourceFileNames();
+    const paths = await analysis.program.getSourceFileNames();
     input.signal.throwIfAborted();
     for (const path of paths) {
         input.observation.fs.realpath(path);
     }
     return {
         compiler: input.compiler,
-        api: input.api,
-        snapshot,
-        configured,
+        ...analysis,
         projectConfigPath: input.projectConfigPath,
         project,
-        program: configured.program,
         observation: input.observation,
         inputs: input.observation.snapshot(),
+        inputFacts() {
+            return frozenInputFacts(input.observation.snapshot());
+        },
         projectText: await readFile(input.projectConfigPath, 'utf8')
     };
 }
@@ -135,7 +160,7 @@ export function originalProjectFacts(project: FrozenProject): unknown {
 }
 
 export function typeAnalysis(project: FrozenProject): TypeAnalysis {
-    return { program: project.program, compiler: project.compiler.syntax, checker: project.configured.checker };
+    return { program: project.program, compiler: project.compiler.syntax, checker: project.checker };
 }
 
 export async function disposeProject(project: FrozenProject): Promise<void> {
@@ -144,13 +169,11 @@ export async function disposeProject(project: FrozenProject): Promise<void> {
 
 type AssertionSourceInput = { readonly path: string; readonly originalText: string; };
 
-export async function verifyFrozenProject(
+async function verifyProjectSources(
     project: FrozenProject,
     modules: readonly AssertionSourceInput[],
     signal: AbortSignal
 ): Promise<void> {
-    signal.throwIfAborted();
-    await verifyInstalledCompiler(project.compiler, signal);
     if (await readFile(project.projectConfigPath, 'utf8') !== project.projectText) {
         throw new Error('Type-test project configuration changed after collection.');
     }
@@ -159,6 +182,23 @@ export async function verifyFrozenProject(
         signal.throwIfAborted();
         if (fingerprint(await readFile(module.path, 'utf8')) !== fingerprint(module.originalText)) {
             throw new Error(`Type-test source changed after collection: ${module.path}`);
+        }
+    }
+}
+
+export async function verifyFrozenProject(
+    project: FrozenProject,
+    modules: readonly AssertionSourceInput[],
+    signal: AbortSignal
+): Promise<void> {
+    signal.throwIfAborted();
+    const results = await Promise.allSettled([
+        verifyInstalledCompiler(project.compiler, signal),
+        verifyProjectSources(project, modules, signal)
+    ]);
+    for (const result of results) {
+        if (result.status === 'rejected') {
+            throw result.reason;
         }
     }
 }

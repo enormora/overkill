@@ -14,6 +14,7 @@ import { nativeCheckResult, type SiteEvidence } from './native-results.ts';
 import { evaluateSite } from './original-evidence.ts';
 
 import { projectSourceAnalysis } from './project-source-analysis.ts';
+import { validateCompilerProject, type RememberProjectValidation } from './project-validation-cache.ts';
 
 function projectDiagnostic(diagnostic: Diagnostic): string {
     const position = diagnostic.startPosition;
@@ -26,18 +27,19 @@ function projectDiagnostic(diagnostic: Diagnostic): string {
 }
 
 async function validateProject(project: FrozenProject, signal: AbortSignal): Promise<void> {
+    const program = await project.diagnosticProgram();
     const diagnostics: Diagnostic[] = [];
     for (
         const read of [
-            project.program.getConfigFileParsingDiagnostics,
-            project.program.getGlobalDiagnostics,
-            project.program.getProgramDiagnostics,
-            project.program.getSyntacticDiagnostics,
-            project.program.getSemanticDiagnostics
+            program.getConfigFileParsingDiagnostics,
+            program.getGlobalDiagnostics,
+            program.getProgramDiagnostics,
+            program.getSyntacticDiagnostics,
+            program.getSemanticDiagnostics
         ]
     ) {
         signal.throwIfAborted();
-        diagnostics.push(...await read.call(project.program));
+        diagnostics.push(...await read.call(program));
     }
     if (diagnostics.length > 0) {
         throw new Error(diagnostics.map(projectDiagnostic).join('\n'), { cause: diagnostics });
@@ -71,7 +73,7 @@ function assertionFacts(
 export type CompilerCheck = {
     readonly facts: CheckerExecution['facts'];
     readonly verify: (signal: AbortSignal) => Promise<void>;
-    readonly check: (signal: AbortSignal) => Promise<CheckerExecution>;
+    readonly check: (signal: AbortSignal, remember: RememberProjectValidation) => Promise<CheckerExecution>;
 };
 
 export async function collectProject(
@@ -93,12 +95,17 @@ export async function collectProject(
         sources: assertionPlan.modules.map(function original(module) {
             return { path: module.path, fingerprint: fingerprint(module.originalText) };
         }),
-        inputs: project.observation.snapshot(),
+        inputs: project.inputFacts(),
         issues: assertionPlan.issues,
         assertions: assertionPlan.sites.map(assertionFacts)
     };
-    async function checkProject(signal: AbortSignal): Promise<readonly SiteEvidence[]> {
-        await validateProject(project, signal);
+    async function checkProject(
+        signal: AbortSignal,
+        remember: RememberProjectValidation
+    ): Promise<readonly SiteEvidence[]> {
+        await validateCompilerProject(project, signal, async function validate() {
+            await validateProject(project, signal);
+        }, remember);
         return await checkOriginalAssertions(project, assertionPlan, signal);
     }
     const facts = parseAdapterFacts(sourceFacts);
@@ -107,17 +114,17 @@ export async function collectProject(
         async verify(signal) {
             await verifyFrozenProject(project, assertionPlan.modules, signal);
         },
-        async check(signal) {
+        async check(signal, remember) {
             const started = performance.now();
             try {
                 const checked = await project.execute(signal, async function checkAssertions() {
-                    return await checkProject(signal);
+                    return await checkProject(signal, remember);
                 });
                 return {
                     result: nativeCheckResult({ plan, assertionPlan, checked, error: null, started }),
                     facts: parseAdapterFacts({
                         ...sourceFacts,
-                        inputs: project.observation.snapshot(),
+                        inputs: project.inputFacts(),
                         evidence: checked.map(function (entry) {
                             return {
                                 ...assertionFacts(entry.site),

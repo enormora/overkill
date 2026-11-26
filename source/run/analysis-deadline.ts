@@ -6,6 +6,16 @@ import type { FamilyValue } from '../engine/test-family.ts';
 const invocation = new AsyncLocalStorage<AbortSignal>();
 const collection = new AsyncLocalStorage<FamilyValue | undefined>();
 const idle = new AbortController();
+const ownership = new AsyncLocalStorage<AsyncDisposableStack>();
+
+export async function withAnalysisOwnership<Value>(operation: () => Promise<Value>): Promise<Value> {
+    await using lifetime = new AsyncDisposableStack();
+    return await ownership.run(lifetime, operation);
+}
+
+export function analysisOwnership(): AsyncDisposableStack | undefined {
+    return ownership.getStore();
+}
 
 export function analysisSignal(): AbortSignal {
     return invocation.getStore() ?? idle.signal;

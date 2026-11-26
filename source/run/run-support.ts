@@ -120,8 +120,21 @@ export function createRunResourceRuntimePolicy(
     return composeRunRuntimePolicies(runtimePolicy, resourcePolicy) ?? resourcePolicy;
 }
 
-export function freezeValue<Value>(value: Value): Value {
+const frozenRunValues = new WeakSet();
+
+export function isFrozenRunValue(value: unknown): boolean {
+    return value !== null && typeof value === 'object' && frozenRunValues.has(value);
+}
+
+export function retainFrozenRunValue<Value>(value: Value): Value {
     if (value !== null && typeof value === 'object') {
+        frozenRunValues.add(value);
+    }
+    return value;
+}
+
+export function freezeValue<Value>(value: Value): Value {
+    if (value !== null && typeof value === 'object' && !frozenRunValues.has(value)) {
         for (const propertyValue of Object.values(value)) {
             freezeValue(propertyValue);
         }

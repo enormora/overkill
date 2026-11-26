@@ -4,7 +4,8 @@ import { caseIdSchema, workIdSchema } from '../engine/identity-schema.ts';
 import { frozenSupervisedCommandSchema, sessionSupervisedCommandSchema } from './frozen-supervised-command-schema.ts';
 import type {
     SupervisedChildCommand,
-    SupervisedAssignmentCommand
+    SupervisedAssignmentCommand,
+    SupervisedParentMessage
 } from './supervised-protocol.ts';
 import {
     supervisedCommandFields,
@@ -44,7 +45,8 @@ const assignmentSchema: z.ZodType<SupervisedAssignmentCommand> = z.union([
 ]);
 export const supervisedCancellationSchema = z.strictObject({ kind: z.literal('cancel') });
 
-export const supervisedParentMessageSchema: z.ZodType<SupervisedAssignmentCommand | SupervisedChildCommand> = z.union([
+export const supervisedParentMessageSchema: z.ZodType<SupervisedParentMessage> = z.union([
     commandSchema,
-    assignmentSchema
+    assignmentSchema,
+    z.strictObject({ kind: z.literal('select-analysis'), workIds: z.array(workIdSchema).min(1) })
 ]);

@@ -159,6 +159,28 @@ export function createFakeSupervisedChildProcess(input: FakeSupervisedChildProce
         }
     }
 
+    function executeAssignment(assignment: SupervisedAssignmentCommand): void {
+        if (command === null || testFile === null) {
+            throw new Error('Fake supervised child did not receive a test file.');
+        }
+
+        input.run({
+            assignment,
+            command,
+            emitExit: state.emitExit,
+            emitMessage: state.emitMessage,
+            emitSample(sample) {
+                state.emitMessage({ kind: 'sample', sample });
+            },
+            isKilled() {
+                return killed;
+            },
+            stderr: state.stderr,
+            stdout: state.stdout,
+            testFile
+        });
+    }
+
     return {
         closeTransport() {
             return undefined;
@@ -186,29 +208,14 @@ export function createFakeSupervisedChildProcess(input: FakeSupervisedChildProce
             );
 
             if (parentMessage?.kind === 'assign') {
-                if (command === null || testFile === null) {
-                    throw new Error('Fake supervised child did not receive a test file.');
-                }
-
-                input.run({
-                    assignment: parentMessage,
-                    command,
-                    emitExit: state.emitExit,
-                    emitMessage: state.emitMessage,
-                    emitSample(sample) {
-                        state.emitMessage({ kind: 'sample', sample });
-                    },
-                    isKilled() {
-                        return killed;
-                    },
-                    stderr: state.stderr,
-                    stdout: state.stdout,
-                    testFile
-                });
+                executeAssignment(parentMessage);
 
                 return;
             }
 
+            if (parentMessage?.kind === 'select-analysis') {
+                throw new Error('Unexpected analysis selection in a fake supervised child.');
+            }
             if (parentMessage !== null) {
                 receiveRunCommand(parentMessage);
             }
