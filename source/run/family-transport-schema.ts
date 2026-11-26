@@ -75,23 +75,28 @@ export const familyRunFactsSchema = z.strictObject({
     collection: familyValueSchema
 });
 const collectedFamilyDefinitionSchema = familyDefinitionSchema.extend({
-    checkpoint: familyCheckpointSchema.extend({
-        preparation: z.union([ z.literal('family-facts'), familyPreparationSchema ])
-    }).nullable().default(null)
+    checkpoint: familyCheckpointSchema
+        .extend({
+            preparation: z.union([ z.literal('family-facts'), familyPreparationSchema ])
+        })
+        .nullable()
+        .default(null)
 });
 
-export const collectedFamilyMetadataSchema: z.ZodType<CollectedFamilyMetadata> = z.strictObject({
-    definition: collectedFamilyDefinitionSchema,
-    facts: familyRunFactsSchema
-}).transform(function restorePreparation({ definition, facts }) {
-    const { checkpoint } = definition;
-    const complete = checkpoint === null
-        ? null
-        : {
-            catalog: checkpoint.catalog,
-            preparation: checkpoint.preparation === 'family-facts'
-                ? { id: facts.id, version: facts.version, settings: facts.settings, preparation: facts.preparation }
-                : checkpoint.preparation
-        };
-    return { definition: { ...definition, checkpoint: complete }, facts };
-});
+export const collectedFamilyMetadataSchema: z.ZodType<CollectedFamilyMetadata> = z
+    .strictObject({
+        definition: collectedFamilyDefinitionSchema,
+        facts: familyRunFactsSchema
+    })
+    .transform(function restorePreparation({ definition, facts }) {
+        const { checkpoint } = definition;
+        const complete = checkpoint === null
+            ? null
+            : {
+                catalog: checkpoint.catalog,
+                preparation: checkpoint.preparation === 'family-facts'
+                    ? { id: facts.id, version: facts.version, settings: facts.settings, preparation: facts.preparation }
+                    : checkpoint.preparation
+            };
+        return { definition: { ...definition, checkpoint: complete }, facts };
+    });

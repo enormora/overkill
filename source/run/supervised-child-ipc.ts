@@ -45,11 +45,11 @@ function encodeCollectedPreparation(message: ChildMessage): unknown {
     }
     const { collectedPlan } = message;
     const { family } = collectedPlan;
-    if (family === null || family.definition.checkpoint === null) {
+    if (family === null) {
         return message;
     }
     const { checkpoint } = family.definition;
-    if (!sharesPreparation(checkpoint, family.facts)) {
+    if (checkpoint === null || !sharesPreparation(checkpoint, family.facts)) {
         return message;
     }
     return {
