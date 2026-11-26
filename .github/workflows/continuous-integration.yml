@@ -15,6 +15,192 @@ concurrency:
     cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+    static-analysis:
+        runs-on: ubuntu-latest
+        name: Static analysis
+        permissions:
+            contents: read
+        steps:
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+              with:
+                  persist-credentials: false
+            - name: Use Node.js from package metadata
+              uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+              with:
+                  node-version-file: package.json
+            - name: Install dependencies
+              run: npm ci
+            - name: Run static analysis
+              run: npx just lint-filename lint-unused-code lint-dependencies lint-duplication
+            - name: Type tests
+              run: npx just test-types
+
+    eslint:
+        runs-on: ubuntu-latest
+        name: ESLint
+        permissions:
+            contents: read
+        steps:
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+              with:
+                  persist-credentials: false
+            - name: Use Node.js from package metadata
+              uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+              with:
+                  node-version-file: package.json
+            - name: Install dependencies
+              run: npm ci
+            - name: Run ESLint
+              env:
+                  TIMING: "25"
+              run: npx just eslint
+
+    compile:
+        runs-on: ubuntu-latest
+        name: Compile TypeScript
+        permissions:
+            contents: read
+        steps:
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+              with:
+                  persist-credentials: false
+            - name: Use Node.js from package metadata
+              uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+              with:
+                  node-version-file: package.json
+            - name: Install dependencies
+              run: npm ci
+            - name: Compile TypeScript
+              run: npx just compile
+
+    microtests:
+        runs-on: ubuntu-latest
+        name: Microtests
+        permissions:
+            contents: read
+        steps:
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+              with:
+                  persist-credentials: false
+            - name: Use Node.js from package metadata
+              uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+              with:
+                  node-version-file: package.json
+            - name: Install dependencies
+              run: npm ci
+            - name: Run microtests with coverage
+              run: npx just test-microtests-with-coverage
+            - name: Retain microtest coverage report
+              if: ${{ !cancelled() }}
+              uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+              with:
+                  name: microtest-coverage
+                  path: target/coverage/lcov.info
+                  retention-days: 7
+
+    runner-integration-tests:
+        runs-on: ubuntu-latest
+        name: Integration tests
+        permissions:
+            contents: read
+        steps:
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+              with:
+                  persist-credentials: false
+            - name: Use Node.js from package metadata
+              uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+              with:
+                  node-version-file: package.json
+            - name: Install dependencies
+              run: npm ci
+            - name: Run integration tests
+              run: npx just test-integration
+
+    package-smoke-tests:
+        runs-on: ubuntu-latest
+        name: Package smoke tests
+        permissions:
+            contents: read
+        steps:
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+              with:
+                  persist-credentials: false
+            - name: Use Node.js from package metadata
+              uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+              with:
+                  node-version-file: package.json
+            - name: Install dependencies
+              run: npm ci
+            - name: Run package smoke tests
+              run: npx just test-package-smoke
+
+    publish-dry-run:
+        runs-on: ubuntu-latest
+        name: Publish dry run
+        permissions:
+            contents: read
+        steps:
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+              with:
+                  persist-credentials: false
+            - name: Use Node.js from package metadata
+              uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+              with:
+                  node-version-file: package.json
+            - name: Install dependencies
+              run: npm ci
+            - name: Publish dry run
+              run: |
+                  set -o pipefail
+                  mkdir -p target/release
+                  if npx just publish-dry-run 2>&1 | tee target/release/publish-dry-run.log; then
+                      exit 0
+                  fi
+                  if ! grep -Eq '^- request to https://registry\.npmjs\.org/[^[:space:]]+ failed, reason: ([[:space:]]*$|.*(ECONNRESET|ETIMEDOUT|EAI_AGAIN))' target/release/publish-dry-run.log; then
+                      exit 1
+                  fi
+                  sleep 10
+                  npx just publish-dry-run
+
+    cli-integration-tests:
+        strategy:
+            matrix:
+                os: [ubuntu-latest, macos-26-intel]
+        runs-on: ${{ matrix.os }}
+        name: CLI integration tests (${{ matrix.os }})
+        permissions:
+            contents: read
+        steps:
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+              with:
+                  persist-credentials: false
+            - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+              with:
+                  node-version-file: package.json
+            - run: npm ci
+            - run: npx just test-cli-integration
+
+    workflow-security:
+        runs-on: ubuntu-latest
+        name: Workflow security analysis
+        permissions:
+            contents: read
+        steps:
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+              with:
+                  persist-credentials: false
+            - name: Run zizmor
+              id: zizmor
+              uses: zizmorcore/zizmor-action@45d7276c9ca790aabd705e31ca99c6185c3e76dd # v0.8.1
+              with:
+                  version: 1.26.1
+                  persona: pedantic
+                  min-severity: informational
+                  min-confidence: low
+                  config: .github/zizmor.yml
+                  advanced-security: false
+                  annotations: true
+
     performance:
         runs-on: ubuntu-latest
         name: Performance
@@ -31,22 +217,8 @@ jobs:
                   node-version-file: package.json
             - name: Install dependencies
               run: npm ci
-            - name: Check out the performance baseline
-              uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-              with:
-                  ref: 98b24f25ed84b60bfa16935df7795cbc934fb9b7
-                  path: target/performance-baseline-source
-                  persist-credentials: false
-            - name: Benchmark the baseline
-              working-directory: target/performance-baseline-source
-              run: |
-                  npm ci
-                  node build-benchmark-html.js
-                  node source/benchmarks/run-performance.entry-point.ts compare ../performance/baseline type-test-cli-many-files-serial source/benchmarks/baselines/shared.json
             - name: Benchmark the checkout
-              run: |
-                  node build-benchmark-html.js
-                  node source/benchmarks/run-performance.entry-point.ts compare target/performance/full type-test-cli-many-files-serial source/benchmarks/baselines/shared.json
+              run: npx just benchmark
             - name: Retain performance evidence
               if: ${{ !cancelled() }}
               uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -56,5 +228,3 @@ jobs:
                       target/performance/full/report.html
                       target/performance/full/measurements.json
                       target/performance/full/state
-                      target/performance/baseline/report.html
-                      target/performance/baseline/measurements.json
