@@ -4,6 +4,7 @@ import { workIdSchema } from '../engine/identity-schema.ts';
 import { maxJsonDepth } from '../attachments/json-snapshot.ts';
 import type { FamilyValue } from '../engine/test-family.ts';
 import type { CollectedFamilyMetadata, FrozenFamilyDefinition } from './family-catalog.ts';
+import { isFrozenRunValue, retainFrozenRunValue } from './run-support.ts';
 
 function invalidFamilyEvidence(reason: string): never {
     throw new TypeError('Family settings require lossless, acyclic JSON.', {
@@ -29,10 +30,13 @@ function freezeFamilyEvidence(value: FamilyValue, depth: number): void {
     Object.freeze(value);
 }
 
-export const familyValueSchema = z.json().transform(function freeze(value) {
-    freezeFamilyEvidence(value, 0);
-    return value;
-});
+export const familyValueSchema = z.union([
+    z.custom<FamilyValue>(isFrozenRunValue),
+    z.json().transform(function freeze(value) {
+        freezeFamilyEvidence(value, 0);
+        return retainFrozenRunValue(value);
+    })
+]);
 const familyPreparationSchema = z.strictObject({
     id: z.string(),
     version: z.string(),

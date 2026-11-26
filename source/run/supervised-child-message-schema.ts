@@ -1,6 +1,7 @@
 import { z } from 'zod/v4';
 import { runnerErrorSchema } from '../engine/runner-error-schema.ts';
 import { collectedRunPlanSchema } from './collected-run-plan-schema.ts';
+import { familyValueSchema } from './family-transport-schema.ts';
 import { reporterEventSchema } from './reporter-event-schema.ts';
 import { runResultSchema } from './run-result-schema.ts';
 import { processUsageSnapshotSchema, runTimingSpanSchema } from './run-runtime-schema.ts';
@@ -13,7 +14,7 @@ export const supervisedChildMessageSchema: z.ZodType<SupervisedChildMessage> = z
         collectedPlan: collectedRunPlanSchema,
         runnerErrors: z.array(runnerErrorSchema)
     }),
-    z.strictObject({ kind: z.literal('analysis-collected'), collection: z.json() }),
+    z.strictObject({ kind: z.literal('analysis-collected'), collection: familyValueSchema }),
     z.strictObject({ kind: z.literal('event'), event: reporterEventSchema }),
     z.strictObject({ kind: z.literal('result'), result: runResultSchema }),
     z.strictObject({ kind: z.literal('sample'), sample: processUsageSnapshotSchema }),
