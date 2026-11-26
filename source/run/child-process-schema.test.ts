@@ -96,7 +96,7 @@ export const testNode = suite('child process payload schemas', [
             source: { kind: 'config-file', configPath: '/project/overkill.config.ts', profile: 'analysis' }
         };
         const restored = collectedFamilyMetadataSchema.parse({ definition, facts });
-        scope.assert.deepEqual(restored.definition.checkpoint, { catalog: [ 'selected' ], preparation });
+        scope.assert.deepEqual<unknown, unknown>(restored.definition.checkpoint, { catalog: [ 'selected' ], preparation });
         scope.assert.deepEqual(restored.facts, facts);
         return scope.assert.collect();
     }),
