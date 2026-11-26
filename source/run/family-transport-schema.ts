@@ -3,7 +3,7 @@ import { z } from 'zod/v4';
 import { workIdSchema } from '../engine/identity-schema.ts';
 import { maxJsonDepth } from '../attachments/json-snapshot.ts';
 import type { FamilyValue } from '../engine/test-family.ts';
-import type { FrozenFamilyDefinition } from './family-catalog.ts';
+import type { CollectedFamilyMetadata, FrozenFamilyDefinition } from './family-catalog.ts';
 
 function invalidFamilyEvidence(reason: string): never {
     throw new TypeError('Family settings require lossless, acyclic JSON.', {
@@ -33,19 +33,18 @@ export const familyValueSchema = z.json().transform(function freeze(value) {
     freezeFamilyEvidence(value, 0);
     return value;
 });
-export const frozenFamilyDefinitionSchema: z.ZodType<FrozenFamilyDefinition> = z.strictObject({
-    checkpoint: z
-        .strictObject({
-            preparation: z.strictObject({
-                id: z.string(),
-                version: z.string(),
-                settings: familyValueSchema,
-                preparation: familyValueSchema
-            }),
-            catalog: familyValueSchema
-        })
-        .nullable()
-        .default(null),
+const familyPreparationSchema = z.strictObject({
+    id: z.string(),
+    version: z.string(),
+    settings: familyValueSchema,
+    preparation: familyValueSchema
+});
+const familyCheckpointSchema = z.strictObject({
+    preparation: familyPreparationSchema,
+    catalog: familyValueSchema
+});
+const familyDefinitionSchema = z.strictObject({
+    checkpoint: familyCheckpointSchema.nullable().default(null),
     processModel: z.enum([ 'in-process', 'supervised-process', 'worker-pool' ]),
     definitionLocationCapture: z.enum([ 'enabled', 'disabled' ]),
     projectRoot: z.string().refine(isAbsolute),
@@ -66,6 +65,8 @@ export const frozenFamilyDefinitionSchema: z.ZodType<FrozenFamilyDefinition> = z
     ])
 });
 
+export const frozenFamilyDefinitionSchema: z.ZodType<FrozenFamilyDefinition> = familyDefinitionSchema;
+
 export const familyRunFactsSchema = z.strictObject({
     id: z.string().min(1),
     version: z.string().min(1),
@@ -73,7 +74,24 @@ export const familyRunFactsSchema = z.strictObject({
     preparation: familyValueSchema,
     collection: familyValueSchema
 });
-export const collectedFamilyMetadataSchema = z.strictObject({
-    definition: frozenFamilyDefinitionSchema,
+const collectedFamilyDefinitionSchema = familyDefinitionSchema.extend({
+    checkpoint: familyCheckpointSchema.extend({
+        preparation: z.union([ z.literal('family-facts'), familyPreparationSchema ])
+    }).nullable().default(null)
+});
+
+export const collectedFamilyMetadataSchema: z.ZodType<CollectedFamilyMetadata> = z.strictObject({
+    definition: collectedFamilyDefinitionSchema,
     facts: familyRunFactsSchema
+}).transform(function restorePreparation({ definition, facts }) {
+    const { checkpoint } = definition;
+    const complete = checkpoint === null
+        ? null
+        : {
+            catalog: checkpoint.catalog,
+            preparation: checkpoint.preparation === 'family-facts'
+                ? { id: facts.id, version: facts.version, settings: facts.settings, preparation: facts.preparation }
+                : checkpoint.preparation
+        };
+    return { definition: { ...definition, checkpoint: complete }, facts };
 });

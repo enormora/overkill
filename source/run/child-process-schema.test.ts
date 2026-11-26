@@ -4,6 +4,7 @@ import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { createDefaultWorkId } from '../engine/identity.ts';
 import { reporterEventSchema } from './reporter-event-schema.ts';
 import { executionCommandFields } from './run-command-schema.ts';
+import { collectedFamilyMetadataSchema } from './family-transport-schema.ts';
 import { childProcessEnvelope, envelopeMessage } from './child-process-protocol.ts';
 import { supervisedChildMessageSchema } from './supervised-child-message-schema.ts';
 import { workerPoolHostCommandSchema, workerPoolHostMessageSchema } from './worker-pool-host-protocol-schema.ts';
@@ -74,6 +75,31 @@ export const testNode = suite('child process payload schemas', [
             return scope.assert.collect();
         }
     ),
+
+    test('restores shared compiler preparation in collected family evidence', function (scope) {
+        const preparation = {
+            id: 'analysis',
+            version: '1',
+            settings: { project: 'tsconfig.json' },
+            preparation: [ 'source.ts' ]
+        };
+        const facts = { ...preparation, collection: null };
+        const definition = {
+            id: preparation.id,
+            version: preparation.version,
+            settings: preparation.settings,
+            checkpoint: { catalog: [ 'selected' ], preparation: 'family-facts' },
+            definitionLocationCapture: 'enabled',
+            processModel: 'supervised-process',
+            projectRoot: '/project',
+            selection: null,
+            source: { kind: 'config-file', configPath: '/project/overkill.config.ts', profile: 'analysis' }
+        };
+        const restored = collectedFamilyMetadataSchema.parse({ definition, facts });
+        scope.assert.deepEqual(restored.definition.checkpoint, { catalog: [ 'selected' ], preparation });
+        scope.assert.deepEqual(restored.facts, facts);
+        return scope.assert.collect();
+    }),
 
     test('command roots preserve explicit annotation and control values', function (scope) {
         const root = {

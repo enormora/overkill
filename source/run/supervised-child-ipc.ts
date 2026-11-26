@@ -12,6 +12,7 @@ import {
     type CollectSupervisedAnalysis
 } from './supervised-protocol.ts';
 import type { SupervisedChildHost } from './supervised-child.ts';
+import type { CollectedFamilyMetadata } from './family-catalog.ts';
 
 const cancellation = new AbortController();
 export const cancellationSignal: AbortSignal = cancellation.signal;
@@ -27,8 +28,44 @@ const outbox = createChildProcessOutbox(supervisedChildCorrelationId, {
     send: process.send?.bind(process) ?? null
 });
 
-export function send(message: Parameters<SupervisedChildHost['send']>[0]): void {
-    outbox.send(message);
+type ChildMessage = Parameters<SupervisedChildHost['send']>[0];
+
+function sharesPreparation(
+    checkpoint: NonNullable<CollectedFamilyMetadata['definition']['checkpoint']>,
+    facts: CollectedFamilyMetadata['facts']
+): boolean {
+    const { preparation } = checkpoint;
+    return preparation.id === facts.id && preparation.version === facts.version &&
+        Object.is(preparation.settings, facts.settings) && Object.is(preparation.preparation, facts.preparation);
+}
+
+function encodeCollectedPreparation(message: ChildMessage): unknown {
+    if (message.kind !== 'collected') {
+        return message;
+    }
+    const { collectedPlan } = message;
+    const { family } = collectedPlan;
+    if (family === null || family.definition.checkpoint === null) {
+        return message;
+    }
+    const { checkpoint } = family.definition;
+    if (!sharesPreparation(checkpoint, family.facts)) {
+        return message;
+    }
+    return {
+        ...message,
+        collectedPlan: {
+            ...collectedPlan,
+            family: {
+                ...family,
+                definition: { ...family.definition, checkpoint: { ...checkpoint, preparation: 'family-facts' } }
+            }
+        }
+    };
+}
+
+export function send(message: ChildMessage): void {
+    outbox.send(encodeCollectedPreparation(message));
 }
 
 export async function disconnect(): Promise<void> {
