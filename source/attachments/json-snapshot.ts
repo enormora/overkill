@@ -15,7 +15,7 @@ type JsonSnapshotBudget = {
 type JsonTraversal = {
     readonly budget: JsonSnapshotBudget;
     readonly policy: JsonObjectPolicy;
-    readonly visit: JsonVisit;
+    readonly visit: (value: unknown, depth: number, traversal: JsonTraversal) => ReadonlyDeep<JsonValue>;
 };
 
 export const maxJsonDepth = 64;
@@ -108,7 +108,7 @@ function readPropertyDescriptor(
 }
 
 function arraySnapshot(value: readonly unknown[], traversal: JsonTraversal, depth: number): ReadonlyDeep<JsonValue> {
-    const { budget, policy, visit } = traversal;
+    const { budget, policy } = traversal;
     if (policy === 'portable') {
         validatePortableArrayKeys(value);
     }
@@ -116,12 +116,12 @@ function arraySnapshot(value: readonly unknown[], traversal: JsonTraversal, dept
     for (let index = 0; index < value.length; index += 1) {
         budget.reserve(index === 0 ? 0 : 1);
         const descriptor = readPropertyDescriptor(value, String(index), policy);
-        entries.push(visit(descriptorValue(descriptor), depth + 1));
+        entries.push(traversal.visit(descriptorValue(descriptor), depth + 1, traversal));
     }
     return Object.freeze(entries);
 }
 function objectSnapshot(value: JsonContainer, traversal: JsonTraversal, depth: number): ReadonlyDeep<JsonValue> {
-    const { budget, policy, visit } = traversal;
+    const { budget, policy } = traversal;
     const entries: [string, ReadonlyDeep<JsonValue>][] = [];
     for (const key of Reflect.ownKeys(value)) {
         const descriptor = readPropertyDescriptor(value, key, policy);
@@ -130,7 +130,7 @@ function objectSnapshot(value: JsonContainer, traversal: JsonTraversal, depth: n
                 throw new TypeError('JSON attachments cannot contain symbol keys.');
             }
             budget.reserveValue(key, 1 + (entries.length === 0 ? 0 : 1));
-            entries.push([ key, visit(descriptorValue(descriptor), depth + 1) ]);
+            entries.push([ key, traversal.visit(descriptorValue(descriptor), depth + 1, traversal) ]);
         }
     }
     return Object.freeze(Object.fromEntries(entries));
@@ -157,8 +157,7 @@ function createJsonVisit(
     validate: (value: unknown) => void,
     policy: JsonObjectPolicy
 ): JsonVisit {
-    const traversal = { budget, policy, visit };
-    function visit(value: unknown, depth: number): ReadonlyDeep<JsonValue> {
+    function visit(value: unknown, depth: number, traversal: JsonTraversal): ReadonlyDeep<JsonValue> {
         validate(value);
         if (scalar(value)) {
             budget.reserveValue(value, 0);
@@ -174,7 +173,10 @@ function createJsonVisit(
             budget.leave(value);
         }
     }
-    return visit;
+    const context = { budget, policy, visit };
+    return function snapshot(value, depth) {
+        return visit(value, depth, context);
+    };
 }
 function boundedJsonSnapshot(value: unknown, maxBytes: number): JsonSnapshot {
     const copy = createJsonVisit(createJsonSnapshotBudget(maxBytes), function allowJsonValue() {
