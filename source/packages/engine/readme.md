@@ -288,8 +288,11 @@ Assertion bodies:
   `SourceLocation`, either `{ kind: 'known', file, line, column }` or
   `{ kind: 'unknown' }`. Engine-created assertion nodes capture lazy
   locations at the public assertion boundary. Direct raw assertion nodes must
-  provide `location`; use `captureSourceLocation()` for accuracy or
-  `unknownSourceLocation` when unavailable.
+  provide a non-empty `sourceLocations` list. Use `captureSourceLocation()` for accuracy or
+  `unknownSourceLocation` when unavailable. Protocol fields and array entries
+  must be own data properties. Malformed structure, structural cycles, and
+  invalid locations returned by a provider when rendering a failed check
+  produce `invalid-assertion-protocol`. Supported cyclic operands are valid.
 
 Benchmark integrations can attach a calibration-only execution body with
 `attachBenchmarkCalibrationBody` and retrieve it with `readBenchmarkCalibrationBody`.

@@ -46,6 +46,24 @@ export const testNode = suite('property trial scopes', [
         scope.assert.includes(JSON.stringify(check.expected), '"value":2');
         return scope.assert.collect();
     }),
+    test('terminates a trial with a malformed returned assertion', async function (scope) {
+        let trials = 0;
+        const node = property({
+            title: 'malformed protocol',
+            generator: gen.constant(1),
+            test() {
+                trials += 1;
+                const result = { check: 'true' };
+                return result as AssertionResult;
+            }
+        });
+        const result = await executePropertyNode(node, propertyExecutionDefaults);
+        const outcome = result.perTest[0]?.outcome;
+        const [ failure ] = outcome?.kind === 'fail' ? outcome.failures : [];
+        scope.assert.equal(failure?.kind === 'test-contract' ? failure.code : null, 'invalid-assertion-protocol');
+        scope.assert.equal(trials, 1);
+        return scope.assert.collect();
+    }),
     test('stops at a sample assertion-plan mismatch', async function (scope) {
         const values: number[] = [];
         const node = property({

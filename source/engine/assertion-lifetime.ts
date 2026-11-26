@@ -3,6 +3,8 @@ import { promiseHooks } from 'node:v8';
 import { threadId } from 'node:worker_threads';
 import { createStoredValue } from '../stored-value.ts';
 import { attachAssertionBodyExecutor } from '../execution-ownership.ts';
+import { TestContractSignalError } from './assertion-control-error.ts';
+import { currentLateAssertionSink } from './late-assertion-delivery.ts';
 import type { AttemptId, CaseId, WorkId } from './identity.ts';
 import type { PropertyTrialPosition } from './property-failure-evidence.ts';
 import type { RunnerError, TestContractFailure } from './run-result.ts';
@@ -20,7 +22,7 @@ export type AssertionOrigin = {
     readonly trial: PropertyTrialIdentity | null;
 };
 
-export type AssertionClosure = 'interrupted' | 'settled';
+type AssertionClosure = 'interrupted' | 'settled';
 
 type AssertionBody<Value> = () => Promise<Value> | Value;
 
@@ -139,7 +141,7 @@ export type LateAssertionActivity = {
     readonly closure: AssertionClosure;
 };
 
-export function lateAssertionFailure(activity: LateAssertionActivity): TestContractFailure {
+function lateAssertionFailure(activity: LateAssertionActivity): TestContractFailure {
     return Object.freeze({
         actual: activity,
         code: 'late-assertion-activity',
@@ -195,4 +197,75 @@ export function retainUniqueLateAssertionDiagnostics(errors: readonly RunnerErro
         seen.add(id);
         return true;
     });
+}
+
+export type AssertionContext = {
+    readonly origin: AssertionOrigin;
+    readonly interruption: AbortSignal;
+    readonly close: (reason: AssertionClosure) => void;
+    readonly publish: () => void;
+    readonly assertRecording: (operation: string) => void;
+    readonly lateFailures: () => readonly TestContractFailure[];
+    readonly acceptsPropertyEvidence: () => boolean;
+};
+
+type OwnedAssertionContext = {
+    readonly owner: symbol;
+    readonly lifetime: AssertionContext;
+};
+
+export function createAssertionContext(
+    origin: AssertionOrigin,
+    retainFailure: (failure: TestContractFailure) => void
+): OwnedAssertionContext {
+    const reportLate = currentLateAssertionSink();
+    const interruption = new AbortController();
+    const lateFailures: TestContractFailure[] = [];
+    let state: {
+        readonly kind: 'closed' | 'published';
+        readonly closure: AssertionClosure;
+    } | { readonly kind: 'recording'; } = { kind: 'recording' };
+
+    function assertRecording(operation: string): void {
+        if (state.kind === 'recording') {
+            return;
+        }
+        const activity = { kind: 'late-assertion-activity', origin, operation, closure: state.closure } as const;
+        const failure = lateAssertionFailure(activity);
+        if (state.kind === 'closed') {
+            lateFailures.push(failure);
+            retainFailure(failure);
+        } else {
+            reportLate(lateAssertionDiagnostic(activity, failure.summary));
+        }
+        throw new TestContractSignalError(failure, undefined);
+    }
+
+    return {
+        owner: Symbol('assertion recorder'),
+        lifetime: {
+            origin,
+            interruption: interruption.signal,
+            assertRecording,
+            acceptsPropertyEvidence() {
+                return state.kind === 'recording' || state.kind === 'closed' && state.closure === 'settled';
+            },
+            lateFailures() {
+                return lateFailures.slice();
+            },
+            close(reason) {
+                if (state.kind === 'recording') {
+                    state = { kind: 'closed', closure: reason };
+                    if (reason === 'interrupted') {
+                        interruption.abort();
+                    }
+                }
+            },
+            publish() {
+                if (state.kind === 'closed') {
+                    state = { kind: 'published', closure: state.closure };
+                }
+            }
+        }
+    };
 }

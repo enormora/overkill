@@ -1,9 +1,11 @@
+import { InvalidAssertionProtocolError } from '../assertion-protocol/assertion-validation.ts';
 import {
     evaluateRecordedAssertion,
     recordedInvalidDeepAssertionOperand,
     type InvalidDeepAssertionOperand
 } from '../assertion-protocol/evaluation.ts';
 import type { AssertionNode } from '../assertion-protocol/assertion-node.ts';
+import { assertionProtocolFailure } from './assertion-protocol-failure.ts';
 import { assertNonEmptyItems } from './assertion-recorder.ts';
 import type { TestFailure, TestContractFailure } from './run-result.ts';
 
@@ -49,5 +51,16 @@ function assertionContractFailure(assertions: readonly AssertionNode[]): TestCon
 }
 
 export function assertionFailure(assertions: readonly AssertionNode[]): TestFailure | null {
-    return assertionContractFailure(assertions) ?? evaluatedAssertionFailure(assertions);
+    const contract = assertionContractFailure(assertions);
+    if (contract !== null) {
+        return contract;
+    }
+    try {
+        return evaluatedAssertionFailure(assertions);
+    } catch (error) {
+        if (!(error instanceof InvalidAssertionProtocolError)) {
+            throw error;
+        }
+        return assertionProtocolFailure(error);
+    }
 }

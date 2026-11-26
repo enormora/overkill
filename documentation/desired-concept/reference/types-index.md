@@ -301,6 +301,7 @@ type TestFailure =
     | {
         readonly actual: unknown;
         readonly code:
+            | 'invalid-assertion-protocol'
             | 'invalid-assertion-reference'
             | 'invalid-composite-result'
             | 'invalid-plan'

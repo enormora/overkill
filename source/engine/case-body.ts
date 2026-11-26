@@ -16,7 +16,6 @@ import { createTestScopeLifecycle, runThrowingTestBody } from './test-scope-life
 import type { CaseInterruption } from './case-interruption.ts';
 import type { TestPlanCase } from './test-plan.ts';
 
-type AssertionResult = Parameters<AssertionRecorder['returnedAssertions']>[0];
 type CaseBodyOptions = CaseExecutionOptions & { readonly interruption: CaseInterruption; };
 
 async function prepareCaseArtifacts(testCase: TestPlanCase, options: CaseBodyOptions): Promise<readonly unknown[]> {
@@ -51,7 +50,7 @@ async function runBuilderCaseBody(
     benchmarkAttempt: BenchmarkAttempt
 ): Promise<ExecutedBody> {
     const lifecycle = createTestScopeLifecycle(recorder, { seed: options.seed, work: testCase.workId });
-    const runBody = async function runUserBody(): Promise<AssertionResult> {
+    const runBody = async function runUserBody(): Promise<unknown> {
         return await lifecycle.runBody(
             options.controller.signal,
             function runFamilyBody(scope): ReturnType<typeof runPropertyCaseBody> {

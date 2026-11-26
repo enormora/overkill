@@ -1,20 +1,12 @@
 import asyncHooks, { AsyncLocalStorage } from 'node:async_hooks';
 import { observeResourceOwnerAllocations } from './resource-owner-observation.ts';
-import { createExecutionObservation } from './execution-observation.ts';
+import { createExecutionObservation, type ExecutionObservation } from './execution-observation.ts';
 import type { CaseId, WorkId } from './identity.ts';
 import type { RunnerError } from './run-result.ts';
 import type { TestPlanCase } from './test-plan.ts';
 
 type ActiveCase = {
     readonly testCase: TestPlanCase;
-};
-
-type TrackedPromise = {
-    readonly activeCase: ActiveCase;
-    readonly consume: () => void;
-    readonly consumed: () => boolean;
-    readonly settle: () => void;
-    readonly settled: () => boolean;
 };
 
 export type AsyncLeakMonitor = {
@@ -161,23 +153,50 @@ function promiseLeakError(testCase: TestPlanCase, pendingPromiseCount: number): 
     };
 }
 
-function createTrackedPromise(activeCase: ActiveCase): TrackedPromise {
-    let consumed = false;
-    let settled = false;
+type PendingPromiseObservation = {
+    readonly countFor: (activeCase: ActiveCase | undefined) => number;
+    readonly stop: () => void;
+};
 
+function observePendingPromises(
+    activeCaseStorage: AsyncLocalStorage<ActiveCase>,
+    observation: ExecutionObservation
+): PendingPromiseObservation {
+    const pendingPromises = new Map<number, ActiveCase>();
+    function releasePromise(asyncId: number): void {
+        pendingPromises.delete(asyncId);
+    }
+    const createHookKey = 'createHook';
+    const hook = asyncHooks[createHookKey]({
+        destroy: releasePromise,
+        init(asyncId, type, triggerAsyncId) {
+            if (type !== 'PROMISE' || !observation.accepts()) {
+                return;
+            }
+
+            releasePromise(triggerAsyncId);
+            const activeCase = activeCaseStorage.getStore();
+
+            if (activeCase !== undefined) {
+                pendingPromises.set(asyncId, activeCase);
+            }
+        },
+        promiseResolve: releasePromise
+    });
+    hook.enable();
     return {
-        activeCase,
-        consume() {
-            consumed = true;
+        countFor(activeCase) {
+            let count = 0;
+            for (const owner of pendingPromises.values()) {
+                if (owner === activeCase) {
+                    count += 1;
+                }
+            }
+            return count;
         },
-        consumed() {
-            return consumed;
-        },
-        settle() {
-            settled = true;
-        },
-        settled() {
-            return settled;
+        stop() {
+            hook.disable();
+            pendingPromises.clear();
         }
     };
 }
@@ -186,44 +205,11 @@ export function createAsyncLeakMonitor(): AsyncLeakMonitor {
     const activeCaseStorage = new AsyncLocalStorage<ActiveCase>();
     const observation = createExecutionObservation();
     const stopResourceAllocations = observeResourceOwnerAllocations();
-    const promises = new Map<number, TrackedPromise>();
     const attempts = new WeakMap<TestPlanCase, ActiveCase>();
-    const createHookKey = 'createHook';
-    const hook = asyncHooks[createHookKey]({
-        destroy(asyncId) {
-            promises.delete(asyncId);
-        },
-        init(asyncId, type, triggerAsyncId) {
-            if (type !== 'PROMISE' || !observation.accepts()) {
-                return;
-            }
-
-            const parentPromise = promises.get(triggerAsyncId);
-
-            if (parentPromise !== undefined) {
-                parentPromise.consume();
-            }
-
-            const activeCase = activeCaseStorage.getStore();
-
-            if (activeCase !== undefined) {
-                promises.set(asyncId, createTrackedPromise(activeCase));
-            }
-        },
-        promiseResolve(asyncId) {
-            const promise = promises.get(asyncId);
-
-            if (promise !== undefined) {
-                promise.settle();
-            }
-        }
-    });
-
-    hook.enable();
+    const pendingPromises = observePendingPromises(activeCaseStorage, observation);
     observation.register(function stopPromiseObservation() {
-        hook.disable();
+        pendingPromises.stop();
         stopResourceAllocations();
-        promises.clear();
     });
 
     return {
@@ -232,12 +218,7 @@ export function createAsyncLeakMonitor(): AsyncLeakMonitor {
         },
         casePromiseLeakError(testCase) {
             const activeCase = attempts.get(testCase);
-            const pendingPromiseCount = Array
-                .from(promises.values())
-                .filter(function pendingCasePromise(promise) {
-                    return promise.activeCase === activeCase && !promise.settled() && !promise.consumed();
-                })
-                .length;
+            const pendingPromiseCount = pendingPromises.countFor(activeCase);
 
             if (pendingPromiseCount === 0) {
                 return null;

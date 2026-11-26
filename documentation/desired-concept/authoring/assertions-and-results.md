@@ -962,7 +962,7 @@ type TestFailure =
     }
     | {
         readonly kind: 'test-contract';
-        readonly code: 'no-assertions' | 'plan-mismatch' | 'invalid-plan';
+        readonly code: 'no-assertions' | 'plan-mismatch' | 'invalid-plan' | 'invalid-assertion-protocol';
         readonly message: string;
     };
 ```
@@ -1114,7 +1114,15 @@ child kinds. Reject malformed values and cycles in assertion structure as
 durable test-contract failures, rather than evaluator crashes or unbounded
 recursion. Validate untyped callers as well as typed authoring layers.
 
-Protocol validation must not reject supported cyclic application operands.
+Protocol fields and structural array entries are own data properties. The
+engine retains a shallow copy of the protocol structure and preserves the
+original identities used for builder ownership. Supported cyclic application
+operands remain valid.
+
+Malformed protocol data produces `invalid-assertion-protocol` with a field
+path and reason. When a failed check needs a lazy source location, a malformed
+provider result uses the same code. A provider that throws an ordinary error
+yields an unknown location.
 Traversal safeguards must preserve the distinction between one composite
 boundary and its child diagnostics; serialization budgets do not replace
 protocol validation.

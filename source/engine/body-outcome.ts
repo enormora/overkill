@@ -61,15 +61,21 @@ function runnerErrorOutcome(executedBody: ExecutedBody): TestOutcome | null {
     };
 }
 
+function hasProtocolFailure(failure: TestFailure | null): boolean {
+    return failure?.kind === 'test-contract' && failure.code === 'invalid-assertion-protocol';
+}
+
 export function createBodyOutcome(
     recorder: AssertionRecorder,
     executedBody: ExecutedBody,
     generated: boolean
 ): TestOutcome | null {
+    const assertion = assertionFailure(executedBody.returnedAssertions);
+    const invalidProtocol = hasProtocolFailure(assertion);
     const failures = [
-        assertionFailure(executedBody.returnedAssertions),
+        assertion,
         ...bodyFailures(executedBody),
-        generated ? null : planFailure(recorder, executedBody)
+        generated || invalidProtocol ? null : planFailure(recorder, executedBody)
     ]
         .filter(function isTestFailure(failure): failure is TestFailure {
             return failure !== null;

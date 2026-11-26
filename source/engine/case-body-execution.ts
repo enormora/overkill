@@ -58,8 +58,6 @@ function finishedCaseCleanup(testCase: TestPlanCase, cleanupErrors: readonly unk
     };
 }
 
-type AssertionResult = Parameters<AssertionRecorder['returnedAssertions']>[0];
-
 type BodyErrorRecord = ThrownErrorRecord;
 
 type FailedBodyInput = {
@@ -69,7 +67,7 @@ type FailedBodyInput = {
 };
 
 type CompletedBodyInput = {
-    readonly assertionResult: AssertionResult;
+    readonly assertionResult: unknown;
     readonly context: BodyResultContext;
 };
 

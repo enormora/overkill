@@ -117,6 +117,30 @@ const invalidAsyncComposite = defineCompositeAssertion({
     }
 });
 
+const malformedComposite = defineCompositeAssertion({
+    name: 'malformedComposite',
+    assert(check) {
+        const child = check.true(true);
+        Reflect.set(child, 'source', 'require');
+        return child;
+    }
+});
+
+const malformedGroup = defineCompositeAssertion({
+    name: 'malformedGroup',
+    async assert(check) {
+        await Promise.resolve();
+        const child = check.true(true);
+        Reflect.set(child, 'source', 'require');
+        try {
+            check.group([ child ]);
+        } catch {
+            return check.true(true);
+        }
+        return child;
+    }
+});
+
 type CasePlan = Parameters<EngineCaseBody>[0]['plan'];
 
 function invalidPlanSignal(plan: CasePlan): Error {
@@ -192,6 +216,21 @@ export const testNode = suite('Error assertion execution', [
             'invalid-composite-result'
         ]);
 
+        return scope.assert.collect();
+    }),
+    test('retains structural failures caught during composite execution', async function (scope: TestScope) {
+        const result = await executeSingleBody(async function (body) {
+            try {
+                body.assert(malformedComposite);
+            } catch (error: unknown) {
+                body.assert.instanceOf(error, Error);
+            }
+            await body.assert(malformedGroup);
+            return body.assert.collect();
+        });
+        const outcome = firstFailOutcome(result);
+        scope.require.notNull(outcome);
+        scope.assert.deepEqual(failureKinds(outcome), [ 'invalid-assertion-protocol', 'invalid-assertion-protocol' ]);
         return scope.assert.collect();
     }),
     test('reports one contract failure when its signal escapes', async function (scope: TestScope) {

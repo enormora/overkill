@@ -22,7 +22,7 @@ import type {
     FailedCompositeCheck
 } from './assertion-node-shape.ts';
 import { assertionEvaluatorByCheck, type AssertionNodeByCheck } from './assertions/dispatch.ts';
-import { resolveSourceLocations } from './source-location.ts';
+import { resolveAssertionLocations, type ProtocolRecord } from './assertion-validation.ts';
 
 type DeepAssertionCheckByName = {
     readonly arrayContainsPartial: 'array-contains-partial';
@@ -53,10 +53,6 @@ export type InvalidDeepAssertionOperand = {
     readonly index: number | null;
     readonly role: DeepAssertionOperandRole;
     readonly type: PrimitiveValueType;
-};
-
-type AssertionEvaluation = AssertionOutcome & {
-    readonly summary: string;
 };
 
 type DeepAssertionNode = Extract<AssertionNode | CompositeAssertionChildNode, { readonly check: DeepAssertionCheck; }>;
@@ -208,7 +204,7 @@ type AssertionObservationByKind = {
 
 type Observation = AssertionObservationByKind[keyof AssertionObservationByKind];
 
-type AssertionObservations = WeakMap<EvaluatedNode, Observation>;
+type AssertionObservations = WeakMap<ProtocolRecord, Observation>;
 
 const observationsKey = Symbol.for('@overkill-dev/assertion-observations/v1');
 
@@ -227,6 +223,13 @@ function sharedObservations(): AssertionObservations {
 }
 
 const observations = sharedObservations();
+
+export function transferAssertionObservation(original: ProtocolRecord, admitted: ProtocolRecord): void {
+    const observation = observations.get(original);
+    if (observation !== undefined) {
+        observations.set(admitted, observation);
+    }
+}
 
 function evaluateForeignAssertion(
     assertion: ForeignAssertionNode,
@@ -250,7 +253,7 @@ function evaluateForeignAssertion(
         label: assertion.label,
         path: [],
         source: assertion.source,
-        sourceLocations: capture ? assertion.sourceLocations : resolveSourceLocations(assertion.sourceLocations),
+        sourceLocations: assertion.sourceLocations,
         summary: assertion.message ?? assertion.summary
     };
 }
@@ -291,10 +294,7 @@ function evaluateLeafAssertion(
     id: string,
     capture: boolean
 ): FailureEvidence | null {
-    const evaluation: AssertionEvaluation = {
-        ...evaluateAssertionNode(assertion.check, capture ? withPrivatePattern(assertion) : assertion),
-        summary: assertionSummary(assertion)
-    };
+    const evaluation = evaluateAssertionNode(assertion.check, capture ? withPrivatePattern(assertion) : assertion);
 
     if (evaluation.passed) {
         return null;
@@ -308,8 +308,8 @@ function evaluateLeafAssertion(
         kind: 'leaf',
         path: evaluation.path,
         source: assertion.source,
-        sourceLocations: capture ? assertion.sourceLocations : resolveSourceLocations(assertion.sourceLocations),
-        summary: evaluation.summary
+        sourceLocations: assertion.sourceLocations,
+        summary: assertionSummary(assertion)
     };
 }
 
@@ -352,7 +352,7 @@ function evaluateEvidence(
         kind: 'composite',
         path: [],
         source: assertion.source,
-        sourceLocations: capture ? assertion.sourceLocations : resolveSourceLocations(assertion.sourceLocations),
+        sourceLocations: assertion.sourceLocations,
         summary: assertionSummary(assertion)
     };
 }
@@ -371,7 +371,7 @@ function rebaseFailure(failure: FailureEvidence, id: string, source: AssertionSo
 }
 
 function materializeFailure(failure: FailureEvidence): FailedCheck {
-    const sourceLocations = resolveSourceLocations(failure.sourceLocations);
+    const sourceLocations = resolveAssertionLocations(failure.sourceLocations);
     if (failure.kind !== 'composite') {
         return { ...failure, sourceLocations };
     }
@@ -431,14 +431,18 @@ function observedFailure(observation: Observation): FailureEvidence | null {
     return observation.kind === 'evaluated' ? observation.failure : null;
 }
 
+const passedObservation: Observation = { kind: 'evaluated', failure: null };
+
 function captureObservation(
     assertion: EvaluatedNode,
     evaluateChild: (child: CompositeAssertionChildNode, id: string) => FailureEvidence | null
 ): Observation {
     const operand = findInvalidOperand(assertion, assertionObservation);
-    return operand === null
-        ? { kind: 'evaluated', failure: evaluateEvidence(assertion, '1', true, evaluateChild) }
-        : { kind: 'invalid', operand };
+    if (operand !== null) {
+        return { kind: 'invalid', operand };
+    }
+    const failure = evaluateEvidence(assertion, '1', true, evaluateChild);
+    return failure === null ? passedObservation : { kind: 'evaluated', failure };
 }
 
 function observeSafely(
