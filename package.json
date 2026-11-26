@@ -34,7 +34,7 @@
         "diff": "9.0.0",
         "echarts": "6.1.0",
         "eslint": "10.7.0",
-        "fast-check": "4.10.3",
+        "fast-check": "4.11.0",
         "figures": "6.1.0",
         "hash-wasm": "4.13.0",
         "is-interactive": "2.0.0",
