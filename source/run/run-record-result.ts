@@ -1,7 +1,6 @@
 import { z } from 'zod/v4';
 import { resolveSourceLocations } from '../assertion-protocol/source-location.ts';
 import { serializeValue, type SerializedValue } from '../compare/serialized-value.ts';
-import type { FailedCheck } from '../assertion-protocol/assertion-node-shape.ts';
 import type {
     HedgedConflictArtifact,
     RunArtifact,
@@ -19,34 +18,7 @@ import type {
     RunRecordTestOutcome
 } from './run-record-outcomes.ts';
 import type { RunRecordResult } from './run-record-types.ts';
-
-function recordedCheck(check: FailedCheck, convert: (value: unknown) => SerializedValue): FailedCheck {
-    if (check.kind === 'foreign') {
-        const { message, name, stack, thrown } = check.error;
-        return {
-            ...check,
-            error: {
-                message,
-                name,
-                stack,
-                thrown: Object.hasOwn(check.error, 'thrownEncoding') ? thrown : convert(thrown)
-            }
-        };
-    }
-    if (check.kind === 'composite') {
-        const [ first, ...remaining ] = check.children;
-        return {
-            ...check,
-            children: [
-                recordedCheck(first, convert),
-                ...remaining.map(function recordChild(child) {
-                    return recordedCheck(child, convert);
-                })
-            ]
-        };
-    }
-    return check;
-}
+import { convertResourceCheckSnapshot, serializeFailedCheck } from './resource-check-serialization.ts';
 
 function recordedFailure(failure: TestFailure, convert: (value: unknown) => SerializedValue): RunRecordTestFailure {
     if (failure.kind === 'body-error' || failure.kind === 'cleanup-error') {
@@ -58,9 +30,9 @@ function recordedFailure(failure: TestFailure, convert: (value: unknown) => Seri
         return {
             ...failure,
             failures: [
-                { ...first, check: recordedCheck(first.check, convert) },
+                { ...first, check: serializeFailedCheck(first.check, convert) },
                 ...remaining.map(function recordFinding(finding) {
-                    return { ...finding, check: recordedCheck(finding.check, convert) };
+                    return { ...finding, check: serializeFailedCheck(finding.check, convert) };
                 })
             ]
         };
@@ -70,9 +42,9 @@ function recordedFailure(failure: TestFailure, convert: (value: unknown) => Seri
         return {
             ...failure,
             checks: [
-                recordedCheck(first, convert),
+                serializeFailedCheck(first, convert),
                 ...remaining.map(function recordCheck(check) {
-                    return recordedCheck(check, convert);
+                    return serializeFailedCheck(check, convert);
                 })
             ]
         };
@@ -151,15 +123,7 @@ function convertedDiagnostics(
 ): SerializedRunDiagnostics {
     return {
         resourceChecks: result.resourceChecks.map(function recordSnapshot(snapshot) {
-            return {
-                ...snapshot,
-                failures: snapshot.failures.map(function recordFinding(finding) {
-                    return { ...finding, check: recordedCheck(finding.check, convert) };
-                }),
-                errors: snapshot.errors.map(function recordObservationError(error) {
-                    return { ...error, cause: convert(error.cause) };
-                })
-            };
+            return convertResourceCheckSnapshot(snapshot, convert);
         }),
         artifacts: result.artifacts.map(function recordArtifact(artifact) {
             return recordedArtifact(artifact, convert);

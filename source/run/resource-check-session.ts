@@ -1,13 +1,13 @@
 import { randomUUID } from 'node:crypto';
 import type { Clock } from '@enormora/clock';
 import { match } from 'ts-pattern';
-import { workIdentityKey, serializeValue } from '../packages/engine/engine.entry-point.ts';
+import { workIdentityKey } from '../engine/identity.ts';
 import type { ResourceCheckDelivery } from '../resource-check-delivery.ts';
 import { createStoredValue, type StoredValue } from '../stored-value.ts';
 import type { ResourceCheckInterval, ResourceCheckSnapshot } from '../resource-check-protocol.ts';
 import { withRunnerInfrastructure } from '../execution-ownership.ts';
 import type { ResourceCheckFrame } from './resource-check-channel.ts';
-import { serializeRunDiagnostics } from './run-record-result.ts';
+import { serializeResourceCheckSnapshot, serializeResourceCheckStop } from './resource-check-serialization.ts';
 
 export type ResourceCheckConnection = {
     readonly destroyed: boolean;
@@ -106,18 +106,9 @@ async function receive(state: ClientState, frame: ResourceCheckFrame): Promise<v
             return undefined;
         });
 }
-function portableSnapshot(snapshot: ResourceCheckSnapshot): ResourceCheckSnapshot {
-    const [ serialized ] =
-        serializeRunDiagnostics({ resourceChecks: [ snapshot ], artifacts: [], perTest: [], runnerErrors: [] })
-            .resourceChecks;
-    if (serialized === undefined) {
-        throw new Error('Resource checkpoint serialization produced no snapshot.');
-    }
-    return serialized;
-}
 function checkpoint(state: ClientState, snapshot: ResourceCheckSnapshot): void {
     try {
-        state.send.read()({ kind: 'checkpoint', snapshot: portableSnapshot(snapshot) });
+        state.send.read()({ kind: 'checkpoint', snapshot: serializeResourceCheckSnapshot(snapshot) });
     } catch {
         state.socket.destroy();
     }
@@ -180,7 +171,7 @@ function delivery(state: ClientState, run: string): ResourceCheckDelivery {
             checkpoint(state, snapshot);
         },
         stop(owner, interval, cause) {
-            state.send.read()({ kind: 'stop', owner, interval, cause: serializeValue(cause) });
+            state.send.read()(serializeResourceCheckStop({ kind: 'stop', owner, interval, cause }));
         },
         active(interval, abort) {
             const key = JSON.stringify([ workIdentityKey(interval.work), interval.attempt.index ]);
