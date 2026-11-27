@@ -78,6 +78,24 @@ const assertCompletedCooldown = defineCompositeAssertion({
     }
 });
 
+const assertNativeCooldown = defineCompositeAssertion({
+    name: 'native runtime cooldown',
+    assert(check, result: RunResult) {
+        const measured = result.perTest[0]?.benchmark;
+        const cooldown = measured?.lifecycle?.cooldown;
+        if (cooldown?.mode !== 'runtime') {
+            throw new Error('Expected runtime cooldown evidence.');
+        }
+        return check.group([
+            check.equal(result.summary.passed, 1),
+            check.partialDeepEqual(cooldown, { completed: 2, windows: 4, outcome: 'settled' }),
+            check.true(cooldown.durationMicroseconds >= 200_000),
+            check.deepEqual(result.runnerErrors, []),
+            check.equal(benchmarkResultSchema.parse(measured).lifecycle?.cooldown.mode, 'runtime')
+        ]);
+    }
+});
+
 export const testNode = suite('benchmark authoring and sampling', [
     test('bounds lifecycle traces without changing warmup, cleanup, or budgets', async function (scope) {
         let cleanups = 0;
@@ -140,16 +158,7 @@ export const testNode = suite('benchmark authoring and sampling', [
             },
             sampling: { ...defaultSamplingPolicy, minimumSamples: 2, maximumSamples: 2 }
         }));
-        const measured = result.perTest[0]?.benchmark;
-        const cooldown = measured?.lifecycle?.cooldown;
-        if (cooldown?.mode !== 'runtime') {
-            throw new Error('Expected runtime cooldown evidence.');
-        }
-        scope.assert.equal(result.summary.passed, 1);
-        scope.assert.partialDeepEqual(cooldown, { completed: 2, windows: 4, outcome: 'settled' });
-        scope.assert.true(cooldown.durationMicroseconds >= 200_000);
-        scope.assert.deepEqual(result.runnerErrors, []);
-        scope.assert.equal(benchmarkResultSchema.parse(measured).lifecycle?.cooldown.mode, 'runtime');
+        scope.assert(assertNativeCooldown, result);
         return scope.assert.collect();
     }),
     test('samples asynchronous strategies with explicit diagnostic metrics', async function (scope) {
