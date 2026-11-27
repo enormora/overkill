@@ -1,4 +1,5 @@
 import { createRequire } from 'node:module';
+import type { ResourceLimits } from 'node:worker_threads';
 import type { RunProcessUsageTracker } from '../engine/process-usage.ts';
 import type { WorkerPoolHostOutputSink } from './run-orchestrator-dependencies.ts';
 
@@ -24,6 +25,7 @@ type TinypoolOptions = {
     readonly maxThreads: number;
     readonly minThreads: number;
     readonly runtime: 'worker_threads';
+    readonly resourceLimits: ResourceLimits;
     readonly useAtomics: boolean;
 };
 
