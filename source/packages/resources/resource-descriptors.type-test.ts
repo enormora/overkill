@@ -2,7 +2,7 @@ import { test } from '../../../tools/type-tests/authoring.entry-point.ts';
 import { rejectsCall } from '../../../tools/type-tests/relations.entry-point.ts';
 import {
     defineResource,
-    defineRuntime
+    type defineRuntime
 } from './resources.entry-point.ts';
 
 type Database = {

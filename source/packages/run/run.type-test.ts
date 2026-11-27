@@ -7,7 +7,7 @@ import type {
     TestAnnotationsInput,
     TestControlsInput
 } from '../engine/engine.entry-point.ts';
-import { type IsAssignable } from '../../test-support/type-relations.ts';
+import type { IsAssignable } from '../../test-support/type-relations.ts';
 import type {
     DynamicWorkUnitId,
     PlacementPlan,

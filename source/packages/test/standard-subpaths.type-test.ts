@@ -8,7 +8,7 @@ import type {
     RealTimeReporter
 } from '../engine/engine.entry-point.ts';
 import type { PerformanceBaselineAdapter } from '../baselines/baselines.entry-point.ts';
-import { type IsAssignable } from '../../test-support/type-relations.ts';
+import type { IsAssignable } from '../../test-support/type-relations.ts';
 import type {
     CompositeAssertionDefinition,
     CompositeCheckBuilder,

@@ -3,7 +3,7 @@ import { suite, test } from '../../../tools/type-tests/authoring.entry-point.ts'
 import { sameType } from '../../../tools/type-tests/relations.entry-point.ts';
 import type { snapshot as standardSnapshot, BaselineEntry as StandardEntry } from '../test/baselines.entry-point.ts';
 import type { AssertReferenceArguments } from '../engine/assertion-protocol.entry-point.ts';
-import { type IsAssignable } from '../../test-support/type-relations.ts';
+import type { IsAssignable } from '../../test-support/type-relations.ts';
 import type {
     snapshot,
     BaselineAdapter,
