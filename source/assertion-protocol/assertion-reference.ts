@@ -7,6 +7,14 @@ import type {
     ResolvableSourceLocations
 } from './assertion-node-shape.ts';
 
+export const recordCompositeDiagnostics = Symbol.for('@overkill-dev/record-composite-diagnostics/v1');
+
+export type CompositeDiagnosticRecording = {
+    readonly assertRecording: (operation: string) => void;
+    readonly beginAsync: () => () => void;
+    readonly group: (group: CompositeAssertionGroup<'assert'>) => void;
+};
+
 export const captureCompositeChild = Symbol.for('@overkill-dev/capture-composite-child/v1');
 
 export const prepareCompositeGroup = Symbol.for('@overkill-dev/prepare-composite-group/v1');

@@ -1,7 +1,6 @@
 import { once } from 'node:events';
 import { suite, test, type TestScope } from '@overkill-dev/test';
-import { defineCompositeAssertion } from '@overkill-dev/test/assert';
-import { requireEngineCompositeReference } from '../test-support/assertion-reference-boundary.ts';
+import { defineCompositeAssertion } from '../assert/assertion-extension.ts';
 import { test as subjectTest, suite as subjectSuite } from '../packages/test/test.entry-point.ts';
 
 import type { AssertionResult } from '../packages/engine/engine.entry-point.ts';
@@ -25,6 +24,53 @@ async function closedInvocationFailure(forall: PropertyForall): Promise<unknown>
 }
 
 export const testNode = suite('property trial scopes', [
+    test('retains caught outer assertion operations in the trial', async function (scope) {
+        let trials = 0;
+        let rejectedOperations = 0;
+        const node = subjectTest('captured facade', withProperties(async function (parent) {
+            const outerOperations = [
+                () => parent.assert.true(true),
+                () => {
+                    Reflect.apply(parent.require.boolean, undefined, [ true ]);
+                },
+                () => parent.assert.collect(),
+                () => parent.plan(1),
+                () => parent.forall(gen.constant(1), (value, sample) => {
+                    sample.assert.equal(value, 1);
+                    return sample.assert.collect();
+                })
+            ];
+            try {
+                await parent.forall(gen.constant(1), async function (value, sample) {
+                    trials += 1;
+                    await Promise.resolve();
+                    for (const operation of outerOperations) {
+                        try {
+                            await operation();
+                        } catch {
+                            rejectedOperations += 1;
+                        }
+                    }
+                    sample.assert.equal(value, 1);
+                    return sample.assert.collect();
+                });
+            } catch {
+                parent.assert.true(true);
+            }
+            return parent.assert.collect();
+        }));
+        const result = await executePropertyNode(node, propertyExecutionDefaults);
+        scope.assert.equal(trials, 1);
+        scope.assert.equal(rejectedOperations, 5);
+        const outcome = result.perTest[0]?.outcome;
+        scope.assert.deepEqual(
+            outcome?.kind === 'fail'
+                ? outcome.failures.map(failure => failure.kind === 'test-contract' ? failure.code : failure.kind)
+                : [],
+            Array<string>(5).fill('invalid-assertion-context')
+        );
+        return scope.assert.collect();
+    }),
     test('projects the assertion-time counterexample after a trial mutates its operand', async function (scope) {
         const node = property({
             title: 'mutable operand',
@@ -193,7 +239,8 @@ export const testNode = suite('property trial scopes', [
     test('retains the first failed composite child as the property boundary', async function (scope) {
         const comparison = defineCompositeAssertion({
             name: 'sample comparison',
-            assert(check, value: number) {
+            async assert(check, value: number) {
+                await Promise.resolve();
                 return check.group([
                     check.true(true),
                     check.equal(value, 0),
@@ -201,12 +248,11 @@ export const testNode = suite('property trial scopes', [
                 ]);
             }
         });
-        requireEngineCompositeReference(comparison);
         const node = property({
             title: 'composite sample',
             generator: gen.constant(1),
-            test(value, sample) {
-                sample.assert(comparison, value);
+            async test(value, sample) {
+                await sample.assert(comparison, value);
                 return sample.assert.collect();
             }
         });

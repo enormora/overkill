@@ -11,6 +11,8 @@ import type { WorkId } from './identity.ts';
 import type { PropertyPolicy } from './property-node.ts';
 import type { TestBody, TestScope } from './test-scope.ts';
 
+const propertyRecording = Symbol.for('@overkill-dev/engine/PropertyRecording/v1');
+
 const propertyHost = Symbol.for('@overkill-dev/engine/PropertyExecutionHost/v1');
 
 export type PropertyTrialResult = {
@@ -75,10 +77,25 @@ export type PropertyExecutionHost = PropertyRunContext & {
     ) => Promise<AssertionResult>;
 };
 
-type PropertyScope = TestScope & { readonly [propertyHost]: PropertyExecutionHost; };
+type PropertyRecording = (operation: string) => void;
 
-export function propertyScope(scope: TestScope, host: PropertyExecutionHost): TestScope {
-    const injected: PropertyScope = { ...scope, [propertyHost]: host };
+type PropertyScope = TestScope & {
+    readonly [propertyHost]: PropertyExecutionHost;
+    readonly [propertyRecording]: PropertyRecording | undefined;
+};
+
+export function assertPropertyInvocationOwner(scope: TestScope): void {
+    if (hasPropertyHost(scope)) {
+        scope[propertyRecording]?.('start a property invocation');
+    }
+}
+
+export function propertyScope(
+    scope: TestScope,
+    host: PropertyExecutionHost,
+    assertRecording: PropertyRecording
+): TestScope {
+    const injected: PropertyScope = { ...scope, [propertyHost]: host, [propertyRecording]: assertRecording };
     return injected;
 }
 

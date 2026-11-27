@@ -16,6 +16,8 @@ import type {
 } from '../assertion-protocol/assertion-node.ts';
 import {
     captureCompositeChild,
+    recordCompositeDiagnostics,
+    type CompositeDiagnosticRecording,
     prepareCompositeGroup,
     getAssertionReferenceRecord,
     getNarrowingAssertionReferenceRecord,
@@ -32,6 +34,8 @@ import type {
     NonEmptyReadonlyArray,
     ResolvableSourceLocations
 } from '../assertion-protocol/assertion-node-shape.ts';
+import { observeAssertionBody, type AssertionRecordingContext } from './assertion-lifetime.ts';
+import { foreignAssertionDiagnostic, foreignDiagnostic, ownAssertionDiagnostic } from './assertion-ownership.ts';
 import { assertionProtocolFailure } from './assertion-protocol-failure.ts';
 import type { TestContractFailure } from './run-result.ts';
 import type { PendingRecordedAssert } from './assertion-recorder.ts';
@@ -40,6 +44,7 @@ import { isTestControlError } from './test-control-error.ts';
 const expectedArgumentSlot = 1;
 
 export type AssertAssertionSink = {
+    readonly child: () => AssertionRecordingContext;
     readonly assertRecording: (operation: string) => void;
     readonly failContract: (failure: TestContractFailure) => never;
     readonly recordAssert: (assertion: AssertAssertionNode) => void;
@@ -47,12 +52,14 @@ export type AssertAssertionSink = {
 };
 
 export type RequireAssertionSink = {
+    readonly child: () => AssertionRecordingContext;
     readonly assertRecording: (operation: string) => void;
     readonly failContract: (failure: TestContractFailure) => never;
     readonly recordRequire: (assertion: RequireAssertionNode) => void;
 };
 
 type CompositeAssertionNodeInput<Source extends AssertionSource> = {
+    readonly sink: Pick<AssertAssertionSink, 'child'>;
     readonly annotation: string | null;
     readonly children: NonEmptyReadonlyArray<CompositeAssertionChildNode<Source>>;
     readonly parameters: readonly unknown[];
@@ -66,12 +73,16 @@ type PendingCompositeAssertionInput = {
     readonly parameters: readonly unknown[];
     readonly pending: PendingRecordedAssert;
     readonly record: CompositeAssertionReferenceRecord;
+    readonly resolveChildren: (
+        result: CompositeAssertionReturn<'assert'>
+    ) => NonEmptyReadonlyArray<CompositeAssertionChildNode<'assert'>>;
     readonly result: Promise<CompositeAssertionReturn<'assert'>>;
     readonly sink: AssertAssertionSink;
     readonly sourceLocations: ResolvableSourceLocations;
 };
 
 type NarrowingCompositeAssertionNodeInput<Source extends AssertionSource> = {
+    readonly sink: Pick<AssertAssertionSink, 'child'>;
     readonly annotation: string | null;
     readonly parameters: readonly unknown[];
     readonly record: NarrowingCompositeAssertionReferenceRecord;
@@ -227,10 +238,16 @@ function normalizeCompositeChildren(
     return failContract(createInvalidCompositeResultFailure(result));
 }
 
-function flattenValidatedGroup(items: unknown): NonEmptyReadonlyArray<CompositeAssertionChildNode<'assert'>> {
+function flattenValidatedGroup(
+    items: unknown,
+    assertOwner: (item: unknown) => void
+): NonEmptyReadonlyArray<CompositeAssertionChildNode<'assert'>> {
     const children = nonEmptyProtocolItems(items, 'group').flatMap(function prepareItem(item, index) {
+        assertOwner(item);
         if (isProtocolGroup(item)) {
-            return groupResult(item, 'assert');
+            const group = groupResult(item, 'assert');
+            group.forEach(assertOwner);
+            return group;
         }
         assertCompositeChild(item, 'assert', `group[${index}]`);
         return [ item ];
@@ -242,19 +259,10 @@ function flattenValidatedGroup(items: unknown): NonEmptyReadonlyArray<CompositeA
     return [ first, ...rest ];
 }
 
-function validatedGroup(
-    items: unknown,
-    sink: AssertAssertionSink
-): NonEmptyReadonlyArray<CompositeAssertionChildNode<'assert'>> {
-    try {
-        return flattenValidatedGroup(items);
-    } catch (error) {
-        if (!(error instanceof InvalidAssertionProtocolError)) {
-            throw error;
-        }
-        return sink.failContract(assertionProtocolFailure(error));
-    }
+function runCustomCallback<Result>(context: AssertionRecordingContext, callback: () => Result): Result {
+    return context.run(() => observeAssertionBody(callback, () => context.close('settled')));
 }
+
 function createCompositeAssertionNode<Source extends AssertionSource>(
     input: CompositeAssertionNodeInput<Source>
 ): CompositeAssertionNode<Source> {
@@ -269,14 +277,20 @@ function createCompositeAssertionNode<Source extends AssertionSource>(
         name: input.record.name,
         source: input.source,
         sourceLocations: input.sourceLocations,
-        summary: customSummary(input.record, input.source, input.annotation, input.parameters)
+        summary: input.record.formatSummary === null || input.annotation !== null
+            ? customSummary(input.record, input.source, input.annotation, input.parameters)
+            : runCustomCallback(input.sink.child(), function formatCustomSummary() {
+                return customSummary(input.record, input.source, input.annotation, input.parameters);
+            })
     };
 }
 
 function createNarrowingCompositeAssertionNode<Source extends AssertionSource>(
     input: NarrowingCompositeAssertionNodeInput<Source>
 ): CompositeAssertionNode<Source> {
-    const passed = input.record.narrows(input.parameters[0], ...input.parameters.slice(1));
+    const passed = runCustomCallback(input.sink.child(), function evaluateNarrowingPredicate() {
+        return input.record.narrows(input.parameters[0], ...input.parameters.slice(1));
+    });
     const child: CompositeAssertionChildNode<Source> = {
         actual: passed,
         check: 'true',
@@ -288,6 +302,7 @@ function createNarrowingCompositeAssertionNode<Source extends AssertionSource>(
     return createCompositeAssertionNode({
         annotation: input.annotation,
         children: [ child ],
+        sink: input.sink,
         parameters: input.parameters,
         record: input.record,
         source: input.source,
@@ -319,7 +334,8 @@ function resolveCompositeAssertion(
     try {
         return createCompositeAssertionNode({
             annotation: input.annotation,
-            children: normalizeCompositeChildren(resolved, input.sink.failContract),
+            children: input.resolveChildren(resolved),
+            sink: input.sink,
             parameters: input.parameters,
             record: input.record,
             source: 'assert',
@@ -338,7 +354,48 @@ async function recordResolvedCompositeAssertion(input: PendingCompositeAssertion
 }
 
 function recordCompositeAssertion(input: CompositeAssertionRecordingInput): Promise<void> | void {
+    const context = input.sink.child();
+    let pendingChildren = 0;
+    let unfinishedChildren = 0;
+
+    function requireDiagnosticOwner(diagnostic: unknown): void {
+        if (foreignDiagnostic(diagnostic, context)) {
+            context.fail(foreignAssertionDiagnostic(context.origin));
+        }
+    }
+
+    function resolveChildren(result: CompositeAssertionReturn<'assert'>) {
+        if (unfinishedChildren > 0) {
+            input.sink.failContract({
+                actual: unfinishedChildren,
+                code: 'pending-async-assertion',
+                expected: 'all asynchronous diagnostic checks to settle before the custom assertion completes',
+                kind: 'test-contract',
+                summary: 'The custom assertion completed with pending asynchronous diagnostics.'
+            });
+        }
+        requireDiagnosticOwner(result);
+        const children = normalizeCompositeChildren(result, input.sink.failContract);
+        children.forEach(requireDiagnosticOwner);
+        return children;
+    }
+
+    const recording: CompositeDiagnosticRecording = {
+        assertRecording: context.assertRecording,
+        beginAsync() {
+            context.assertRecording('start an asynchronous assertion diagnostic');
+            pendingChildren += 1;
+            return function finishDiagnostic() {
+                pendingChildren -= 1;
+            };
+        },
+        group(group) {
+            context.assertRecording('record an assertion diagnostic group');
+            ownAssertionDiagnostic(group, context);
+        }
+    };
     const invocation = {
+        [recordCompositeDiagnostics]: recording,
         message: null,
         parameters: input.parameters,
         source: 'assert' as const,
@@ -347,31 +404,50 @@ function recordCompositeAssertion(input: CompositeAssertionRecordingInput): Prom
     Object.defineProperties(invocation, {
         [captureCompositeChild]: {
             value(child: CompositeAssertionChildNode<'assert'>) {
-                input.sink.assertRecording('record a composite assertion child');
+                context.assertRecording('record a composite assertion child');
                 try {
                     const admitted = admitCompositeChild(child, 'assert', 'child');
                     captureAssertion(admitted);
                     transferAssertionObservation(admitted, child);
+                    ownAssertionDiagnostic(child, context);
                 } catch (error) {
                     if (!(error instanceof InvalidAssertionProtocolError)) {
                         throw error;
                     }
-                    input.sink.failContract(assertionProtocolFailure(error));
+                    context.fail(assertionProtocolFailure(error));
                 }
             }
         },
         [prepareCompositeGroup]: {
             value(items: unknown) {
-                return validatedGroup(items, input.sink);
+                context.assertRecording('group assertion diagnostics');
+                try {
+                    return flattenValidatedGroup(items, requireDiagnosticOwner);
+                } catch (error) {
+                    if (!(error instanceof InvalidAssertionProtocolError)) {
+                        throw error;
+                    }
+                    return context.fail(assertionProtocolFailure(error));
+                }
             }
         }
     });
-    const result = input.record.run(invocation);
+    const result = context.run(() => observeAssertionBody(
+        function invokeCustomAssertion() {
+            const outcome = input.record.run(invocation);
+            return isPromiseLike(outcome) ? Promise.resolve(outcome) : outcome;
+        },
+        function closeDiagnosticRecording() {
+            unfinishedChildren = Math.max(unfinishedChildren, pendingChildren);
+            context.close('settled');
+        }
+    ));
 
     if (!isPromiseLike(result)) {
         input.sink.recordAssert(createCompositeAssertionNode({
             annotation: input.annotation,
-            children: normalizeCompositeChildren(result, input.sink.failContract),
+            children: resolveChildren(result),
+            sink: input.sink,
             parameters: input.parameters,
             record: input.record,
             source: 'assert',
@@ -386,6 +462,7 @@ function recordCompositeAssertion(input: CompositeAssertionRecordingInput): Prom
         pending: input.sink.recordPendingAssert(),
         record: input.record,
         result,
+        resolveChildren,
         sink: input.sink,
         sourceLocations: input.sourceLocations
     });
@@ -404,6 +481,7 @@ export function recordAssertReference(input: AssertReferenceRecordingInput): Pro
             annotation: input.annotation,
             parameters: input.parameters,
             record,
+            sink: input.sink,
             source: 'assert',
             sourceLocations: input.sourceLocations
         }));
@@ -435,6 +513,7 @@ export function recordRequireReference(input: RequireReferenceRecordingInput): v
         annotation: input.annotation,
         parameters: input.parameters,
         record,
+        sink: input.sink,
         source: 'require',
         sourceLocations: input.sourceLocations
     }));

@@ -277,6 +277,9 @@ Assertion bodies:
   published they fail the owning result. Later calls produce a run diagnostic
   with the original attempt or trial identity. After run finalization they
   emit a local warning.
+- Property trials own their injected assertions. Captured assertions from an
+  enclosing scope fail with `invalid-assertion-context`. Each awaited
+  `forall` invocation contributes one assertion to the enclosing plan.
 - `scope.plan(count)` must be the first test-body call and must declare a
   positive integer assertion count.
 - `FailedCheck` is discriminated by `kind`. Every failed check carries

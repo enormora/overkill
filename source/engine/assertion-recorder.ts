@@ -14,10 +14,11 @@ import {
     requireRecordedAssertion,
     returnedAssertionOwnershipFailure,
     type AssertionIdentity,
+    type AssertionReturnOwner,
     type OriginalNodes,
     type ReturnedAssertion
 } from './assertion-ownership.ts';
-import { RequireFailedSignalError, TestContractSignalError } from './assertion-control-error.ts';
+import { RequireFailedSignalError } from './assertion-control-error.ts';
 import { recordDebugEntry, recordDebugAssertion } from './test-debug-recording.ts';
 import { createPropertyEvidenceRecorder } from './property-evidence.ts';
 import type { PropertyInvocationEvidence } from './property-failure-evidence.ts';
@@ -272,7 +273,7 @@ function collectBuilderAssertions(
 function validateReturnedAssertions(
     slots: readonly BuilderAssertionSlot[],
     assertions: readonly ReturnedAssertion[],
-    owner: symbol,
+    owner: AssertionReturnOwner,
     originals: OriginalNodes
 ): TestContractFailure | null {
     if (slots.includes(null)) {
@@ -303,7 +304,7 @@ function returnedAssertionNodes(
     assertionResult: unknown,
     active: readonly RecordedAssertion[],
     builderAssertions: readonly BuilderAssertionSlot[],
-    owner: symbol
+    owner: AssertionReturnOwner
 ): TestContractFailure | readonly AssertionNode[] {
     const admitted = admitReturnedAssertions(assertionResult);
     if (admitted.kind === 'rejected') {
@@ -338,9 +339,7 @@ export function createAssertionRecorder(origin: AssertionOrigin): AssertionRecor
 
     function failContract(failure: TestContractFailure): never {
         lifetime.assertRecording('record an assertion contract failure');
-        const recorded = Object.freeze({ ...failure });
-        failures.add(recorded);
-        throw new TestContractSignalError(recorded, undefined);
+        return lifetime.fail(failure);
     }
 
     return {
@@ -461,7 +460,10 @@ export function createAssertionRecorder(origin: AssertionOrigin): AssertionRecor
         returnedAssertions(assertionResult) {
             const active = activeRecords();
             const single = admitOnlyRecordedAssertion(assertionResult, active, builderAssertions);
-            return single ?? returnedAssertionNodes(assertionResult, active, builderAssertions, owner);
+            return single ?? returnedAssertionNodes(assertionResult, active, builderAssertions, {
+                identity: owner,
+                origin
+            });
         },
 
         validateAssertionCount(reachedAssertionCount) {

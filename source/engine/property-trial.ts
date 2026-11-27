@@ -166,5 +166,5 @@ export function runPropertyCaseBody(
                 throw error;
             }
         }
-    }));
+    }, recorder.assertRecording));
 }

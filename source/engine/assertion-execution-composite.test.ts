@@ -16,6 +16,8 @@ import type {
     FailedForeignCheck,
     SourceLocation
 } from '../assertion-protocol/assertion-node-shape.ts';
+import { defineCompositeAssertion as defineSubjectCompositeAssertion } from '../assert/assertion-extension.ts';
+import type { BuiltInAssertAssertionNode } from '../assertion-protocol/assertion-node.ts';
 import type { TrueAssertionNode } from '../assertion-protocol/assertions/boolean.ts';
 import { unknownSourceLocation } from '../assertion-protocol/source-location.ts';
 import { serializeValue } from '../compare/serialized-value.ts';
@@ -179,7 +181,75 @@ function firstForeignChild(outcome: FailOutcome): FailedForeignCheck | null {
     return null;
 }
 
+const asyncChild = defineSubjectCompositeAssertion({
+    name: 'async diagnostic',
+    async assert(check, value: number) {
+        const foreign = await check.fromRejectable('async expectation', () => Promise.resolve());
+        return check.group([ check.equal(value, 1), foreign ]);
+    }
+});
+
 export const testNode = suite('Composite assertion execution', [
+    test('owns parallel async custom diagnostics without adding plan units', async function (scope) {
+        const result = await executeSingleBody(async function (body) {
+            body.plan(2);
+            await Promise.all([ body.assert(asyncChild, 1), body.assert(asyncChild, 1) ]);
+            return body.assert.collect();
+        });
+        scope.assert.equal(result.summary.passed, 1);
+        return scope.assert.collect();
+    }),
+    test('retains a caught captured facade violation across an await', async function (scope) {
+        const result = await executeSingleBody(async function (body) {
+            const recordOutside = body.assert.true;
+            const reference = defineSubjectCompositeAssertion({
+                name: 'captured facade',
+                async assert(check) {
+                    await Promise.resolve();
+                    try {
+                        recordOutside(true);
+                    } catch {
+                        return check.true(true);
+                    }
+                    return check.fail();
+                }
+            });
+            body.plan(1);
+            await body.assert(reference);
+            return body.assert.collect();
+        });
+        scope.assert.deepEqual(
+            firstFailOutcome(result)?.failures.map(function code(failure) {
+                return failure.kind === 'test-contract' ? failure.code : failure.kind;
+            }) ?? [],
+            [ 'invalid-assertion-context' ]
+        );
+        return scope.assert.collect();
+    }),
+    test('rejects an injected diagnostic returned by a different invocation', async function (scope: TestScope) {
+        const result = await executeSingleBody(function (body) {
+            const retained: BuiltInAssertAssertionNode<'assert'>[] = [];
+            const reference = defineSubjectCompositeAssertion({
+                name: 'retained diagnostic',
+                assert(check) {
+                    const previous = retained[0];
+                    if (previous !== undefined) {
+                        return previous;
+                    }
+                    const diagnostic = check.true(true);
+                    retained.push(diagnostic);
+                    return diagnostic;
+                }
+            });
+            body.assert(reference);
+            body.assert(reference);
+            return body.assert.collect();
+        });
+        const outcome = firstFailOutcome(result);
+        scope.require.notNull(outcome);
+        scope.assert.equal(firstContractFailure(outcome)?.code, 'invalid-assertion-context');
+        return scope.assert.collect();
+    }),
     test(
         'records callable composite assertion references as one planned boundary',
         async function (scope: TestScope) {
@@ -214,6 +284,7 @@ export const testNode = suite('Composite assertion execution', [
         }
     ),
     test('reports composite parent failures with child diagnostics', async function (scope: TestScope) {
+        const summaryArguments: (readonly [ValueResult, unknown])[] = [];
         const resultOk = defineCompositeAssertion({
             assert(check, result: ValueResult, expected: unknown) {
                 return check.group([
@@ -222,8 +293,7 @@ export const testNode = suite('Composite assertion execution', [
                 ]);
             },
             formatSummary(context, result: ValueResult, expected: unknown) {
-                scope.assert.deepEqual(result, { ok: false, value: { count: 1 } });
-                scope.assert.deepEqual(expected, { count: 2 });
+                summaryArguments.push([ result, expected ]);
                 return `Expected ${context.name} to match.`;
             },
             name: 'resultOk'
@@ -239,6 +309,7 @@ export const testNode = suite('Composite assertion execution', [
         const composite = firstCompositeCheck(outcome);
         scope.require.notNull(composite);
 
+        scope.assert.deepEqual(summaryArguments, [ [ { ok: false, value: { count: 1 } }, { count: 2 } ] ]);
         scope.assert(capturedTestLocation, composite.sourceLocations[0]);
         scope.assert.deepEqual(
             composite.children.map(function toLocation(child) {
@@ -477,12 +548,12 @@ export const testNode = suite('Composite assertion execution', [
             name: 'eventuallyOk'
         });
         requireEngineCompositeReference(eventuallyOk);
+        const pendingAssertions: Promise<void>[] = [];
         const result = await executeSingleBody(function testBody(testScope) {
-            const pendingAssertions = [ testScope.assert(eventuallyOk) ];
-
-            scope.assert.equal(pendingAssertions.length, 1);
+            pendingAssertions.push(testScope.assert(eventuallyOk));
             return testScope.assert.collect();
         });
+        scope.assert.equal(pendingAssertions.length, 1);
         const outcome = firstFailOutcome(result);
 
         scope.require.notNull(outcome);

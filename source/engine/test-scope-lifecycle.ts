@@ -71,12 +71,12 @@ export function createTestScopeLifecycle(recorder: AssertionRecorder, context: C
     return {
         createScope,
         async finish(controller) {
-            finishing = finishing ?? finish(controller);
+            finishing ??= recorder.run(() => finish(controller));
             return await finishing;
         },
         async runBody(signal, body) {
             return await runAssertionBody(function executeBody(): ReturnType<TestBody> {
-                return body(createScope(signal));
+                return recorder.run(() => body(createScope(signal)));
             }, closeRecording);
         }
     };
@@ -197,7 +197,7 @@ export async function runThrowingTestBody(
 ): Promise<void> {
     const scope = createThrowingTestScope(recorder, signal, context);
     await runAssertionBody(function executeBody(): ReturnType<ThrowingTestBody> {
-        return body(scope);
+        return recorder.run(() => body(scope));
     }, function closeRecording() {
         recorder.close('settled');
     });

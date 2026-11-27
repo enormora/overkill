@@ -84,6 +84,9 @@ function createRequireRecording(): RequireRecording {
     const records: RequireAssertionNode[] = [];
     const facade = createRecordingRequireFacadeWithLocation(
         {
+            child() {
+                throw new Error('Built-in facade tests do not invoke custom assertions.');
+            },
             assertRecording() {
                 return undefined;
             },

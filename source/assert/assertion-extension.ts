@@ -1,4 +1,9 @@
-import { captureCompositeChild, prepareCompositeGroup } from '../assertion-protocol/assertion-reference.ts';
+import {
+    captureCompositeChild,
+    prepareCompositeGroup,
+    recordCompositeDiagnostics,
+    type CompositeDiagnosticRecording
+} from '../assertion-protocol/assertion-reference.ts';
 import {
     createCompositeAssertionGroup,
     createCompositeAssertionReferenceRecord,
@@ -183,7 +188,17 @@ function isGroupPreparation(value: unknown): value is PrepareCompositeGroup {
     return typeof value === 'function';
 }
 
+function isCompositeDiagnosticRecording(value: unknown): value is CompositeDiagnosticRecording {
+    return typeof value === 'object' && value !== null &&
+        typeof Reflect.get(value, 'assertRecording') === 'function' &&
+        typeof Reflect.get(value, 'beginAsync') === 'function' &&
+        typeof Reflect.get(value, 'group') === 'function';
+}
+
 type CompositeCheckHooks<Source extends AssertionSource> = {
+    readonly assertRecording: CompositeDiagnosticRecording['assertRecording'] | null;
+    readonly beginAsync: CompositeDiagnosticRecording['beginAsync'] | null;
+    readonly captureGroup: ((group: CompositeAssertionGroup<Source>) => void) | null;
     readonly capture: ((child: CompositeAssertionChildNode<Source>) => void) | null;
     readonly prepareGroup: ((items: unknown) => NonEmptyReadonlyArray<CompositeAssertionChildNode<Source>>) | null;
 };
@@ -194,7 +209,24 @@ function compositeCheckBuilder<Source extends AssertionSource>(
     sourceLocations: ResolvableSourceLocations,
     hooks: CompositeCheckHooks<Source>
 ): CompositeCheckBuilder<Source> {
-    const { capture, prepareGroup } = hooks;
+    const { assertRecording, beginAsync, captureGroup, capture, prepareGroup } = hooks;
+    function group(
+        children: NonEmptyReadonlyArray<CompositeAssertionChildNode<Source>>
+    ): CompositeAssertionGroup<Source> {
+        const result = createCompositeAssertionGroup(children);
+        captureGroup?.(result);
+        return result;
+    }
+
+    async function asyncCheck<Result>(operation: () => Promise<Result>): Promise<Result> {
+        const finish = beginAsync?.();
+        try {
+            return await operation();
+        } finally {
+            finish?.();
+        }
+    }
+
     function child<Node extends CompositeAssertionChildNode<Source>>(node: Node): Node {
         capture?.(node);
         return node;
@@ -249,21 +281,24 @@ function compositeCheckBuilder<Source extends AssertionSource>(
             return child({ actual, check: 'false', message, source, sourceLocations });
         },
 
-        async fromRejectable(label, body) {
-            let result: ForeignAssertionNode<Source>['result'] = { passed: true };
-            try {
-                await body();
-            } catch (error: unknown) {
-                if (isTestControlError(error)) {
-                    throw error;
+        fromRejectable(label, body) {
+            return asyncCheck(async function observeForeignRejection() {
+                let result: ForeignAssertionNode<Source>['result'] = { passed: true };
+                try {
+                    await body();
+                } catch (error: unknown) {
+                    if (isTestControlError(error)) {
+                        throw error;
+                    }
+                    result = { error: createThrownErrorRecord(error), passed: false };
                 }
-                result = { error: createThrownErrorRecord(error), passed: false };
-            }
 
-            return child(createForeignAssertionNode({ label, message, result, source, sourceLocations }));
+                return child(createForeignAssertionNode({ label, message, result, source, sourceLocations }));
+            });
         },
 
         fromThrowable(label, body) {
+            assertRecording?.('invoke a foreign assertion');
             let result: ForeignAssertionNode<Source>['result'] = { passed: true };
             try {
                 body();
@@ -290,7 +325,7 @@ function compositeCheckBuilder<Source extends AssertionSource>(
         },
 
         group(children) {
-            return createCompositeAssertionGroup(
+            return group(
                 prepareGroup === null ? flattenCompositeGroupItems(children) : prepareGroup(children)
             );
         },
@@ -363,26 +398,28 @@ function compositeCheckBuilder<Source extends AssertionSource>(
             return child({ actual, check: 'partial-deep-equal', expected, message, source, sourceLocations });
         },
 
-        async rejects(thunk, matcher) {
-            const promise = thunk();
+        rejects(thunk, matcher) {
+            return asyncCheck(async function observeExpectedRejection() {
+                const promise = thunk();
 
-            const observation = await observeRejection(promise);
-            if (observation.status === 'rejected' && isTestControlError(observation.value)) {
-                throw observation.value;
-            }
+                const observation = await observeRejection(promise);
+                if (observation.status === 'rejected' && isTestControlError(observation.value)) {
+                    throw observation.value;
+                }
 
-            const children = thrownMatcherChildren({
-                kind: 'rejects',
-                matcher,
-                message,
-                observation,
-                source,
-                sourceLocations
+                const children = thrownMatcherChildren({
+                    kind: 'rejects',
+                    matcher,
+                    message,
+                    observation,
+                    source,
+                    sourceLocations
+                });
+                children.forEach(function captureChild(node) {
+                    capture?.(node);
+                });
+                return group(children);
             });
-            children.forEach(function captureChild(node) {
-                capture?.(node);
-            });
-            return createCompositeAssertionGroup(children);
         },
 
         startsWith(actual, expected) {
@@ -394,6 +431,7 @@ function compositeCheckBuilder<Source extends AssertionSource>(
         },
 
         throws(body, matcher) {
+            assertRecording?.('invoke an error assertion');
             const observation = observeThrow(body);
 
             const children = thrownMatcherChildren({
@@ -407,7 +445,7 @@ function compositeCheckBuilder<Source extends AssertionSource>(
             children.forEach(function captureChild(node) {
                 capture?.(node);
             });
-            return createCompositeAssertionGroup(children);
+            return group(children);
         },
 
         true(actual) {
@@ -425,7 +463,13 @@ export function createCompositeCheckBuilder<Source extends AssertionSource>(
     message: string | null,
     sourceLocations: ResolvableSourceLocations
 ): CompositeCheckBuilder<Source> {
-    return compositeCheckBuilder(source, message, sourceLocations, { capture: null, prepareGroup: null });
+    return compositeCheckBuilder(source, message, sourceLocations, {
+        assertRecording: null,
+        beginAsync: null,
+        captureGroup: null,
+        capture: null,
+        prepareGroup: null
+    });
 }
 
 export function defineCompositeAssertion<
@@ -438,6 +482,8 @@ export function defineCompositeAssertion<
         name: definition.name,
         run(input) {
             const capture: unknown = Reflect.get(input, captureCompositeChild);
+            const diagnostics: unknown = Reflect.get(input, recordCompositeDiagnostics);
+            const recording = isCompositeDiagnosticRecording(diagnostics) ? diagnostics : null;
             const prepare: unknown = Reflect.get(input, prepareCompositeGroup);
             return definition.assert(
                 compositeCheckBuilder(
@@ -445,6 +491,9 @@ export function defineCompositeAssertion<
                     input.message,
                     input.sourceLocations,
                     {
+                        assertRecording: recording?.assertRecording ?? null,
+                        beginAsync: recording?.beginAsync ?? null,
+                        captureGroup: recording?.group ?? null,
                         capture: isChildCapture(capture) ? capture : null,
                         prepareGroup: isGroupPreparation(prepare) ? prepare : null
                     }

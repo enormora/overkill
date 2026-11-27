@@ -1,4 +1,4 @@
-import { propertyReplayWitness } from '../engine/property-execution-host.ts';
+import { assertPropertyInvocationOwner, propertyReplayWitness } from '../engine/property-execution-host.ts';
 import {
     readPropertyExecutionHost,
     stopPropertyExecution,
@@ -155,6 +155,7 @@ function createInvocationScope(scope: TestScope): InvocationScope {
             if (closed || scope.signal.aborted) {
                 propertyScopeContractFailure('Property invocation cannot start after its scope has closed.');
             }
+            assertPropertyInvocationOwner(scope);
             if (active !== null) {
                 active.controller.abort();
                 propertyScopeContractFailure('Nested property invocations must be awaited sequentially.');
@@ -259,14 +260,14 @@ export function createNestedPropertySession(scope: TestScope): NestedPropertySes
         ...body: readonly [] | readonly [PropertyBody<Value>]
     ): Promise<AssertionResult> {
         const location = captureSourceLocation();
-        const key = invocationLocationKey(location, scope);
-        const occurrence = occurrences.get(key) ?? 0;
-        occurrences.set(key, occurrence + 1);
-        const invocation = normalizeForall(definition, body);
-        const identity = nestedPropertyIdentity(definition, key, occurrence);
-        recordInvocationIdentity(witness, seen, identity);
-        seen.add(identity);
         return session.run(async function executeNestedInvocation(signal) {
+            const key = invocationLocationKey(location, scope);
+            const occurrence = occurrences.get(key) ?? 0;
+            occurrences.set(key, occurrence + 1);
+            const invocation = normalizeForall(definition, body);
+            const identity = nestedPropertyIdentity(definition, key, occurrence);
+            recordInvocationIdentity(witness, seen, identity);
+            seen.add(identity);
             return await runPropertyInvocation(invocation, {
                 scope,
                 signal,
