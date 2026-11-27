@@ -409,9 +409,9 @@
             "peakResidentBytes": 320000000
         },
         "integration-runner-many-files-pool-case-fresh": {
-            "wallMicroseconds": 350,
+            "wallMicroseconds": 180,
             "cpuMicroseconds": 600,
-            "peakResidentBytes": 330000000
+            "peakResidentBytes": 310000000
         },
         "integration-runner-many-files-hosted-pool-group": {
             "wallMicroseconds": 130,
