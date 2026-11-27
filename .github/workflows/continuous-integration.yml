@@ -211,10 +211,15 @@ jobs:
             - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
               with:
                   persist-credentials: false
-            - name: Use Node.js from package metadata
+            - name: Read the benchmark reference runtime
+              id: benchmark-reference
+              run: |
+                  version=$(jq -er '.host.node | select(test("\\Av[0-9]+[.][0-9]+[.][0-9]+\\z"))' source/benchmarks/baselines/shared.json)
+                  printf 'node-version=%s\n' "$version" >> "$GITHUB_OUTPUT"
+            - name: Use Node.js from the benchmark reference
               uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
               with:
-                  node-version-file: package.json
+                  node-version: ${{ steps.benchmark-reference.outputs.node-version }}
             - name: Install dependencies
               run: npm ci
             - name: Benchmark the checkout

@@ -59,6 +59,7 @@ export const noSingleUseTrivialAssertion: TSESLint.RuleModule<'trivialAssertion'
                 }
             });
         }, {
+            stableOperands: false,
             query: referenceObservations,
             visit(node) {
                 if (node.type === NodeType.CallExpression) {

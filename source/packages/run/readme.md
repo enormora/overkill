@@ -488,8 +488,11 @@ discarded, and conflicting outcomes fail the case with a `hedged-conflict`
 artifact.
 `workerLifecycle: 'reuse'` reuses worker threads between units.
 `workerLifecycle: 'fresh-worker-per-unit'` creates disposable isolation per
-unit. The first execution in a Node pool can populate its temporary compile
-cache. Later workers use the cache in read-only mode.
+unit. A direct run seeds a private Node compile cache during collection when
+the profile uses fresh workers. Execution workers share it in read-only mode.
+These direct fresh-worker profiles use a smaller young generation to bound
+startup allocations. Node's explicit compile-cache, coverage, and heap
+settings still apply.
 `supervised-process` remains available when a single process-isolated
 child boundary is preferred.
 

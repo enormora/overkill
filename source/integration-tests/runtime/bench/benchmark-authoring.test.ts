@@ -13,6 +13,7 @@ import {
 import {
     benchmark,
     asyncMeasurementStrategy,
+    defaultRuntimeCooldownPolicy,
     defaultSamplingPolicy,
     rawMeasurement,
     timelineMeasurement,
@@ -20,6 +21,8 @@ import {
     workload,
     type BenchmarkMeasureContext
 } from '../../../packages/bench/bench.entry-point.ts';
+import type { BenchmarkExecutionResult } from '../../../engine/benchmark-result.ts';
+import { benchmarkResultSchema } from '../../../run/benchmark-result-schema.ts';
 import { defineResource, withResource } from '../../../packages/test/resources.entry-point.ts';
 
 async function executeBenchmark(node: TestCase): Promise<RunResult> {
@@ -76,6 +79,32 @@ const assertCompletedCooldown = defineCompositeAssertion({
     }
 });
 
+function measuredBenchmark(result: RunResult): BenchmarkExecutionResult {
+    const measured = result.perTest[0]?.benchmark;
+    if (measured === undefined || measured === null) {
+        throw new Error('Expected benchmark evidence.');
+    }
+    return measured;
+}
+
+const assertNativeCooldown = defineCompositeAssertion({
+    name: 'native runtime cooldown',
+    assert(check, result: RunResult) {
+        const measured = measuredBenchmark(result);
+        const cooldown = measured.lifecycle?.cooldown;
+        if (cooldown?.mode !== 'runtime') {
+            throw new Error('Expected runtime cooldown evidence.');
+        }
+        return check.group([
+            check.equal(result.summary.passed, 1),
+            check.partialDeepEqual(cooldown, { completed: 2, windows: 4, outcome: 'settled' }),
+            check.true(cooldown.durationMicroseconds >= 200_000),
+            check.deepEqual(result.runnerErrors, []),
+            check.equal(benchmarkResultSchema.parse(measured).lifecycle?.cooldown.mode, 'runtime')
+        ]);
+    }
+});
+
 export const testNode = suite('benchmark authoring and sampling', [
     test('bounds lifecycle traces without changing warmup, cleanup, or budgets', async function (scope) {
         let cleanups = 0;
@@ -110,6 +139,35 @@ export const testNode = suite('benchmark authoring and sampling', [
         scope.assert(assertBoundedTimeline, result);
         scope.assert.equal(cleanups, 35);
         scope.assert(assertCompletedCooldown, result);
+        return scope.assert.collect();
+    }),
+    test('runs native cooldown after cleanup without leaking resources', async function (scope) {
+        const result = await executeBenchmark(benchmark('runtime settling', {
+            kind: 'runtime',
+            workloads: [ workload('one', {}) ],
+            measurement: wallClockMeasurement(),
+            measure({ sample }) {
+                sample.cleanup(async function () {
+                    await Promise.resolve();
+                });
+                const measured = sample.measure(function operation() {
+                    return 1;
+                });
+                return { value: measured.value };
+            },
+            diagnosticMetrics: [],
+            budgets: { one: { value: { maximum: 2, statistic: { kind: 'observed-maximum' } } } }
+        }, {
+            annotations: {},
+            controls: {},
+            lifecycle: {
+                garbageCollection: 'profile-default',
+                warmupSamples: 0,
+                cooldown: { ...defaultRuntimeCooldownPolicy, maximumEventLoopUtilization: 1 }
+            },
+            sampling: { ...defaultSamplingPolicy, minimumSamples: 2, maximumSamples: 2 }
+        }));
+        scope.assert(assertNativeCooldown, result);
         return scope.assert.collect();
     }),
     test('samples asynchronous strategies with explicit diagnostic metrics', async function (scope) {

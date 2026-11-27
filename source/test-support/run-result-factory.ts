@@ -398,7 +398,7 @@ function buildRunnerErrors(overrides: readonly RunnerErrorOverrides[] | undefine
     return (overrides ?? emptyRunnerErrorOverrides).map(buildRunnerError);
 }
 
-function buildSummary(overrides: Partial<RunSummary> | undefined): RunSummary {
+function buildSummary(overrides: Readonly<Partial<RunSummary>> | undefined): RunSummary {
     return {
         ...defaultSummary,
         ...overrides

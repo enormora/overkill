@@ -28,6 +28,7 @@ import {
     reportRunStart,
     startPoolProcessUsageTracking
 } from './worker-pool-process-usage-tracking.ts';
+import { withWorkerCompileCache } from './worker-compile-cache.ts';
 import type { WorkerPoolCommand } from './worker-pool-protocol.ts';
 import {
     createEmptyWorkerPoolResult,
@@ -322,7 +323,7 @@ function createHostedCommandPool(
         : null;
 }
 
-export async function runWorkerPoolCommand(
+async function collectAndRunWorkerPoolCommand(
     command: WorkerPoolCommand,
     dependencies: RunOrchestratorDependencies,
     createResolvedRun: (collection: WorkerPoolCollectionResult) => Promise<ResolvedRun>,
@@ -352,4 +353,16 @@ export async function runWorkerPoolCommand(
         }
     })();
     return appendNewLateAssertions(result, pool?.takeHostRunnerErrors?.() ?? []);
+}
+
+export async function runWorkerPoolCommand(
+    command: WorkerPoolCommand,
+    dependencies: RunOrchestratorDependencies,
+    createResolvedRun: (collection: WorkerPoolCollectionResult) => Promise<ResolvedRun>,
+    options: WorkerPoolExecutionOptions
+): Promise<RunResult> {
+    const seedTask = command.workerLifecycle === 'fresh-worker-per-unit' ? 'collect' : 'run';
+    return await withWorkerCompileCache(seedTask, async function executeWorkerPoolCommand() {
+        return await collectAndRunWorkerPoolCommand(command, dependencies, createResolvedRun, options);
+    });
 }
