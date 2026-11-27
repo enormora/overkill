@@ -42,7 +42,7 @@ export function operandSlots(): OperandSlots {
     const allocations = new Map<Allocation, Map<string, OperandSlot>>();
     return function fieldSlot(allocation, key) {
         const fields = allocations.get(allocation) ?? new Map<string, OperandSlot>();
-        const slot = fields.get(key) ?? Symbol();
+        const slot = fields.get(key) ?? Symbol('operand field');
         fields.set(key, slot);
         allocations.set(allocation, fields);
         return slot;
@@ -294,12 +294,15 @@ export function joinStates(left: State, right: State): State {
     return result;
 }
 
+function copyOperandFacts(operands: OperandFacts | null): OperandFacts | null {
+    if (operands === null) {
+        return null;
+    }
+    return operandFacts(operands.field, operands.identity.copy(), operands.liveImports, operands);
+}
+
 export function copyState(state: State): State {
-    const { operands } = state;
-    const facts = operands === null ?
-        null :
-        operandFacts(operands.field, operands.identity.copy(), operands.liveImports, operands);
-    const result = emptyState(state.trackAlternatives, facts);
+    const result = emptyState(state.trackAlternatives, copyOperandFacts(state.operands));
     for (const [ variable, value ] of state.bindings) {
         result.bindings.store(variable, value);
     }

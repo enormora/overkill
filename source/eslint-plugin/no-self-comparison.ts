@@ -69,12 +69,10 @@ function equalityMethod(source: SourceCode, analysis: BindingAnalysis, calls: re
         if (isBuilderMethod(origin, builders)) {
             return name;
         }
-        return isScopeMethod(origin) &&
-                scopes.some(function (scope) {
-                    return scope.body === root.owner && scope.index === root.index;
-                }) ?
-            name :
-            null;
+        const owned = scopes.some(function (scope) {
+            return scope.body === root.owner && scope.index === root.index;
+        });
+        return isScopeMethod(origin) && owned ? name : null;
     };
 }
 

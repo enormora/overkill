@@ -31,7 +31,7 @@ function joinPartitions(left: OperandPartition, right: OperandPartition): Operan
         const counterpart = right.classes.get(slot);
         if (counterpart !== undefined) {
             const group = intersections.get(identity) ?? new Map<symbol, symbol>();
-            const joined = group.get(counterpart) ?? Symbol();
+            const joined = group.get(counterpart) ?? Symbol('operand value');
             classes.set(slot, joined);
             group.set(counterpart, joined);
             intersections.set(identity, group);
@@ -78,11 +78,11 @@ function operandIdentity(partition: OperandPartition): OperandIdentity {
         },
         ensure(slot) {
             if (!classes.has(slot)) {
-                classes.set(slot, Symbol());
+                classes.set(slot, Symbol('operand value'));
             }
         },
         assign(slot, source) {
-            classes.set(slot, (source === null ? undefined : classes.get(source)) ?? Symbol());
+            classes.set(slot, (source === null ? undefined : classes.get(source)) ?? Symbol('operand value'));
         },
         forget(slot) {
             classes.delete(slot);
