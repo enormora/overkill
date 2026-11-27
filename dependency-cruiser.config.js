@@ -110,7 +110,7 @@ export default {
                 path: '^source/(assertion-protocol|engine|config|run|packages/(engine|run|test))/',
                 pathNot: testFiles
             },
-            to: { path: '(^|node_modules/)(typescript|tstyche)(/|$)' }
+            to: { path: '(^|node_modules/)typescript(/|$)' }
         },
         {
             name: 'config-does-not-import-orchestration',

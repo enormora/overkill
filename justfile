@@ -52,7 +52,7 @@ test-microtests-with-coverage: benchmark-html-browser
     overkill run --profile microtests --coverage
 
 test-types:
-    TSTYCHE_TYPESCRIPT_SPECIFIER=typescript tstyche
+    overkill run --profile types
 
 test-package-smoke: _build-packages
     NODE_OPTIONS="${NODE_OPTIONS:-} {{packtory-node-options}}" node source/integration-tests/package-smoke/support/pack-packages.ts

@@ -1,4 +1,5 @@
-import { describe, expect, test } from 'tstyche';
+import { suite, test } from '@overkill-dev/test';
+import { acceptsCall, assignableFrom, assignableTo, rejectsCall, sameType } from '@overkill-dev/type-test';
 import type {
     AssertAssertionFacade,
     AssertionOptions,
@@ -80,44 +81,47 @@ type ExpectedRequireFacadeKeys = keyof {
     readonly string: true;
 };
 
-describe('TestScope', function () {
-    test('exposes case seeds and splittable randomness', function () {
-        expect<TestScope['seed']>().type.toBe<bigint>();
-        expect<TestScope['random']>().type.toBe<TestRandom>();
-        expect<TestRandom['split']>().type.toBe<() => readonly [TestRandom, TestRandom]>();
-    });
+declare const callUnderTest: InFlightTask<string>['rejects'];
 
-    test('exposes the concept assert catalog without ok', function () {
-        expect<keyof AssertAssertionFacade>().type.toBe<ExpectedAssertFacadeKeys>();
-        expect<keyof AssertAssertionFacade>().type.not.toBeAssignableFrom<'collect'>();
-    });
-
-    test('keeps builder collection on the test scope assert context only', function () {
-        expect<keyof TestScopeAssertContext>().type.toBe<ExpectedTestScopeAssertContextKeys>();
-    });
-
-    test('exposes the narrow require catalog without equality or collect', function () {
-        expect<keyof RequireAssertionFacade>().type.toBe<ExpectedRequireFacadeKeys>();
-    });
-
-    test('uses explicit message options and facades on test scope', function () {
-        expect<AssertionOptions>().type.toBe<{ readonly message: string; }>();
-        expect<keyof TestScope>().type.toBe<ExpectedTestScopeKeys>();
-        expect<TestScope['assert']>().type.toBe<TestScopeAssertContext>();
-        expect<TestScope['cleanup']>().type.toBe<(callback: () => Promise<void> | void) => void>();
-        expect<TestScope['drainMicrotasks']>().type.toBe<() => Promise<void>>();
-        expect<TestScope['settleAsyncWork']>().type.toBe<() => Promise<void>>();
-        expect<TestScope['startInFlight']>().type.toBe<
-            <Value>(operation: () => PromiseLike<Value>) => InFlightTask<Value>
-        >();
-        expect<TestScope['yieldToNextTurn']>().type.toBe<() => Promise<void>>();
-        expect<TestScope['require']>().type.toBe<RequireAssertionFacade>();
-    });
-
-    test('types the in-flight task handle', function () {
-        expect<InFlightTask<string>['wait']>().type.toBe<() => Promise<string>>();
-        expect<InFlightTask<string>['rejects']>().type.toBeAssignableTo<(matcher: ThrownMatcher) => Promise<void>>();
-        expect<InFlightTask<string>['rejects']>().type.toBeCallableWith({ type: Error, code: 'ECONNREFUSED' });
-        expect<InFlightTask<string>['rejects']>().type.not.toBeCallableWith({ type: Error });
-    });
-});
+export const testNode = suite('TestScope', [
+    test('exposes case seeds and splittable randomness', function (typeScope) {
+        typeScope.assert(sameType<TestScope['seed'], bigint>());
+        typeScope.assert(sameType<TestScope['random'], TestRandom>());
+        typeScope.assert(sameType<TestRandom['split'], () => readonly [TestRandom, TestRandom]>());
+        return typeScope.assert.collect();
+    }),
+    test('exposes the concept assert catalog without ok', function (typeScope) {
+        typeScope.assert(sameType<keyof AssertAssertionFacade, ExpectedAssertFacadeKeys>());
+        typeScope.assert(assignableFrom.not<keyof AssertAssertionFacade, 'collect'>());
+        return typeScope.assert.collect();
+    }),
+    test('keeps builder collection on the test scope assert context only', function (typeScope) {
+        typeScope.assert(sameType<keyof TestScopeAssertContext, ExpectedTestScopeAssertContextKeys>());
+        return typeScope.assert.collect();
+    }),
+    test('exposes the narrow require catalog without equality or collect', function (typeScope) {
+        typeScope.assert(sameType<keyof RequireAssertionFacade, ExpectedRequireFacadeKeys>());
+        return typeScope.assert.collect();
+    }),
+    test('uses explicit message options and facades on test scope', function (typeScope) {
+        typeScope.assert(sameType<AssertionOptions, { readonly message: string; }>());
+        typeScope.assert(sameType<keyof TestScope, ExpectedTestScopeKeys>());
+        typeScope.assert(sameType<TestScope['assert'], TestScopeAssertContext>());
+        typeScope.assert(sameType<TestScope['cleanup'], (callback: () => Promise<void> | void) => void>());
+        typeScope.assert(sameType<TestScope['drainMicrotasks'], () => Promise<void>>());
+        typeScope.assert(sameType<TestScope['settleAsyncWork'], () => Promise<void>>());
+        typeScope.assert(
+            sameType<TestScope['startInFlight'], <Value>(operation: () => PromiseLike<Value>) => InFlightTask<Value>>()
+        );
+        typeScope.assert(sameType<TestScope['yieldToNextTurn'], () => Promise<void>>());
+        typeScope.assert(sameType<TestScope['require'], RequireAssertionFacade>());
+        return typeScope.assert.collect();
+    }),
+    test('types the in-flight task handle', function (typeScope) {
+        typeScope.assert(sameType<InFlightTask<string>['wait'], () => Promise<string>>());
+        typeScope.assert(assignableTo<InFlightTask<string>['rejects'], (matcher: ThrownMatcher) => Promise<void>>());
+        typeScope.assert(acceptsCall, () => callUnderTest({ type: Error, code: 'ECONNREFUSED' }));
+        typeScope.assert(rejectsCall('argument-type'), () => callUnderTest({ type: Error }));
+        return typeScope.assert.collect();
+    })
+]);

@@ -1,4 +1,6 @@
-import { expect, test } from 'tstyche';
+import type { IsEqual } from 'type-fest';
+import { suite, test } from '@overkill-dev/test';
+import { acceptsCall, assignableFrom, rejectsCall, sameType } from '@overkill-dev/type-test';
 import {
     defineTestFamily,
     execute,
@@ -20,75 +22,94 @@ declare const executeOptions: FamilyExecuteOptions;
 
 type ProjectSettings = { readonly project: string; };
 
-test('family settings retain the parser result type', function () {
-    const family = defineTestFamily({
-        id: '@example/checks',
-        version: '1',
-        module: null,
-        features: { execution: 'analysis', processModels: [ 'in-process' ], profileOptions: [] },
-        parseSettings(): ProjectSettings {
-            return { project: 'tsconfig.json' };
-        },
-        async load() {
-            throw new Error('Not loaded');
-        }
-    });
-    expect(family).type.toBe<TestFamily<ProjectSettings>>();
-    expect(family.parseSettings(null)).type.toBe<ProjectSettings>();
-});
+declare const projectSettingsUnderTest: typeof prepareFamily<ProjectSettings>;
 
-test('metadata views retain branding without erasing callable settings', function () {
-    expect<keyof DefinedTestFamily>().type.not.toBeAssignableFrom<'load' | 'parseSettings'>();
-    expect<TestFamilyDefinition<null>>().type.not.toBeAssignableTo<DefinedTestFamily>();
-    expect<TestFamily<ProjectSettings>>().type.not.toBeAssignableTo<
-        TestFamily<{ readonly iterations: number; }>
-    >();
-});
-
-test('direct family execution requires branded values and exact settings', function () {
-    expect<{ readonly testPlan: TestPlan; readonly facts: FamilyRunFacts; }>().type.not.toBeAssignableTo<
-        CollectedFamilyRun
-    >();
-    expect<Pick<PreparedFamilyRun, keyof AsyncDisposable | 'collect' | 'testPlan'>>().type.not.toBeAssignableTo<
-        PreparedFamilyRun
-    >();
-});
-
-test('preparation infers the settings contract from the definition', function () {
-    const family = defineTestFamily({
-        id: '@example/settings',
-        version: '1',
-        module: null,
-        features: { execution: 'analysis', processModels: [ 'in-process' ], profileOptions: [] },
-        parseSettings(): ProjectSettings {
-            return { project: 'tsconfig.json' };
-        },
-        async load() {
-            throw new Error('Not loaded');
-        }
-    });
-    expect<typeof prepareFamily<ProjectSettings>>().type.toBeCallableWith({
-        testPlan: plan,
-        projectRoot: '/project',
-        signal: executeOptions.signal,
-        testFamily: family,
-        settings: { project: 'tsconfig.json' }
-    });
-    expect<typeof prepareFamily<ProjectSettings>>().type.not.toBeCallableWith({
-        testPlan: plan,
-        projectRoot: '/project',
-        signal: executeOptions.signal,
-        testFamily: family,
-        settings: { project: 123 }
-    });
-});
-
-test('collected execution requires a signal', function () {
-    expect(execute).type.toBeCallableWith(collectedRun, executeOptions);
-    expect(execute).type.not.toBeCallableWith(collectedRun);
-});
-
-test('prepared facts are available without collection evidence', function () {
-    expect<PreparedFamilyRun['facts']>().type.toBe<FamilyPreparationFacts>();
-    expect<keyof FamilyPreparationFacts>().type.not.toBeAssignableFrom<'collection'>();
-});
+export const testNode = suite('test family', [
+    test('family settings retain the parser result type', function (typeScope) {
+        const family = defineTestFamily({
+            id: '@example/checks',
+            version: '1',
+            module: null,
+            features: { execution: 'analysis', processModels: [ 'in-process' ], profileOptions: [] },
+            parseSettings(): ProjectSettings {
+                return { project: 'tsconfig.json' };
+            },
+            async load() {
+                throw new Error('Not loaded');
+            }
+        });
+        typeScope.assert(sameType<IsEqual<typeof family, TestFamily<ProjectSettings>>, true>());
+        typeScope.assert(sameType.withActual<ProjectSettings>(), family.parseSettings(null));
+        return typeScope.assert.collect();
+    }),
+    test('metadata views retain branding without erasing callable settings', function (typeScope) {
+        typeScope.assert(assignableFrom.not<keyof DefinedTestFamily, 'load' | 'parseSettings'>());
+        typeScope.assert(sameType<[TestFamilyDefinition<null>] extends [DefinedTestFamily] ? true : false, false>());
+        typeScope.assert(
+            sameType<
+                [TestFamily<ProjectSettings>] extends [TestFamily<{ readonly iterations: number; }>] ? true : false,
+                false
+            >()
+        );
+        return typeScope.assert.collect();
+    }),
+    test('direct family execution requires branded values and exact settings', function (typeScope) {
+        typeScope.assert(
+            sameType<
+                [{ readonly testPlan: TestPlan; readonly facts: FamilyRunFacts; }] extends [CollectedFamilyRun] ? true
+                    : false,
+                false
+            >()
+        );
+        typeScope.assert(
+            sameType<
+                [Pick<PreparedFamilyRun, keyof AsyncDisposable | 'collect' | 'testPlan'>] extends [PreparedFamilyRun]
+                    ? true
+                    : false,
+                false
+            >()
+        );
+        return typeScope.assert.collect();
+    }),
+    test('preparation infers the settings contract from the definition', function (typeScope) {
+        const family = defineTestFamily({
+            id: '@example/settings',
+            version: '1',
+            module: null,
+            features: { execution: 'analysis', processModels: [ 'in-process' ], profileOptions: [] },
+            parseSettings(): ProjectSettings {
+                return { project: 'tsconfig.json' };
+            },
+            async load() {
+                throw new Error('Not loaded');
+            }
+        });
+        typeScope.assert(acceptsCall, () =>
+            projectSettingsUnderTest({
+                testPlan: plan,
+                projectRoot: '/project',
+                signal: executeOptions.signal,
+                testFamily: family,
+                settings: { project: 'tsconfig.json' }
+            }));
+        typeScope.assert(rejectsCall('argument-type'), () =>
+            projectSettingsUnderTest({
+                testPlan: plan,
+                projectRoot: '/project',
+                signal: executeOptions.signal,
+                testFamily: family,
+                settings: { project: 123 }
+            }));
+        return typeScope.assert.collect();
+    }),
+    test('collected execution requires a signal', function (typeScope) {
+        typeScope.assert(acceptsCall, () => execute(collectedRun, executeOptions));
+        typeScope.assert(rejectsCall('argument-type'), () => execute(collectedRun));
+        return typeScope.assert.collect();
+    }),
+    test('prepared facts are available without collection evidence', function (typeScope) {
+        typeScope.assert(sameType<PreparedFamilyRun['facts'], FamilyPreparationFacts>());
+        typeScope.assert(assignableFrom.not<keyof FamilyPreparationFacts, 'collection'>());
+        return typeScope.assert.collect();
+    })
+]);

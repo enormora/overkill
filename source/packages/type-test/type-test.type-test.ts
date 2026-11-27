@@ -1,14 +1,17 @@
-import { expect, test } from 'tstyche';
+import { test } from '@overkill-dev/test';
+import { acceptsCall, rejectsCall } from '@overkill-dev/type-test';
 import type { TestScope } from '../engine/engine.entry-point.ts';
 import { sameType, assignableTo, assignableFrom } from './type-test.entry-point.ts';
 
 declare const scope: TestScope;
-test('relation references enforce assert-only operand tuples', function () {
-    expect(scope.assert).type.toBeCallableWith(sameType<string, number>());
-    expect(scope.require).type.not.toBeCallableWith(sameType<string, string>());
-    expect(scope.assert).type.toBeCallableWith(assignableTo.withActual<string>(), 'value');
-    expect(scope.assert).type.not.toBeCallableWith(assignableTo.withActual<string>());
-    expect(scope.assert).type.toBeCallableWith(assignableFrom.not.withExpected<string>(), 'value');
-    expect(scope.assert).type.toBeCallableWith(sameType.not.expressions, true, false);
-    expect(scope.assert).type.not.toBeCallableWith(sameType.expressions, 1);
+
+export const testNode = test('relation references enforce assert-only operand tuples', function (typeScope) {
+    typeScope.assert(acceptsCall, () => scope.assert(sameType<string, number>()));
+    typeScope.assert(rejectsCall('argument-count'), () => scope.require(sameType<string, string>()));
+    typeScope.assert(acceptsCall, () => scope.assert(assignableTo.withActual<string>(), 'value'));
+    typeScope.assert(rejectsCall('argument-count'), () => scope.assert(assignableTo.withActual<string>()));
+    typeScope.assert(acceptsCall, () => scope.assert(assignableFrom.not.withExpected<string>(), 'value'));
+    typeScope.assert(acceptsCall, () => scope.assert(sameType.not.expressions, true, false));
+    typeScope.assert(rejectsCall('argument-type'), () => scope.assert(sameType.expressions, 1));
+    return typeScope.assert.collect();
 });

@@ -1,4 +1,5 @@
-import { describe, expect, test } from 'tstyche';
+import { suite, test } from '@overkill-dev/test';
+import { acceptsCall, rejectsCall, sameType } from '@overkill-dev/type-test';
 import type { AssertAssertionFacade, RequireAssertionFacade } from '../engine/engine.entry-point.ts';
 import {
     defineCompositeAssertion,
@@ -39,34 +40,46 @@ declare const assertFacade: AssertAssertionFacade;
 declare const requireFacade: RequireAssertionFacade;
 declare const check: CompositeCheckBuilder<'assert'>;
 
-describe('./assert.entry-point.ts', function () {
-    test('exports typed composite assertion references', function () {
-        expect(syncAssertion).type.toBe<CompositeAssertionReference<[value: boolean], TrueCompositeChild>>();
-        expect(asyncAssertion).type.toBe<CompositeAssertionReference<[value: boolean], Promise<TrueCompositeChild>>>();
-        expect<AssertReferenceArguments<typeof syncAssertion>>().type.toBe<readonly [value: boolean]>();
-        expect<AssertReferenceReturn<typeof syncAssertion>>().type.toBe<SyncAssertionReturn>();
-        expect<AssertReferenceReturn<typeof asyncAssertion>>().type.toBe<Promise<void>>();
-    });
-
-    test('exports typed narrowing assertion references', function () {
+export const testNode = suite('./assert.entry-point.ts', [
+    test('exports typed composite assertion references', function (typeScope) {
+        typeScope.assert(
+            sameType.withActual<CompositeAssertionReference<[value: boolean], TrueCompositeChild>>(),
+            syncAssertion
+        );
+        typeScope.assert(
+            sameType.withActual<CompositeAssertionReference<[value: boolean], Promise<TrueCompositeChild>>>(),
+            asyncAssertion
+        );
+        typeScope.assert(sameType<AssertReferenceArguments<typeof syncAssertion>, readonly [value: boolean]>());
+        typeScope.assert(sameType<AssertReferenceReturn<typeof syncAssertion>, SyncAssertionReturn>());
+        typeScope.assert(sameType<AssertReferenceReturn<typeof asyncAssertion>, Promise<void>>());
+        return typeScope.assert.collect();
+    }),
+    test('exports typed narrowing assertion references', function (typeScope) {
         const value: unknown = null;
 
-        expect(narrowingAssertion).type.toBe<NarrowingCompositeAssertionReference<unknown, string, readonly []>>();
-        expect<AssertReferenceReturn<typeof narrowingAssertion>>().type.toBe<SyncAssertionReturn>();
+        typeScope.assert(
+            sameType.withActual<NarrowingCompositeAssertionReference<unknown, string, readonly []>>(),
+            narrowingAssertion
+        );
+        typeScope.assert(sameType<AssertReferenceReturn<typeof narrowingAssertion>, SyncAssertionReturn>());
         assertFacade(narrowingAssertion, value);
         requireFacade(narrowingAssertion, value);
-        expect(value).type.toBe<string>();
-    });
-
-    test('exposes composite check methods only as an injected builder type', function () {
-        expect(check.fromThrowable).type.toBeCallableWith('foreign', function assertForeign() {
-            return undefined;
-        });
-        expect(check.fromRejectable).type.toBeCallableWith('foreign', async function assertForeign() {
-            await Promise.resolve();
-        });
-        expect(check.group).type.toBeCallableWith([ check.true(true) ]);
-        expect(check.deepEqual).type.toBeCallableWith({ id: 1 }, { id: 1 });
-        expect(check.deepEqual).type.not.toBeCallableWith(1, 1);
-    });
-});
+        typeScope.assert(sameType.withActual<string>(), value);
+        return typeScope.assert.collect();
+    }),
+    test('exposes composite check methods only as an injected builder type', function (typeScope) {
+        typeScope.assert(acceptsCall, () =>
+            check.fromThrowable('foreign', function assertForeign() {
+                return undefined;
+            }));
+        typeScope.assert(acceptsCall, () =>
+            check.fromRejectable('foreign', async function assertForeign() {
+                await Promise.resolve();
+            }));
+        typeScope.assert(acceptsCall, () => check.group([ check.true(true) ]));
+        typeScope.assert(acceptsCall, () => check.deepEqual({ id: 1 }, { id: 1 }));
+        typeScope.assert(rejectsCall('argument-type'), () => check.deepEqual(1, 1));
+        return typeScope.assert.collect();
+    })
+]);

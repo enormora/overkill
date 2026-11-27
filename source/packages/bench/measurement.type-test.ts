@@ -1,4 +1,6 @@
-import { describe, expect, test } from 'tstyche';
+import type { IsEqual } from 'type-fest';
+import { suite, test } from '@overkill-dev/test';
+import { assignableFrom, rejectsCall, sameType } from '@overkill-dev/type-test';
 import * as standard from '../test/bench.entry-point.ts';
 import { defineResource, withResource } from '../test/resources.entry-point.ts';
 import * as bench from './bench.entry-point.ts';
@@ -7,15 +9,17 @@ const entries = 3;
 const operationCount = 2;
 const asyncValue = 7;
 
-describe('benchmark measurement authoring', function () {
-    test('provides a process-only sample for process strategies', function () {
+declare const callUnderTest: bench.MeasurementSample['measure'];
+
+export const testNode = suite('benchmark measurement authoring', [
+    test('provides a process-only sample for process strategies', function (typeScope) {
         bench.benchmark('command', {
             kind: 'startup',
             workloads: [ bench.workload('one', {}) ],
             measurement: bench.processMeasurement({ instrumentation: 'off' }),
             async measure({ sample }) {
-                expect(sample).type.toBe<bench.BenchmarkSample<bench.ProcessSample>>();
-                expect(sample).type.not.toHaveProperty('measure');
+                typeScope.assert(sameType.withActual<bench.BenchmarkSample<bench.ProcessSample>>(), sample);
+                typeScope.assert(assignableFrom.not<keyof typeof sample, 'measure'>());
                 const measured = await sample.process({
                     command: [ 'node', 'cli.js' ],
                     cwd: '.',
@@ -23,39 +27,47 @@ describe('benchmark measurement authoring', function () {
                     io: { kind: 'pipes' },
                     completion: { kind: 'exit', readiness: null, steps: [], expectedExitCodes: [ 0 ] }
                 });
-                expect(measured).type.toBe<bench.MeasuredProcess>();
+                typeScope.assert(sameType.withActual<bench.MeasuredProcess>(), measured);
                 return { durationMicroseconds: measured.metrics.durationMicroseconds };
             },
             diagnosticMetrics: [],
             budgets: { one: { durationMicroseconds: { maximum: 100 } } }
         });
-        expect(standard.processMeasurement).type.toBe<typeof bench.processMeasurement>();
-        expect<bench.MeasurementSample>().type.not.toHaveProperty('process');
-    });
-    test('infers workload parameters and synchronous region values', function () {
+        typeScope.assert(sameType.withActual<typeof bench.processMeasurement>(), standard.processMeasurement);
+        typeScope.assert(assignableFrom.not<keyof bench.MeasurementSample, 'process'>());
+        return typeScope.assert.collect();
+    }),
+    test('infers workload parameters and synchronous region values', function (typeScope) {
         const node = bench.benchmark('serialize', {
             kind: 'runtime',
             workloads: [ bench.workload('small', { entries }) ],
             measurement: bench.wallClockMeasurement(),
             measure(context) {
-                expect(context.workload.parameters.entries).type.toBe<typeof entries>();
-                expect(context.sample.cleanup).type.toBe<(callback: () => Promise<void> | void) => void>();
-                expect(standard.defaultBenchmarkLifecyclePolicy).type.toBe<bench.BenchmarkLifecyclePolicy>();
+                typeScope.assert(sameType.withActual<typeof entries>(), context.workload.parameters.entries);
+                typeScope.assert(
+                    sameType.withActual<(callback: () => Promise<void> | void) => void>(),
+                    context.sample.cleanup
+                );
+                typeScope.assert(
+                    sameType.withActual<bench.BenchmarkLifecyclePolicy>(),
+                    standard.defaultBenchmarkLifecyclePolicy
+                );
                 const measured = context.sample.measure(function () {
                     return 'result';
                 });
-                expect(measured).type.toBe<bench.Measured<string>>();
-                expect(context).type.not.toHaveProperty('assert');
-                expect(context).type.not.toHaveProperty('plan');
+                typeScope.assert(sameType.withActual<bench.Measured<string>>(), measured);
+                typeScope.assert(assignableFrom.not<keyof typeof context, 'assert'>());
+                typeScope.assert(assignableFrom.not<keyof typeof context, 'plan'>());
                 return { durationMicroseconds: measured.metrics.durationMicroseconds };
             },
             diagnosticMetrics: [],
             budgets: { small: { durationMicroseconds: { maximum: 100 } } }
         });
-        expect(node).type.toBe<bench.TestCase>();
-        expect(standard.benchmark).type.toBe<typeof bench.benchmark>();
-    });
-    test('distinguishes async operations and strategies from synchronous regions', function () {
+        typeScope.assert(sameType<IsEqual<typeof node, bench.TestCase>, true>());
+        typeScope.assert(sameType<IsEqual<typeof standard.benchmark, typeof bench.benchmark>, true>());
+        return typeScope.assert.collect();
+    }),
+    test('distinguishes async operations and strategies from synchronous regions', function (typeScope) {
         bench.benchmark('async operation', {
             kind: 'throughput',
             workloads: [ bench.workload('one', {}) ],
@@ -64,7 +76,7 @@ describe('benchmark measurement authoring', function () {
                 const measured = sample.measure(async function () {
                     return asyncValue;
                 });
-                expect(measured).type.toBe<Promise<bench.Measured<number>>>();
+                typeScope.assert(sameType.withActual<Promise<bench.Measured<number>>>(), measured);
                 const result = await measured;
                 return { operationsPerSecond: result.metrics.operationsPerSecond };
             },
@@ -79,15 +91,16 @@ describe('benchmark measurement authoring', function () {
                 const measured = sample.measure(operationCount, function () {
                     return true;
                 });
-                expect(measured).type.toBe<Promise<bench.Measured<boolean>>>();
+                typeScope.assert(sameType.withActual<Promise<bench.Measured<boolean>>>(), measured);
                 const result = await measured;
                 return { value: Number(result.value) };
             },
             diagnosticMetrics: [],
             budgets: { one: { value: { maximum: 1 } } }
         });
-    });
-    test('preserves metric results through resource wrappers', function () {
+        return typeScope.assert.collect();
+    }),
+    test('preserves metric results through resource wrappers', function (typeScope) {
         const resource = defineResource({
             name: 'fixture',
             scope: 'per-case',
@@ -104,15 +117,24 @@ describe('benchmark measurement authoring', function () {
             bench.BenchmarkMeasureContext<{ readonly size: number; }>,
             { readonly size: number; }
         >(resource, function (context) {
-            expect(context.resources.fixture.size).type.toBe<number>();
+            typeScope.assert(sameType.withActual<number>(), context.resources.fixture.size);
             const measured = context.sample.measure(function () {
                 return context.resources.fixture.size;
             });
             return { size: measured.value };
         });
-        expect(measure).type.toBeAssignableTo<
-            (context: bench.BenchmarkMeasureContext<{ readonly size: number; }>) => Promise<{ readonly size: number; }>
-        >();
+        typeScope.assert(
+            sameType<
+                [typeof measure] extends
+                    [
+                        (
+                            context: bench.BenchmarkMeasureContext<{ readonly size: number; }>
+                        ) => Promise<{ readonly size: number; }>
+                    ] ? true
+                    : false,
+                true
+            >()
+        );
         bench.benchmark('contextual resource', {
             kind: 'memory',
             workloads: [ bench.workload('one', { size: operationCount }) ],
@@ -122,8 +144,8 @@ describe('benchmark measurement authoring', function () {
                 bench.BenchmarkMeasureContext<{ readonly size: typeof operationCount; }>,
                 bench.BenchmarkMetrics
             >(resource, function (context) {
-                expect(context.workload.parameters.size).type.toBe<typeof operationCount>();
-                expect(context).type.not.toHaveProperty('assert');
+                typeScope.assert(sameType.withActual<typeof operationCount>(), context.workload.parameters.size);
+                typeScope.assert(assignableFrom.not<keyof typeof context, 'assert'>());
                 const measured = context.sample.measure(function () {
                     return context.resources.fixture.size;
                 });
@@ -132,7 +154,8 @@ describe('benchmark measurement authoring', function () {
             diagnosticMetrics: [],
             budgets: { one: { size: { maximum: operationCount } } }
         });
-        expect<bench.MeasurementSample['measure']>().type.not.toBeCallableWith('invalid');
-        expect<bench.MeasurementSample['measure']>().type.not.toBeCallableWith(operationCount);
-    });
-});
+        typeScope.assert(rejectsCall('no-matching-overload'), () => callUnderTest('invalid'));
+        typeScope.assert(rejectsCall('no-matching-overload'), () => callUnderTest(operationCount));
+        return typeScope.assert.collect();
+    })
+]);

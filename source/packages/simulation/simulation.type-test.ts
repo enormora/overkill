@@ -1,4 +1,7 @@
-import { describe, expect, test } from 'tstyche';
+import type { IsEqual } from 'type-fest';
+import { isEqualTo } from '../../test-support/type-relations.ts';
+import { suite, test } from '@overkill-dev/test';
+import { acceptsCall, assignableFrom, rejectsCall, sameType } from '@overkill-dev/type-test';
 import {
     defineSimulatedHttpServer,
     defineSimulation,
@@ -31,56 +34,96 @@ const httpSimulation = defineSimulatedHttpServer({
         outage: { status: outageStatus, title: 'upstream outage' }
     },
     handle(_request, scenario) {
-        expect(scenario.key).type.toBe<'default' | 'outage'>();
-        expect(scenario.descriptor.status).type.toBe<OutageStatus | SuccessStatus>();
-
         return Response.json({ status: scenario.descriptor.status });
     }
 });
 
-describe('@overkill-dev/simulation', function () {
-    test('preserves finite scenario keys and descriptors', function () {
-        expect<ScenarioKeyOf<typeof simulation>>().type.toBe<'default' | 'outage'>();
-        expect<SimulationScenarioFor<typeof simulation, 'outage'>>().type.toBe<{
-            readonly status: OutageStatus;
-            readonly title: 'upstream outage';
-        }>();
-        expect(simulation.scenarios.outage.status).type.toBe<OutageStatus>();
-    });
+export const testNode = suite('simulation', [
+    suite('@overkill-dev/simulation', [
+        test('preserves finite scenario keys and descriptors', function (typeScope) {
+            typeScope.assert(sameType<ScenarioKeyOf<typeof simulation>, 'default' | 'outage'>());
+            typeScope.assert(sameType<SimulationScenarioFor<typeof simulation, 'outage'>, {
+                readonly status: OutageStatus;
+                readonly title: 'upstream outage';
+            }>());
+            typeScope.assert(sameType.withActual<OutageStatus>(), simulation.scenarios.outage.status);
+            return typeScope.assert.collect();
+        }),
+        test('types simulated HTTP handlers from scenario catalogs', function (typeScope) {
+            typeScope.assert(
+                sameType<
+                    IsEqual<typeof httpSimulation.handle, SimulatedHttpHandler<typeof httpSimulation.scenarios>>,
+                    true
+                >()
+            );
+            typeScope.assert(acceptsCall, () =>
+                httpSimulation.handle(new Request('https://example.test'), {
+                    descriptor: httpSimulation.scenarios.default,
+                    key: 'default'
+                }));
+            typeScope.assert(
+                rejectsCall('argument-type'),
+                () =>
+                    httpSimulation.handle(new Request('https://example.test'), {
+                        descriptor: httpSimulation.scenarios.default,
+                        key: 'missing'
+                    })
+            );
+            return typeScope.assert.collect();
+        }),
+        test('requires a catalog key to launch a fixed server', function (typeScope) {
+            typeScope.assert(
+                sameType.withActual<Promise<FixedSimulatedHttpServerHandle>>(),
+                startFixedSimulatedHttpServer({ simulation: httpSimulation, scenario: 'outage' })
+            );
+            typeScope.assert(
+                rejectsCall('argument-type'),
+                () =>
+                    startFixedSimulatedHttpServer<typeof httpSimulation.name, typeof httpSimulation.scenarios>({
+                        simulation: httpSimulation
+                    })
+            );
+            typeScope.assert(
+                rejectsCall('argument-type'),
+                () =>
+                    startFixedSimulatedHttpServer<typeof httpSimulation.name, typeof httpSimulation.scenarios>({
+                        simulation: httpSimulation,
+                        scenario: 'missing'
+                    })
+            );
+            typeScope.assert(assignableFrom.not<keyof FixedSimulatedHttpServerHandle, 'scenarioUrl'>());
+            return typeScope.assert.collect();
+        }),
+        test('types launched simulated HTTP server handles from scenario catalogs', function (typeScope) {
+            typeScope.assert(
+                sameType.withActual<true>(),
+                isEqualTo<Promise<SimulatedHttpServerHandle<typeof httpSimulation>>>()(
+                    startSimulatedHttpServer({ simulation: httpSimulation })
+                )
+            );
+            typeScope.assert(
+                sameType<
+                    SimulatedHttpServerHandle<typeof httpSimulation>['scenarioUrl'],
+                    (scenario: 'default' | 'outage', path: string) => string
+                >()
+            );
+            return typeScope.assert.collect();
+        })
+    ]),
+    test('infers scenario keys and status in HTTP handlers', function (typeScope) {
+        defineSimulatedHttpServer({
+            name: 'http-api',
+            scenarios: {
+                default: { status: successStatus, title: 'standard responses' },
+                outage: { status: outageStatus, title: 'upstream outage' }
+            },
+            handle(_request, scenario) {
+                typeScope.assert(sameType.withActual<'default' | 'outage'>(), scenario.key);
+                typeScope.assert(sameType.withActual<OutageStatus | SuccessStatus>(), scenario.descriptor.status);
 
-    test('types simulated HTTP handlers from scenario catalogs', function () {
-        expect<typeof httpSimulation.handle>().type.toBe<SimulatedHttpHandler<typeof httpSimulation.scenarios>>();
-        expect(httpSimulation.handle).type.toBeCallableWith(new Request('https://example.test'), {
-            descriptor: httpSimulation.scenarios.default,
-            key: 'default'
+                return Response.json({ status: scenario.descriptor.status });
+            }
         });
-        expect(httpSimulation.handle).type.not.toBeCallableWith(new Request('https://example.test'), {
-            descriptor: httpSimulation.scenarios.default,
-            key: 'missing'
-        });
-    });
-
-    test('requires a catalog key to launch a fixed server', function () {
-        expect(startFixedSimulatedHttpServer({ simulation: httpSimulation, scenario: 'outage' })).type.toBe<
-            Promise<FixedSimulatedHttpServerHandle>
-        >();
-        expect(startFixedSimulatedHttpServer<typeof httpSimulation.name, typeof httpSimulation.scenarios>)
-            .type
-            .not
-            .toBeCallableWith({ simulation: httpSimulation });
-        expect(startFixedSimulatedHttpServer<typeof httpSimulation.name, typeof httpSimulation.scenarios>)
-            .type
-            .not
-            .toBeCallableWith({ simulation: httpSimulation, scenario: 'missing' });
-        expect<FixedSimulatedHttpServerHandle>().type.not.toHaveProperty('scenarioUrl');
-    });
-
-    test('types launched simulated HTTP server handles from scenario catalogs', function () {
-        expect(startSimulatedHttpServer({ simulation: httpSimulation })).type.toBe<
-            Promise<SimulatedHttpServerHandle<typeof httpSimulation>>
-        >();
-        expect<SimulatedHttpServerHandle<typeof httpSimulation>['scenarioUrl']>().type.toBe<
-            (scenario: 'default' | 'outage', path: string) => string
-        >();
-    });
-});
+        return typeScope.assert.collect();
+    })
+]);

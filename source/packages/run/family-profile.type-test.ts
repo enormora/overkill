@@ -1,4 +1,6 @@
-import { describe, expect, test } from 'tstyche';
+import type { IsEqual } from 'type-fest';
+import { suite, test } from '@overkill-dev/test';
+import { acceptsCall, rejectsCall, sameType } from '@overkill-dev/type-test';
 import { z } from 'zod/v4';
 import { defineTestFamily } from '../engine/engine.entry-point.ts';
 import { orchestrator, type ConfiguredRunCommand } from './run.entry-point.ts';
@@ -31,41 +33,51 @@ const textual = defineTestFamily({
 });
 const files = { include: [ 'source/**/*.test.ts' ] } as const;
 
-describe('family profile settings', function () {
-    test('infers heterogeneous definitions independently', function () {
-        const config = defineConfig({
-            profiles: {
-                numbers: { testFamily: numeric, settings: { iterations: 3 }, files },
-                text: { testFamily: textual, settings: { project: './tsconfig.json' }, files },
-                unit: { testFamily: 'microtest' }
-            }
-        });
-        expect(config.profiles.numbers.testFamily).type.toBe<typeof numeric>();
-        expect(config.profiles.text.testFamily).type.toBe<typeof textual>();
-        expect<FamilySettingsOf<typeof numeric>>().type.toBe<z.output<typeof numericSettings>>();
-    });
-    test('rejects swapped settings and optional family strings', function () {
-        expect<typeof defineConfig>().type.not.toBeCallableWith({
-            profiles: {
-                numbers: { testFamily: numeric, settings: { project: './tsconfig.json' }, files }
-            }
-        });
-        expect<typeof defineConfig>().type.not.toBeCallableWith({
-            profiles: {
-                text: { testFamily: textual, settings: {}, files }
-            }
-        });
-        expect<typeof defineConfig>().type.not.toBeCallableWith({
-            profiles: {
-                text: { testFamily: 'type-test', settings: {}, files }
-            }
-        });
-    });
-});
-
 declare const configuredCommand: ConfiguredRunCommand;
-test('explicit configuration sources are accepted by ordinary operations', function () {
-    expect(orchestrator.run).type.toBeCallableWith(configuredCommand);
-    expect(orchestrator.resolve).type.toBeCallableWith(configuredCommand);
-    expect(orchestrator.initialize).type.toBeCallableWith(configuredCommand);
-});
+
+declare const defineConfigUnderTest: typeof defineConfig;
+
+export const testNode = suite('family profile', [
+    suite('family profile settings', [
+        test('infers heterogeneous definitions independently', function (typeScope) {
+            const config = defineConfig({
+                profiles: {
+                    numbers: { testFamily: numeric, settings: { iterations: 3 }, files },
+                    text: { testFamily: textual, settings: { project: './tsconfig.json' }, files },
+                    unit: { testFamily: 'microtest' }
+                }
+            });
+            typeScope.assert(sameType<IsEqual<typeof config.profiles.numbers.testFamily, typeof numeric>, true>());
+            typeScope.assert(sameType<IsEqual<typeof config.profiles.text.testFamily, typeof textual>, true>());
+            typeScope.assert(sameType<FamilySettingsOf<typeof numeric>, z.output<typeof numericSettings>>());
+            return typeScope.assert.collect();
+        }),
+        test('rejects swapped settings and optional family strings', function (typeScope) {
+            typeScope.assert(rejectsCall('no-matching-overload'), () =>
+                defineConfigUnderTest({
+                    profiles: {
+                        numbers: { testFamily: numeric, settings: { project: './tsconfig.json' }, files }
+                    }
+                }));
+            typeScope.assert(rejectsCall('no-matching-overload'), () =>
+                defineConfigUnderTest({
+                    profiles: {
+                        text: { testFamily: textual, settings: {}, files }
+                    }
+                }));
+            typeScope.assert(rejectsCall('no-matching-overload'), () =>
+                defineConfigUnderTest({
+                    profiles: {
+                        text: { testFamily: 'type-test', settings: {}, files }
+                    }
+                }));
+            return typeScope.assert.collect();
+        })
+    ]),
+    test('explicit configuration sources are accepted by ordinary operations', function (typeScope) {
+        typeScope.assert(acceptsCall, () => orchestrator.run(configuredCommand));
+        typeScope.assert(acceptsCall, () => orchestrator.resolve(configuredCommand));
+        typeScope.assert(acceptsCall, () => orchestrator.initialize(configuredCommand));
+        return typeScope.assert.collect();
+    })
+]);

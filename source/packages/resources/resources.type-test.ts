@@ -1,4 +1,7 @@
-import { describe, expect, test } from 'tstyche';
+import type { IsEqual } from 'type-fest';
+import { isEqualTo } from '../../test-support/type-relations.ts';
+import { suite, test } from '@overkill-dev/test';
+import { acceptsCall, assignableFrom, assignableTo, rejectsCall, sameType } from '@overkill-dev/type-test';
 import { defineSimulatedHttpServer } from '../simulation/simulation.entry-point.ts';
 import {
     type assertPerCaseResourceGraph,
@@ -108,14 +111,12 @@ const server = defineResource({
     requirements: [ { kind: 'single-worker' } ],
     dependencies: { database },
     async acquire(context): Promise<Server> {
-        expect(context.dependencies.database).type.toBe<Database>();
-        expect(context.dependencies.database.query).type.toBe<(sql: string) => Promise<readonly string[]>>();
         const queryResult = await context.dependencies.database.query('url');
 
         return { url: String(queryResult[0]) };
     },
-    dispose(_server, context) {
-        expect(context.dependencies.database).type.toBe<Database>();
+    dispose() {
+        return undefined;
     }
 });
 const scenarioDatabase = defineResource({
@@ -130,12 +131,10 @@ const scenarioDatabase = defineResource({
         }
     },
     acquire(context) {
-        expect(context.scenarios.database).type.toBe<'empty' | 'populated'>();
-
         return context.scenarios.database;
     },
-    dispose(_handle, context) {
-        expect(context.scenarios.database).type.toBe<'empty' | 'populated'>();
+    dispose() {
+        return undefined;
     }
 });
 const scenarioRuntime = defineRuntime({
@@ -291,130 +290,149 @@ function createInvalidDatabase(): Database {
     };
 }
 
-describe('@overkill-dev/resources', function () {
-    test('infers resource handles and runtime context from descriptors', function () {
-        expect<ResourceHandle<typeof database>>().type.toBe<Database>();
-        expect<ResourceHandle<typeof server>>().type.toBe<Server>();
-        expect<ResourceContext<typeof server.dependencies>>().type.toBe<ExpectedDatabaseResourceContext>();
-        expect(server.dependencies.database).type.toBe<typeof database>();
-        expect(database.dependencies).type.toBe<Readonly<Record<PropertyKey, never>>>();
-        expect<RuntimeContext<typeof runtime>>().type.toBe<ExpectedRuntimeContext>();
-        expect<RuntimeContext<typeof runtime>['database']>().type.toBe<Database>();
-        expect<RuntimeContext<typeof runtime>['server']>().type.toBe<Server>();
-        expect<RuntimeScopeContext<typeof runtime>>().type.toBe<ExpectedRuntimeScopeContext>();
-        expect(runtime.name).type.toBe<'api'>();
-    });
+declare const assertPerCaseResourceGraphUnderTest: typeof assertPerCaseResourceGraph;
+declare const composeRuntimeContextUnderTest: typeof composeRuntimeContext;
+declare const defineResourceUnderTest: typeof defineResource;
+declare const defineRuntimeUnderTest: typeof defineRuntime;
 
-    test('infers projected resource handles', function () {
-        expect<ResourceHandle<typeof projectedDatabase>>().type.toBe<ProjectedDatabase>();
-        expect(projectedDatabase.name).type.toBe<'projected-database'>();
-    });
+export const testNode = suite('resources', [
+    suite('@overkill-dev/resources', [
+        test('infers resource handles and runtime context from descriptors', function (typeScope) {
+            typeScope.assert(sameType<ResourceHandle<typeof database>, Database>());
+            typeScope.assert(sameType<ResourceHandle<typeof server>, Server>());
+            typeScope.assert(sameType<ResourceContext<typeof server.dependencies>, ExpectedDatabaseResourceContext>());
+            typeScope.assert(sameType.withActual<typeof database>(), server.dependencies.database);
+            typeScope.assert(sameType.withActual<Readonly<Record<PropertyKey, never>>>(), database.dependencies);
+            typeScope.assert(sameType<IsEqual<RuntimeContext<typeof runtime>, ExpectedRuntimeContext>, true>());
+            typeScope.assert(sameType<RuntimeContext<typeof runtime>['database'], Database>());
+            typeScope.assert(sameType<RuntimeContext<typeof runtime>['server'], Server>());
+            typeScope.assert(
+                sameType<IsEqual<RuntimeScopeContext<typeof runtime>, ExpectedRuntimeScopeContext>, true>()
+            );
+            typeScope.assert(sameType.withActual<'api'>(), runtime.name);
+            return typeScope.assert.collect();
+        }),
+        test('infers projected resource handles', function (typeScope) {
+            typeScope.assert(sameType<ResourceHandle<typeof projectedDatabase>, ProjectedDatabase>());
+            typeScope.assert(sameType.withActual<'projected-database'>(), projectedDatabase.name);
+            return typeScope.assert.collect();
+        }),
+        test('infers aliased and hidden dependency runtime contexts', function (typeScope) {
+            typeScope.assert(sameType<
+                IsEqual<RuntimeContext<typeof aliasedRuntime>, {
+                    readonly server: Server;
+                    readonly store: Database;
+                }>,
+                true
+            >());
+            typeScope.assert(sameType.withActual<'aliased-api'>(), aliasedRuntime.name);
+            typeScope.assert(sameType<
+                IsEqual<RuntimeContext<typeof hiddenDependencyRuntime>, {
+                    readonly server: Server;
+                }>,
+                true
+            >());
+            typeScope.assert(sameType.withActual<'hidden-dependency-api'>(), hiddenDependencyRuntime.name);
+            return typeScope.assert.collect();
+        }),
+        test('exposes runtime lifecycle session types', function (typeScope) {
+            const runtimeSession = startRuntime({ runtime, signal: typeTestController.signal });
+            const resourceSession = startResources({ resources: { database }, signal: typeTestController.signal });
 
-    test('infers aliased and hidden dependency runtime contexts', function () {
-        expect<RuntimeContext<typeof aliasedRuntime>>().type.toBe<{
-            readonly server: Server;
-            readonly store: Database;
-        }>();
-        expect(aliasedRuntime.name).type.toBe<'aliased-api'>();
-        expect<RuntimeContext<typeof hiddenDependencyRuntime>>().type.toBe<{
-            readonly server: Server;
-        }>();
-        expect(hiddenDependencyRuntime.name).type.toBe<'hidden-dependency-api'>();
-    });
-
-    test('exposes runtime lifecycle session types', function () {
-        const runtimeSession = startRuntime({ runtime, signal: typeTestController.signal });
-        const resourceSession = startResources({ resources: { database }, signal: typeTestController.signal });
-
-        expect(runtimeSession).type.toBe<Promise<RuntimeSession<typeof runtime>>>();
-        expect(resourceSession).type.toBe<Promise<ResourceSession<{ readonly database: typeof database; }>>>();
-        expect<typeof assertPerCaseResourceGraph>().type.toBeCallableWith({ database });
-        expect<ResourceLifecycleFailure>().type.toBe<{
-            readonly cause: unknown;
-            readonly phase: 'acquire' | 'dispose' | 'graph';
-            readonly resourceName: string;
-        }>();
-        expect<ResourceLifecycleError>().type.toBeAssignableTo<Error>();
-    });
-
-    test('infers built-in temporary directory resources', function () {
-        expect<ResourceHandle<typeof temporaryDirectory>>().type.toBe<TemporaryDirectoryHandle>();
-        expect(temporaryDirectory.name).type.toBe<'scratch'>();
-        expect<TemporaryDirectoryHandle>().type.toBe<{
-            readonly path: string;
-            readonly transcript: TranscriptView<never>;
-        }>();
-    });
-
-    test('infers local-service and simulated HTTP resource handles', function () {
-        expect<ResourceHandle<typeof localService>>().type.toBe<{ readonly url: `http://${string}:${number}`; }>();
-        expect<ResourceHandle<typeof localHttpService>>().type.toBe<
-            LocalHttpResourceHandle<LocalHttpServiceHandle>
-        >();
-        expect<ResourceHandle<typeof localProcessService>>().type.toBe<{ readonly output: string; }>();
-        expect(localService.name).type.toBe<'local-service'>();
-        expect(localHttpService.name).type.toBe<'http-service'>();
-        expect(localProcessService.name).type.toBe<'process-service'>();
-        expect<ResourceHandle<typeof simulatedApiResource>>().type.toBe<
-            SimulatedHttpServerResourceHandle<typeof simulatedApi>
-        >();
-        expect<ResourceHandle<typeof simulatedApiResource>['scenarioUrl']>().type.toBe<
-            (scenario: 'default' | 'outage', path: string) => string
-        >();
-        expect(simulatedApiResource.name).type.toBe<'simulated-api'>();
-    });
-
-    test('composes runtime handles into a typed context', function () {
-        const context = composeRuntimeContext({ test: true }, runtime, {
-            database: databaseHandle,
-            server: serverHandle
-        });
-        const nestedContext = composeRuntimeContext(context, secondaryRuntime, {
-            database: databaseHandle
-        });
-
-        expect(context.runtimes.api).type.toBe<ExpectedRuntimeContext>();
-        expect(context.test).type.toBe<boolean>();
-        expect(nestedContext.runtimes.api).type.toBe<ExpectedRuntimeContext>();
-        expect(nestedContext.runtimes['secondary-api']).type.toBe<{ readonly database: Database; }>();
-        expect<typeof composeRuntimeContext>().type.not.toBeCallableWith({ test: true }, runtime, {
-            database: databaseHandle
-        });
-        expect<typeof composeRuntimeContext>().type.not.toBeCallableWith({ test: true }, runtime, {
-            database: databaseHandle,
-            server: { port: 80 }
-        });
-        expect<typeof composeRuntimeContext>().type.not.toBeCallableWith(context, runtime, {
-            database: databaseHandle,
-            server: serverHandle
-        });
-    });
-
-    test('composes runtime graphs into typed scopes', function () {
-        const context = composeRuntimeContext({ test: true }, composedRuntime, {
-            api: {
+            typeScope.assert(sameType<IsEqual<typeof runtimeSession, Promise<RuntimeSession<typeof runtime>>>, true>());
+            typeScope.assert(
+                sameType<
+                    IsEqual<typeof resourceSession, Promise<ResourceSession<{ readonly database: typeof database; }>>>,
+                    true
+                >()
+            );
+            typeScope.assert(acceptsCall, () => assertPerCaseResourceGraphUnderTest({ database }));
+            typeScope.assert(sameType<ResourceLifecycleFailure, {
+                readonly cause: unknown;
+                readonly phase: 'acquire' | 'dispose' | 'graph';
+                readonly resourceName: string;
+            }>());
+            typeScope.assert(assignableTo<ResourceLifecycleError, Error>());
+            return typeScope.assert.collect();
+        }),
+        test('infers built-in temporary directory resources', function (typeScope) {
+            typeScope.assert(sameType<ResourceHandle<typeof temporaryDirectory>, TemporaryDirectoryHandle>());
+            typeScope.assert(sameType.withActual<'scratch'>(), temporaryDirectory.name);
+            typeScope.assert(sameType<TemporaryDirectoryHandle, {
+                readonly path: string;
+                readonly transcript: TranscriptView<never>;
+            }>());
+            return typeScope.assert.collect();
+        }),
+        test('infers local-service and simulated HTTP resource handles', function (typeScope) {
+            typeScope.assert(
+                sameType<ResourceHandle<typeof localService>, { readonly url: `http://${string}:${number}`; }>()
+            );
+            typeScope.assert(
+                sameType<ResourceHandle<typeof localHttpService>, LocalHttpResourceHandle<LocalHttpServiceHandle>>()
+            );
+            typeScope.assert(sameType<ResourceHandle<typeof localProcessService>, { readonly output: string; }>());
+            typeScope.assert(sameType.withActual<'local-service'>(), localService.name);
+            typeScope.assert(sameType.withActual<'http-service'>(), localHttpService.name);
+            typeScope.assert(sameType.withActual<'process-service'>(), localProcessService.name);
+            typeScope.assert(
+                sameType<
+                    IsEqual<
+                        ResourceHandle<typeof simulatedApiResource>,
+                        SimulatedHttpServerResourceHandle<typeof simulatedApi>
+                    >,
+                    true
+                >()
+            );
+            typeScope.assert(
+                sameType<
+                    ResourceHandle<typeof simulatedApiResource>['scenarioUrl'],
+                    (scenario: 'default' | 'outage', path: string) => string
+                >()
+            );
+            typeScope.assert(sameType.withActual<'simulated-api'>(), simulatedApiResource.name);
+            return typeScope.assert.collect();
+        }),
+        test('composes runtime handles into a typed context', function (typeScope) {
+            const context = composeRuntimeContext({ test: true }, runtime, {
                 database: databaseHandle,
                 server: serverHandle
-            },
-            'secondary-api': {
+            });
+            const nestedContext = composeRuntimeContext(context, secondaryRuntime, {
                 database: databaseHandle
-            }
-        });
+            });
 
-        expect(composedRuntime.kind).type.toBe<'composed-runtimes'>();
-        expect(context.runtimes.api).type.toBe<ExpectedRuntimeContext>();
-        expect(context.runtimes['secondary-api']).type.toBe<{ readonly database: Database; }>();
-        expect<typeof composeRuntimeContext>().type.not.toBeCallableWith(
-            {
-                runtimes: {
-                    api: {
+            typeScope.assert(sameType<IsEqual<typeof context.runtimes.api, ExpectedRuntimeContext>, true>());
+            typeScope.assert(sameType.withActual<boolean>(), context.test);
+            typeScope.assert(sameType<IsEqual<typeof nestedContext.runtimes.api, ExpectedRuntimeContext>, true>());
+            typeScope.assert(
+                sameType.withActual<true>(),
+                isEqualTo<{ readonly database: Database; }>()(nestedContext.runtimes['secondary-api'])
+            );
+            typeScope.assert(
+                rejectsCall('argument-type'),
+                () =>
+                    composeRuntimeContextUnderTest({ test: true }, runtime, {
+                        database: databaseHandle
+                    })
+            );
+            typeScope.assert(
+                rejectsCall('argument-type'),
+                () =>
+                    composeRuntimeContextUnderTest({ test: true }, runtime, {
                         database: databaseHandle,
-                        server: serverHandle
-                    }
-                }
-            },
-            composedRuntime,
-            {
+                        server: { port: 80 }
+                    })
+            );
+            typeScope.assert(rejectsCall('argument-type'), () =>
+                composeRuntimeContextUnderTest(context, runtime, {
+                    database: databaseHandle,
+                    server: serverHandle
+                }));
+            return typeScope.assert.collect();
+        }),
+        test('composes runtime graphs into typed scopes', function (typeScope) {
+            const context = composeRuntimeContext({ test: true }, composedRuntime, {
                 api: {
                     database: databaseHandle,
                     server: serverHandle
@@ -422,98 +440,181 @@ describe('@overkill-dev/resources', function () {
                 'secondary-api': {
                     database: databaseHandle
                 }
-            }
-        );
-        expect<typeof composeRuntimeContext>().type.not.toBeCallableWith({ test: true }, composedRuntime, {
-            api: { database: databaseHandle }
-        });
-    });
+            });
 
-    test('exposes required descriptor field contracts', function () {
-        expect<ResourceScope>().type.toBe<
-            'per-case' | 'per-file' | 'per-run' | 'per-suite' | 'shared-per-worker'
-        >();
-        expect<RuntimeDimensions>().type.toBe<Readonly<Record<string, string>>>();
-        expect<RuntimeId<'api', { readonly node: '26'; }>>().type.toBe<{
-            readonly name: 'api';
-            readonly dimensions: { readonly node: '26'; };
-            readonly scenarios: Readonly<Record<string, string>>;
-            readonly variantId: string | null;
-        }>();
-        expect(runtimeMatrix.name).type.toBe<'node'>();
-        expect(runtimeMatrix.variants['node-26'].id).type.toBe<'node-26'>();
-        expect(runtimeMatrix.variants['node-26'].runtime).type.toBe<typeof runtime>();
-        expect<ResourceDefinitionInput<'database', Database>>().type.toBeAssignableFrom<
-            ExpectedLocalResourceDefinitionInput
-        >();
-        expect<
-            ResourceDefinitionInput<
-                'database',
-                Database,
-                Readonly<Record<PropertyKey, never>>,
-                string,
-                ProjectedDatabase
-            >
-        >()
-            .type
-            .toBeAssignableFrom<ExpectedProjectedResourceDefinitionInput>();
-    });
-
-    test('keeps invalid shapes out of typed descriptors', function () {
-        expect<typeof defineResource>().type.not.toBeCallableWith({
-            name: 'database',
-            scope: 'case',
-            requirements: [],
-            acquire: createInvalidDatabase,
-            dispose: null
-        });
-        expect<typeof defineResource>().type.not.toBeCallableWith({
-            name: 'database',
-            scope: 'per-case',
-            requirements: [ { kind: 'startup-budget-milliseconds', milliseconds: 1000 } ],
-            acquire: createInvalidDatabase,
-            dispose: null
-        });
-        expect<typeof defineRuntime>().type.not.toBeCallableWith({
-            name: 'api',
-            dimensions: { node: 26 },
-            resources: { database },
-            requirements: []
-        });
-        expect<typeof defineResource>().type.not.toBeCallableWith({
-            name: 'projected-database',
-            scope: 'per-run',
-            requirements: [],
-            acquire: createInvalidDatabase,
-            dispose: null
-        });
-        expect<typeof defineResource>().type.not.toBeCallableWith({
+            typeScope.assert(sameType.withActual<'composed-runtimes'>(), composedRuntime.kind);
+            typeScope.assert(sameType<IsEqual<typeof context.runtimes.api, ExpectedRuntimeContext>, true>());
+            typeScope.assert(
+                sameType.withActual<true>(),
+                isEqualTo<{ readonly database: Database; }>()(context.runtimes['secondary-api'])
+            );
+            typeScope.assert(rejectsCall('argument-type'), () =>
+                composeRuntimeContextUnderTest(
+                    {
+                        runtimes: {
+                            api: {
+                                database: databaseHandle,
+                                server: serverHandle
+                            }
+                        }
+                    },
+                    composedRuntime,
+                    {
+                        api: {
+                            database: databaseHandle,
+                            server: serverHandle
+                        },
+                        'secondary-api': {
+                            database: databaseHandle
+                        }
+                    }
+                ));
+            typeScope.assert(
+                rejectsCall('argument-type'),
+                () =>
+                    composeRuntimeContextUnderTest({ test: true }, composedRuntime, {
+                        api: { database: databaseHandle }
+                    })
+            );
+            return typeScope.assert.collect();
+        }),
+        test('exposes required descriptor field contracts', function (typeScope) {
+            typeScope.assert(
+                sameType<ResourceScope, 'per-case' | 'per-file' | 'per-run' | 'per-suite' | 'shared-per-worker'>()
+            );
+            typeScope.assert(sameType<RuntimeDimensions, Readonly<Record<string, string>>>());
+            typeScope.assert(sameType<RuntimeId<'api', { readonly node: '26'; }>, {
+                readonly name: 'api';
+                readonly dimensions: { readonly node: '26'; };
+                readonly scenarios: Readonly<Record<string, string>>;
+                readonly variantId: string | null;
+            }>());
+            typeScope.assert(sameType.withActual<'node'>(), runtimeMatrix.name);
+            typeScope.assert(sameType.withActual<'node-26'>(), runtimeMatrix.variants['node-26'].id);
+            typeScope.assert(sameType.withActual<typeof runtime>(), runtimeMatrix.variants['node-26'].runtime);
+            typeScope.assert(
+                assignableFrom<ResourceDefinitionInput<'database', Database>, ExpectedLocalResourceDefinitionInput>()
+            );
+            typeScope.assert(assignableFrom<
+                ResourceDefinitionInput<
+                    'database',
+                    Database,
+                    Readonly<Record<PropertyKey, never>>,
+                    string,
+                    ProjectedDatabase
+                >,
+                ExpectedProjectedResourceDefinitionInput
+            >());
+            return typeScope.assert.collect();
+        }),
+        test('keeps invalid shapes out of typed descriptors', function (typeScope) {
+            typeScope.assert(rejectsCall('no-matching-overload'), () =>
+                defineResourceUnderTest({
+                    name: 'database',
+                    scope: 'case',
+                    requirements: [],
+                    acquire: createInvalidDatabase,
+                    dispose: null
+                }));
+            typeScope.assert(rejectsCall('no-matching-overload'), () =>
+                defineResourceUnderTest({
+                    name: 'database',
+                    scope: 'per-case',
+                    requirements: [ { kind: 'startup-budget-milliseconds', milliseconds: 1000 } ],
+                    acquire: createInvalidDatabase,
+                    dispose: null
+                }));
+            typeScope.assert(rejectsCall('argument-type'), () =>
+                defineRuntimeUnderTest({
+                    name: 'api',
+                    dimensions: { node: 26 },
+                    resources: { database },
+                    requirements: []
+                }));
+            typeScope.assert(rejectsCall('no-matching-overload'), () =>
+                defineResourceUnderTest({
+                    name: 'projected-database',
+                    scope: 'per-run',
+                    requirements: [],
+                    acquire: createInvalidDatabase,
+                    dispose: null
+                }));
+            typeScope.assert(rejectsCall('no-matching-overload'), () =>
+                defineResourceUnderTest({
+                    name: 'server',
+                    scope: 'per-case',
+                    requirements: [],
+                    dependencies: { database: createInvalidDatabase() },
+                    acquire: createInvalidDatabase,
+                    dispose: null
+                }));
+            return typeScope.assert.collect();
+        })
+    ]),
+    suite('runtime scenarios', [
+        test('types partial bindings from resource slots', function (typeScope) {
+            typeScope.assert(acceptsCall, () => scenarioRuntime.scenario({}));
+            typeScope.assert(acceptsCall, () => scenarioRuntime.scenario({ database: 'empty' }));
+            typeScope.assert(rejectsCall('argument-type'), () => scenarioRuntime.scenario({ database: 'missing' }));
+            typeScope.assert(rejectsCall('argument-type'), () => scenarioRuntime.scenario({ unknown: 'empty' }));
+            typeScope.assert(
+                sameType.withActual<readonly ['default' | 'outage', ...('default' | 'outage')[]]>(),
+                simulatedApiResource.scenarios['simulated-api'].values
+            );
+            return typeScope.assert.collect();
+        })
+    ]),
+    suite('resource attachment contexts', [
+        test('provides attachments across resource lifecycle contexts', function (typeScope) {
+            typeScope.assert(sameType<ResourceCreationContext['attachments'], RuntimeAttachments>());
+            typeScope.assert(sameType<ResourceDisposalContext['attachments'], RuntimeAttachments>());
+            typeScope.assert(sameType<ResourceProjectionContext['attachments'], RuntimeAttachments>());
+            return typeScope.assert.collect();
+        })
+    ]),
+    test('infers database dependencies in resource callbacks', function (typeScope) {
+        defineResource({
             name: 'server',
+            scope: 'shared-per-worker',
+            requirements: [ { kind: 'single-worker' } ],
+            dependencies: { database },
+            async acquire(context): Promise<Server> {
+                typeScope.assert(sameType.withActual<Database>(), context.dependencies.database);
+                typeScope.assert(
+                    sameType.withActual<(sql: string) => Promise<readonly string[]>>(),
+                    context.dependencies.database.query
+                );
+                const queryResult = await context.dependencies.database.query('url');
+
+                return { url: String(queryResult[0]) };
+            },
+            dispose(_server, context) {
+                typeScope.assert(sameType.withActual<Database>(), context.dependencies.database);
+            }
+        });
+        return typeScope.assert.collect();
+    }),
+    test('infers scenario keys in resource callbacks', function (typeScope) {
+        defineResource({
+            name: 'scenario-database',
             scope: 'per-case',
             requirements: [],
-            dependencies: { database: createInvalidDatabase() },
-            acquire: createInvalidDatabase,
-            dispose: null
+            scenarios: {
+                database: {
+                    default: 'populated',
+                    timing: 'acquire',
+                    values: [ 'populated', 'empty' ]
+                }
+            },
+            acquire(context) {
+                typeScope.assert(sameType.withActual<'empty' | 'populated'>(), context.scenarios.database);
+
+                return context.scenarios.database;
+            },
+            dispose(_handle, context) {
+                typeScope.assert(sameType.withActual<'empty' | 'populated'>(), context.scenarios.database);
+            }
         });
-    });
-});
-
-describe('runtime scenarios', function () {
-    test('types partial bindings from resource slots', function () {
-        expect(scenarioRuntime.scenario).type.toBeCallableWith({});
-        expect(scenarioRuntime.scenario).type.toBeCallableWith({ database: 'empty' });
-        expect(scenarioRuntime.scenario).type.not.toBeCallableWith({ database: 'missing' });
-        expect(scenarioRuntime.scenario).type.not.toBeCallableWith({ unknown: 'empty' });
-        expect(simulatedApiResource.scenarios['simulated-api'].values).type.toBe<
-            readonly ['default' | 'outage', ...('default' | 'outage')[]]
-        >();
-    });
-});
-
-describe('resource attachment contexts', function () {
-    test('provides attachments across resource lifecycle contexts', function () {
-        expect<ResourceCreationContext['attachments']>().type.toBe<RuntimeAttachments>();
-        expect<ResourceDisposalContext['attachments']>().type.toBe<RuntimeAttachments>();
-        expect<ResourceProjectionContext['attachments']>().type.toBe<RuntimeAttachments>();
-    });
-});
+        return typeScope.assert.collect();
+    })
+]);

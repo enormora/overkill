@@ -1,4 +1,5 @@
-import { expect, test } from 'tstyche';
+import { suite, test } from '@overkill-dev/test';
+import { assignableTo, sameType } from '@overkill-dev/type-test';
 import type { snapshot as standardSnapshot, BaselineEntry as StandardEntry } from '../test/baselines.entry-point.ts';
 import type { AssertReferenceArguments } from '../engine/assertion-protocol.entry-point.ts';
 import type {
@@ -14,29 +15,43 @@ import type {
     StoredPerformanceBaseline
 } from './baselines.entry-point.ts';
 
-test('exposes typed snapshot references through both facades', function () {
-    expect<typeof standardSnapshot>().type.toBe<typeof snapshot>();
-    expect<AssertReferenceArguments<typeof snapshot.text>>().type.toBe<readonly [string, string]>();
-    expect<AssertReferenceArguments<typeof snapshot.bytes>>().type.toBe<readonly [string, Uint8Array]>();
-    expect<readonly [string, Date]>().type.not.toBeAssignableTo<AssertReferenceArguments<typeof snapshot.value>>();
-});
-
-test('preserves performance defaults and supports subtype records', function () {
-    expect<BaselineEntry['baseline']>().type.toBe<StoredPerformanceBaseline>();
-    expect<BaselineEntry<Uint8Array>['baseline']>().type.toBe<Uint8Array>();
-    expect<StandardEntry<string>>().type.toBe<BaselineEntry<string>>();
-    expect<Extract<BaselineChange, { readonly kind: 'remove'; }>['baseline']>().type.toBe<StoredPerformanceBaseline>();
-    expect<Extract<BaselineWriteOutcome<string>, { readonly kind: 'failed'; }>['writtenChanges']>()
-        .type
-        .toBe<readonly BaselineChange<string>[]>();
-    expect<ReturnType<PerformanceBaselineAdapter['observe']>>().type.toBe<
-        BaselineObservation<BaselineJson>
-    >();
-});
-test('allows asynchronous binary adapters and requires mismatch diagnostics', function () {
-    type BinaryAdapter = BaselineAdapter<Uint8Array, Uint8Array, Uint8Array, Uint8Array, string>;
-    expect<Promise<BaselineObservation<Uint8Array>>>().type.toBeAssignableTo<ReturnType<BinaryAdapter['observe']>>();
-    expect<{ readonly kind: 'mismatch'; readonly diagnostics: readonly []; }>().type.not.toBeAssignableTo<
-        BaselineComparison<string>
-    >();
-});
+export const testNode = suite('baselines', [
+    test('exposes typed snapshot references through both facades', function (typeScope) {
+        typeScope.assert(sameType<typeof standardSnapshot, typeof snapshot>());
+        typeScope.assert(sameType<AssertReferenceArguments<typeof snapshot.text>, readonly [string, string]>());
+        typeScope.assert(sameType<AssertReferenceArguments<typeof snapshot.bytes>, readonly [string, Uint8Array]>());
+        typeScope.assert(assignableTo.not<readonly [string, Date], AssertReferenceArguments<typeof snapshot.value>>());
+        return typeScope.assert.collect();
+    }),
+    test('preserves performance defaults and supports subtype records', function (typeScope) {
+        typeScope.assert(sameType<BaselineEntry['baseline'], StoredPerformanceBaseline>());
+        typeScope.assert(sameType<BaselineEntry<Uint8Array>['baseline'], Uint8Array>());
+        typeScope.assert(sameType<StandardEntry<string>, BaselineEntry<string>>());
+        typeScope.assert(
+            sameType<Extract<BaselineChange, { readonly kind: 'remove'; }>['baseline'], StoredPerformanceBaseline>()
+        );
+        typeScope.assert(
+            sameType<
+                Extract<BaselineWriteOutcome<string>, { readonly kind: 'failed'; }>['writtenChanges'],
+                readonly BaselineChange<string>[]
+            >()
+        );
+        typeScope.assert(
+            sameType<ReturnType<PerformanceBaselineAdapter['observe']>, BaselineObservation<BaselineJson>>()
+        );
+        return typeScope.assert.collect();
+    }),
+    test('allows asynchronous binary adapters and requires mismatch diagnostics', function (typeScope) {
+        type BinaryAdapter = BaselineAdapter<Uint8Array, Uint8Array, Uint8Array, Uint8Array, string>;
+        typeScope.assert(
+            assignableTo<Promise<BaselineObservation<Uint8Array>>, ReturnType<BinaryAdapter['observe']>>()
+        );
+        typeScope.assert(
+            assignableTo.not<
+                { readonly kind: 'mismatch'; readonly diagnostics: readonly []; },
+                BaselineComparison<string>
+            >()
+        );
+        return typeScope.assert.collect();
+    })
+]);

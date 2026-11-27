@@ -1,4 +1,5 @@
-import { describe, expect, test } from 'tstyche';
+import { suite, test } from '@overkill-dev/test';
+import { acceptsCall, assignableFrom, assignableTo, rejectsCall, sameType } from '@overkill-dev/type-test';
 import {
     defineCompositeAssertion,
     defineNarrowingCompositeAssertion,
@@ -141,395 +142,439 @@ type CaseIdFixture = {
 };
 type TestStartReporterEvent = Extract<ReporterEvent, { readonly kind: 'test-start'; }>;
 type SuiteStartReporterEvent = Extract<ReporterEvent, { readonly kind: 'suite-start'; }>;
-describe('TestOutcome', function () {
-    test('exports resource descriptor attachment predicates', function () {
-        expect<typeof hasAttachedResourceDescriptors>().type.toBe<
-            (attachments: TestBodyResourceAttachments) => boolean
-        >();
-    });
 
-    test('exports case runner error markers', function () {
-        const error = new CaseRunnerError('Fixture failed.', {
-            cause: unknownValue,
-            subtype: 'fixture'
-        });
+declare const createThrowingTestCaseUnderTest: typeof createThrowingTestCase;
 
-        expect<CaseRunnerErrorOptions>().type.toBe<{
-            readonly cause: unknown;
-            readonly subtype: RunnerError['subtype'];
-        }>();
-        expect(error).type.toBe<CaseRunnerError>();
-        expect(error.runnerError(caseId, workId)).type.toBe<RunnerError>();
-        expect<typeof isCaseRunnerError>().type.toBe<(value: unknown) => value is CaseRunnerError>();
-    });
+export const testNode = suite('engine', [
+    suite('TestOutcome', [
+        test('exports resource descriptor attachment predicates', function (typeScope) {
+            typeScope.assert(
+                sameType<typeof hasAttachedResourceDescriptors, (attachments: TestBodyResourceAttachments) => boolean>()
+            );
+            return typeScope.assert.collect();
+        }),
+        test('exports case runner error markers', function (typeScope) {
+            const error = new CaseRunnerError('Fixture failed.', {
+                cause: unknownValue,
+                subtype: 'fixture'
+            });
 
-    test('accepts public outcome shapes', function () {
-        expect<TestOutcome>().type.toBeAssignableFrom<{ readonly kind: 'pass'; }>();
-        expect<TestOutcome>().type.toBeAssignableFrom<{
-            readonly failures: readonly [
+            typeScope.assert(sameType<CaseRunnerErrorOptions, {
+                readonly cause: unknown;
+                readonly subtype: RunnerError['subtype'];
+            }>());
+            typeScope.assert(sameType.withActual<CaseRunnerError>(), error);
+            typeScope.assert(sameType.withActual<RunnerError>(), error.runnerError(caseId, workId));
+            typeScope.assert(sameType<typeof isCaseRunnerError, (value: unknown) => value is CaseRunnerError>());
+            return typeScope.assert.collect();
+        }),
+        test('accepts public outcome shapes', function (typeScope) {
+            typeScope.assert(assignableFrom<TestOutcome, { readonly kind: 'pass'; }>());
+            typeScope.assert(assignableFrom<TestOutcome, {
+                readonly failures: readonly [
+                    {
+                        readonly checks: readonly [FailedCheckFixture];
+                        readonly kind: 'assertion';
+                    }
+                ];
+                readonly kind: 'fail';
+            }>());
+            typeScope.assert(assignableFrom<TestOutcome, { readonly kind: 'skip'; readonly reason: 'filtered'; }>());
+            typeScope.assert(assignableFrom<TestOutcome, {
+                readonly kind: 'inconclusive';
+                readonly reason: 'adapter lost result';
+            }>());
+            return typeScope.assert.collect();
+        }),
+        test('rejects mixed public outcome shapes', function (typeScope) {
+            typeScope.assert(assignableFrom.not<TestOutcome, {
+                readonly checks: readonly [];
+                readonly kind: 'pass';
+            }>());
+            typeScope.assert(assignableFrom.not<TestOutcome, {
+                readonly kind: 'pass';
+                readonly reason: null;
+            }>());
+            typeScope.assert(assignableFrom.not<TestOutcome, {
+                readonly checks: readonly [FailedCheckFixture];
+                readonly kind: 'skip';
+                readonly reason: 'filtered';
+            }>());
+            typeScope.assert(assignableFrom.not<TestOutcome, {
+                readonly checks: readonly [FailedCheckFixture];
+                readonly kind: 'inconclusive';
+                readonly reason: 'adapter lost result';
+            }>());
+            typeScope.assert(assignableFrom.not<TestOutcome, { readonly kind: 'fail'; }>());
+            typeScope.assert(assignableFrom.not<TestOutcome, {
+                readonly checks: readonly [FailedCheckFixture];
+                readonly kind: 'fail';
+                readonly reason: null;
+            }>());
+            typeScope.assert(assignableFrom.not<TestOutcome, {
+                readonly failures: readonly [];
+                readonly kind: 'fail';
+            }>());
+            typeScope.assert(assignableFrom.not<TestOutcome, { readonly kind: 'skip'; }>());
+            typeScope.assert(assignableFrom.not<TestOutcome, { readonly kind: 'inconclusive'; }>());
+            return typeScope.assert.collect();
+        }),
+        test('exposes structured failed check diagnostics', function (typeScope) {
+            typeScope.assert(sameType<keyof FailedCheck, keyof FailedCheckKeyByName>());
+            typeScope.assert(sameType<keyof FailedLeafCheck, FailedLeafCheckKey>());
+            typeScope.assert(sameType<keyof FailedCompositeCheck, FailedCompositeCheckKey>());
+            typeScope.assert(sameType<keyof FailedForeignCheck, FailedForeignCheckKey>());
+            typeScope.assert(sameType<FailedCheck['actual'], SerializedValue>());
+            typeScope.assert(sameType<FailedCheck['expected'], SerializedValue>());
+            typeScope.assert(sameType<FailedCheck['diff'], Diff | null>());
+            typeScope.assert(sameType<FailedCheck['path'], readonly DiffPathSegment[]>());
+            return typeScope.assert.collect();
+        }),
+        test('exports serialized value and diff contracts', function (typeScope) {
+            typeScope.assert(assignableFrom<SerializedValue, { readonly kind: 'number'; readonly value: '-0'; }>());
+            typeScope.assert(assignableFrom<SerializedValue, {
+                readonly kind: 'string';
+                readonly truncation: SerializationTruncation | null;
+                readonly value: 'value';
+            }>());
+            typeScope.assert(assignableFrom<DiffPathSegment, {
+                readonly key: { readonly kind: 'string'; readonly value: 'name'; };
+                readonly kind: 'property';
+            }>());
+            typeScope.assert(assignableFrom<DiffPathSegment, {
+                readonly key: { readonly kind: 'number'; readonly value: 1; };
+                readonly kind: 'map-value';
+            }>());
+            typeScope.assert(assignableFrom<Diff, {
+                readonly actual: 'actual';
+                readonly expected: 'expected';
+                readonly hunks: readonly [];
+                readonly kind: 'string';
+            }>());
+            typeScope.assert(assignableFrom<Diff, {
+                readonly kind: 'binary';
+                readonly actualHash: 'hash';
+                readonly actualSize: 1;
+                readonly expectedHash: 'hash';
+                readonly expectedSize: 1;
+                readonly ranges: readonly [];
+            }>());
+            return typeScope.assert.collect();
+        }),
+        test('accepts public test failure shapes', function (typeScope) {
+            typeScope.assert(assignableFrom<TestFailure, {
+                readonly checks: readonly [FailedCheckFixture];
+                readonly kind: 'assertion';
+            }>());
+            typeScope.assert(assignableFrom<TestFailure, {
+                readonly error: {
+                    readonly message: 'boom';
+                    readonly name: 'Error';
+                    readonly stack: null;
+                    readonly thrown: unknown;
+                };
+                readonly kind: 'body-error';
+            }>());
+            typeScope.assert(assignableFrom<TestFailure, {
+                readonly actual: 1;
+                readonly code: 'plan-mismatch';
+                readonly expected: '2';
+                readonly kind: 'test-contract';
+                readonly summary: 'Assertion plan count did not match.';
+            }>());
+            typeScope.assert(assignableFrom<TestFailure, {
+                readonly error: {
+                    readonly message: 'cleanup failed';
+                    readonly name: 'Error';
+                    readonly stack: null;
+                    readonly thrown: unknown;
+                };
+                readonly kind: 'cleanup-error';
+            }>());
+            return typeScope.assert.collect();
+        })
+    ]),
+    suite('Test Data', [
+        test('exposes authored and resolved test data shapes', function (typeScope) {
+            typeScope.assert(assignableFrom<TestAnnotationsInput, {
+                readonly ownership: readonly ['@team'];
+                readonly tags: readonly ['fast'];
+            }>());
+            typeScope.assert(assignableFrom<TestControlsInput, {
+                readonly capture: 'buffered';
+                readonly duplicateExecution: 'idempotent';
+                readonly timeoutMilliseconds: number;
+            }>());
+            typeScope.assert(sameType<TestAnnotations, {
+                readonly ownership: readonly string[];
+                readonly tags: readonly string[];
+            }>());
+            typeScope.assert(sameType<TestControls, {
+                readonly capture: 'buffered' | 'live' | null;
+                readonly duplicateExecution: 'forbidden' | 'idempotent' | null;
+                readonly timeoutMilliseconds: number | null;
+            }>());
+            typeScope.assert(sameType<TestFamilyId, string>());
+            return typeScope.assert.collect();
+        })
+    ]),
+    suite('Assertion protocol', [
+        test('exports source-discriminated assertion nodes', function (typeScope) {
+            typeScope.assert(sameType<AssertionSource, 'assert' | 'require'>());
+            typeScope.assert(sameType<AssertionNode, AssertAssertionNode | RequireAssertionNode>());
+            typeScope.assert(
+                sameType<AssertionResult, AssertAssertionNode | NonEmptyReadonlyArray<AssertAssertionNode>>()
+            );
+            typeScope.assert(assignableFrom.not<AssertionResult, readonly []>());
+            typeScope.assert(assignableFrom.not<AssertionResult, {
+                readonly actual: 'value';
+                readonly check: 'string';
+                readonly message: null;
+                readonly source: 'require';
+            }>());
+            return typeScope.assert.collect();
+        }),
+        test('exports source location helpers for raw assertion nodes', function (typeScope) {
+            typeScope.assert(sameType<
+                SourceLocation,
                 {
-                    readonly checks: readonly [FailedCheckFixture];
-                    readonly kind: 'assertion';
+                    readonly column: number | null;
+                    readonly file: string;
+                    readonly kind: 'known';
+                    readonly line: number | null;
+                } | {
+                    readonly column?: never;
+                    readonly file?: never;
+                    readonly kind: 'unknown';
+                    readonly line?: never;
                 }
-            ];
-            readonly kind: 'fail';
-        }>();
-        expect<TestOutcome>().type.toBeAssignableFrom<{ readonly kind: 'skip'; readonly reason: 'filtered'; }>();
-        expect<TestOutcome>().type.toBeAssignableFrom<{
-            readonly kind: 'inconclusive';
-            readonly reason: 'adapter lost result';
-        }>();
-    });
-
-    test('rejects mixed public outcome shapes', function () {
-        expect<TestOutcome>().type.not.toBeAssignableFrom<{
-            readonly checks: readonly [];
-            readonly kind: 'pass';
-        }>();
-        expect<TestOutcome>().type.not.toBeAssignableFrom<{
-            readonly kind: 'pass';
-            readonly reason: null;
-        }>();
-        expect<TestOutcome>().type.not.toBeAssignableFrom<{
-            readonly checks: readonly [FailedCheckFixture];
-            readonly kind: 'skip';
-            readonly reason: 'filtered';
-        }>();
-        expect<TestOutcome>().type.not.toBeAssignableFrom<{
-            readonly checks: readonly [FailedCheckFixture];
-            readonly kind: 'inconclusive';
-            readonly reason: 'adapter lost result';
-        }>();
-        expect<TestOutcome>().type.not.toBeAssignableFrom<{ readonly kind: 'fail'; }>();
-        expect<TestOutcome>().type.not.toBeAssignableFrom<{
-            readonly checks: readonly [FailedCheckFixture];
-            readonly kind: 'fail';
-            readonly reason: null;
-        }>();
-        expect<TestOutcome>().type.not.toBeAssignableFrom<{
-            readonly failures: readonly [];
-            readonly kind: 'fail';
-        }>();
-        expect<TestOutcome>().type.not.toBeAssignableFrom<{ readonly kind: 'skip'; }>();
-        expect<TestOutcome>().type.not.toBeAssignableFrom<{ readonly kind: 'inconclusive'; }>();
-    });
-
-    test('exposes structured failed check diagnostics', function () {
-        expect<keyof FailedCheck>().type.toBe<keyof FailedCheckKeyByName>();
-        expect<keyof FailedLeafCheck>().type.toBe<FailedLeafCheckKey>();
-        expect<keyof FailedCompositeCheck>().type.toBe<FailedCompositeCheckKey>();
-        expect<keyof FailedForeignCheck>().type.toBe<FailedForeignCheckKey>();
-        expect<FailedCheck['actual']>().type.toBe<SerializedValue>();
-        expect<FailedCheck['expected']>().type.toBe<SerializedValue>();
-        expect<FailedCheck['diff']>().type.toBe<Diff | null>();
-        expect<FailedCheck['path']>().type.toBe<readonly DiffPathSegment[]>();
-    });
-
-    test('exports serialized value and diff contracts', function () {
-        expect<SerializedValue>().type.toBeAssignableFrom<{ readonly kind: 'number'; readonly value: '-0'; }>();
-        expect<SerializedValue>().type.toBeAssignableFrom<{
-            readonly kind: 'string';
-            readonly truncation: SerializationTruncation | null;
-            readonly value: 'value';
-        }>();
-        expect<DiffPathSegment>().type.toBeAssignableFrom<{
-            readonly key: { readonly kind: 'string'; readonly value: 'name'; };
-            readonly kind: 'property';
-        }>();
-        expect<DiffPathSegment>().type.toBeAssignableFrom<{
-            readonly key: { readonly kind: 'number'; readonly value: 1; };
-            readonly kind: 'map-value';
-        }>();
-        expect<Diff>().type.toBeAssignableFrom<{
-            readonly actual: 'actual';
-            readonly expected: 'expected';
-            readonly hunks: readonly [];
-            readonly kind: 'string';
-        }>();
-        expect<Diff>().type.toBeAssignableFrom<{
-            readonly kind: 'binary';
-            readonly actualHash: 'hash';
-            readonly actualSize: 1;
-            readonly expectedHash: 'hash';
-            readonly expectedSize: 1;
-            readonly ranges: readonly [];
-        }>();
-    });
-
-    test('accepts public test failure shapes', function () {
-        expect<TestFailure>().type.toBeAssignableFrom<{
-            readonly checks: readonly [FailedCheckFixture];
-            readonly kind: 'assertion';
-        }>();
-        expect<TestFailure>().type.toBeAssignableFrom<{
-            readonly error: {
-                readonly message: 'boom';
-                readonly name: 'Error';
-                readonly stack: null;
-                readonly thrown: unknown;
-            };
-            readonly kind: 'body-error';
-        }>();
-        expect<TestFailure>().type.toBeAssignableFrom<{
-            readonly actual: 1;
-            readonly code: 'plan-mismatch';
-            readonly expected: '2';
-            readonly kind: 'test-contract';
-            readonly summary: 'Assertion plan count did not match.';
-        }>();
-        expect<TestFailure>().type.toBeAssignableFrom<{
-            readonly error: {
-                readonly message: 'cleanup failed';
-                readonly name: 'Error';
-                readonly stack: null;
-                readonly thrown: unknown;
-            };
-            readonly kind: 'cleanup-error';
-        }>();
-    });
-});
-
-describe('Test Data', function () {
-    test('exposes authored and resolved test data shapes', function () {
-        expect<TestAnnotationsInput>().type.toBeAssignableFrom<{
-            readonly ownership: readonly ['@team'];
-            readonly tags: readonly ['fast'];
-        }>();
-        expect<TestControlsInput>().type.toBeAssignableFrom<{
-            readonly capture: 'buffered';
-            readonly duplicateExecution: 'idempotent';
-            readonly timeoutMilliseconds: number;
-        }>();
-        expect<TestAnnotations>().type.toBe<{
-            readonly ownership: readonly string[];
-            readonly tags: readonly string[];
-        }>();
-        expect<TestControls>().type.toBe<{
-            readonly capture: 'buffered' | 'live' | null;
-            readonly duplicateExecution: 'forbidden' | 'idempotent' | null;
-            readonly timeoutMilliseconds: number | null;
-        }>();
-        expect<TestFamilyId>().type.toBe<string>();
-    });
-});
-
-describe('Assertion protocol', function () {
-    test('exports source-discriminated assertion nodes', function () {
-        expect<AssertionSource>().type.toBe<'assert' | 'require'>();
-        expect<AssertionNode>().type.toBe<AssertAssertionNode | RequireAssertionNode>();
-        expect<AssertionResult>().type.toBe<AssertAssertionNode | NonEmptyReadonlyArray<AssertAssertionNode>>();
-        expect<AssertionResult>().type.not.toBeAssignableFrom<readonly []>();
-        expect<AssertionResult>().type.not.toBeAssignableFrom<{
-            readonly actual: 'value';
-            readonly check: 'string';
-            readonly message: null;
-            readonly source: 'require';
-        }>();
-    });
-
-    test('exports source location helpers for raw assertion nodes', function () {
-        expect<SourceLocation>().type.toBe<
-            {
-                readonly column: number | null;
-                readonly file: string;
-                readonly kind: 'known';
-                readonly line: number | null;
-            } | {
-                readonly column?: never;
-                readonly file?: never;
-                readonly kind: 'unknown';
-                readonly line?: never;
+            >());
+            typeScope.assert(sameType<SourceLocationProvider, () => SourceLocation>());
+            typeScope.assert(sameType<ResolvableSourceLocation, SourceLocation | SourceLocationProvider>());
+            typeScope.assert(sameType<typeof captureSourceLocation, () => SourceLocationProvider>());
+            typeScope.assert(assignableTo<typeof unknownSourceLocation, SourceLocation>());
+            typeScope.assert(assignableTo<AssertAssertionNode, {
+                readonly sourceLocations: NonEmptyReadonlyArray<ResolvableSourceLocation>;
+            }>());
+            return typeScope.assert.collect();
+        }),
+        test('exposes first-class throwing test body types', function (typeScope) {
+            typeScope.assert(sameType<ThrowingTestScope, {
+                readonly debug: TestDebugScope;
+                readonly seed: bigint;
+                readonly random: TestRandom;
+                readonly assert: AssertAssertionFacade;
+                readonly require: RequireAssertionFacade;
+                readonly signal: AbortSignal;
+            }>());
+            typeScope.assert(assignableFrom.not<keyof ThrowingTestScope, 'plan'>());
+            typeScope.assert(assignableFrom.not<keyof ThrowingTestScope['assert'], 'collect'>());
+            typeScope.assert(sameType<ThrowingTestBody, (scope: ThrowingTestScope) => Promise<void> | void>());
+            typeScope.assert(acceptsCall, () =>
+                createThrowingTestCaseUnderTest({
+                    annotations: {},
+                    body: throwingBody,
+                    controls: {},
+                    definitionLocations: [ { kind: 'unknown' as const } ],
+                    title: 'case'
+                }));
+            return typeScope.assert.collect();
+        }),
+        test('defines explicit thrown matcher shapes', function (typeScope) {
+            typeScope.assert(assignableFrom<ExactThrownMatcher, { readonly exact: 'raw'; }>());
+            typeScope.assert(assignableFrom<ErrorMatcher, {
+                readonly message: 'expected';
+                readonly type: typeof Error;
+            }>());
+            typeScope.assert(assignableFrom<ThrownMatcher, {
+                readonly cause: { readonly exact: 'raw'; };
+                readonly message: RegExp;
+            }>());
+            typeScope.assert(assignableFrom.not<ErrorMatcher, { readonly unused?: never; }>());
+            typeScope.assert(assignableFrom.not<ThrownMatcher, {
+                readonly exact: 'raw';
+                readonly message: 'expected';
+            }>());
+            return typeScope.assert.collect();
+        }),
+        test('accepts explicit throws and rejects assertions', function (typeScope) {
+            typeScope.assert(acceptsCall, () =>
+                assertFacade.throws(function throwValue() {
+                    throw new Error('expected');
+                }, { message: 'expected' }));
+            typeScope.assert(acceptsCall, () =>
+                assertFacade.throws(function returnRawValue() {
+                    return 'raw';
+                }, { exact: 'raw' }));
+            typeScope.assert(acceptsCall, () =>
+                assertFacade.rejects(async function rejectValue() {
+                    await Promise.reject(new Error('expected'));
+                }, { type: Error, message: 'expected' }));
+            typeScope.assert(acceptsCall, () =>
+                compositeCheckBuilder.throws(function throwValue() {
+                    throw new Error('expected');
+                }, { message: /expected/u }));
+            typeScope.assert(acceptsCall, () =>
+                compositeCheckBuilder.rejects(async function rejectValue() {
+                    await Promise.reject(new Error('expected'));
+                }, { exact: new Error('expected') }));
+            return typeScope.assert.collect();
+        }),
+        test('requires another matcher field for the base Error constructor', function (typeScope) {
+            class RateLimitError extends Error {
+                public constructor() {
+                    super('Rate limit exceeded.');
+                    this.name = 'RateLimitError';
+                }
             }
-        >();
-        expect<SourceLocationProvider>().type.toBe<() => SourceLocation>();
-        expect<ResolvableSourceLocation>().type.toBe<SourceLocation | SourceLocationProvider>();
-        expect<typeof captureSourceLocation>().type.toBe<() => SourceLocationProvider>();
-        expect<typeof unknownSourceLocation>().type.toBeAssignableTo<SourceLocation>();
-        expect<AssertAssertionNode>().type.toBeAssignableTo<{
-            readonly sourceLocations: NonEmptyReadonlyArray<ResolvableSourceLocation>;
-        }>();
-    });
 
-    test('exposes first-class throwing test body types', function () {
-        expect<ThrowingTestScope>().type.toBe<{
-            readonly debug: TestDebugScope;
-            readonly seed: bigint;
-            readonly random: TestRandom;
-            readonly assert: AssertAssertionFacade;
-            readonly require: RequireAssertionFacade;
-            readonly signal: AbortSignal;
-        }>();
-        expect<ThrowingTestScope>().type.not.toHaveProperty('plan');
-        expect<ThrowingTestScope['assert']>().type.not.toHaveProperty('collect');
-        expect<ThrowingTestBody>().type.toBe<(scope: ThrowingTestScope) => Promise<void> | void>();
-        expect<typeof createThrowingTestCase>().type.toBeCallableWith({
-            annotations: {},
-            body: throwingBody,
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'case'
-        });
-    });
-
-    test('defines explicit thrown matcher shapes', function () {
-        expect<ExactThrownMatcher>().type.toBeAssignableFrom<{ readonly exact: 'raw'; }>();
-        expect<ErrorMatcher>().type.toBeAssignableFrom<{
-            readonly message: 'expected';
-            readonly type: typeof Error;
-        }>();
-        expect<ThrownMatcher>().type.toBeAssignableFrom<{
-            readonly cause: { readonly exact: 'raw'; };
-            readonly message: RegExp;
-        }>();
-        expect<ErrorMatcher>().type.not.toBeAssignableFrom<{ readonly unused?: never; }>();
-        expect<ThrownMatcher>().type.not.toBeAssignableFrom<{
-            readonly exact: 'raw';
-            readonly message: 'expected';
-        }>();
-    });
-
-    test('accepts explicit throws and rejects assertions', function () {
-        expect(assertFacade.throws).type.toBeCallableWith(function throwValue() {
-            throw new Error('expected');
-        }, { message: 'expected' });
-        expect(assertFacade.throws).type.toBeCallableWith(function returnRawValue() {
-            return 'raw';
-        }, { exact: 'raw' });
-        expect(assertFacade.rejects).type.toBeCallableWith(async function rejectValue() {
-            await Promise.reject(new Error('expected'));
-        }, { type: Error, message: 'expected' });
-        expect(compositeCheckBuilder.throws).type.toBeCallableWith(function throwValue() {
-            throw new Error('expected');
-        }, { message: /expected/u });
-        expect(compositeCheckBuilder.rejects).type.toBeCallableWith(async function rejectValue() {
-            await Promise.reject(new Error('expected'));
-        }, { exact: new Error('expected') });
-    });
-
-    test('requires another matcher field for the base Error constructor', function () {
-        class RateLimitError extends Error {
-            public constructor() {
-                super('Rate limit exceeded.');
-                this.name = 'RateLimitError';
+            function throwRateLimit(): never {
+                throw new RateLimitError();
             }
-        }
 
-        function throwRateLimit(): never {
-            throw new RateLimitError();
-        }
+            async function rejectRateLimit(): Promise<never> {
+                throw new RateLimitError();
+            }
 
-        async function rejectRateLimit(): Promise<never> {
-            throw new RateLimitError();
-        }
+            typeScope.assert(acceptsCall, () => assertFacade.throws(throwRateLimit, { type: RateLimitError }));
+            typeScope.assert(acceptsCall, () => assertFacade.rejects(rejectRateLimit, { type: TypeError }));
+            typeScope.assert(rejectsCall('argument-type'), () => assertFacade.throws(throwRateLimit, { type: Error }));
+            typeScope.assert(
+                rejectsCall('argument-type'),
+                () => assertFacade.rejects(rejectRateLimit, { type: Error })
+            );
+            typeScope.assert(
+                rejectsCall('argument-type'),
+                () => compositeCheckBuilder.throws(throwRateLimit, { type: Error })
+            );
+            typeScope.assert(
+                rejectsCall('argument-type'),
+                () => compositeCheckBuilder.rejects(rejectRateLimit, { cause: { type: Error } })
+            );
+            return typeScope.assert.collect();
+        }),
+        test('rejects ambiguous thrown matcher calls', function (typeScope) {
+            async function rejectValue() {
+                await Promise.reject(new Error('expected'));
+            }
+            typeScope.assert(
+                rejectsCall('argument-type'),
+                () => assertFacade.throws(rejectValue, { type: Error, message: 'expected' })
+            );
+            function returnValue() {
+                return undefined;
+            }
+            typeScope.assert(
+                rejectsCall('argument-type'),
+                () => assertFacade.rejects(returnValue, { type: Error, message: 'expected' })
+            );
+            function throwValue() {
+                throw new Error('expected');
+            }
+            typeScope.assert(rejectsCall('argument-type'), () => assertFacade.throws(throwValue, {}));
+            typeScope.assert(
+                rejectsCall('argument-type'),
+                () => assertFacade.throws(throwValue, { exact: 'raw', message: 'expected' })
+            );
+            return typeScope.assert.collect();
+        }),
+        test('infers callable custom assertion references', function (typeScope) {
+            const value: unknown = null;
 
-        expect(assertFacade.throws).type.toBeCallableWith(throwRateLimit, { type: RateLimitError });
-        expect(assertFacade.rejects).type.toBeCallableWith(rejectRateLimit, { type: TypeError });
-        expect(assertFacade.throws).type.not.toBeCallableWith(throwRateLimit, { type: Error });
-        expect(assertFacade.rejects).type.not.toBeCallableWith(rejectRateLimit, { type: Error });
-        expect(compositeCheckBuilder.throws).type.not.toBeCallableWith(throwRateLimit, { type: Error });
-        expect(compositeCheckBuilder.rejects).type.not.toBeCallableWith(rejectRateLimit, { cause: { type: Error } });
-    });
-
-    test('rejects ambiguous thrown matcher calls', function () {
-        expect(assertFacade.throws).type.not.toBeCallableWith(async function rejectValue() {
-            await Promise.reject(new Error('expected'));
-        }, { type: Error, message: 'expected' });
-        expect(assertFacade.rejects).type.not.toBeCallableWith(function returnValue() {
-            return undefined;
-        }, { type: Error, message: 'expected' });
-        expect(assertFacade.throws).type.not.toBeCallableWith(function throwValue() {
-            throw new Error('expected');
-        }, {});
-        expect(assertFacade.throws).type.not.toBeCallableWith(function throwValue() {
-            throw new Error('expected');
-        }, { exact: 'raw', message: 'expected' });
-    });
-
-    test('infers callable custom assertion references', function () {
-        const value: unknown = null;
-
-        expect(syncAssertion).type.toBe<typeof syncAssertion>();
-        expect<AssertReferenceArguments<typeof syncAssertion>>().type.toBe<readonly [value: boolean]>();
-        expect<AssertReferenceReturn<typeof syncAssertion>>().type.toBe<SyncAssertionReturn>();
-        expect<AssertReferenceReturn<typeof asyncAssertion>>().type.toBe<Promise<void>>();
-        expect<AssertReferenceReturn<typeof narrowingAssertion>>().type.toBe<SyncAssertionReturn>();
-        expect(asyncAssertion).type.toBe<typeof asyncAssertion>();
-        requireFacade(narrowingAssertion, value);
-        expect(value).type.toBe<string>();
-    });
-});
-
-describe('Deep assertion operands', function () {
-    test('defines deep comparable operands', function () {
-        expect<DeepComparable>().type.toBe<unknown>();
-        expect<DeepComparable<number>>().type.toBe<never>();
-        expect<DeepComparable<string | { readonly id: string; }>>().type.toBe<never>();
-        expect<DeepComparable<ReturnType<typeof JSON.parse>>>().type.toBe<never>();
-    });
-
-    test('accepts exact deep assertion operands', function () {
-        expect(assertFacade.deepEqual).type.toBeCallableWith({ id: 1 }, { id: 1 });
-        expect(assertFacade.deepEqual).type.toBeCallableWith([ 1 ], [ 1 ]);
-        expect(assertFacade.deepEqual).type.toBeCallableWith(functionValue, functionValue);
-        expect(assertFacade.deepEqual).type.toBeCallableWith(new Map<string, number>(), new Map<string, number>());
-        expect(assertFacade.deepEqual).type.toBeCallableWith(new Set<number>(), new Set<number>());
-        expect(assertFacade.deepEqual).type.toBeCallableWith(unknownValue, { id: 1 });
-        expect(assertFacade.notDeepEqual).type.toBeCallableWith({ id: 1 }, { id: 2 });
-    });
-
-    test('accepts partial deep assertion operands', function () {
-        expect(assertFacade.partialDeepEqual).type.toBeCallableWith({ id: 1, name: 'Ada' }, { id: 1 });
-        expect(assertFacade.arrayContainsPartial).type.toBeCallableWith(objectValues, { id: 1 });
-        expect(assertFacade.arrayContainsPartial).type.toBeCallableWith(unknownValues, { id: 1 });
-        expect(assertFacade.membersPartialDeepEqual).type.toBeCallableWith(objectValues, [ { id: 1 } ]);
-        expect(assertFacade.membersPartialDeepEqual).type.toBeCallableWith(unknownValues, unknownValues);
-    });
-
-    test('accepts composite builder deep assertion operands', function () {
-        expect(compositeCheckBuilder.deepEqual).type.toBeCallableWith({ id: 1 }, { id: 1 });
-        expect(compositeCheckBuilder.partialDeepEqual).type.toBeCallableWith({ id: 1 }, { id: 1 });
-    });
-
-    test('rejects exact primitive deep assertion operands', function () {
-        expect(assertFacade.deepEqual).type.not.toBeCallableWith(1, 1);
-        expect(assertFacade.notDeepEqual).type.not.toBeCallableWith('a', 'b');
-        expect(assertFacade.deepEqual).type.not.toBeCallableWith(mixedDeepValue, { id: 'a' });
-        expect(compositeCheckBuilder.deepEqual).type.not.toBeCallableWith(1, 1);
-    });
-
-    test('rejects partial primitive deep assertion operands', function () {
-        expect(assertFacade.partialDeepEqual).type.not.toBeCallableWith(true, false);
-        expect(assertFacade.arrayContainsPartial).type.not.toBeCallableWith([ 1 ], { id: 1 });
-        expect(assertFacade.arrayContainsPartial).type.not.toBeCallableWith(objectValues, 1);
-        expect(assertFacade.membersPartialDeepEqual).type.not.toBeCallableWith([ 1 ], [ { id: 1 } ]);
-        expect(assertFacade.membersPartialDeepEqual).type.not.toBeCallableWith(objectValues, [ 1 ]);
-        expect(compositeCheckBuilder.partialDeepEqual).type.not.toBeCallableWith(true, false);
-    });
-});
-
-describe('CaseId', function () {
-    test('accepts structured public identity shapes', function () {
-        expect<CaseId>().type.toBeAssignableFrom<CaseIdFixture>();
-        expect<PerTestResult['id']>().type.toBe<CaseId>();
-        expect<TestStartReporterEvent['case']>().type.toBe<CaseId>();
-        expect<SuiteStartReporterEvent['suitePath']>().type.toBe<
-            readonly {
-                readonly definitionLocations: NonEmptyReadonlyArray<ResolvableSourceLocation>;
-                readonly title: string;
-            }[]
-        >();
-        expect<RunnerError['attributedTo']>().type.toBe<CaseId | null>();
-    });
-
-    test('requires explicit nullable identity fields', function () {
-        expect<CaseId>().type.not.toBeAssignableFrom<{
-            readonly suite: readonly ['suite'];
-            readonly title: 'case';
-        }>();
-        expect<CaseId>().type.not.toBeAssignableFrom<{
-            readonly file: null;
-            readonly suite: readonly ['suite'];
-            readonly title: 'case';
-        }>();
-    });
-});
+            typeScope.assert(sameType.withActual<typeof syncAssertion>(), syncAssertion);
+            typeScope.assert(sameType<AssertReferenceArguments<typeof syncAssertion>, readonly [value: boolean]>());
+            typeScope.assert(sameType<AssertReferenceReturn<typeof syncAssertion>, SyncAssertionReturn>());
+            typeScope.assert(sameType<AssertReferenceReturn<typeof asyncAssertion>, Promise<void>>());
+            typeScope.assert(sameType<AssertReferenceReturn<typeof narrowingAssertion>, SyncAssertionReturn>());
+            typeScope.assert(sameType.withActual<typeof asyncAssertion>(), asyncAssertion);
+            requireFacade(narrowingAssertion, value);
+            typeScope.assert(sameType.withActual<string>(), value);
+            return typeScope.assert.collect();
+        })
+    ]),
+    suite('Deep assertion operands', [
+        test('defines deep comparable operands', function (typeScope) {
+            typeScope.assert(sameType<DeepComparable, unknown>());
+            typeScope.assert(sameType<DeepComparable<number>, never>());
+            typeScope.assert(sameType<DeepComparable<string | { readonly id: string; }>, never>());
+            typeScope.assert(sameType<DeepComparable<ReturnType<typeof JSON.parse>>, never>());
+            return typeScope.assert.collect();
+        }),
+        test('accepts exact deep assertion operands', function (typeScope) {
+            typeScope.assert(acceptsCall, () => assertFacade.deepEqual({ id: 1 }, { id: 1 }));
+            typeScope.assert(acceptsCall, () => assertFacade.deepEqual([ 1 ], [ 1 ]));
+            typeScope.assert(acceptsCall, () => assertFacade.deepEqual(functionValue, functionValue));
+            typeScope.assert(
+                acceptsCall,
+                () => assertFacade.deepEqual(new Map<string, number>(), new Map<string, number>())
+            );
+            typeScope.assert(acceptsCall, () => assertFacade.deepEqual(new Set<number>(), new Set<number>()));
+            typeScope.assert(acceptsCall, () => assertFacade.deepEqual(unknownValue, { id: 1 }));
+            typeScope.assert(acceptsCall, () => assertFacade.notDeepEqual({ id: 1 }, { id: 2 }));
+            return typeScope.assert.collect();
+        }),
+        test('accepts partial deep assertion operands', function (typeScope) {
+            typeScope.assert(acceptsCall, () => assertFacade.partialDeepEqual({ id: 1, name: 'Ada' }, { id: 1 }));
+            typeScope.assert(acceptsCall, () => assertFacade.arrayContainsPartial(objectValues, { id: 1 }));
+            typeScope.assert(acceptsCall, () => assertFacade.arrayContainsPartial(unknownValues, { id: 1 }));
+            typeScope.assert(acceptsCall, () => assertFacade.membersPartialDeepEqual(objectValues, [ { id: 1 } ]));
+            typeScope.assert(acceptsCall, () => assertFacade.membersPartialDeepEqual(unknownValues, unknownValues));
+            return typeScope.assert.collect();
+        }),
+        test('accepts composite builder deep assertion operands', function (typeScope) {
+            typeScope.assert(acceptsCall, () => compositeCheckBuilder.deepEqual({ id: 1 }, { id: 1 }));
+            typeScope.assert(acceptsCall, () => compositeCheckBuilder.partialDeepEqual({ id: 1 }, { id: 1 }));
+            return typeScope.assert.collect();
+        }),
+        test('rejects exact primitive deep assertion operands', function (typeScope) {
+            typeScope.assert(rejectsCall('argument-type'), () => assertFacade.deepEqual(1, 1));
+            typeScope.assert(rejectsCall('argument-type'), () => assertFacade.notDeepEqual('a', 'b'));
+            typeScope.assert(rejectsCall('argument-type'), () => assertFacade.deepEqual(mixedDeepValue, { id: 'a' }));
+            typeScope.assert(rejectsCall('argument-type'), () => compositeCheckBuilder.deepEqual(1, 1));
+            return typeScope.assert.collect();
+        }),
+        test('rejects partial primitive deep assertion operands', function (typeScope) {
+            typeScope.assert(rejectsCall('argument-type'), () => assertFacade.partialDeepEqual(true, false));
+            typeScope.assert(rejectsCall('argument-type'), () => assertFacade.arrayContainsPartial([ 1 ], { id: 1 }));
+            typeScope.assert(rejectsCall('argument-type'), () => assertFacade.arrayContainsPartial(objectValues, 1));
+            typeScope.assert(
+                rejectsCall('argument-type'),
+                () => assertFacade.membersPartialDeepEqual([ 1 ], [ { id: 1 } ])
+            );
+            typeScope.assert(
+                rejectsCall('argument-type'),
+                () => assertFacade.membersPartialDeepEqual(objectValues, [ 1 ])
+            );
+            typeScope.assert(rejectsCall('argument-type'), () => compositeCheckBuilder.partialDeepEqual(true, false));
+            return typeScope.assert.collect();
+        })
+    ]),
+    suite('CaseId', [
+        test('accepts structured public identity shapes', function (typeScope) {
+            typeScope.assert(assignableFrom<CaseId, CaseIdFixture>());
+            typeScope.assert(sameType<PerTestResult['id'], CaseId>());
+            typeScope.assert(sameType<TestStartReporterEvent['case'], CaseId>());
+            typeScope.assert(sameType<
+                SuiteStartReporterEvent['suitePath'],
+                readonly {
+                    readonly definitionLocations: NonEmptyReadonlyArray<ResolvableSourceLocation>;
+                    readonly title: string;
+                }[]
+            >());
+            typeScope.assert(sameType<RunnerError['attributedTo'], CaseId | null>());
+            return typeScope.assert.collect();
+        }),
+        test('requires explicit nullable identity fields', function (typeScope) {
+            typeScope.assert(assignableFrom.not<CaseId, {
+                readonly suite: readonly ['suite'];
+                readonly title: 'case';
+            }>());
+            typeScope.assert(assignableFrom.not<CaseId, {
+                readonly file: null;
+                readonly suite: readonly ['suite'];
+                readonly title: 'case';
+            }>());
+            return typeScope.assert.collect();
+        })
+    ])
+]);

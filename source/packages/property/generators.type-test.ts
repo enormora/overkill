@@ -1,91 +1,138 @@
-import { describe, expect, test } from 'tstyche';
-import type { Writable } from 'type-fest';
+import { isEqualTo } from '../../test-support/type-relations.ts';
+import { suite, test } from '@overkill-dev/test';
+import { assignableFrom, rejectsCall, sameType } from '@overkill-dev/type-test';
+import type { IsEqual, Writable } from 'type-fest';
 import type * as standard from '../test/property.entry-point.ts';
 import * as leaf from './property.entry-point.ts';
 
 type Tree = { readonly left: Tree; readonly right: Tree; } | null;
 
-describe('fluent generator constructors', function () {
-    test('infers primitive domains and scalar literals', function () {
-        expect(leaf.gen.boolean()).type.toBe<leaf.Generator<boolean>>();
-        expect(leaf.gen.integer({ min: 0, max: 100 })).type.toBe<leaf.Generator<number>>();
-        expect(leaf.gen.number()).type.toBe<leaf.Generator<number>>();
-        expect(leaf.gen.number({ min: -1, max: 1 })).type.toBe<leaf.Generator<number>>();
-        expect(leaf.gen.bigint({ min: 0n, max: 100n })).type.toBe<leaf.Generator<bigint>>();
-        expect(leaf.gen.string()).type.toBe<leaf.Generator<string>>();
-        expect(leaf.gen.string({ minLength: 1, maxLength: 20 })).type.toBe<leaf.Generator<string>>();
-        expect(leaf.gen.bytes()).type.toBe<leaf.Generator<Uint8Array>>();
-        expect(leaf.gen.bytes({ minLength: 0, maxLength: 20 })).type.toBe<leaf.Generator<Uint8Array>>();
-    });
-
-    test('preserves scalar literal types', function () {
-        expect(leaf.gen.constant('value')).type.toBe<leaf.Generator<'value'>>();
-        expect(leaf.gen.constant(null)).type.toBe<leaf.Generator<null>>();
-        expect(leaf.gen.constant(undefined)).type.toBe<leaf.Generator<undefined>>();
+export const testNode = suite('fluent generator constructors', [
+    test('infers primitive domains and scalar literals', function (typeScope) {
+        typeScope.assert(sameType.withActual<true>(), isEqualTo<leaf.Generator<boolean>>()(leaf.gen.boolean()));
+        typeScope.assert(
+            sameType.withActual<true>(),
+            isEqualTo<leaf.Generator<number>>()(leaf.gen.integer({ min: 0, max: 100 }))
+        );
+        typeScope.assert(sameType.withActual<true>(), isEqualTo<leaf.Generator<number>>()(leaf.gen.number()));
+        typeScope.assert(
+            sameType.withActual<true>(),
+            isEqualTo<leaf.Generator<number>>()(leaf.gen.number({ min: -1, max: 1 }))
+        );
+        typeScope.assert(
+            sameType.withActual<true>(),
+            isEqualTo<leaf.Generator<bigint>>()(leaf.gen.bigint({ min: 0n, max: 100n }))
+        );
+        typeScope.assert(sameType.withActual<true>(), isEqualTo<leaf.Generator<string>>()(leaf.gen.string()));
+        typeScope.assert(
+            sameType.withActual<true>(),
+            isEqualTo<leaf.Generator<string>>()(leaf.gen.string({ minLength: 1, maxLength: 20 }))
+        );
+        typeScope.assert(sameType.withActual<true>(), isEqualTo<leaf.Generator<Uint8Array>>()(leaf.gen.bytes()));
+        typeScope.assert(
+            sameType.withActual<true>(),
+            isEqualTo<leaf.Generator<Uint8Array>>()(leaf.gen.bytes({ minLength: 0, maxLength: 20 }))
+        );
+        return typeScope.assert.collect();
+    }),
+    test('preserves scalar literal types', function (typeScope) {
+        typeScope.assert(sameType.withActual<true>(), isEqualTo<leaf.Generator<'value'>>()(leaf.gen.constant('value')));
+        typeScope.assert(sameType.withActual<true>(), isEqualTo<leaf.Generator<null>>()(leaf.gen.constant(null)));
+        typeScope.assert(
+            sameType.withActual<true>(),
+            isEqualTo<leaf.Generator<undefined>>()(leaf.gen.constant(undefined))
+        );
         const literal = 1n;
-        expect(leaf.gen.constant(literal)).type.toBe<leaf.Generator<typeof literal>>();
-    });
-
-    test('preserves heterogeneous tuples, required fields, unions, and dependent outputs', function () {
+        typeScope.assert(
+            sameType.withActual<true>(),
+            isEqualTo<leaf.Generator<typeof literal>>()(leaf.gen.constant(literal))
+        );
+        return typeScope.assert.collect();
+    }),
+    test('preserves heterogeneous tuples, required fields, unions, and dependent outputs', function (typeScope) {
         const integer = leaf.gen.integer({ min: 0, max: 100 });
-        expect(leaf.gen.array(integer)).type.toBe<leaf.Generator<number[]>>();
-        expect(leaf.gen.array(integer, { minLength: 0, maxLength: 4 })).type.toBe<leaf.Generator<number[]>>();
-        expect(leaf.gen.tuple(leaf.gen.constant('name'), integer)).type.toBe<leaf.Generator<['name', number]>>();
-        expect(leaf.gen.record({ name: leaf.gen.string(), age: integer })).type.toBe<
-            leaf.Generator<Writable<{ readonly name: string; readonly age: number; }>>
-        >();
-        expect(leaf.gen.choice(leaf.gen.constant(null), integer, leaf.gen.string())).type.toBe<
-            leaf.Generator<number | string | null>
-        >();
-        expect(leaf.gen.tuple()).type.toBe<leaf.Generator<[]>>();
-        expect(leaf.gen.record({})).type.toBe<leaf.Generator<Record<PropertyKey, never>>>();
-        expect(integer.flatMap(function dependent(value) {
-            return leaf.gen.array(leaf.gen.string(), { minLength: value, maxLength: value });
-        }))
-            .type
-            .toBe<leaf.Generator<string[]>>();
-    });
-
-    test('accepts union leaves and branches in bounded recursion', function () {
+        typeScope.assert(sameType.withActual<true>(), isEqualTo<leaf.Generator<number[]>>()(leaf.gen.array(integer)));
+        typeScope.assert(
+            sameType.withActual<true>(),
+            isEqualTo<leaf.Generator<number[]>>()(leaf.gen.array(integer, { minLength: 0, maxLength: 4 }))
+        );
+        typeScope.assert(
+            sameType.withActual<true>(),
+            isEqualTo<leaf.Generator<['name', number]>>()(leaf.gen.tuple(leaf.gen.constant('name'), integer))
+        );
+        typeScope.assert(
+            sameType.withActual<true>(),
+            isEqualTo<leaf.Generator<Writable<{ readonly name: string; readonly age: number; }>>>()(
+                leaf.gen.record({ name: leaf.gen.string(), age: integer })
+            )
+        );
+        typeScope.assert(
+            sameType.withActual<true>(),
+            isEqualTo<leaf.Generator<number | string | null>>()(
+                leaf.gen.choice(leaf.gen.constant(null), integer, leaf.gen.string())
+            )
+        );
+        typeScope.assert(sameType.withActual<true>(), isEqualTo<leaf.Generator<[]>>()(leaf.gen.tuple()));
+        typeScope.assert(
+            sameType.withActual<true>(),
+            isEqualTo<leaf.Generator<Record<PropertyKey, never>>>()(leaf.gen.record({}))
+        );
+        typeScope.assert(
+            sameType.withActual<true>(),
+            isEqualTo<leaf.Generator<string[]>>()(integer.flatMap(function dependent(value) {
+                return leaf.gen.array(leaf.gen.string(), { minLength: value, maxLength: value });
+            }))
+        );
+        return typeScope.assert.collect();
+    }),
+    test('accepts union leaves and branches in bounded recursion', function (typeScope) {
         const tree = leaf.gen.recursive<Tree>({
             leaf: leaf.gen.constant(null),
             branch(child) {
-                expect(child).type.toBe<leaf.Generator<Tree>>();
+                typeScope.assert(sameType<IsEqual<typeof child, leaf.Generator<Tree>>, true>());
                 return leaf.gen.record({ left: child, right: child });
             },
             maxDepth: 4
         });
-        expect(tree).type.toBe<leaf.Generator<Tree>>();
-        expect<standard.RecursiveGeneratorDefinition<Tree>>().type.toBe<leaf.RecursiveGeneratorDefinition<Tree>>();
-    });
-
-    test('exposes identical types across property entry points without backend operations', function () {
-        expect<typeof standard.gen>().type.toBe<typeof leaf.gen>();
-        expect<standard.NumberBounds>().type.toBe<leaf.NumberBounds>();
-        expect<standard.BigintBounds>().type.toBe<leaf.BigintBounds>();
-        expect<standard.LengthBounds>().type.toBe<leaf.LengthBounds>();
-        expect<standard.GeneratorConstant>().type.toBe<leaf.GeneratorConstant>();
-        expect<leaf.Generator<number>>().type.not.toHaveProperty('generate');
-        expect<leaf.Generator<number>>().type.not.toHaveProperty('shrink');
-        expect<leaf.Generator<number>>().type.not.toHaveProperty('prepare');
-    });
-
-    test('rejects incomplete constraints, empty choices, sampling functions, and mutable constants', function () {
-        expect(leaf.gen.integer).type.not.toBeCallableWith();
-        expect(leaf.gen.integer).type.not.toBeCallableWith({ min: 0 });
-        expect(leaf.gen.bigint).type.not.toBeCallableWith({ min: 0, max: 10 });
-        expect(leaf.gen.string).type.not.toBeCallableWith({ maxLength: 10 });
-        expect(leaf.gen.bytes).type.not.toBeCallableWith({ minLength: 1 });
-        expect(leaf.gen.constant).type.not.toBeCallableWith({ value: 1 });
-        expect(leaf.gen.choice).type.not.toBeCallableWith();
-        expect(leaf.gen.array).type.not.toBeCallableWith(function sample() {
-            return 1;
-        });
-        expect(leaf.gen.recursive).type.not.toBeCallableWith({
-            leaf: leaf.gen.constant(null),
-            branch: function branch(child: leaf.Generator<null>) {
-                return child;
+        typeScope.assert(sameType<IsEqual<typeof tree, leaf.Generator<Tree>>, true>());
+        typeScope.assert(
+            sameType<standard.RecursiveGeneratorDefinition<Tree>, leaf.RecursiveGeneratorDefinition<Tree>>()
+        );
+        return typeScope.assert.collect();
+    }),
+    test('exposes identical types across property entry points without backend operations', function (typeScope) {
+        typeScope.assert(sameType<typeof standard.gen, typeof leaf.gen>());
+        typeScope.assert(sameType<standard.NumberBounds, leaf.NumberBounds>());
+        typeScope.assert(sameType<standard.BigintBounds, leaf.BigintBounds>());
+        typeScope.assert(sameType<standard.LengthBounds, leaf.LengthBounds>());
+        typeScope.assert(sameType<standard.GeneratorConstant, leaf.GeneratorConstant>());
+        typeScope.assert(assignableFrom.not<keyof leaf.Generator<number>, 'generate'>());
+        typeScope.assert(assignableFrom.not<keyof leaf.Generator<number>, 'shrink'>());
+        typeScope.assert(assignableFrom.not<keyof leaf.Generator<number>, 'prepare'>());
+        return typeScope.assert.collect();
+    }),
+    test(
+        'rejects incomplete constraints, empty choices, sampling functions, and mutable constants',
+        function (typeScope) {
+            typeScope.assert(rejectsCall('argument-count'), () => leaf.gen.integer());
+            typeScope.assert(rejectsCall('argument-type'), () => leaf.gen.integer({ min: 0 }));
+            typeScope.assert(rejectsCall('argument-type'), () => leaf.gen.bigint({ min: 0, max: 10 }));
+            typeScope.assert(rejectsCall('argument-type'), () => leaf.gen.string({ maxLength: 10 }));
+            typeScope.assert(rejectsCall('argument-type'), () => leaf.gen.bytes({ minLength: 1 }));
+            typeScope.assert(rejectsCall('argument-type'), () => leaf.gen.constant({ value: 1 }));
+            typeScope.assert(rejectsCall('argument-count'), () => leaf.gen.choice());
+            function sample() {
+                return 1;
             }
-        });
-    });
-});
+            typeScope.assert(rejectsCall('argument-type'), () => leaf.gen.array(sample));
+            typeScope.assert(rejectsCall('argument-type'), () =>
+                leaf.gen.recursive({
+                    leaf: leaf.gen.constant(null),
+                    branch: function branch(child: leaf.Generator<null>) {
+                        return child;
+                    }
+                }));
+            return typeScope.assert.collect();
+        }
+    )
+]);

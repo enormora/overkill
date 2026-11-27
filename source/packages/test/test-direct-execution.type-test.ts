@@ -1,4 +1,6 @@
-import { describe, expect, test as typeTest } from 'tstyche';
+import type { IsEqual } from 'type-fest';
+import { suite, test as typeTest } from '@overkill-dev/test';
+import { acceptsCall, rejectsCall, sameType } from '@overkill-dev/type-test';
 import type {
     DefinedOutputRenderer,
     DefinedReporter,
@@ -37,57 +39,67 @@ declare const node: TestNode;
 declare const outputRenderer: DefinedOutputRenderer;
 declare const reporter: DefinedReporter;
 
-describe('@overkill-dev/test capture and direct execution types', function () {
-    typeTest('types capture controls as selected-profile policy', function () {
-        expect<typeof createTestFacade>().type.toBeCallableWith({
-            controls: authoringControls
-        });
-        expect(test).type.toBeCallableWith({
-            body,
-            controls: { capture: 'live' },
-            title: 'passes'
-        });
-        expect(skippedTest).type.toBeCallableWith({
-            controls: { capture: 'live' },
-            reason: 'unsupported platform',
-            title: 'skips'
-        });
-    });
+declare const createTestFacadeUnderTest: typeof createTestFacade;
 
-    typeTest('re-exports high-level authoring types from the engine', function () {
-        expect<RootRunIfMainOptions>().type.toBe<{
-            readonly outputRenderer?: DefinedOutputRenderer;
-            readonly reporters?: readonly DefinedReporter[];
-            readonly root?: RootRunIfMainRootOptions;
-        }>();
-        expect<RootRunIfMainRootOptions>().type.toBe<{
+export const testNode = suite('@overkill-dev/test capture and direct execution types', [
+    typeTest('types capture controls as selected-profile policy', function (typeScope) {
+        typeScope.assert(acceptsCall, () =>
+            createTestFacadeUnderTest({
+                controls: authoringControls
+            }));
+        typeScope.assert(acceptsCall, () =>
+            test({
+                body,
+                controls: { capture: 'live' },
+                title: 'passes'
+            }));
+        typeScope.assert(acceptsCall, () =>
+            skippedTest({
+                controls: { capture: 'live' },
+                reason: 'unsupported platform',
+                title: 'skips'
+            }));
+        return typeScope.assert.collect();
+    }),
+    typeTest('re-exports high-level authoring types from the engine', function (typeScope) {
+        typeScope.assert(sameType<
+            IsEqual<RootRunIfMainOptions, {
+                readonly outputRenderer?: DefinedOutputRenderer;
+                readonly reporters?: readonly DefinedReporter[];
+                readonly root?: RootRunIfMainRootOptions;
+            }>,
+            true
+        >());
+        typeScope.assert(sameType<RootRunIfMainRootOptions, {
             readonly annotations?: AuthoringAnnotations;
             readonly controls?: AuthoringControls;
             readonly title: string;
-        }>();
-        expect<RootInFlightTask<string>>().type.toBe<InFlightTask<string>>();
-        expect<RootSuite>().type.toBe<Suite>();
-        expect<RootTable>().type.toBe<Table>();
-        expect<RootTestBody>().type.toBe<TestBody>();
-        expect<RootTestCase>().type.toBe<TestCase>();
-        expect<RootTestNode>().type.toBe<TestNode>();
-        expect<RootTestScope>().type.toBe<TestScope>();
-        expect<RootTestScopeAssertContext>().type.toBe<TestScopeAssertContext>();
-    });
-
-    typeTest('runs direct entrypoints with runner-owned options', function () {
-        expect(runIfMain).type.toBeCallableWith(import.meta, node);
-        expect(runIfMain).type.toBeCallableWith(import.meta, node, {
-            outputRenderer,
-            reporters: [ reporter ],
-            root: {
-                annotations,
-                controls: authoringControls,
-                title: 'root'
-            }
-        });
-        expect(runIfMain).type.not.toBeCallableWith(import.meta, node, { runFacts: {} });
-        expect(runIfMain).type.not.toBeCallableWith(import.meta, node, { profile: 'microtest' });
-        expect(runIfMain).type.not.toBeCallableWith(import.meta, node, { cwd: 'project' });
-    });
-});
+        }>());
+        typeScope.assert(sameType<RootInFlightTask<string>, InFlightTask<string>>());
+        typeScope.assert(sameType<IsEqual<RootSuite, Suite>, true>());
+        typeScope.assert(sameType<IsEqual<RootTable, Table>, true>());
+        typeScope.assert(sameType<IsEqual<RootTestBody, TestBody>, true>());
+        typeScope.assert(sameType<IsEqual<RootTestCase, TestCase>, true>());
+        typeScope.assert(sameType<IsEqual<RootTestNode, TestNode>, true>());
+        typeScope.assert(sameType<IsEqual<RootTestScope, TestScope>, true>());
+        typeScope.assert(sameType<RootTestScopeAssertContext, TestScopeAssertContext>());
+        return typeScope.assert.collect();
+    }),
+    typeTest('runs direct entrypoints with runner-owned options', function (typeScope) {
+        typeScope.assert(acceptsCall, () => runIfMain(import.meta, node));
+        typeScope.assert(acceptsCall, () =>
+            runIfMain(import.meta, node, {
+                outputRenderer,
+                reporters: [ reporter ],
+                root: {
+                    annotations,
+                    controls: authoringControls,
+                    title: 'root'
+                }
+            }));
+        typeScope.assert(rejectsCall('argument-type'), () => runIfMain(import.meta, node, { runFacts: {} }));
+        typeScope.assert(rejectsCall('argument-type'), () => runIfMain(import.meta, node, { profile: 'microtest' }));
+        typeScope.assert(rejectsCall('argument-type'), () => runIfMain(import.meta, node, { cwd: 'project' }));
+        return typeScope.assert.collect();
+    })
+]);

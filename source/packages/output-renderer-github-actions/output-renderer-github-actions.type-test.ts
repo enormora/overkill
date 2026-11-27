@@ -1,9 +1,11 @@
-import { describe, expect, test } from 'tstyche';
+import { suite, test } from '@overkill-dev/test';
+import { sameType } from '@overkill-dev/type-test';
 import type { DefinedOutputRenderer } from '../engine/engine.entry-point.ts';
 import type { createGithubActionsOutputRenderer } from './output-renderer-github-actions.entry-point.ts';
 
-describe('@overkill-dev/output-renderer-github-actions', function () {
-    test('returns the public output renderer contract', function () {
-        expect<typeof createGithubActionsOutputRenderer>().type.toBe<() => DefinedOutputRenderer>();
-    });
-});
+export const testNode = suite('@overkill-dev/output-renderer-github-actions', [
+    test('returns the public output renderer contract', function (typeScope) {
+        typeScope.assert(sameType<typeof createGithubActionsOutputRenderer, () => DefinedOutputRenderer>());
+        return typeScope.assert.collect();
+    })
+]);

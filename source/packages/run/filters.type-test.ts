@@ -1,4 +1,5 @@
-import { describe, expect, test } from 'tstyche';
+import { suite, test } from '@overkill-dev/test';
+import { assignableFrom, assignableTo, rejectsCall, sameType } from '@overkill-dev/type-test';
 import type { CaseId } from '../engine/engine.entry-point.ts';
 import * as filters from './filters.entry-point.ts';
 import type { RunFilter, RunSelection, RunStringFilterField } from './filters.entry-point.ts';
@@ -25,15 +26,17 @@ type FilterPackageValueExport = keyof {
     readonly workload: true;
 };
 
-describe('@overkill-dev/run/filters', function () {
-    test('exposes the typed filter helper surface without test-family matching', function () {
-        expect<keyof typeof filters>().type.toBe<FilterPackageValueExport>();
-        expect<RunStringFilterField>().type.toBe<
-            'file' | 'owner' | 'params' | 'suite' | 'tag' | 'title' | 'workload'
-        >();
-    });
+declare const equalsUnderTest: typeof filters.equals;
 
-    test('creates typed filter trees for run selections', function () {
+export const testNode = suite('@overkill-dev/run/filters', [
+    test('exposes the typed filter helper surface without test-family matching', function (typeScope) {
+        typeScope.assert(sameType<keyof typeof filters, FilterPackageValueExport>());
+        typeScope.assert(
+            sameType<RunStringFilterField, 'file' | 'owner' | 'params' | 'suite' | 'tag' | 'title' | 'workload'>()
+        );
+        return typeScope.assert.collect();
+    }),
+    test('creates typed filter trees for run selections', function (typeScope) {
         const id: CaseId = {
             file: 'source/users.test.ts',
             params: null,
@@ -54,57 +57,61 @@ describe('@overkill-dev/run/filters', function () {
             filters.runtimeScenario('api', 'api', 'payments-500')
         ]);
 
-        expect(filter).type.toBeAssignableTo<RunFilter>();
-        expect<RunSelection>().type.toBeAssignableFrom<{
+        typeScope.assert(assignableTo.withActual<RunFilter>(), filter);
+        typeScope.assert(assignableFrom<RunSelection, {
             readonly filter: RunFilter;
             readonly kind: 'filter';
-        }>();
-    });
-
-    test('exposes composite helper signatures', function () {
-        expect<typeof filters.all>().type.toBe<
-            (filters: readonly [RunFilter, ...(readonly RunFilter[])]) => RunFilter
-        >();
-        expect<typeof filters.any>().type.toBe<
-            (filters: readonly [RunFilter, ...(readonly RunFilter[])]) => RunFilter
-        >();
-        expect<typeof filters.not>().type.toBe<(filter: RunFilter) => RunFilter>();
-        expect<typeof filters.caseId>().type.toBe<(id: CaseId) => RunFilter>();
-        expect<typeof filters.parseRunFilterExpression>().type.toBe<(expression: string) => RunFilter>();
-        expect<typeof filters.runtime>().type.toBe<(name: string) => RunFilter>();
-        expect<typeof filters.runtimeVariant>().type.toBe<
-            (name: string, variantId: string) => RunFilter
-        >();
-        expect<typeof filters.runtimeDimension>().type.toBe<
-            (name: string, dimensionName: string, value: string) => RunFilter
-        >();
-        expect<typeof filters.runtimeScenario>().type.toBe<
-            (runtime: string, scenario: string, value: string) => RunFilter
-        >();
-    });
-
-    test('exposes generic string helper signatures', function () {
-        expect<typeof filters.equals>().type.toBe<(field: RunStringFilterField, value: string) => RunFilter>();
-        expect<typeof filters.contains>().type.toBe<(field: RunStringFilterField, value: string) => RunFilter>();
-        expect<typeof filters.glob>().type.toBe<(field: RunStringFilterField, pattern: string) => RunFilter>();
-    });
-
-    test('exposes field helper signatures', function () {
-        expect<typeof filters.file>().type.toBe<(pattern: string) => RunFilter>();
-        expect<typeof filters.owner>().type.toBe<(value: string) => RunFilter>();
-        expect<typeof filters.params>().type.toBe<(value: string) => RunFilter>();
-        expect<typeof filters.suite>().type.toBe<(value: string) => RunFilter>();
-        expect<typeof filters.tag>().type.toBe<(value: string) => RunFilter>();
-        expect<typeof filters.title>().type.toBe<(value: string) => RunFilter>();
-        expect<typeof filters.workload>().type.toBe<(value: string) => RunFilter>();
-    });
-
-    test('keeps invalid fields and stability markers out of helper calls', function () {
-        expect<RunStringFilterField>().type.not.toBeAssignableFrom<'kind'>();
-        expect<RunStringFilterField>().type.not.toBeAssignableFrom<'runtime'>();
-        expect<RunStringFilterField>().type.not.toBeAssignableFrom<'stability'>();
-        expect<keyof typeof filters>().type.not.toBeAssignableFrom<'kind'>();
-        expect<keyof typeof filters>().type.not.toBeAssignableFrom<'stability'>();
-        expect<typeof filters.equals>().type.not.toBeCallableWith('kind', 'microtest');
-    });
-});
+        }>());
+        return typeScope.assert.collect();
+    }),
+    test('exposes composite helper signatures', function (typeScope) {
+        typeScope.assert(
+            sameType<typeof filters.all, (filters: readonly [RunFilter, ...(readonly RunFilter[])]) => RunFilter>()
+        );
+        typeScope.assert(
+            sameType<typeof filters.any, (filters: readonly [RunFilter, ...(readonly RunFilter[])]) => RunFilter>()
+        );
+        typeScope.assert(sameType<typeof filters.not, (filter: RunFilter) => RunFilter>());
+        typeScope.assert(sameType<typeof filters.caseId, (id: CaseId) => RunFilter>());
+        typeScope.assert(sameType<typeof filters.parseRunFilterExpression, (expression: string) => RunFilter>());
+        typeScope.assert(sameType<typeof filters.runtime, (name: string) => RunFilter>());
+        typeScope.assert(sameType<typeof filters.runtimeVariant, (name: string, variantId: string) => RunFilter>());
+        typeScope.assert(
+            sameType<
+                typeof filters.runtimeDimension,
+                (name: string, dimensionName: string, value: string) => RunFilter
+            >()
+        );
+        typeScope.assert(
+            sameType<typeof filters.runtimeScenario, (runtime: string, scenario: string, value: string) => RunFilter>()
+        );
+        return typeScope.assert.collect();
+    }),
+    test('exposes generic string helper signatures', function (typeScope) {
+        typeScope.assert(sameType<typeof filters.equals, (field: RunStringFilterField, value: string) => RunFilter>());
+        typeScope.assert(
+            sameType<typeof filters.contains, (field: RunStringFilterField, value: string) => RunFilter>()
+        );
+        typeScope.assert(sameType<typeof filters.glob, (field: RunStringFilterField, pattern: string) => RunFilter>());
+        return typeScope.assert.collect();
+    }),
+    test('exposes field helper signatures', function (typeScope) {
+        typeScope.assert(sameType<typeof filters.file, (pattern: string) => RunFilter>());
+        typeScope.assert(sameType<typeof filters.owner, (value: string) => RunFilter>());
+        typeScope.assert(sameType<typeof filters.params, (value: string) => RunFilter>());
+        typeScope.assert(sameType<typeof filters.suite, (value: string) => RunFilter>());
+        typeScope.assert(sameType<typeof filters.tag, (value: string) => RunFilter>());
+        typeScope.assert(sameType<typeof filters.title, (value: string) => RunFilter>());
+        typeScope.assert(sameType<typeof filters.workload, (value: string) => RunFilter>());
+        return typeScope.assert.collect();
+    }),
+    test('keeps invalid fields and stability markers out of helper calls', function (typeScope) {
+        typeScope.assert(assignableFrom.not<RunStringFilterField, 'kind'>());
+        typeScope.assert(assignableFrom.not<RunStringFilterField, 'runtime'>());
+        typeScope.assert(assignableFrom.not<RunStringFilterField, 'stability'>());
+        typeScope.assert(assignableFrom.not<keyof typeof filters, 'kind'>());
+        typeScope.assert(assignableFrom.not<keyof typeof filters, 'stability'>());
+        typeScope.assert(rejectsCall('argument-type'), () => equalsUnderTest('kind', 'microtest'));
+        return typeScope.assert.collect();
+    })
+]);

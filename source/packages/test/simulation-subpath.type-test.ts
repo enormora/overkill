@@ -1,4 +1,5 @@
-import { describe, expect, test } from 'tstyche';
+import { suite, test } from '@overkill-dev/test';
+import { acceptsCall, sameType } from '@overkill-dev/type-test';
 import {
     defineSimulatedHttpServer,
     defineSimulation,
@@ -25,14 +26,16 @@ const httpSimulation = defineSimulatedHttpServer({
     }
 });
 
-describe('@overkill-dev/test/simulation', function () {
-    test('exposes simulation definitions through the standard distribution', function () {
-        expect<ScenarioKeyOf<typeof apiSimulation>>().type.toBe<'default' | 'outage'>();
-        expect<ScenarioKeyOf<typeof httpSimulation>>().type.toBe<'default' | 'outage'>();
-        expect(apiSimulation.name).type.toBe<'api'>();
-        expect(httpSimulation.handle).type.toBeCallableWith(new Request('https://example.test'), {
-            descriptor: httpSimulation.scenarios.outage,
-            key: 'outage'
-        });
-    });
-});
+export const testNode = suite('@overkill-dev/test/simulation', [
+    test('exposes simulation definitions through the standard distribution', function (typeScope) {
+        typeScope.assert(sameType<ScenarioKeyOf<typeof apiSimulation>, 'default' | 'outage'>());
+        typeScope.assert(sameType<ScenarioKeyOf<typeof httpSimulation>, 'default' | 'outage'>());
+        typeScope.assert(sameType.withActual<'api'>(), apiSimulation.name);
+        typeScope.assert(acceptsCall, () =>
+            httpSimulation.handle(new Request('https://example.test'), {
+                descriptor: httpSimulation.scenarios.outage,
+                key: 'outage'
+            }));
+        return typeScope.assert.collect();
+    })
+]);

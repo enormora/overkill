@@ -1,4 +1,6 @@
-import { describe, expect, test } from 'tstyche';
+import type { IsEqual } from 'type-fest';
+import { suite, test } from '@overkill-dev/test';
+import { rejectsCall, sameType } from '@overkill-dev/type-test';
 import {
     createTestPlanFromTestFiles,
     type Engine,
@@ -13,21 +15,21 @@ import {
     type TestRoot
 } from './engine.entry-point.ts';
 
-declare const testNode: TestNode;
+declare const userTest: TestNode;
 
-describe('TestRoot', function () {
-    test('is separate from TestNode planning paths', function () {
-        expect<TestRoot['kind']>().type.toBe<'root'>();
-        expect<TestRoot>().type.not.toBeAssignableTo<TestNode>();
-        expect<TestPlan['root']>().type.toBe<{
+export const testNode = suite('TestRoot', [
+    test('is separate from TestNode planning paths', function (typeScope) {
+        typeScope.assert(sameType<TestRoot['kind'], 'root'>());
+        typeScope.assert(sameType<[TestRoot] extends [TestNode] ? true : false, false>());
+        typeScope.assert(sameType<TestPlan['root'], {
             readonly annotations: TestAnnotations;
             readonly controls: TestControls;
             readonly title: string;
-        }>();
-    });
-
-    test('exposes file-backed planning for explicit run inputs', function () {
-        expect<TestPlanFromTestFilesOptions>().type.toBe<{
+        }>());
+        return typeScope.assert.collect();
+    }),
+    test('exposes file-backed planning for explicit run inputs', function (typeScope) {
+        typeScope.assert(sameType<TestPlanFromTestFilesOptions, {
             readonly files: readonly [
                 {
                     readonly file: string;
@@ -43,24 +45,30 @@ describe('TestRoot', function () {
                 readonly controls: TestControlsInput;
                 readonly title: string;
             };
-        }>();
-        expect<Engine['createTestPlanFromTestFiles']>().type.toBe<
-            (
-                options: TestPlanFromTestFilesOptions,
-                ...policies: readonly [] | readonly [TestPlanCollectionPolicy]
-            ) => TestPlan
-        >();
-        expect<Engine['ownsTestNode']>().type.toBe<(value: unknown) => value is TestNode>();
-    });
-
-    test('rejects metadata on file-backed planning entries', function () {
-        expect(createTestPlanFromTestFiles).type.not.toBeCallableWith({
-            files: [ { file: 'source/users.test.ts', metadata: {}, testNode } ],
-            root: {
-                annotations: {},
-                controls: {},
-                title: 'root'
-            }
-        });
-    });
-});
+        }>());
+        typeScope.assert(sameType<
+            IsEqual<
+                Engine['createTestPlanFromTestFiles'],
+                (
+                    options: TestPlanFromTestFilesOptions,
+                    ...policies: readonly [] | readonly [TestPlanCollectionPolicy]
+                ) => TestPlan
+            >,
+            true
+        >());
+        typeScope.assert(sameType<Engine['ownsTestNode'], (value: unknown) => value is TestNode>());
+        return typeScope.assert.collect();
+    }),
+    test('rejects metadata on file-backed planning entries', function (typeScope) {
+        typeScope.assert(rejectsCall('argument-type'), () =>
+            createTestPlanFromTestFiles({
+                files: [ { file: 'source/users.test.ts', metadata: {}, testNode: userTest } ],
+                root: {
+                    annotations: {},
+                    controls: {},
+                    title: 'root'
+                }
+            }));
+        return typeScope.assert.collect();
+    })
+]);

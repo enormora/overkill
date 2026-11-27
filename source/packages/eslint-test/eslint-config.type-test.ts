@@ -1,9 +1,11 @@
-import { expect, test } from 'tstyche';
+import { isEqualTo } from '../../test-support/type-relations.ts';
+import { test } from '@overkill-dev/test';
+import { sameType } from '@overkill-dev/type-test';
 import type { Suite } from '../engine/engine.entry-point.ts';
 import { gen } from '../property/property.entry-point.ts';
 import { defineConfigTests, type ConfigInput, type ConfigSource } from './eslint-test.entry-point.ts';
 
-test('retains named config selection and independent suite types', function () {
+export const testNode = test('retains named config selection and independent suite types', function (typeScope) {
     const configs: Record<'strict', ConfigSource> = { strict: [] };
     const definition = defineConfigTests({
         name: 'policy',
@@ -24,7 +26,8 @@ test('retains named config selection and independent suite types', function () {
             }
         } ]
     });
-    expect(definition.checks()).type.toBe<Suite>();
-    expect(definition.fixtures()).type.toBe<Suite>();
-    expect(definition.properties()).type.toBe<Suite>();
+    typeScope.assert(sameType.withActual<true>(), isEqualTo<Suite>()(definition.checks()));
+    typeScope.assert(sameType.withActual<true>(), isEqualTo<Suite>()(definition.fixtures()));
+    typeScope.assert(sameType.withActual<true>(), isEqualTo<Suite>()(definition.properties()));
+    return typeScope.assert.collect();
 });

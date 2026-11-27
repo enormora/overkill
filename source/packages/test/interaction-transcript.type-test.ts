@@ -1,4 +1,6 @@
-import { describe, expect, test } from 'tstyche';
+import type { IsEqual } from 'type-fest';
+import { suite, test } from '@overkill-dev/test';
+import { acceptsCall, rejectsCall, sameType } from '@overkill-dev/type-test';
 import type { TestScopeAssertContext } from '../engine/engine.entry-point.ts';
 import {
     createTranscript,
@@ -26,18 +28,21 @@ type RootTranscriptTypes = {
 
 declare const rootAssert: TestScopeAssertContext;
 
-describe('@overkill-dev/test interaction transcripts', function () {
-    test('exposes transcript authoring types from the root facade', function () {
-        expect<RootTranscriptTypes>().type.toBe<{
-            readonly asyncDisposableTranscript: AsyncDisposableTranscript<StateEntry>;
-            readonly disposableTranscript: DisposableTranscript<StateEntry>;
-            readonly transcript: Transcript<StateEntry>;
-            readonly transcriptEntry: TranscriptEntry;
-            readonly transcriptUsageAssertions: TranscriptUsageAssertions;
-        }>();
-    });
-
-    test('creates typed interaction transcript recorders', function () {
+export const testNode = suite('@overkill-dev/test interaction transcripts', [
+    test('exposes transcript authoring types from the root facade', function (typeScope) {
+        typeScope.assert(sameType<
+            IsEqual<RootTranscriptTypes, {
+                readonly asyncDisposableTranscript: AsyncDisposableTranscript<StateEntry>;
+                readonly disposableTranscript: DisposableTranscript<StateEntry>;
+                readonly transcript: Transcript<StateEntry>;
+                readonly transcriptEntry: TranscriptEntry;
+                readonly transcriptUsageAssertions: TranscriptUsageAssertions;
+            }>,
+            true
+        >());
+        return typeScope.assert.collect();
+    }),
+    test('creates typed interaction transcript recorders', function (typeScope) {
         const transcript = createTranscript<StateEntry>();
         const sink = transcript.sink('state');
         const subscription = recordSink<StateEntry>(function subscribe(record) {
@@ -57,20 +62,24 @@ describe('@overkill-dev/test interaction transcripts', function () {
 
         transcript.record('state', { count: 1 });
 
-        expect(transcript).type.toBe<Transcript<StateEntry>>();
-        expect(sink).type.toBeCallableWith({ count: 1 });
-        expect(subscription).type.toBe<DisposableTranscript<StateEntry>>();
-        expect(asyncSubscription).type.toBe<AsyncDisposableTranscript<StateEntry>>();
-    });
-
-    test('asserts typed interaction transcript usage', function () {
+        typeScope.assert(sameType.withActual<Transcript<StateEntry>>(), transcript);
+        typeScope.assert(acceptsCall, () => sink({ count: 1 }));
+        typeScope.assert(sameType.withActual<DisposableTranscript<StateEntry>>(), subscription);
+        typeScope.assert(sameType.withActual<AsyncDisposableTranscript<StateEntry>>(), asyncSubscription);
+        return typeScope.assert.collect();
+    }),
+    test('asserts typed interaction transcript usage', function (typeScope) {
         const transcript = createTranscript<StateEntry>();
 
         transcript.record('state', { count: 1 });
 
-        expect(transcript.record).type.not.toBeCallableWith('other', { count: 1 });
-        expect(transcript.record).type.not.toBeCallableWith('state', { value: 1 });
-        expect(rootAssert).type.toBeCallableWith(transcriptUsage.empty, transcript);
-        expect(rootAssert).type.toBeCallableWith(transcriptUsage.exactly, transcript, [ [ 'state', { count: 1 } ] ]);
-    });
-});
+        typeScope.assert(rejectsCall('argument-type'), () => transcript.record('other', { count: 1 }));
+        typeScope.assert(rejectsCall('argument-type'), () => transcript.record('state', { value: 1 }));
+        typeScope.assert(acceptsCall, () => rootAssert(transcriptUsage.empty, transcript));
+        typeScope.assert(
+            acceptsCall,
+            () => rootAssert(transcriptUsage.exactly, transcript, [ [ 'state', { count: 1 } ] ])
+        );
+        return typeScope.assert.collect();
+    })
+]);

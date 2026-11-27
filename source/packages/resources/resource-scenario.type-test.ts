@@ -1,39 +1,39 @@
-import { describe, expect, test } from 'tstyche';
+import { test } from '@overkill-dev/test';
+import { acceptsCall, assignableFrom, sameType } from '@overkill-dev/type-test';
 import { defineResource, type RuntimeAttachments } from './resources.entry-point.ts';
 
 declare const attachments: RuntimeAttachments;
 
-const routedScenarioDatabase = defineResource({
-    name: 'routed-scenario-database',
-    scope: 'per-case',
-    requirements: [],
-    scenarios: {
-        database: {
-            default: 'primary',
-            timing: 'request-routed',
-            values: [ 'primary', 'replica' ]
+export const testNode = test('separates acquisition and handle exposure bindings', function (typeScope) {
+    const routedScenarioDatabase = defineResource({
+        name: 'routed-scenario-database',
+        scope: 'per-case',
+        requirements: [],
+        scenarios: {
+            database: {
+                default: 'primary',
+                timing: 'request-routed',
+                values: [ 'primary', 'replica' ]
+            }
+        },
+        acquire(context): string {
+            typeScope.assert(assignableFrom.not<keyof typeof context.scenarios, 'database'>());
+
+            return 'database';
+        },
+        dispose(_handle, context) {
+            typeScope.assert(assignableFrom.not<keyof typeof context.scenarios, 'database'>());
+        },
+        exposeHandle(handle, context) {
+            typeScope.assert(sameType.withActual<'primary' | 'replica'>(), context.scenarios.database);
+
+            return `${handle}:${context.scenarios.database}`;
         }
-    },
-    acquire(context): string {
-        expect(context.scenarios).type.not.toHaveProperty('database');
-
-        return 'database';
-    },
-    dispose(_handle, context) {
-        expect(context.scenarios).type.not.toHaveProperty('database');
-    },
-    exposeHandle(handle, context) {
-        expect(context.scenarios.database).type.toBe<'primary' | 'replica'>();
-
-        return `${handle}:${context.scenarios.database}`;
-    }
-});
-
-describe('resource scenarios', function () {
-    test('separates acquisition and handle exposure bindings', function () {
-        expect(routedScenarioDatabase.exposeHandle).type.toBeCallableWith('database', {
+    });
+    typeScope.assert(acceptsCall, () =>
+        routedScenarioDatabase.exposeHandle('database', {
             attachments,
             scenarios: { database: 'replica' }
-        });
-    });
+        }));
+    return typeScope.assert.collect();
 });

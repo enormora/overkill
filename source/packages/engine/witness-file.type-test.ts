@@ -1,4 +1,5 @@
-import { expect, test } from 'tstyche';
+import { test } from '@overkill-dev/test';
+import { assignableTo, sameType } from '@overkill-dev/type-test';
 import {
     parseWitnessFile,
     type EncodedPropertyInput,
@@ -9,17 +10,18 @@ import {
     type PropertyWitnessTarget
 } from './engine.entry-point.ts';
 
-test('witness kinds narrow without casts', function () {
+export const testNode = test('witness kinds narrow without casts', function (typeScope) {
     const witness = parseWitnessFile(null);
-    expect(witness).type.toBe<WitnessFile>();
-    expect(witness).type.toBeAssignableTo<WitnessHeader>();
+    typeScope.assert(sameType.withActual<WitnessFile>(), witness);
+    typeScope.assert(assignableTo.withActual<WitnessHeader>(), witness);
     if (witness.kind === 'property') {
-        expect(witness).type.toBe<PropertyWitnessFile>();
-        expect(witness.target).type.toBe<PropertyWitnessTarget>();
-        expect(witness.counterexample).type.toBe<EncodedPropertyInput>();
-        expect(witness.seed).type.toBe<string>();
+        typeScope.assert(sameType.withActual<PropertyWitnessFile>(), witness);
+        typeScope.assert(sameType.withActual<PropertyWitnessTarget>(), witness.target);
+        typeScope.assert(sameType.withActual<EncodedPropertyInput>(), witness.counterexample);
+        typeScope.assert(sameType.withActual<string>(), witness.seed);
     } else {
-        expect(witness).type.toBe<SimulationWitnessFile>();
-        expect(witness.seed).type.toBe<string | null>();
+        typeScope.assert(sameType.withActual<SimulationWitnessFile>(), witness);
+        typeScope.assert(sameType.withActual<string | null>(), witness.seed);
     }
+    return typeScope.assert.collect();
 });

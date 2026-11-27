@@ -1,4 +1,6 @@
-import { describe, expect, test } from 'tstyche';
+import type { IsEqual } from 'type-fest';
+import { suite, test } from '@overkill-dev/test';
+import { assignableTo, sameType } from '@overkill-dev/type-test';
 import type { FamilyRunFacts, ImplementationCatalog } from '../engine/engine.entry-point.ts';
 import type {
     CoveragePolicy,
@@ -36,37 +38,44 @@ type RunFactsKeys = readonly [
 type CurrentRecordVersion = 1;
 type VersionedFacts = CompactRunRecord['facts'] | MergedRunRecord['facts'] | RunFacts | null;
 
-describe('@overkill-dev/run recording', function () {
-    test('preserves implementation and family facts in version 1 records', function () {
-        expect<RunFacts['family']>().type.toBe<FamilyRunFacts>();
-        expect<RunFacts['implementations']>().type.toBe<ImplementationCatalog | null>();
-        expect<RunRecord['version']>().type.toBe<CurrentRecordVersion>();
-        expect<RunRecord['facts']>().type.toBe<VersionedFacts>();
-        expect<SingleRunRecord['facts']>().type.toBe<RunFacts | null>();
-    });
-    test('preserves merged record contracts', function () {
-        expect<MergedRunRecord['version']>().type.toBe<CurrentRecordVersion>();
-        expect<MergedRunRecord['facts']['family']>().type.toBe<FamilyRunFacts | null>();
-    });
-    test('exposes serializable run facts with case annotations and controls', function () {
-        expect<keyof RunFacts>()
-            .type
-            .toBe<RunFactsKeys[number]>();
-        expect<RunFacts['cases'][number]['annotations']>().type.toBe<SerializedValue>();
-        expect<RunFacts['cases'][number]['controls']>().type.toBe<SerializedValue>();
-        expect<RunFacts['reproducibility']['selection']>().type.toBe<RunSelection>();
-        expect<RunFacts>().type.toBeAssignableTo<Readonly<Record<string, unknown>>>();
-    });
-
-    test('exposes JSON-safe coverage run records with explicit absent facts and metadata', function () {
-        expect<RunFacts['benchmarkPlacement']>().type.toBe<BenchmarkPlacementFacts | null>();
-        expect<RunFacts['coveragePolicy']>().type.toBe<CoveragePolicy | null>();
-        expect<RunRecordRequest['seed']>().type.toBe<{ readonly value: string; }>();
-        expect<NonNullable<RunRecord['versions']>['engine']>().type.toBe<string | null>();
-        expect<SingleRunRecord['runtime']>().type.toBe<ResolvedRuntime | null>();
-        expect<Extract<RunRecord, { readonly status: 'completed'; }>['result']>()
-            .type
-            .toBe<CompactRunResult | RunRecordResult>();
-        expect<RunRecordResult['runnerErrors'][number]['cause']>().type.toBe<SerializedValue>();
-    });
-});
+export const testNode = suite('@overkill-dev/run recording', [
+    test('preserves implementation and family facts in version 1 records', function (typeScope) {
+        typeScope.assert(sameType<RunFacts['family'], FamilyRunFacts>());
+        typeScope.assert(sameType<RunFacts['implementations'], ImplementationCatalog | null>());
+        typeScope.assert(sameType<RunRecord['version'], CurrentRecordVersion>());
+        typeScope.assert(sameType<RunRecord['facts'], VersionedFacts>());
+        typeScope.assert(sameType<SingleRunRecord['facts'], RunFacts | null>());
+        return typeScope.assert.collect();
+    }),
+    test('preserves merged record contracts', function (typeScope) {
+        typeScope.assert(sameType<MergedRunRecord['version'], CurrentRecordVersion>());
+        typeScope.assert(sameType<MergedRunRecord['facts']['family'], FamilyRunFacts | null>());
+        return typeScope.assert.collect();
+    }),
+    test('exposes serializable run facts with case annotations and controls', function (typeScope) {
+        typeScope.assert(sameType<keyof RunFacts, RunFactsKeys[number]>());
+        typeScope.assert(sameType<RunFacts['cases'][number]['annotations'], SerializedValue>());
+        typeScope.assert(sameType<RunFacts['cases'][number]['controls'], SerializedValue>());
+        typeScope.assert(sameType<RunFacts['reproducibility']['selection'], RunSelection>());
+        typeScope.assert(assignableTo<RunFacts, Readonly<Record<string, unknown>>>());
+        return typeScope.assert.collect();
+    }),
+    test('exposes JSON-safe coverage run records with explicit absent facts and metadata', function (typeScope) {
+        typeScope.assert(sameType<RunFacts['benchmarkPlacement'], BenchmarkPlacementFacts | null>());
+        typeScope.assert(sameType<RunFacts['coveragePolicy'], CoveragePolicy | null>());
+        typeScope.assert(sameType<RunRecordRequest['seed'], { readonly value: string; }>());
+        typeScope.assert(sameType<NonNullable<RunRecord['versions']>['engine'], string | null>());
+        typeScope.assert(sameType<SingleRunRecord['runtime'], ResolvedRuntime | null>());
+        typeScope.assert(
+            sameType<
+                IsEqual<
+                    Extract<RunRecord, { readonly status: 'completed'; }>['result'],
+                    CompactRunResult | RunRecordResult
+                >,
+                true
+            >()
+        );
+        typeScope.assert(sameType<RunRecordResult['runnerErrors'][number]['cause'], SerializedValue>());
+        return typeScope.assert.collect();
+    })
+]);

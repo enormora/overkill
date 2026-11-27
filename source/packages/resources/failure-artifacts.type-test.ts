@@ -1,4 +1,5 @@
-import { expect, test } from 'tstyche';
+import { test } from '@overkill-dev/test';
+import { acceptsCall, assignableFrom, sameType } from '@overkill-dev/type-test';
 import {
     defineResource,
     withFailureArtifacts,
@@ -22,24 +23,29 @@ const owner = defineResource({
     }
 });
 
-test('failure preparation receives the owner handle and attempt-only witnesses', function () {
-    const decorated = withFailureArtifacts(owner, function (capture) {
-        expect(capture.handle.secret).type.toBe<string>();
-        expect(capture.handle).type.not.toHaveProperty('url');
-        if (capture.kind === 'attempt') {
-            expect(capture.attachments).type.toBe<FailureArtifactAttachments>();
-            expect(capture.attachments.witness).type.toBeCallableWith({
-                producedBy: { library: 'simulation', libraryVersion: '1.0.0' },
-                simulation: { name: 'service', payload: { version: 1 } },
-                scenario: 'default',
-                seed: null,
-                runtimeSnapshot: null,
-                faultConfiguration: null
-            });
-        } else {
-            expect(capture.attachments).type.toBe<RuntimeAttachments>();
-            expect(capture.attachments).type.not.toHaveProperty('witness');
-        }
-    });
-    expect(decorated).type.toBe<typeof owner>();
-});
+export const testNode = test(
+    'failure preparation receives the owner handle and attempt-only witnesses',
+    function (typeScope) {
+        const decorated = withFailureArtifacts(owner, function (capture) {
+            typeScope.assert(sameType.withActual<string>(), capture.handle.secret);
+            typeScope.assert(assignableFrom.not<keyof typeof capture.handle, 'url'>());
+            if (capture.kind === 'attempt') {
+                typeScope.assert(sameType.withActual<FailureArtifactAttachments>(), capture.attachments);
+                typeScope.assert(acceptsCall, () =>
+                    capture.attachments.witness({
+                        producedBy: { library: 'simulation', libraryVersion: '1.0.0' },
+                        simulation: { name: 'service', payload: { version: 1 } },
+                        scenario: 'default',
+                        seed: null,
+                        runtimeSnapshot: null,
+                        faultConfiguration: null
+                    }));
+            } else {
+                typeScope.assert(sameType.withActual<RuntimeAttachments>(), capture.attachments);
+                typeScope.assert(assignableFrom.not<keyof typeof capture.attachments, 'witness'>());
+            }
+        });
+        typeScope.assert(sameType.withActual<typeof owner>(), decorated);
+        return typeScope.assert.collect();
+    }
+);

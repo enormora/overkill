@@ -1,4 +1,6 @@
-import { describe, expect, test } from 'tstyche';
+import type { IsEqual } from 'type-fest';
+import { suite, test } from '@overkill-dev/test';
+import { rejectsCall, sameType } from '@overkill-dev/type-test';
 import type { RunReport, RunResult } from '../engine/engine.entry-point.ts';
 import type {
     orchestrator,
@@ -19,34 +21,68 @@ import type {
     RunnerResult
 } from './run.entry-point.ts';
 
-describe('public runner lifecycle', function () {
-    test('exposes typed transport parsers and seed generation', function () {
-        expect<typeof parseRunResult>().type.toBe<(value: unknown) => RunResult>();
-        expect<typeof parseRunnerResult>().type.toBe<(value: unknown) => RunnerResult>();
-        expect<RunnerResult>().type.toBe<
-            RunResult & {
-                readonly context: RunReport['context'];
-                readonly maintenanceDiagnostics: readonly string[];
-            }
-        >();
-        expect<typeof parseRunSelection>().type.toBe<(value: unknown) => RunSelection>();
-        expect<typeof parseRunnerError>().type.toBe<(value: unknown) => RunResult['runnerErrors'][number]>();
-        expect<typeof createRandomRunSeed>().type.toBe<() => bigint>();
-    });
-    test('exposes initialization and collected execution', function () {
-        expect<typeof orchestrator.initialize>().type.toBe<
-            (command: ConfiguredRunCommand | FrozenRunCommand | RunCommandInput) => Promise<InitializedRun>
-        >();
-        expect<InitializedRun['collect']>().type.toBe<() => Promise<CollectedRun>>();
-        expect<CollectedRunInvocation>().type.toBe<{ readonly selection: RunSelection; }>();
-        expect<CollectedRun['run']>().type.toBe<(invocation: CollectedRunInvocation) => Promise<RunnerResult>>();
-        expect<CollectedRun['runWithReporterDelivery']>().type.toBe<
-            (invocation: CollectedRunInvocation) => Promise<RunReporterDeliveryResult>
-        >();
-        expect<RunCollectionError['runnerErrors']>().type.toBe<() => readonly RunResult['runnerErrors'][number][]>();
-    });
-    test('rejects invocation policy overrides', function () {
-        expect<CollectedRun['run']>().type.not.toBeCallableWith({ selection: { kind: 'all' }, runtimePolicy: null });
-        expect<CollectedRun['run']>().type.not.toBeCallableWith({ selection: { kind: 'all' }, coverage: true });
-    });
-});
+declare const callUnderTest: CollectedRun['run'];
+
+export const testNode = suite('public runner lifecycle', [
+    test('exposes typed transport parsers and seed generation', function (typeScope) {
+        typeScope.assert(sameType<IsEqual<typeof parseRunResult, (value: unknown) => RunResult>, true>());
+        typeScope.assert(sameType<IsEqual<typeof parseRunnerResult, (value: unknown) => RunnerResult>, true>());
+        typeScope.assert(sameType<
+            IsEqual<
+                RunnerResult,
+                RunResult & {
+                    readonly context: RunReport['context'];
+                    readonly maintenanceDiagnostics: readonly string[];
+                }
+            >,
+            true
+        >());
+        typeScope.assert(sameType<typeof parseRunSelection, (value: unknown) => RunSelection>());
+        typeScope.assert(sameType<typeof parseRunnerError, (value: unknown) => RunResult['runnerErrors'][number]>());
+        typeScope.assert(sameType<typeof createRandomRunSeed, () => bigint>());
+        return typeScope.assert.collect();
+    }),
+    test('exposes initialization and collected execution', function (typeScope) {
+        typeScope.assert(
+            sameType<
+                IsEqual<
+                    typeof orchestrator.initialize,
+                    (command: ConfiguredRunCommand | FrozenRunCommand | RunCommandInput) => Promise<InitializedRun>
+                >,
+                true
+            >()
+        );
+        typeScope.assert(sameType<IsEqual<InitializedRun['collect'], () => Promise<CollectedRun>>, true>());
+        typeScope.assert(sameType<CollectedRunInvocation, { readonly selection: RunSelection; }>());
+        typeScope.assert(
+            sameType<
+                IsEqual<CollectedRun['run'], (invocation: CollectedRunInvocation) => Promise<RunnerResult>>,
+                true
+            >()
+        );
+        typeScope.assert(
+            sameType<
+                IsEqual<
+                    CollectedRun['runWithReporterDelivery'],
+                    (invocation: CollectedRunInvocation) => Promise<RunReporterDeliveryResult>
+                >,
+                true
+            >()
+        );
+        typeScope.assert(
+            sameType<RunCollectionError['runnerErrors'], () => readonly RunResult['runnerErrors'][number][]>()
+        );
+        return typeScope.assert.collect();
+    }),
+    test('rejects invocation policy overrides', function (typeScope) {
+        typeScope.assert(
+            rejectsCall('argument-type'),
+            () => callUnderTest({ selection: { kind: 'all' }, runtimePolicy: null })
+        );
+        typeScope.assert(
+            rejectsCall('argument-type'),
+            () => callUnderTest({ selection: { kind: 'all' }, coverage: true })
+        );
+        return typeScope.assert.collect();
+    })
+]);
