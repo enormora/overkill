@@ -11,13 +11,15 @@ const instrumented = await new Instrumenter(logger).instrument([
 ], { excludedMutations: ['BlockStatement'], ignorers: [], plugins: null });
 await writeFile('package.json', '{"type":"module"}');
 await writeFile('subject.mjs', instrumented.files[0].content);
+await writeFile('state.mjs',
+    'export const state = { mode: "pass", runs: 0, cleanups: [], scopes: [], processIds: [],' +
+    ' gate: null, late: null, timer: null, lateDone: null };');
 await writeFile('case.test.mjs',
     'import { createTestCase } from ' + JSON.stringify(engine) + ';' +
     'import { AsyncResource } from "node:async_hooks";' +
     'import { channel } from "node:diagnostics_channel";' +
     'import { value } from "./subject.mjs";' +
-    'export const state = { mode: "pass", runs: 0, cleanups: [], scopes: [], processIds: [],' +
-    ' gate: null, late: null, timer: null, lateDone: null };' +
+    'import { state } from "./state.mjs";' +
     'export const testNode = createTestCase({ annotations: {}, controls: {},' +
     'definitionLocations: [{kind:"unknown"}], title: "reused case", async body(scope) {' +
     'state.runs++;state.processIds.push(process.pid);state.scopes.push(scope);' +
@@ -59,7 +61,7 @@ try {
     await runner.init();
     const dry=await runner.dryRun(dryOptions);
     assert.equal(dry.status,'complete',JSON.stringify(dry));
-    ({state}=await import('./case.test.mjs'));
+    ({state}=await import('./state.mjs'));
     const capabilities=await runner.capabilities();
     assert.deepEqual(capabilities,{reloadEnvironment:false});
     const baselineListeners=listeners();
