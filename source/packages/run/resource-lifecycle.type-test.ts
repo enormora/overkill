@@ -1,5 +1,5 @@
-import { suite, test } from '@overkill-dev/test-type-authoring';
-import { acceptsCall, assignableTo, sameType } from '@overkill-dev/type-test';
+import { suite, test } from '../../../tools/type-tests/authoring.entry-point.ts';
+import { acceptsCall, assignableTo, sameType } from '../../../tools/type-tests/relations.entry-point.ts';
 import type {
     AnyResourceDefinition,
     ResourceContext,

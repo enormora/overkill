@@ -1,0 +1,10 @@
+{
+    "name": "@overkill-dev/repository-type-tests",
+    "version": "0.0.0",
+    "private": true,
+    "type": "module",
+    "dependencies": {
+        "@overkill-dev/test": "0.0.44",
+        "@overkill-dev/type-test": "0.0.15"
+    }
+}

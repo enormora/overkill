@@ -1,5 +1,5 @@
-import { suite, test } from '@overkill-dev/test-type-authoring';
-import { acceptsCall, rejectsCall, sameType } from '@overkill-dev/type-test';
+import { suite, test } from '../../../tools/type-tests/authoring.entry-point.ts';
+import { acceptsCall, rejectsCall, sameType } from '../../../tools/type-tests/relations.entry-point.ts';
 import { hasKey } from '../../test-support/type-relations.ts';
 import {
     rule,

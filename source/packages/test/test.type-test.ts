@@ -1,6 +1,6 @@
 import type { IsEqual } from 'type-fest';
-import { suite as typeSuite, test as typeTest } from '@overkill-dev/test-type-authoring';
-import { acceptsCall, assignableTo, rejectsCall, sameType } from '@overkill-dev/type-test';
+import { suite as typeSuite, test as typeTest } from '../../../tools/type-tests/authoring.entry-point.ts';
+import { acceptsCall, assignableTo, rejectsCall, sameType } from '../../../tools/type-tests/relations.entry-point.ts';
 import type {
     Suite,
     Table,

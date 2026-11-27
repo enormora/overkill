@@ -1,5 +1,5 @@
-import { suite, test } from '@overkill-dev/test-type-authoring';
-import { rejectsCall, sameType } from '@overkill-dev/type-test';
+import { suite, test } from '../../../tools/type-tests/authoring.entry-point.ts';
+import { rejectsCall, sameType } from '../../../tools/type-tests/relations.entry-point.ts';
 import {
     defineResource,
     defineLocalServiceResource,

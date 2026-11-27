@@ -65,8 +65,6 @@
         "@enormora/tsconfig-node": "0.0.3",
         "@ls-lint/ls-lint": "2.3.2",
         "@overkill-dev/test": "0.0.39",
-        "@overkill-dev/test-type-authoring": "npm:@overkill-dev/test@0.0.44",
-        "@overkill-dev/type-test": "0.0.15",
         "@packtory/cli": "0.0.127",
         "@packtory/github-release-gate": "0.0.88",
         "@rspack/core": "2.3.3",

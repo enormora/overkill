@@ -37,9 +37,9 @@ limit for concurrent cases in one supervised process.
 CI runs microtests once with native coverage using
 `just test-microtests-with-coverage`. Coverage includes production TypeScript and
 excludes tests, executable entry points, integration fixtures, and test support.
-Type tests run with `just test-types`. The `types` profile uses its own published
-runner and the pinned `typescript-beta` compiler to check source APIs, including
-intentionally rejected calls. Compilation, static analysis,
+Install the type-test toolchain with `npm ci --prefix tools/type-tests`.
+The `types` profile runs through `just test-types` and checks source APIs,
+including intentionally rejected calls, with the pinned `typescript-beta` compiler. Compilation, static analysis,
 and ESLint are separate checks: `just compile`, `just lint`, and `just eslint`.
 
 Prefer inferred types. Add annotations only when TypeScript or ESLint requires

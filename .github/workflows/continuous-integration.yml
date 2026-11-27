@@ -30,6 +30,8 @@ jobs:
                   node-version-file: package.json
             - name: Install dependencies
               run: npm ci
+            - name: Install native type-test tools
+              run: npm ci --prefix tools/type-tests
             - name: Run static analysis
               run: npx just lint-filename lint-unused-code lint-dependencies lint-duplication
             - name: Type tests
@@ -50,6 +52,8 @@ jobs:
                   node-version-file: package.json
             - name: Install dependencies
               run: npm ci
+            - name: Install native type-test tools
+              run: npm ci --prefix tools/type-tests
             - name: Run ESLint
               env:
                   TIMING: "25"

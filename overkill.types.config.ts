@@ -1,5 +1,5 @@
-import { defineConfig } from '@overkill-dev/test-type-authoring/config';
-import { family as typeTestFamily } from '@overkill-dev/type-test';
+import { defineConfig } from './tools/type-tests/authoring.entry-point.ts';
+import { family as typeTestFamily } from './tools/type-tests/relations.entry-point.ts';
 
 export const config = defineConfig({
     runtimeStateDir: 'target/overkill',

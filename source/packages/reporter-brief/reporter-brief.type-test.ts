@@ -1,6 +1,6 @@
 import type { IsEqual } from 'type-fest';
-import { suite, test } from '@overkill-dev/test-type-authoring';
-import { sameType } from '@overkill-dev/type-test';
+import { suite, test } from '../../../tools/type-tests/authoring.entry-point.ts';
+import { sameType } from '../../../tools/type-tests/relations.entry-point.ts';
 import type { DefinedReporter, FinalResultReporter, RealTimeReporter } from '../engine/engine.entry-point.ts';
 import type {
     BriefReporterSinks,

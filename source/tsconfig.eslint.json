@@ -10,7 +10,8 @@
         "./**/*.ts",
         "./**/*.json",
         "../overkill.config.ts",
-        "../overkill.types.config.ts"
+        "../overkill.types.config.ts",
+        "../tools/type-tests/*.ts"
     ],
     "exclude": [
         "./reporters/benchmark-html-browser.entry-point.ts"

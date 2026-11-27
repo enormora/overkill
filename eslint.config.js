@@ -114,7 +114,7 @@ export default [
     },
     {
         ...nodeEntryPointFileConfig,
-        files: [ 'source/packages/**/*.entry-point.ts' ],
+        files: [ 'source/packages/**/*.entry-point.ts', 'tools/type-tests/*.entry-point.ts' ],
         rules: {
             ...nodeEntryPointFileConfig.rules,
             'no-barrel-files/no-barrel-files': 'off'

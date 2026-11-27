@@ -1,5 +1,5 @@
-import { suite, test } from '@overkill-dev/test-type-authoring';
-import { acceptsCall, sameType } from '@overkill-dev/type-test';
+import { suite, test } from '../../../tools/type-tests/authoring.entry-point.ts';
+import { acceptsCall, sameType } from '../../../tools/type-tests/relations.entry-point.ts';
 import {
     defineSimulatedHttpServer,
     defineSimulation,
