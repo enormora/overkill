@@ -19,15 +19,18 @@ import {
 
 export const testNode = test('exposes throwing test authoring through the compatibility subpath', function (typeScope) {
     typeScope.assert(sameType<IsEqual<typeof throwingTest, ThrowingTestAuthor>, true>());
-    typeScope.assert(sameType<ThrowingTestBody, (scope: ThrowingTestScope) => Promise<void> | void>());
-    typeScope.assert(sameType<ThrowingTestScope, {
-        readonly debug: TestDebugScope;
-        readonly seed: bigint;
-        readonly random: TestRandom;
-        readonly assert: AssertAssertionFacade;
-        readonly require: RequireAssertionFacade;
-        readonly signal: AbortSignal;
-    }>());
+    typeScope.assert(sameType<IsEqual<ThrowingTestBody, (scope: ThrowingTestScope) => Promise<void> | void>, true>());
+    typeScope.assert(sameType<
+        IsEqual<ThrowingTestScope, {
+            readonly debug: TestDebugScope;
+            readonly seed: bigint;
+            readonly random: TestRandom;
+            readonly assert: AssertAssertionFacade;
+            readonly require: RequireAssertionFacade;
+            readonly signal: AbortSignal;
+        }>,
+        true
+    >());
     typeScope.assert(assignableFrom.not<keyof ThrowingTestScope, 'plan'>());
     typeScope.assert(assignableFrom.not<keyof ThrowingTestScope['assert'], 'collect'>());
     typeScope.assert(

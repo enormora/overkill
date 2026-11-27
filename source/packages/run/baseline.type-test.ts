@@ -36,8 +36,11 @@ export const testNode = suite('ordinary baseline API', [
         typeScope.assert(sameType<IsEqual<typeof orchestrator.baseline.list, BaselineListOperation>, true>());
         typeScope.assert(
             sameType<
-                Awaited<ReturnType<typeof orchestrator.baseline.list>>,
-                readonly BaselineEntry<StoredOrdinaryBaseline>[]
+                IsEqual<
+                    Awaited<ReturnType<typeof orchestrator.baseline.list>>,
+                    readonly BaselineEntry<StoredOrdinaryBaseline>[]
+                >,
+                true
             >()
         );
         typeScope.assert(sameType<Extract<keyof BaselineCommand['request'], 'baselineUpdateMode'>, never>());
@@ -46,17 +49,26 @@ export const testNode = suite('ordinary baseline API', [
     test('preserves typed observation, comparison, proposal, and codec boundaries', function (typeScope) {
         typeScope.assert(
             sameType<
-                Parameters<BaselineAdapterDefinition<Observation, number, Proposal>['toComparisonValue']>[0],
-                Observation
+                IsEqual<
+                    Parameters<BaselineAdapterDefinition<Observation, number, Proposal>['toComparisonValue']>[0],
+                    Observation
+                >,
+                true
             >()
         );
         typeScope.assert(
-            sameType<Parameters<BaselineAdapterDefinition<Observation, number, Proposal>['encode']>[0], Proposal>()
+            sameType<
+                IsEqual<Parameters<BaselineAdapterDefinition<Observation, number, Proposal>['encode']>[0], Proposal>,
+                true
+            >()
         );
         typeScope.assert(
             sameType<
-                Parameters<BaselineAdapterDefinition<Observation, number, Proposal>['decode']>[0],
-                BaselinePayload
+                IsEqual<
+                    Parameters<BaselineAdapterDefinition<Observation, number, Proposal>['decode']>[0],
+                    BaselinePayload
+                >,
+                true
             >()
         );
         typeScope.assert(

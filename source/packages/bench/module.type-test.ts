@@ -2,6 +2,7 @@ import type { IsEqual } from 'type-fest';
 import { suite, test } from '../../../tools/type-tests/authoring.entry-point.ts';
 import { assignableFrom, sameType } from '../../../tools/type-tests/relations.entry-point.ts';
 import * as standard from '../test/bench.entry-point.ts';
+import { isEqualTo } from '../../test-support/type-relations.ts';
 import * as bench from './bench.entry-point.ts';
 
 const calibration = bench.cpuCalibration();
@@ -26,7 +27,10 @@ export const testNode = suite('module', [
             workloads: [ standard.workload('one', {}) ],
             measurement,
             async measure({ sample }) {
-                typeScope.assert(sameType.withActual<bench.BenchmarkSample<bench.ModuleSample>>(), sample);
+                typeScope.assert(
+                    sameType.withActual<true>(),
+                    isEqualTo<bench.BenchmarkSample<bench.ModuleSample>>()(sample)
+                );
                 typeScope.assert(assignableFrom.not<keyof typeof sample, 'measure'>());
                 typeScope.assert(assignableFrom.not<keyof typeof sample, 'process'>());
                 const imported = await sample.importModule({
@@ -50,7 +54,10 @@ export const testNode = suite('module', [
                 bench.timelineMeasurement(bench.moduleMeasurement(), { maximumEvents: 4096 })
             ),
             async measure({ sample }) {
-                typeScope.assert(sameType.withActual<bench.BenchmarkSample<bench.ModuleSample>>(), sample);
+                typeScope.assert(
+                    sameType.withActual<true>(),
+                    isEqualTo<bench.BenchmarkSample<bench.ModuleSample>>()(sample)
+                );
                 typeScope.assert(assignableFrom.not<keyof typeof sample, 'measure'>());
                 typeScope.assert(assignableFrom.not<keyof typeof sample, 'process'>());
                 const synchronous = sample.timeline.span('synchronous', function () {
@@ -60,21 +67,27 @@ export const testNode = suite('module', [
                 const pending = sample.timeline.span('async', async function () {
                     return await Promise.resolve(1);
                 });
-                typeScope.assert(sameType.withActual<Promise<number>>(), pending);
+                typeScope.assert(sameType.withActual<true>(), isEqualTo<Promise<number>>()(pending));
                 const imported = await sample.importModule({
                     url: new URL('./entry.js', import.meta.url),
                     cwd: '.',
                     env: null,
                     nodeArguments: []
                 });
-                typeScope.assert(sameType.withActual<bench.MeasuredModuleImport>(), imported);
+                typeScope.assert(sameType.withActual<true>(), isEqualTo<bench.MeasuredModuleImport>()(imported));
                 return { durationMicroseconds: imported.metrics.durationMicroseconds };
             },
             diagnosticMetrics: [],
             budgets: { one: { durationMicroseconds: { maximum: 1000 } } }
         });
-        typeScope.assert(sameType.withActual<typeof bench.moduleMeasurement>(), standard.moduleMeasurement);
-        typeScope.assert(sameType.withActual<typeof bench.timelineMeasurement>(), standard.timelineMeasurement);
+        typeScope.assert(
+            sameType.withActual<true>(),
+            isEqualTo<typeof bench.moduleMeasurement>()(standard.moduleMeasurement)
+        );
+        typeScope.assert(
+            sameType.withActual<true>(),
+            isEqualTo<typeof bench.timelineMeasurement>()(standard.timelineMeasurement)
+        );
         typeScope.assert(
             sameType<IsEqual<typeof standard.readBenchmarkTimeline, typeof bench.readBenchmarkTimeline>, true>()
         );

@@ -42,11 +42,17 @@ export const testNode = suite('simulation', [
     suite('@overkill-dev/simulation', [
         test('preserves finite scenario keys and descriptors', function (typeScope) {
             typeScope.assert(sameType<ScenarioKeyOf<typeof simulation>, 'default' | 'outage'>());
-            typeScope.assert(sameType<SimulationScenarioFor<typeof simulation, 'outage'>, {
-                readonly status: OutageStatus;
-                readonly title: 'upstream outage';
-            }>());
-            typeScope.assert(sameType.withActual<OutageStatus>(), simulation.scenarios.outage.status);
+            typeScope.assert(sameType<
+                IsEqual<SimulationScenarioFor<typeof simulation, 'outage'>, {
+                    readonly status: OutageStatus;
+                    readonly title: 'upstream outage';
+                }>,
+                true
+            >());
+            typeScope.assert(
+                sameType.withActual<true>(),
+                isEqualTo<OutageStatus>()(simulation.scenarios.outage.status)
+            );
             return typeScope.assert.collect();
         }),
         test('types simulated HTTP handlers from scenario catalogs', function (typeScope) {
@@ -73,8 +79,10 @@ export const testNode = suite('simulation', [
         }),
         test('requires a catalog key to launch a fixed server', function (typeScope) {
             typeScope.assert(
-                sameType.withActual<Promise<FixedSimulatedHttpServerHandle>>(),
-                startFixedSimulatedHttpServer({ simulation: httpSimulation, scenario: 'outage' })
+                sameType.withActual<true>(),
+                isEqualTo<Promise<FixedSimulatedHttpServerHandle>>()(
+                    startFixedSimulatedHttpServer({ simulation: httpSimulation, scenario: 'outage' })
+                )
             );
             typeScope.assert(
                 rejectsCall('argument-type'),
@@ -103,8 +111,11 @@ export const testNode = suite('simulation', [
             );
             typeScope.assert(
                 sameType<
-                    SimulatedHttpServerHandle<typeof httpSimulation>['scenarioUrl'],
-                    (scenario: 'default' | 'outage', path: string) => string
+                    IsEqual<
+                        SimulatedHttpServerHandle<typeof httpSimulation>['scenarioUrl'],
+                        (scenario: 'default' | 'outage', path: string) => string
+                    >,
+                    true
                 >()
             );
             return typeScope.assert.collect();
@@ -119,7 +130,10 @@ export const testNode = suite('simulation', [
             },
             handle(_request, scenario) {
                 typeScope.assert(sameType.withActual<'default' | 'outage'>(), scenario.key);
-                typeScope.assert(sameType.withActual<OutageStatus | SuccessStatus>(), scenario.descriptor.status);
+                typeScope.assert(
+                    sameType.withActual<true>(),
+                    isEqualTo<OutageStatus | SuccessStatus>()(scenario.descriptor.status)
+                );
 
                 return Response.json({ status: scenario.descriptor.status });
             }

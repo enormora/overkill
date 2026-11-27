@@ -1,6 +1,6 @@
 import { suite, test } from '../../../tools/type-tests/authoring.entry-point.ts';
 import { acceptsCall, rejectsCall, sameType } from '../../../tools/type-tests/relations.entry-point.ts';
-import { hasKey } from '../../test-support/type-relations.ts';
+import { hasKey, isEqualTo } from '../../test-support/type-relations.ts';
 import {
     rule,
     testDouble,
@@ -60,9 +60,9 @@ export const testNode = suite('rule-based doubles', [
             fallback: rule.throws(new Error('unexpected user'))
         });
 
-        typeScope.assert(sameType.withActual<TestDouble<LoadUser>>(), loadUser);
+        typeScope.assert(sameType.withActual<true>(), isEqualTo<TestDouble<LoadUser>>()(loadUser));
         typeScope.assert(acceptsCall, () => loadUser('1', false));
-        typeScope.assert(sameType.withActual<User>(), loadUser('1', false));
+        typeScope.assert(sameType.withActual<true>(), isEqualTo<User>()(loadUser('1', false)));
         typeScope.assert(rejectsCall('argument-type'), () =>
             testDouble<LoadUser>({
                 fallback: rule.returns(user),
@@ -78,7 +78,7 @@ export const testNode = suite('rule-based doubles', [
             ]
         });
 
-        typeScope.assert(sameType.withActual<TestDouble<SearchUser>>(), searchUser);
+        typeScope.assert(sameType.withActual<true>(), isEqualTo<TestDouble<SearchUser>>()(searchUser));
         typeScope.assert(rejectsCall('argument-type'), () =>
             testDouble<SearchUser>({
                 rules: [ rule.when({ missing: true }).returns(user) ]
@@ -148,14 +148,17 @@ export const testNode = suite('rule-based doubles', [
         });
         const answered = testDouble<SearchUser>({
             answer(invocation) {
-                typeScope.assert(sameType.withActual<DoubleInvocation<Parameters<SearchUser>>>(), invocation);
+                typeScope.assert(
+                    sameType.withActual<true>(),
+                    isEqualTo<DoubleInvocation<Parameters<SearchUser>>>()(invocation)
+                );
 
                 return user;
             }
         });
 
-        typeScope.assert(sameType.withActual<TestDouble<ClientFactory>>(), Client);
-        typeScope.assert(sameType.withActual<TestDouble<SearchUser>>(), answered);
+        typeScope.assert(sameType.withActual<true>(), isEqualTo<TestDouble<ClientFactory>>()(Client));
+        typeScope.assert(sameType.withActual<true>(), isEqualTo<TestDouble<SearchUser>>()(answered));
         typeScope.assert(rejectsCall('argument-type'), () =>
             testDouble<LoadUser>({
                 answer() {

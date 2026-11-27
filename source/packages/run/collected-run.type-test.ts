@@ -37,9 +37,11 @@ export const testNode = suite('public runner lifecycle', [
             >,
             true
         >());
-        typeScope.assert(sameType<typeof parseRunSelection, (value: unknown) => RunSelection>());
-        typeScope.assert(sameType<typeof parseRunnerError, (value: unknown) => RunResult['runnerErrors'][number]>());
-        typeScope.assert(sameType<typeof createRandomRunSeed, () => bigint>());
+        typeScope.assert(sameType<IsEqual<typeof parseRunSelection, (value: unknown) => RunSelection>, true>());
+        typeScope.assert(
+            sameType<IsEqual<typeof parseRunnerError, (value: unknown) => RunResult['runnerErrors'][number]>, true>()
+        );
+        typeScope.assert(sameType<IsEqual<typeof createRandomRunSeed, () => bigint>, true>());
         return typeScope.assert.collect();
     }),
     test('exposes initialization and collected execution', function (typeScope) {
@@ -53,7 +55,7 @@ export const testNode = suite('public runner lifecycle', [
             >()
         );
         typeScope.assert(sameType<IsEqual<InitializedRun['collect'], () => Promise<CollectedRun>>, true>());
-        typeScope.assert(sameType<CollectedRunInvocation, { readonly selection: RunSelection; }>());
+        typeScope.assert(sameType<IsEqual<CollectedRunInvocation, { readonly selection: RunSelection; }>, true>());
         typeScope.assert(
             sameType<
                 IsEqual<CollectedRun['run'], (invocation: CollectedRunInvocation) => Promise<RunnerResult>>,
@@ -70,7 +72,10 @@ export const testNode = suite('public runner lifecycle', [
             >()
         );
         typeScope.assert(
-            sameType<RunCollectionError['runnerErrors'], () => readonly RunResult['runnerErrors'][number][]>()
+            sameType<
+                IsEqual<RunCollectionError['runnerErrors'], () => readonly RunResult['runnerErrors'][number][]>,
+                true
+            >()
         );
         return typeScope.assert.collect();
     }),

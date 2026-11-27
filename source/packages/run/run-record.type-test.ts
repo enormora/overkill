@@ -1,7 +1,8 @@
 import type { IsEqual } from 'type-fest';
 import { suite, test } from '../../../tools/type-tests/authoring.entry-point.ts';
-import { assignableTo, sameType } from '../../../tools/type-tests/relations.entry-point.ts';
+import { sameType } from '../../../tools/type-tests/relations.entry-point.ts';
 import type { FamilyRunFacts, ImplementationCatalog } from '../engine/engine.entry-point.ts';
+import { type IsAssignable } from '../../test-support/type-relations.ts';
 import type {
     CoveragePolicy,
     BenchmarkPlacementFacts,
@@ -40,32 +41,32 @@ type VersionedFacts = CompactRunRecord['facts'] | MergedRunRecord['facts'] | Run
 
 export const testNode = suite('@overkill-dev/run recording', [
     test('preserves implementation and family facts in version 1 records', function (typeScope) {
-        typeScope.assert(sameType<RunFacts['family'], FamilyRunFacts>());
-        typeScope.assert(sameType<RunFacts['implementations'], ImplementationCatalog | null>());
-        typeScope.assert(sameType<RunRecord['version'], CurrentRecordVersion>());
-        typeScope.assert(sameType<RunRecord['facts'], VersionedFacts>());
-        typeScope.assert(sameType<SingleRunRecord['facts'], RunFacts | null>());
+        typeScope.assert(sameType<IsEqual<RunFacts['family'], FamilyRunFacts>, true>());
+        typeScope.assert(sameType<IsEqual<RunFacts['implementations'], ImplementationCatalog | null>, true>());
+        typeScope.assert(sameType<IsEqual<RunRecord['version'], CurrentRecordVersion>, true>());
+        typeScope.assert(sameType<IsEqual<RunRecord['facts'], VersionedFacts>, true>());
+        typeScope.assert(sameType<IsEqual<SingleRunRecord['facts'], RunFacts | null>, true>());
         return typeScope.assert.collect();
     }),
     test('preserves merged record contracts', function (typeScope) {
-        typeScope.assert(sameType<MergedRunRecord['version'], CurrentRecordVersion>());
-        typeScope.assert(sameType<MergedRunRecord['facts']['family'], FamilyRunFacts | null>());
+        typeScope.assert(sameType<IsEqual<MergedRunRecord['version'], CurrentRecordVersion>, true>());
+        typeScope.assert(sameType<IsEqual<MergedRunRecord['facts']['family'], FamilyRunFacts | null>, true>());
         return typeScope.assert.collect();
     }),
     test('exposes serializable run facts with case annotations and controls', function (typeScope) {
-        typeScope.assert(sameType<keyof RunFacts, RunFactsKeys[number]>());
-        typeScope.assert(sameType<RunFacts['cases'][number]['annotations'], SerializedValue>());
-        typeScope.assert(sameType<RunFacts['cases'][number]['controls'], SerializedValue>());
-        typeScope.assert(sameType<RunFacts['reproducibility']['selection'], RunSelection>());
-        typeScope.assert(assignableTo<RunFacts, Readonly<Record<string, unknown>>>());
+        typeScope.assert(sameType<IsEqual<keyof RunFacts, RunFactsKeys[number]>, true>());
+        typeScope.assert(sameType<IsEqual<RunFacts['cases'][number]['annotations'], SerializedValue>, true>());
+        typeScope.assert(sameType<IsEqual<RunFacts['cases'][number]['controls'], SerializedValue>, true>());
+        typeScope.assert(sameType<IsEqual<RunFacts['reproducibility']['selection'], RunSelection>, true>());
+        typeScope.assert(sameType<IsAssignable<RunFacts, Readonly<Record<string, unknown>>>, true>());
         return typeScope.assert.collect();
     }),
     test('exposes JSON-safe coverage run records with explicit absent facts and metadata', function (typeScope) {
-        typeScope.assert(sameType<RunFacts['benchmarkPlacement'], BenchmarkPlacementFacts | null>());
-        typeScope.assert(sameType<RunFacts['coveragePolicy'], CoveragePolicy | null>());
-        typeScope.assert(sameType<RunRecordRequest['seed'], { readonly value: string; }>());
+        typeScope.assert(sameType<IsEqual<RunFacts['benchmarkPlacement'], BenchmarkPlacementFacts | null>, true>());
+        typeScope.assert(sameType<IsEqual<RunFacts['coveragePolicy'], CoveragePolicy | null>, true>());
+        typeScope.assert(sameType<IsEqual<RunRecordRequest['seed'], { readonly value: string; }>, true>());
         typeScope.assert(sameType<NonNullable<RunRecord['versions']>['engine'], string | null>());
-        typeScope.assert(sameType<SingleRunRecord['runtime'], ResolvedRuntime | null>());
+        typeScope.assert(sameType<IsEqual<SingleRunRecord['runtime'], ResolvedRuntime | null>, true>());
         typeScope.assert(
             sameType<
                 IsEqual<
@@ -75,7 +76,7 @@ export const testNode = suite('@overkill-dev/run recording', [
                 true
             >()
         );
-        typeScope.assert(sameType<RunRecordResult['runnerErrors'][number]['cause'], SerializedValue>());
+        typeScope.assert(sameType<IsEqual<RunRecordResult['runnerErrors'][number]['cause'], SerializedValue>, true>());
         return typeScope.assert.collect();
     })
 ]);

@@ -21,11 +21,14 @@ export const testNode = suite('TestRoot', [
     test('is separate from TestNode planning paths', function (typeScope) {
         typeScope.assert(sameType<TestRoot['kind'], 'root'>());
         typeScope.assert(sameType<[TestRoot] extends [TestNode] ? true : false, false>());
-        typeScope.assert(sameType<TestPlan['root'], {
-            readonly annotations: TestAnnotations;
-            readonly controls: TestControls;
-            readonly title: string;
-        }>());
+        typeScope.assert(sameType<
+            IsEqual<TestPlan['root'], {
+                readonly annotations: TestAnnotations;
+                readonly controls: TestControls;
+                readonly title: string;
+            }>,
+            true
+        >());
         return typeScope.assert.collect();
     }),
     test('exposes file-backed planning for explicit run inputs', function (typeScope) {
@@ -56,7 +59,7 @@ export const testNode = suite('TestRoot', [
             >,
             true
         >());
-        typeScope.assert(sameType<Engine['ownsTestNode'], (value: unknown) => value is TestNode>());
+        typeScope.assert(sameType<IsEqual<Engine['ownsTestNode'], (value: unknown) => value is TestNode>, true>());
         return typeScope.assert.collect();
     }),
     test('rejects metadata on file-backed planning entries', function (typeScope) {

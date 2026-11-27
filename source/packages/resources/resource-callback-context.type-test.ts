@@ -1,5 +1,6 @@
 import { suite, test } from '../../../tools/type-tests/authoring.entry-point.ts';
 import { sameType } from '../../../tools/type-tests/relations.entry-point.ts';
+import { isEqualTo } from '../../test-support/type-relations.ts';
 import {
     defineResource
 } from './resources.entry-point.ts';
@@ -39,17 +40,17 @@ export const testNode = suite('resource callbacks', [
             requirements: [ { kind: 'single-worker' } ],
             dependencies: { database },
             async acquire(context): Promise<Server> {
-                typeScope.assert(sameType.withActual<Database>(), context.dependencies.database);
+                typeScope.assert(sameType.withActual<true>(), isEqualTo<Database>()(context.dependencies.database));
                 typeScope.assert(
-                    sameType.withActual<(sql: string) => Promise<readonly string[]>>(),
-                    context.dependencies.database.query
+                    sameType.withActual<true>(),
+                    isEqualTo<(sql: string) => Promise<readonly string[]>>()(context.dependencies.database.query)
                 );
                 const queryResult = await context.dependencies.database.query('url');
 
                 return { url: String(queryResult[0]) };
             },
             dispose(_server, context) {
-                typeScope.assert(sameType.withActual<Database>(), context.dependencies.database);
+                typeScope.assert(sameType.withActual<true>(), isEqualTo<Database>()(context.dependencies.database));
             }
         });
         return typeScope.assert.collect();

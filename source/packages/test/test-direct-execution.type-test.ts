@@ -71,12 +71,15 @@ export const testNode = suite('@overkill-dev/test capture and direct execution t
                 }>,
                 true
             >());
-            typeScope.assert(sameType<RootRunIfMainRootOptions, {
-                readonly annotations?: AuthoringAnnotations;
-                readonly controls?: AuthoringControls;
-                readonly title: string;
-            }>());
-            typeScope.assert(sameType<RootInFlightTask<string>, InFlightTask<string>>());
+            typeScope.assert(sameType<
+                IsEqual<RootRunIfMainRootOptions, {
+                    readonly annotations?: AuthoringAnnotations;
+                    readonly controls?: AuthoringControls;
+                    readonly title: string;
+                }>,
+                true
+            >());
+            typeScope.assert(sameType<IsEqual<RootInFlightTask<string>, InFlightTask<string>>, true>());
             typeScope.assert(sameType<IsEqual<RootSuite, Suite>, true>());
             typeScope.assert(sameType<IsEqual<RootTable, Table>, true>());
             return typeScope.assert.collect();
@@ -86,7 +89,7 @@ export const testNode = suite('@overkill-dev/test capture and direct execution t
             typeScope.assert(sameType<IsEqual<RootTestCase, TestCase>, true>());
             typeScope.assert(sameType<IsEqual<RootTestNode, TestNode>, true>());
             typeScope.assert(sameType<IsEqual<RootTestScope, TestScope>, true>());
-            typeScope.assert(sameType<RootTestScopeAssertContext, TestScopeAssertContext>());
+            typeScope.assert(sameType<IsEqual<RootTestScopeAssertContext, TestScopeAssertContext>, true>());
             return typeScope.assert.collect();
         })
     ]),

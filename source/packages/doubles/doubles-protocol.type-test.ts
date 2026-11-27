@@ -1,5 +1,6 @@
 import { suite, test } from '../../../tools/type-tests/authoring.entry-point.ts';
-import { assignableTo, sameType } from '../../../tools/type-tests/relations.entry-point.ts';
+import { sameType } from '../../../tools/type-tests/relations.entry-point.ts';
+import { isEqualTo, isAssignableTo } from '../../test-support/type-relations.ts';
 import {
     testAsyncDisposable,
     testAsyncIterable,
@@ -21,23 +22,26 @@ export const testNode = suite('@overkill-dev/doubles protocol doubles', [
         const iterator = testIterator.yields([ 'created' ], 1);
         const iterable = testIterable.yields([ 'created' ], 1);
 
-        typeScope.assert(sameType.withActual<TestIterator<string, number>>(), iterator);
+        typeScope.assert(sameType.withActual<true>(), isEqualTo<TestIterator<string, number>>()(iterator));
         typeScope.assert(
-            assignableTo.withActual<
+            sameType.withActual<true>(),
+            isAssignableTo<
                 TestDouble<
                     (...arguments_: readonly unknown[]) => IteratorResult<
                         string,
                         number
                     >
                 >
-            >(),
-            iterator.next
+            >()(iterator.next)
         );
-        typeScope.assert(sameType.withActual<IteratorObject<string, number>>(), iterator[Symbol.iterator]());
-        typeScope.assert(sameType.withActual<TestIterable<string, number>>(), iterable);
         typeScope.assert(
-            assignableTo.withActual<TestDouble<() => TestIterator<string, number>>>(),
-            iterable[Symbol.iterator]
+            sameType.withActual<true>(),
+            isEqualTo<IteratorObject<string, number>>()(iterator[Symbol.iterator]())
+        );
+        typeScope.assert(sameType.withActual<true>(), isEqualTo<TestIterable<string, number>>()(iterable));
+        typeScope.assert(
+            sameType.withActual<true>(),
+            isAssignableTo<TestDouble<() => TestIterator<string, number>>>()(iterable[Symbol.iterator])
         );
         return typeScope.assert.collect();
     }),
@@ -45,21 +49,21 @@ export const testNode = suite('@overkill-dev/doubles protocol doubles', [
         const iterator = testAsyncIterator.yields([ 'created' ], 1);
         const iterable = testAsyncIterable.yields([ 'created' ], 1);
 
-        typeScope.assert(sameType.withActual<TestAsyncIterator<string, number>>(), iterator);
+        typeScope.assert(sameType.withActual<true>(), isEqualTo<TestAsyncIterator<string, number>>()(iterator));
         typeScope.assert(
-            assignableTo.withActual<
+            sameType.withActual<true>(),
+            isAssignableTo<
                 TestDouble<(...arguments_: readonly unknown[]) => Promise<IteratorResult<string, number>>>
-            >(),
-            iterator.next
+            >()(iterator.next)
         );
         typeScope.assert(
-            assignableTo.withActual<AsyncIterator<string, number, unknown>>(),
-            iterator[Symbol.asyncIterator]()
+            sameType.withActual<true>(),
+            isAssignableTo<AsyncIterator<string, number, unknown>>()(iterator[Symbol.asyncIterator]())
         );
-        typeScope.assert(sameType.withActual<TestAsyncIterable<string, number>>(), iterable);
+        typeScope.assert(sameType.withActual<true>(), isEqualTo<TestAsyncIterable<string, number>>()(iterable));
         typeScope.assert(
-            assignableTo.withActual<TestDouble<() => TestAsyncIterator<string, number>>>(),
-            iterable[Symbol.asyncIterator]
+            sameType.withActual<true>(),
+            isAssignableTo<TestDouble<() => TestAsyncIterator<string, number>>>()(iterable[Symbol.asyncIterator])
         );
         return typeScope.assert.collect();
     }),
@@ -67,12 +71,15 @@ export const testNode = suite('@overkill-dev/doubles protocol doubles', [
         const disposable = testDisposable();
         const asyncDisposable = testAsyncDisposable();
 
-        typeScope.assert(sameType.withActual<TestDisposable>(), disposable);
-        typeScope.assert(assignableTo.withActual<Disposable>(), disposable);
-        typeScope.assert(assignableTo.withActual<TestDouble<() => void>>(), disposable.dispose);
-        typeScope.assert(sameType.withActual<TestAsyncDisposable>(), asyncDisposable);
-        typeScope.assert(assignableTo.withActual<AsyncDisposable>(), asyncDisposable);
-        typeScope.assert(assignableTo.withActual<TestDouble<() => Promise<void>>>(), asyncDisposable.asyncDispose);
+        typeScope.assert(sameType.withActual<true>(), isEqualTo<TestDisposable>()(disposable));
+        typeScope.assert(sameType.withActual<true>(), isAssignableTo<Disposable>()(disposable));
+        typeScope.assert(sameType.withActual<true>(), isAssignableTo<TestDouble<() => void>>()(disposable.dispose));
+        typeScope.assert(sameType.withActual<true>(), isEqualTo<TestAsyncDisposable>()(asyncDisposable));
+        typeScope.assert(sameType.withActual<true>(), isAssignableTo<AsyncDisposable>()(asyncDisposable));
+        typeScope.assert(
+            sameType.withActual<true>(),
+            isAssignableTo<TestDouble<() => Promise<void>>>()(asyncDisposable.asyncDispose)
+        );
         return typeScope.assert.collect();
     })
 ]);

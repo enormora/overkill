@@ -1,5 +1,7 @@
+import type { IsEqual } from 'type-fest';
 import { suite, test } from '../../../tools/type-tests/authoring.entry-point.ts';
-import { assignableTo, rejectsCall, sameType } from '../../../tools/type-tests/relations.entry-point.ts';
+import { rejectsCall, sameType } from '../../../tools/type-tests/relations.entry-point.ts';
+import { type IsAssignable, isEqualTo } from '../../test-support/type-relations.ts';
 import {
     type DefinedHarness,
     type ExactHarnessOverrides,
@@ -91,20 +93,23 @@ export const testNode = suite('@overkill-dev/test defineHarness()', [
         test('types the harness and its creation forms', function (typeScope) {
             const objectHarness = defineHarness(partFactories, createSubject);
             typeScope.assert(
-                assignableTo<
-                    typeof objectHarness,
-                    DefinedHarness<HarnessOverrides<TypeHarnessParts>, TypeHarnessCreated>
+                sameType<
+                    IsAssignable<
+                        typeof objectHarness,
+                        DefinedHarness<HarnessOverrides<TypeHarnessParts>, TypeHarnessCreated>
+                    >,
+                    true
                 >()
             );
-            typeScope.assert(sameType.withActual<TypeHarnessCreated>(), objectHarness.create());
-            typeScope.assert(sameType.withActual<TypeHarnessCreated>(), objectHarness.create({}));
+            typeScope.assert(sameType.withActual<true>(), isEqualTo<TypeHarnessCreated>()(objectHarness.create()));
+            typeScope.assert(sameType.withActual<true>(), isEqualTo<TypeHarnessCreated>()(objectHarness.create({})));
             typeScope.assert(
-                sameType.withActual<TypeHarnessCreated>(),
-                objectHarness.create({
+                sameType.withActual<true>(),
+                isEqualTo<TypeHarnessCreated>()(objectHarness.create({
                     loadValue(id) {
                         return id;
                     }
-                })
+                }))
             );
             const badVariableOverride = {
                 loadValue(id: string) {
@@ -117,14 +122,17 @@ export const testNode = suite('@overkill-dev/test defineHarness()', [
             return typeScope.assert.collect();
         }),
         test('rejects unknown overrides', function (typeScope) {
-            typeScope.assert(assignableTo<typeof partFactories, HarnessPartFactories>());
-            typeScope.assert(sameType<HarnessPartFactory<string>, () => string>());
-            typeScope.assert(sameType<HarnessParts<typeof partFactories>, TypeHarnessParts>());
-            typeScope.assert(sameType<HarnessOverrides<TypeHarnessParts>, TypeObjectHarnessOverrides>());
+            typeScope.assert(sameType<IsAssignable<typeof partFactories, HarnessPartFactories>, true>());
+            typeScope.assert(sameType<IsEqual<HarnessPartFactory<string>, () => string>, true>());
+            typeScope.assert(sameType<IsEqual<HarnessParts<typeof partFactories>, TypeHarnessParts>, true>());
+            typeScope.assert(sameType<IsEqual<HarnessOverrides<TypeHarnessParts>, TypeObjectHarnessOverrides>, true>());
             typeScope.assert(
-                assignableTo.not<
-                    { readonly missing: true; },
-                    ExactHarnessOverrides<{ readonly missing: true; }, TypeObjectHarnessOverrides>
+                sameType<
+                    IsAssignable<
+                        { readonly missing: true; },
+                        ExactHarnessOverrides<{ readonly missing: true; }, TypeObjectHarnessOverrides>
+                    >,
+                    false
                 >()
             );
             return typeScope.assert.collect();
@@ -135,11 +143,14 @@ export const testNode = suite('@overkill-dev/test defineHarness()', [
         const asyncHarness = defineHarness(createAsyncLabel);
         const badVariableOverride = { label: 'bad', missing: true };
 
-        typeScope.assert(sameType.withActual<TypeLabelHarness>(), syncHarness.create());
-        typeScope.assert(sameType.withActual<TypeLabelHarness>(), syncHarness.create({ label: 'custom' }));
+        typeScope.assert(sameType.withActual<true>(), isEqualTo<TypeLabelHarness>()(syncHarness.create()));
+        typeScope.assert(
+            sameType.withActual<true>(),
+            isEqualTo<TypeLabelHarness>()(syncHarness.create({ label: 'custom' }))
+        );
         typeScope.assert(rejectsCall('argument-type'), () => syncHarness.create({ missing: true }));
         typeScope.assert(rejectsCall('argument-type'), () => syncHarness.create(badVariableOverride));
-        typeScope.assert(sameType.withActual<Promise<TypeLabelHarness>>(), asyncHarness.create());
+        typeScope.assert(sameType.withActual<true>(), isEqualTo<Promise<TypeLabelHarness>>()(asyncHarness.create()));
         typeScope.assert(rejectsCall('argument-count'), () => defineHarness(createInvalidHarness));
         return typeScope.assert.collect();
     })

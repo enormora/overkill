@@ -1,10 +1,10 @@
 import type { IsEqual } from 'type-fest';
 import { suite, test } from '../../../tools/type-tests/authoring.entry-point.ts';
-import { assignableTo, sameType } from '../../../tools/type-tests/relations.entry-point.ts';
+import { sameType } from '../../../tools/type-tests/relations.entry-point.ts';
 import type {
     TestScope
 } from '../engine/engine.entry-point.ts';
-import { isEqualTo } from '../../test-support/type-relations.ts';
+import { isEqualTo, type IsAssignable } from '../../test-support/type-relations.ts';
 import {
     composeRuntimeContext,
     composeRuntimes,
@@ -81,9 +81,11 @@ declare const testScope: TestScope;
 
 export const testNode = suite('@overkill-dev/test/resources standard subpath', [
     test('exposes resource descriptor types through the standard distribution', function (typeScope) {
-        typeScope.assert(sameType<ResourceHandle<typeof database>, Database>());
-        typeScope.assert(sameType<ResourceHandle<typeof temporaryDirectory>, TemporaryDirectoryHandle>());
-        typeScope.assert(sameType<ResourceContext<typeof runtime.resources>, DatabaseContext>());
+        typeScope.assert(sameType<IsEqual<ResourceHandle<typeof database>, Database>, true>());
+        typeScope.assert(
+            sameType<IsEqual<ResourceHandle<typeof temporaryDirectory>, TemporaryDirectoryHandle>, true>()
+        );
+        typeScope.assert(sameType<IsEqual<ResourceContext<typeof runtime.resources>, DatabaseContext>, true>());
         typeScope.assert(sameType<
             IsEqual<ResourceScopeContext<{ readonly dir: typeof temporaryDirectory; }>, {
                 readonly dir: TemporaryDirectoryHandle;
@@ -91,10 +93,13 @@ export const testNode = suite('@overkill-dev/test/resources standard subpath', [
             true
         >());
         typeScope.assert(sameType.withActual<'scratch'>(), temporaryDirectory.name);
-        typeScope.assert(sameType<TemporaryDirectoryHandle, {
-            readonly path: string;
-            readonly transcript: TranscriptView<never>;
-        }>());
+        typeScope.assert(sameType<
+            IsEqual<TemporaryDirectoryHandle, {
+                readonly path: string;
+                readonly transcript: TranscriptView<never>;
+            }>,
+            true
+        >());
         return typeScope.assert.collect();
     }),
     test('exposes runtime descriptor types through the standard distribution', function (typeScope) {
@@ -116,7 +121,7 @@ export const testNode = suite('@overkill-dev/test/resources standard subpath', [
         return typeScope.assert.collect();
     }),
     test('exposes projected resource descriptor types through the standard distribution', function (typeScope) {
-        typeScope.assert(sameType<ResourceHandle<typeof projectedDatabase>, ProjectedDatabase>());
+        typeScope.assert(sameType<IsEqual<ResourceHandle<typeof projectedDatabase>, ProjectedDatabase>, true>());
         typeScope.assert(sameType.withActual<'projected-database'>(), projectedDatabase.name);
         return typeScope.assert.collect();
     }),
@@ -127,7 +132,7 @@ export const testNode = suite('@overkill-dev/test/resources standard subpath', [
                 startRuntime({ runtime, signal: typeTestController.signal })
             )
         );
-        typeScope.assert(assignableTo<ResourceLifecycleError, Error>());
+        typeScope.assert(sameType<IsAssignable<ResourceLifecycleError, Error>, true>());
         typeScope.assert(
             sameType.withActual<ExpectedComposedRuntimeScope>(),
             composeRuntimeContext(testScope, runtime, {

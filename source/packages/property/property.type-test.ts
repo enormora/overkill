@@ -1,12 +1,6 @@
 import type { IsEqual } from 'type-fest';
 import { suite, test } from '../../../tools/type-tests/authoring.entry-point.ts';
-import {
-    acceptsCall,
-    assignableFrom,
-    assignableTo,
-    rejectsCall,
-    sameType
-} from '../../../tools/type-tests/relations.entry-point.ts';
+import { acceptsCall, assignableFrom, rejectsCall, sameType } from '../../../tools/type-tests/relations.entry-point.ts';
 import type {
     AssertionResult,
     BodyImplementation,
@@ -16,7 +10,7 @@ import type {
     TestScope
 } from '../engine/engine.entry-point.ts';
 import * as standard from '../test/property.entry-point.ts';
-import { isEqualTo } from '../../test-support/type-relations.ts';
+import { isEqualTo, type IsAssignable } from '../../test-support/type-relations.ts';
 import * as leaf from './property.entry-point.ts';
 
 declare const namedGenerator: leaf.Generator<{ readonly name: string; }>;
@@ -62,8 +56,8 @@ export const testNode = suite('property', [
                 },
                 decode: Number
             });
-            typeScope.assert(sameType.withActual<leaf.PropertyInputCodec<number>>(), codec);
-            typeScope.assert(sameType<typeof standard.defineCodec, typeof leaf.defineCodec>());
+            typeScope.assert(sameType.withActual<true>(), isEqualTo<leaf.PropertyInputCodec<number>>()(codec));
+            typeScope.assert(sameType<IsEqual<typeof standard.defineCodec, typeof leaf.defineCodec>, true>());
             return typeScope.assert.collect();
         }),
         test('infers property inputs and injected sample scope', function (typeScope) {
@@ -73,11 +67,14 @@ export const testNode = suite('property', [
                 coverage: [ { label: 'empty', minimumPercent: 20 } ],
                 generator,
                 test(value, sample) {
-                    typeScope.assert(sameType.withActual<{ readonly name: string; }>(), value);
+                    typeScope.assert(sameType.withActual<true>(), isEqualTo<{ readonly name: string; }>()(value));
                     typeScope.assert(
                         sameType<IsEqual<typeof sample, leaf.PropertySampleScope<{ readonly name: string; }>>, true>()
                     );
-                    typeScope.assert(sameType.withActual<{ readonly name: string; }>(), sample.reconstructInput());
+                    typeScope.assert(
+                        sameType.withActual<true>(),
+                        isEqualTo<{ readonly name: string; }>()(sample.reconstructInput())
+                    );
                     sample.failureKey('name');
                     sample.target('length', value.name.length);
                     sample.cover('empty', value.name === '');
@@ -99,13 +96,13 @@ export const testNode = suite('property', [
                     return { name: 'Ada' };
                 } ],
                 test(value, sample) {
-                    typeScope.assert(sameType.withActual<{ readonly name: string; }>(), value);
+                    typeScope.assert(sameType.withActual<true>(), isEqualTo<{ readonly name: string; }>()(value));
                     sample.assert.equal(value.name, 'Ada');
                     return sample.assert.collect();
                 }
             });
             typeScope.assert(sameType.withActual<true>(), isEqualTo<TestCase>()(node));
-            typeScope.assert(sameType<standard.PropertyExample<number>, leaf.PropertyExample<number>>());
+            typeScope.assert(sameType<IsEqual<standard.PropertyExample<number>, leaf.PropertyExample<number>>, true>());
             standard.withProperties(async function (scope) {
                 const authoredValue = scope.forall({
                     generator: numberGenerator,
@@ -118,7 +115,7 @@ export const testNode = suite('property', [
                         return sample.assert.collect();
                     }
                 });
-                typeScope.assert(sameType.withActual<Promise<AssertionResult>>(), authoredValue);
+                typeScope.assert(sameType.withActual<true>(), isEqualTo<Promise<AssertionResult>>()(authoredValue));
                 return scope.assert.collect();
             });
             function wrongExample(): boolean {
@@ -145,7 +142,7 @@ export const testNode = suite('property', [
                     sample.assert.equal(value, 1);
                     return sample.assert.collect();
                 });
-                typeScope.assert(sameType.withActual<Promise<AssertionResult>>(), authoredValue2);
+                typeScope.assert(sameType.withActual<true>(), isEqualTo<Promise<AssertionResult>>()(authoredValue2));
                 return scope.assert.collect();
             });
             typeScope.assert(sameType.withActual<true>(), isEqualTo<TestBody>()(body));
@@ -203,12 +200,15 @@ export const testNode = suite('property', [
                     decode: Number
                 }));
             typeScope.assert(
-                assignableTo.not<
-                    Pick<leaf.Generator<number>, 'filter' | 'flatMap' | 'map' | 'withCodec'>,
-                    leaf.Generator<number>
+                sameType<
+                    IsAssignable<
+                        Pick<leaf.Generator<number>, 'filter' | 'flatMap' | 'map' | 'withCodec'>,
+                        leaf.Generator<number>
+                    >,
+                    false
                 >()
             );
-            typeScope.assert(assignableTo.not<() => number, leaf.Generator<number>>());
+            typeScope.assert(sameType<IsAssignable<() => number, leaf.Generator<number>>, false>());
             return typeScope.assert.collect();
         })
     ]),
@@ -217,8 +217,10 @@ export const testNode = suite('property', [
             typeScope.assert(sameType<IsEqual<typeof standard.relation, typeof leaf.relation>, true>());
             typeScope.assert(sameType<IsEqual<typeof standard.sampleGenerator, typeof leaf.sampleGenerator>, true>());
             typeScope.assert(
-                sameType.withActual<readonly number[]>(),
-                leaf.sampleGenerator(numberGenerator, { seed: 42n, count: 2, size: 3, depth: 0 })
+                sameType.withActual<true>(),
+                isEqualTo<readonly number[]>()(
+                    leaf.sampleGenerator(numberGenerator, { seed: 42n, count: 2, size: 3, depth: 0 })
+                )
             );
             leaf.property({
                 title: 'typed relation',

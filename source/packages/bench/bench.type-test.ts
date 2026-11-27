@@ -56,10 +56,16 @@ export const testNode = suite('bench', [
                 sameType<bench.ResolvedBenchmarkLifecyclePolicy['garbageCollection'], 'after-sample' | 'off'>()
             );
             typeScope.assert(
-                sameType<standard.BenchmarkGarbageCollectionRequest, bench.BenchmarkGarbageCollectionRequest>()
+                sameType<
+                    IsEqual<standard.BenchmarkGarbageCollectionRequest, bench.BenchmarkGarbageCollectionRequest>,
+                    true
+                >()
             );
             typeScope.assert(
-                sameType<standard.BenchmarkGarbageCollectionResult, bench.BenchmarkGarbageCollectionResult>()
+                sameType<
+                    IsEqual<standard.BenchmarkGarbageCollectionResult, bench.BenchmarkGarbageCollectionResult>,
+                    true
+                >()
             );
             return typeScope.assert.collect();
         }),
@@ -86,8 +92,8 @@ export const testNode = suite('bench', [
             return typeScope.assert.collect();
         }),
         test('preserves annotation and table types', function (typeScope) {
-            typeScope.assert(sameType<bench.AuthoringAnnotations, ordinary.AuthoringAnnotations>());
-            typeScope.assert(sameType<bench.AuthoringControls, ordinary.AuthoringControls>());
+            typeScope.assert(sameType<IsEqual<bench.AuthoringAnnotations, ordinary.AuthoringAnnotations>, true>());
+            typeScope.assert(sameType<IsEqual<bench.AuthoringControls, ordinary.AuthoringControls>, true>());
             typeScope.assert(
                 sameType<IsEqual<bench.ParameterizedTestScope<string>, ordinary.ParameterizedTestScope<string>>, true>()
             );
@@ -129,11 +135,11 @@ export const testNode = suite('bench', [
             const rows = [ { value: parameterValue } ];
             typeScope.assert(sameType<IsEqual<bench.TestNode, ordinary.TestNode>, true>());
             typeScope.assert(sameType<IsEqual<bench.TestScope, ordinary.TestScope>, true>());
-            typeScope.assert(sameType<bench.TestScopeAssertContext, ordinary.TestScopeAssertContext>());
+            typeScope.assert(sameType<IsEqual<bench.TestScopeAssertContext, ordinary.TestScopeAssertContext>, true>());
             const authoredTable = bench.table({
                 cases: rows,
                 test(scope) {
-                    typeScope.assert(sameType.withActual<typeof rows[number]>(), scope.parameters);
+                    typeScope.assert(sameType.withActual<true>(), isEqualTo<typeof rows[number]>()(scope.parameters));
                     scope.assert.equal(scope.parameters.value, parameterValue);
                     return scope.assert.collect();
                 },
@@ -147,8 +153,8 @@ export const testNode = suite('bench', [
     suite('@overkill-dev/test/bench', [
         test('preserves leaf signatures, annotations, and table types', function (typeScope) {
             typeScope.assert(sameType<IsEqual<typeof standard, typeof bench>, true>());
-            typeScope.assert(sameType<standard.AuthoringAnnotations, bench.AuthoringAnnotations>());
-            typeScope.assert(sameType<standard.AuthoringControls, bench.AuthoringControls>());
+            typeScope.assert(sameType<IsEqual<standard.AuthoringAnnotations, bench.AuthoringAnnotations>, true>());
+            typeScope.assert(sameType<IsEqual<standard.AuthoringControls, bench.AuthoringControls>, true>());
             typeScope.assert(
                 sameType<IsEqual<standard.ParameterizedTestScope<string>, bench.ParameterizedTestScope<string>>, true>()
             );
@@ -165,7 +171,7 @@ export const testNode = suite('bench', [
             typeScope.assert(sameType<IsEqual<standard.TestCase, bench.TestCase>, true>());
             typeScope.assert(sameType<IsEqual<standard.TestNode, bench.TestNode>, true>());
             typeScope.assert(sameType<IsEqual<standard.TestScope, bench.TestScope>, true>());
-            typeScope.assert(sameType<standard.TestScopeAssertContext, bench.TestScopeAssertContext>());
+            typeScope.assert(sameType<IsEqual<standard.TestScopeAssertContext, bench.TestScopeAssertContext>, true>());
             return typeScope.assert.collect();
         }),
         test('infers table rows and parameterized bodies through the standard subpath', function (typeScope) {
@@ -200,10 +206,10 @@ export const testNode = suite('bench', [
                 const secondValue = 2;
                 const small = bench.workload('small', { packages, nested: { values: [ firstValue, secondValue ] } });
                 typeScope.assert(sameType.withActual<'small'>(), small.name);
-                typeScope.assert(sameType.withActual<typeof packages>(), small.parameters.packages);
+                typeScope.assert(sameType.withActual<true>(), isEqualTo<typeof packages>()(small.parameters.packages));
                 typeScope.assert(
-                    sameType.withActual<readonly [typeof firstValue, typeof secondValue]>(),
-                    small.parameters.nested.values
+                    sameType.withActual<true>(),
+                    isEqualTo<readonly [typeof firstValue, typeof secondValue]>()(small.parameters.nested.values)
                 );
                 return typeScope.assert.collect();
             }),
@@ -212,7 +218,10 @@ export const testNode = suite('bench', [
                 const secondValue = 2;
                 const mutable = { nested: { values: [ firstValue, secondValue ] } };
                 const snapshot = standard.workload('mutable', mutable);
-                typeScope.assert(sameType.withActual<readonly number[]>(), snapshot.parameters.nested.values);
+                typeScope.assert(
+                    sameType.withActual<true>(),
+                    isEqualTo<readonly number[]>()(snapshot.parameters.nested.values)
+                );
                 return typeScope.assert.collect();
             })
         ]),

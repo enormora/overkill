@@ -1,6 +1,6 @@
 import type { IsEqual } from 'type-fest';
 import { suite as typeSuite, test as typeTest } from '../../../tools/type-tests/authoring.entry-point.ts';
-import { acceptsCall, assignableTo, rejectsCall, sameType } from '../../../tools/type-tests/relations.entry-point.ts';
+import { acceptsCall, rejectsCall, sameType } from '../../../tools/type-tests/relations.entry-point.ts';
 import type {
     Suite,
     Table,
@@ -11,7 +11,7 @@ import type {
     TestNode,
     TestScope
 } from '../engine/engine.entry-point.ts';
-import { hasKey, isEqualTo } from '../../test-support/type-relations.ts';
+import { hasKey, isEqualTo, type IsAssignable } from '../../test-support/type-relations.ts';
 import {
     type AuthoringAnnotations,
     type AuthoringControls,
@@ -269,17 +269,23 @@ export const testNode = typeSuite('test', [
             return typeScope.assert.collect();
         }),
         typeTest('defines narrow high-level authoring test data', function (typeScope) {
-            typeScope.assert(sameType<AuthoringAnnotations, {
-                readonly ownership?: readonly string[];
-                readonly tags?: readonly string[];
-            }>());
-            typeScope.assert(assignableTo<AuthoringAnnotations, TestAnnotationsInput>());
-            typeScope.assert(sameType<AuthoringControls, {
-                readonly capture?: 'buffered' | 'live';
-                readonly duplicateExecution?: 'forbidden' | 'idempotent';
-                readonly timeoutMilliseconds?: number;
-            }>());
-            typeScope.assert(assignableTo<AuthoringControls, TestControlsInput>());
+            typeScope.assert(sameType<
+                IsEqual<AuthoringAnnotations, {
+                    readonly ownership?: readonly string[];
+                    readonly tags?: readonly string[];
+                }>,
+                true
+            >());
+            typeScope.assert(sameType<IsAssignable<AuthoringAnnotations, TestAnnotationsInput>, true>());
+            typeScope.assert(sameType<
+                IsEqual<AuthoringControls, {
+                    readonly capture?: 'buffered' | 'live';
+                    readonly duplicateExecution?: 'forbidden' | 'idempotent';
+                    readonly timeoutMilliseconds?: number;
+                }>,
+                true
+            >());
+            typeScope.assert(sameType<IsAssignable<AuthoringControls, TestControlsInput>, true>());
             return typeScope.assert.collect();
         }),
         typeTest('rejects removed high-level authoring metadata', function (typeScope) {

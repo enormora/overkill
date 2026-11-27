@@ -1,5 +1,6 @@
+import type { IsEqual } from 'type-fest';
 import { suite, test } from '../../../tools/type-tests/authoring.entry-point.ts';
-import { acceptsCall, assignableTo, sameType } from '../../../tools/type-tests/relations.entry-point.ts';
+import { acceptsCall, sameType } from '../../../tools/type-tests/relations.entry-point.ts';
 import type {
     AnyResourceDefinition,
     ResourceContext,
@@ -8,6 +9,7 @@ import type {
     RuntimeGraphContext,
     RuntimeResourceMap
 } from '../resources/resources.entry-point.ts';
+import { type IsAssignable, isEqualTo } from '../../test-support/type-relations.ts';
 import {
     resourceContextForStep,
     runtimeContextForStep,
@@ -46,15 +48,27 @@ export const testNode = suite('@overkill-dev/run/resource-lifecycle', [
         return typeScope.assert.collect();
     }),
     test('exposes wrapper session composition contracts', function (typeScope) {
-        typeScope.assert(sameType<LifecycleMessages, {
-            readonly acquisitionFailure: string;
-            readonly disposalFailure: string;
-        }>());
+        typeScope.assert(sameType<
+            IsEqual<LifecycleMessages, {
+                readonly acquisitionFailure: string;
+                readonly disposalFailure: string;
+            }>,
+            true
+        >());
         typeScope.assert(
-            assignableTo<{ readonly kind: 'resources'; readonly resources: RuntimeResourceMap; }, ResourceWrapperStep>()
+            sameType<
+                IsAssignable<
+                    { readonly kind: 'resources'; readonly resources: RuntimeResourceMap; },
+                    ResourceWrapperStep
+                >,
+                true
+            >()
         );
         typeScope.assert(
-            assignableTo<{ readonly kind: 'runtime'; readonly runtime: RuntimeGraph; }, ResourceWrapperStep>()
+            sameType<
+                IsAssignable<{ readonly kind: 'runtime'; readonly runtime: RuntimeGraph; }, ResourceWrapperStep>,
+                true
+            >()
         );
         typeScope.assert(acceptsCall, () => directResourceEntriesUnderTest([ { kind: 'resources', resources } ]));
         typeScope.assert(acceptsCall, () => stepRuntimeGraphsUnderTest([ { kind: 'runtime', runtime } ]));
@@ -69,12 +83,12 @@ export const testNode = suite('@overkill-dev/run/resource-lifecycle', [
     }),
     test('exposes scoped context projection', function (typeScope) {
         typeScope.assert(
-            sameType.withActual<ResourceContext<RuntimeResourceMap>>(),
-            resourceContextForStep(resources, resourceHandles)
+            sameType.withActual<true>(),
+            isEqualTo<ResourceContext<RuntimeResourceMap>>()(resourceContextForStep(resources, resourceHandles))
         );
         typeScope.assert(
-            sameType.withActual<RuntimeGraphContext<RuntimeGraph>>(),
-            runtimeContextForStep(runtime, session)
+            sameType.withActual<true>(),
+            isEqualTo<RuntimeGraphContext<RuntimeGraph>>()(runtimeContextForStep(runtime, session))
         );
         return typeScope.assert.collect();
     }),

@@ -1,13 +1,13 @@
 import type { IsEqual } from 'type-fest';
 import { suite, test } from '../../../tools/type-tests/authoring.entry-point.ts';
-import { acceptsCall, assignableFrom, rejectsCall, sameType } from '../../../tools/type-tests/relations.entry-point.ts';
+import { acceptsCall, rejectsCall, sameType } from '../../../tools/type-tests/relations.entry-point.ts';
 import type {
     Table,
     TestBody,
     TestCase,
     TestScope
 } from '../engine/engine.entry-point.ts';
-import { isAssignableTo, isEqualTo } from '../../test-support/type-relations.ts';
+import { isAssignableTo, isEqualTo, type IsAssignable } from '../../test-support/type-relations.ts';
 import {
     createTemporaryDirectoryResource,
     defineResource,
@@ -61,15 +61,15 @@ export const testNode = suite('@overkill-dev/test/resources wrapper standard sub
     test('exposes runtime test context wrappers through the resources subpath', function (typeScope) {
         const runtimeBody = withRuntime(runtime, function runWithDatabase(scope) {
             typeScope.assert(sameType<IsEqual<typeof scope, RuntimeTestScope<typeof runtime>>, true>());
-            typeScope.assert(sameType.withActual<Database>(), scope.runtimes.api.database);
-            typeScope.assert(sameType.withActual<RuntimeAttachments>(), scope.attachments);
+            typeScope.assert(sameType.withActual<true>(), isEqualTo<Database>()(scope.runtimes.api.database));
+            typeScope.assert(sameType.withActual<true>(), isEqualTo<RuntimeAttachments>()(scope.attachments));
 
             return scope.assert.collect();
         });
 
         typeScope.assert(sameType.withActual<true>(), isEqualTo<RuntimeWrappedTestBody<typeof runtime>>()(runtimeBody));
         typeScope.assert(sameType<[typeof runtimeBody] extends [TestBody] ? true : false, true>());
-        typeScope.assert(assignableFrom<RuntimeGraph, typeof runtime>());
+        typeScope.assert(sameType<IsAssignable<typeof runtime, RuntimeGraph>, true>());
         typeScope.assert(rejectsCall('argument-count'), () =>
             withRuntimeUnderTest(runtime, {
                 database: { url: 'postgres://localhost' }
@@ -112,7 +112,10 @@ export const testNode = suite('@overkill-dev/test/resources wrapper standard sub
                     true
                 >()
             );
-            typeScope.assert(sameType.withActual<TemporaryDirectoryHandle>(), scope.resources.scratch);
+            typeScope.assert(
+                sameType.withActual<true>(),
+                isEqualTo<TemporaryDirectoryHandle>()(scope.resources.scratch)
+            );
 
             return scope.assert.collect();
         });
@@ -124,7 +127,7 @@ export const testNode = suite('@overkill-dev/test/resources wrapper standard sub
                 >()
             );
             typeScope.assert(sameType.withActual<string>(), scope.resources.dir.path);
-            typeScope.assert(sameType.withActual<RuntimeAttachments>(), scope.attachments);
+            typeScope.assert(sameType.withActual<true>(), isEqualTo<RuntimeAttachments>()(scope.attachments));
 
             return scope.assert.collect();
         });
@@ -147,9 +150,12 @@ export const testNode = suite('@overkill-dev/test/resources wrapper standard sub
             withRuntime<typeof runtime, ResourceTestScope<Record<'scratch', typeof temporaryDirectory>>>(
                 runtime,
                 function runWithScratchAndRuntime(scope) {
-                    typeScope.assert(sameType.withActual<TemporaryDirectoryHandle>(), scope.resources.scratch);
-                    typeScope.assert(sameType.withActual<Database>(), scope.runtimes.api.database);
-                    typeScope.assert(sameType.withActual<RuntimeAttachments>(), scope.attachments);
+                    typeScope.assert(
+                        sameType.withActual<true>(),
+                        isEqualTo<TemporaryDirectoryHandle>()(scope.resources.scratch)
+                    );
+                    typeScope.assert(sameType.withActual<true>(), isEqualTo<Database>()(scope.runtimes.api.database));
+                    typeScope.assert(sameType.withActual<true>(), isEqualTo<RuntimeAttachments>()(scope.attachments));
 
                     return scope.assert.collect();
                 }
@@ -242,9 +248,12 @@ export const testNode = suite('@overkill-dev/test/resources wrapper standard sub
             runtime,
             resources: { scratch: temporaryDirectory },
             mapScope(scope) {
-                typeScope.assert(sameType.withActual<Database>(), scope.runtimes.api.database);
-                typeScope.assert(sameType.withActual<RuntimeAttachments>(), scope.attachments);
-                typeScope.assert(sameType.withActual<TemporaryDirectoryHandle>(), scope.resources.scratch);
+                typeScope.assert(sameType.withActual<true>(), isEqualTo<Database>()(scope.runtimes.api.database));
+                typeScope.assert(sameType.withActual<true>(), isEqualTo<RuntimeAttachments>()(scope.attachments));
+                typeScope.assert(
+                    sameType.withActual<true>(),
+                    isEqualTo<TemporaryDirectoryHandle>()(scope.resources.scratch)
+                );
 
                 return {
                     databaseUrl: scope.runtimes.api.database.url,
@@ -256,9 +265,12 @@ export const testNode = suite('@overkill-dev/test/resources wrapper standard sub
         const authoredCase = facade.test('uses facade runtime', function runWithFacade(scope) {
             typeScope.assert(sameType.withActual<string>(), scope.databaseUrl);
             typeScope.assert(sameType.withActual<string>(), scope.scratchPath);
-            typeScope.assert(sameType.withActual<TemporaryDirectoryHandle>(), scope.resources.scratch);
-            typeScope.assert(sameType.withActual<Database>(), scope.runtimes.api.database);
-            typeScope.assert(sameType.withActual<RuntimeAttachments>(), scope.attachments);
+            typeScope.assert(
+                sameType.withActual<true>(),
+                isEqualTo<TemporaryDirectoryHandle>()(scope.resources.scratch)
+            );
+            typeScope.assert(sameType.withActual<true>(), isEqualTo<Database>()(scope.runtimes.api.database));
+            typeScope.assert(sameType.withActual<true>(), isEqualTo<RuntimeAttachments>()(scope.attachments));
 
             return scope.assert.collect();
         });

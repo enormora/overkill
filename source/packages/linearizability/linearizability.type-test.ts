@@ -1,8 +1,8 @@
 import { suite, test } from '../../../tools/type-tests/authoring.entry-point.ts';
-import { assignableTo, sameType } from '../../../tools/type-tests/relations.entry-point.ts';
+import { sameType } from '../../../tools/type-tests/relations.entry-point.ts';
 import type { PropertyBody } from '../property/property.entry-point.ts';
 import type { ModelTransition } from '../model/model.entry-point.ts';
-import { isEqualTo } from '../../test-support/type-relations.ts';
+import { isEqualTo, type IsAssignable } from '../../test-support/type-relations.ts';
 import {
     checkLinearizability,
     linearizability,
@@ -13,7 +13,7 @@ import {
 
 export const testNode = suite('linearizability', [
     test('infers observation types and accepts deterministic model transitions', function (typeScope) {
-        typeScope.assert(assignableTo<ModelTransition<number>, LinearizabilityTransition<number>>());
+        typeScope.assert(sameType<IsAssignable<ModelTransition<number>, LinearizabilityTransition<number>>, true>());
         const controller = new AbortController();
         const result = checkLinearizability({
             history: [ { kind: 'invoke', id: 'one', operation: 1 }, {
@@ -37,7 +37,7 @@ export const testNode = suite('linearizability', [
             maxWork: 100,
             signal: controller.signal
         });
-        typeScope.assert(sameType.withActual<Promise<LinearizabilityResult>>(), result);
+        typeScope.assert(sameType.withActual<true>(), isEqualTo<Promise<LinearizabilityResult>>()(result));
         return typeScope.assert.collect();
     }),
     test('infers concurrent operation and output types', function (typeScope) {
@@ -47,7 +47,7 @@ export const testNode = suite('linearizability', [
             },
             run(operation: number, system, signal) {
                 typeScope.assert(sameType.withActual<number>(), system.value);
-                typeScope.assert(sameType.withActual<AbortSignal>(), signal);
+                typeScope.assert(sameType.withActual<true>(), isEqualTo<AbortSignal>()(signal));
                 return String(operation);
             },
             model: {

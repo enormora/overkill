@@ -47,7 +47,10 @@ export const testNode = suite('public runner invocation', [
             true
         >());
         typeScope.assert(
-            sameType<RunInvocationOptions, RunInvocationTimingOptions & { readonly signal: AbortSignal | null; }>()
+            sameType<
+                IsEqual<RunInvocationOptions, RunInvocationTimingOptions & { readonly signal: AbortSignal | null; }>,
+                true
+            >()
         );
         return typeScope.assert.collect();
     }),

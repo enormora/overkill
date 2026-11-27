@@ -19,7 +19,10 @@ export const testNode = suite('benchmark measurement authoring', [
             workloads: [ bench.workload('one', {}) ],
             measurement: bench.processMeasurement({ instrumentation: 'off' }),
             async measure({ sample }) {
-                typeScope.assert(sameType.withActual<bench.BenchmarkSample<bench.ProcessSample>>(), sample);
+                typeScope.assert(
+                    sameType.withActual<true>(),
+                    isEqualTo<bench.BenchmarkSample<bench.ProcessSample>>()(sample)
+                );
                 typeScope.assert(assignableFrom.not<keyof typeof sample, 'measure'>());
                 const measured = await sample.process({
                     command: [ 'node', 'cli.js' ],
@@ -28,13 +31,16 @@ export const testNode = suite('benchmark measurement authoring', [
                     io: { kind: 'pipes' },
                     completion: { kind: 'exit', readiness: null, steps: [], expectedExitCodes: [ 0 ] }
                 });
-                typeScope.assert(sameType.withActual<bench.MeasuredProcess>(), measured);
+                typeScope.assert(sameType.withActual<true>(), isEqualTo<bench.MeasuredProcess>()(measured));
                 return { durationMicroseconds: measured.metrics.durationMicroseconds };
             },
             diagnosticMetrics: [],
             budgets: { one: { durationMicroseconds: { maximum: 100 } } }
         });
-        typeScope.assert(sameType.withActual<typeof bench.processMeasurement>(), standard.processMeasurement);
+        typeScope.assert(
+            sameType.withActual<true>(),
+            isEqualTo<typeof bench.processMeasurement>()(standard.processMeasurement)
+        );
         typeScope.assert(assignableFrom.not<keyof bench.MeasurementSample, 'process'>());
         return typeScope.assert.collect();
     }),
@@ -44,19 +50,22 @@ export const testNode = suite('benchmark measurement authoring', [
             workloads: [ bench.workload('small', { entries }) ],
             measurement: bench.wallClockMeasurement(),
             measure(context) {
-                typeScope.assert(sameType.withActual<typeof entries>(), context.workload.parameters.entries);
                 typeScope.assert(
-                    sameType.withActual<(callback: () => Promise<void> | void) => void>(),
-                    context.sample.cleanup
+                    sameType.withActual<true>(),
+                    isEqualTo<typeof entries>()(context.workload.parameters.entries)
                 );
                 typeScope.assert(
-                    sameType.withActual<bench.BenchmarkLifecyclePolicy>(),
-                    standard.defaultBenchmarkLifecyclePolicy
+                    sameType.withActual<true>(),
+                    isEqualTo<(callback: () => Promise<void> | void) => void>()(context.sample.cleanup)
+                );
+                typeScope.assert(
+                    sameType.withActual<true>(),
+                    isEqualTo<bench.BenchmarkLifecyclePolicy>()(standard.defaultBenchmarkLifecyclePolicy)
                 );
                 const measured = context.sample.measure(function () {
                     return 'result';
                 });
-                typeScope.assert(sameType.withActual<bench.Measured<string>>(), measured);
+                typeScope.assert(sameType.withActual<true>(), isEqualTo<bench.Measured<string>>()(measured));
                 typeScope.assert(assignableFrom.not<keyof typeof context, 'assert'>());
                 typeScope.assert(assignableFrom.not<keyof typeof context, 'plan'>());
                 return { durationMicroseconds: measured.metrics.durationMicroseconds };
@@ -77,7 +86,7 @@ export const testNode = suite('benchmark measurement authoring', [
                 const measured = sample.measure(async function () {
                     return asyncValue;
                 });
-                typeScope.assert(sameType.withActual<Promise<bench.Measured<number>>>(), measured);
+                typeScope.assert(sameType.withActual<true>(), isEqualTo<Promise<bench.Measured<number>>>()(measured));
                 const result = await measured;
                 return { operationsPerSecond: result.metrics.operationsPerSecond };
             },
@@ -92,7 +101,7 @@ export const testNode = suite('benchmark measurement authoring', [
                 const measured = sample.measure(operationCount, function () {
                     return true;
                 });
-                typeScope.assert(sameType.withActual<Promise<bench.Measured<boolean>>>(), measured);
+                typeScope.assert(sameType.withActual<true>(), isEqualTo<Promise<bench.Measured<boolean>>>()(measured));
                 const result = await measured;
                 return { value: Number(result.value) };
             },
@@ -141,7 +150,10 @@ export const testNode = suite('benchmark measurement authoring', [
                 bench.BenchmarkMeasureContext<{ readonly size: typeof operationCount; }>,
                 bench.BenchmarkMetrics
             >(resource, function (context) {
-                typeScope.assert(sameType.withActual<typeof operationCount>(), context.workload.parameters.size);
+                typeScope.assert(
+                    sameType.withActual<true>(),
+                    isEqualTo<typeof operationCount>()(context.workload.parameters.size)
+                );
                 typeScope.assert(assignableFrom.not<keyof typeof context, 'assert'>());
                 const measured = context.sample.measure(function () {
                     return context.resources.fixture.size;

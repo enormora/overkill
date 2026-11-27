@@ -2,6 +2,7 @@ import type { IsEqual } from 'type-fest';
 import { suite, test } from '../../../tools/type-tests/authoring.entry-point.ts';
 import { acceptsCall, rejectsCall, sameType } from '../../../tools/type-tests/relations.entry-point.ts';
 import type { TestScopeAssertContext } from '../engine/engine.entry-point.ts';
+import { isEqualTo } from '../../test-support/type-relations.ts';
 import {
     createTranscript,
     recordAsyncSink,
@@ -62,10 +63,13 @@ export const testNode = suite('@overkill-dev/test interaction transcripts', [
 
         transcript.record('state', { count: 1 });
 
-        typeScope.assert(sameType.withActual<Transcript<StateEntry>>(), transcript);
+        typeScope.assert(sameType.withActual<true>(), isEqualTo<Transcript<StateEntry>>()(transcript));
         typeScope.assert(acceptsCall, () => sink({ count: 1 }));
-        typeScope.assert(sameType.withActual<DisposableTranscript<StateEntry>>(), subscription);
-        typeScope.assert(sameType.withActual<AsyncDisposableTranscript<StateEntry>>(), asyncSubscription);
+        typeScope.assert(sameType.withActual<true>(), isEqualTo<DisposableTranscript<StateEntry>>()(subscription));
+        typeScope.assert(
+            sameType.withActual<true>(),
+            isEqualTo<AsyncDisposableTranscript<StateEntry>>()(asyncSubscription)
+        );
         return typeScope.assert.collect();
     }),
     test('asserts typed interaction transcript usage', function (typeScope) {

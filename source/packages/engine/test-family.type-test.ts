@@ -1,6 +1,7 @@
 import type { IsEqual } from 'type-fest';
 import { suite, test } from '../../../tools/type-tests/authoring.entry-point.ts';
 import { acceptsCall, assignableFrom, rejectsCall, sameType } from '../../../tools/type-tests/relations.entry-point.ts';
+import { isEqualTo } from '../../test-support/type-relations.ts';
 import {
     defineTestFamily,
     execute,
@@ -39,7 +40,7 @@ export const testNode = suite('test family', [
             }
         });
         typeScope.assert(sameType<IsEqual<typeof family, TestFamily<ProjectSettings>>, true>());
-        typeScope.assert(sameType.withActual<ProjectSettings>(), family.parseSettings(null));
+        typeScope.assert(sameType.withActual<true>(), isEqualTo<ProjectSettings>()(family.parseSettings(null)));
         return typeScope.assert.collect();
     }),
     test('metadata views retain branding without erasing callable settings', function (typeScope) {
@@ -108,7 +109,7 @@ export const testNode = suite('test family', [
         return typeScope.assert.collect();
     }),
     test('prepared facts are available without collection evidence', function (typeScope) {
-        typeScope.assert(sameType<PreparedFamilyRun['facts'], FamilyPreparationFacts>());
+        typeScope.assert(sameType<IsEqual<PreparedFamilyRun['facts'], FamilyPreparationFacts>, true>());
         typeScope.assert(assignableFrom.not<keyof FamilyPreparationFacts, 'collection'>());
         return typeScope.assert.collect();
     })

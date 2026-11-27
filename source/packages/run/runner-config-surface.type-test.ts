@@ -1,6 +1,6 @@
 import type { IsEqual } from 'type-fest';
 import { suite, test } from '../../../tools/type-tests/authoring.entry-point.ts';
-import { acceptsCall, assignableFrom, sameType } from '../../../tools/type-tests/relations.entry-point.ts';
+import { acceptsCall, sameType } from '../../../tools/type-tests/relations.entry-point.ts';
 import type { ProjectDefinedFamilyProfile } from '../../config/schema.ts';
 import type {
     AttachmentLimits,
@@ -8,6 +8,7 @@ import type {
     DefinedOutputRenderer,
     DefinedReporter
 } from '../engine/engine.entry-point.ts';
+import { isEqualTo, type IsAssignable } from '../../test-support/type-relations.ts';
 import type { OrdinaryBaselinePolicy } from './config.entry-point.ts';
 import {
     ConfigError,
@@ -88,7 +89,7 @@ export const testNode = suite('@overkill-dev/run config', [
                 'history' | 'loader' | 'outputRenderer' | 'profiles' | 'reporters' | 'runtimeStateDir'
             >()
         );
-        typeScope.assert(sameType<NormalizedConfig['outputRenderer'], DefinedOutputRenderer>());
+        typeScope.assert(sameType<IsEqual<NormalizedConfig['outputRenderer'], DefinedOutputRenderer>, true>());
         typeScope.assert(sameType<IsEqual<NormalizedConfig['profiles'][string], ProfileConfig>, true>());
         typeScope.assert(
             sameType<
@@ -100,14 +101,18 @@ export const testNode = suite('@overkill-dev/run config', [
         typeScope.assert(
             sameType<IsEqual<NormalizedConfig['reporters'], readonly DefinedReporter[] | null>, true>()
         );
-        typeScope.assert(sameType<TestProfileConfig['timings'], TimingProfilePolicy>());
-        typeScope.assert(sameType<TimingProfilePolicy, { readonly collection: TimingCollectionMode; }>());
-        typeScope.assert(sameType<ProjectTimingProfilePolicy, { readonly collection: TimingCollectionMode; }>());
+        typeScope.assert(sameType<IsEqual<TestProfileConfig['timings'], TimingProfilePolicy>, true>());
+        typeScope.assert(
+            sameType<IsEqual<TimingProfilePolicy, { readonly collection: TimingCollectionMode; }>, true>()
+        );
+        typeScope.assert(
+            sameType<IsEqual<ProjectTimingProfilePolicy, { readonly collection: TimingCollectionMode; }>, true>()
+        );
         return typeScope.assert.collect();
     }),
     test('exposes run process budget and resolution error types', function (typeScope) {
-        typeScope.assert(
-            sameType<
+        typeScope.assert(sameType<
+            IsEqual<
                 keyof ProcessBudgets,
                 [
                     'activeResourceCount',
@@ -115,30 +120,36 @@ export const testNode = suite('@overkill-dev/run config', [
                     'residentSetBytes',
                     'residentSetGrowthBytesPerSecond'
                 ][number]
-            >()
-        );
+            >,
+            true
+        >());
         typeScope.assert(
-            sameType.withActual<RunResolutionError>(),
-            new RunResolutionError('Unsupported.', undefined, 'unsupported-request')
+            sameType.withActual<true>(),
+            isEqualTo<RunResolutionError>()(new RunResolutionError('Unsupported.', undefined, 'unsupported-request'))
         );
         typeScope.assert(
             sameType<
-                ReturnType<RunExecutionPlanError['conflicts']>,
-                readonly [RunExecutionPlanConflict, ...readonly RunExecutionPlanConflict[]]
+                IsEqual<
+                    ReturnType<RunExecutionPlanError['conflicts']>,
+                    readonly [RunExecutionPlanConflict, ...readonly RunExecutionPlanConflict[]]
+                >,
+                true
             >()
         );
         return typeScope.assert.collect();
     }),
     test('exposes profile file discovery types', function (typeScope) {
-        typeScope.assert(sameType<MicrotestProfileConfig['files'], ProfileFiles | null>());
-        typeScope.assert(sameType<IntegrationProfileConfig['files'], ProfileFiles>());
-        typeScope.assert(assignableFrom<ProfileFiles, RuntimeProfileFilePatterns>());
-        typeScope.assert(assignableFrom<ProfileFiles, RuntimeProfileFileSets>());
-        typeScope.assert(assignableFrom.not<ProfileFiles, MixedRuntimeProfileFiles>());
-        typeScope.assert(sameType<ProjectMicrotestProfileConfig['files'], ProjectProfileFiles | undefined>());
-        typeScope.assert(sameType<ProjectIntegrationProfileConfig['files'], ProjectProfileFiles>());
-        typeScope.assert(assignableFrom<ProjectProfileFiles, ProjectProfileFilePatterns>());
-        typeScope.assert(assignableFrom<ProjectProfileFiles, ProjectProfileFileSets>());
+        typeScope.assert(sameType<IsEqual<MicrotestProfileConfig['files'], ProfileFiles | null>, true>());
+        typeScope.assert(sameType<IsEqual<IntegrationProfileConfig['files'], ProfileFiles>, true>());
+        typeScope.assert(sameType<IsAssignable<RuntimeProfileFilePatterns, ProfileFiles>, true>());
+        typeScope.assert(sameType<IsAssignable<RuntimeProfileFileSets, ProfileFiles>, true>());
+        typeScope.assert(sameType<IsAssignable<MixedRuntimeProfileFiles, ProfileFiles>, false>());
+        typeScope.assert(
+            sameType<IsEqual<ProjectMicrotestProfileConfig['files'], ProjectProfileFiles | undefined>, true>()
+        );
+        typeScope.assert(sameType<IsEqual<ProjectIntegrationProfileConfig['files'], ProjectProfileFiles>, true>());
+        typeScope.assert(sameType<IsAssignable<ProjectProfileFilePatterns, ProjectProfileFiles>, true>());
+        typeScope.assert(sameType<IsAssignable<ProjectProfileFileSets, ProjectProfileFiles>, true>());
         return typeScope.assert.collect();
     }),
     test('exposes property profile config types', function (typeScope) {
@@ -153,8 +164,11 @@ export const testNode = suite('@overkill-dev/run config', [
         );
         typeScope.assert(
             sameType<
-                Extract<ProjectProfileConfig, { readonly testFamily: 'property'; }>,
-                ProjectPropertyProfileConfig
+                IsEqual<
+                    Extract<ProjectProfileConfig, { readonly testFamily: 'property'; }>,
+                    ProjectPropertyProfileConfig
+                >,
+                true
             >()
         );
         return typeScope.assert.collect();
@@ -167,7 +181,7 @@ export const testNode = suite('@overkill-dev/run config', [
         typeScope.assert(
             sameType<IsEqual<typeof loadConfig, (request: ConfigLoadRequest) => Promise<LoadedConfig>>, true>()
         );
-        typeScope.assert(sameType<Config['outputRenderer'], DefinedOutputRenderer | undefined>());
+        typeScope.assert(sameType<IsEqual<Config['outputRenderer'], DefinedOutputRenderer | undefined>, true>());
         typeScope.assert(
             sameType<
                 IsEqual<Config['reporters'], readonly [DefinedReporter, ...DefinedReporter[]] | undefined>,
@@ -228,7 +242,7 @@ export const testNode = suite('@overkill-dev/run config', [
             }] extends [ProjectIntegrationProfileConfig] ? true : false,
             false
         >());
-        typeScope.assert(sameType.withActual<ConfigError>(), new ConfigError('Invalid config.'));
+        typeScope.assert(sameType.withActual<true>(), isEqualTo<ConfigError>()(new ConfigError('Invalid config.')));
         return typeScope.assert.collect();
     })
 ]);

@@ -1,11 +1,6 @@
+import type { IsEqual } from 'type-fest';
 import { suite, test } from '../../../tools/type-tests/authoring.entry-point.ts';
-import {
-    acceptsCall,
-    assignableFrom,
-    assignableTo,
-    rejectsCall,
-    sameType
-} from '../../../tools/type-tests/relations.entry-point.ts';
+import { acceptsCall, assignableFrom, rejectsCall, sameType } from '../../../tools/type-tests/relations.entry-point.ts';
 import {
     defineCompositeAssertion,
     defineNarrowingCompositeAssertion,
@@ -13,6 +8,7 @@ import {
     type AssertReferenceReturn,
     type CompositeCheckBuilder
 } from '../assert/assert.entry-point.ts';
+import { type IsAssignable, isEqualTo } from '../../test-support/type-relations.ts';
 import type {
     AssertAssertionFacade,
     AssertAssertionNode,
@@ -78,55 +74,74 @@ export const testNode = suite('engine', [
     suite('Assertion protocol', [
         test('exports source-discriminated assertion nodes', function (typeScope) {
             typeScope.assert(sameType<AssertionSource, 'assert' | 'require'>());
-            typeScope.assert(sameType<AssertionNode, AssertAssertionNode | RequireAssertionNode>());
+            typeScope.assert(sameType<IsEqual<AssertionNode, AssertAssertionNode | RequireAssertionNode>, true>());
             typeScope.assert(
-                sameType<AssertionResult, AssertAssertionNode | NonEmptyReadonlyArray<AssertAssertionNode>>()
+                sameType<
+                    IsEqual<AssertionResult, AssertAssertionNode | NonEmptyReadonlyArray<AssertAssertionNode>>,
+                    true
+                >()
             );
-            typeScope.assert(assignableFrom.not<AssertionResult, readonly []>());
-            typeScope.assert(assignableFrom.not<AssertionResult, {
-                readonly actual: 'value';
-                readonly check: 'string';
-                readonly message: null;
-                readonly source: 'require';
-            }>());
+            typeScope.assert(sameType<IsAssignable<readonly [], AssertionResult>, false>());
+            typeScope.assert(sameType<
+                IsAssignable<{
+                    readonly actual: 'value';
+                    readonly check: 'string';
+                    readonly message: null;
+                    readonly source: 'require';
+                }, AssertionResult>,
+                false
+            >());
             return typeScope.assert.collect();
         }),
         test('exports source location helpers for raw assertion nodes', function (typeScope) {
             typeScope.assert(sameType<
-                SourceLocation,
-                {
-                    readonly column: number | null;
-                    readonly file: string;
-                    readonly kind: 'known';
-                    readonly line: number | null;
-                } | {
-                    readonly column?: never;
-                    readonly file?: never;
-                    readonly kind: 'unknown';
-                    readonly line?: never;
-                }
+                IsEqual<
+                    SourceLocation,
+                    {
+                        readonly column: number | null;
+                        readonly file: string;
+                        readonly kind: 'known';
+                        readonly line: number | null;
+                    } | {
+                        readonly column?: never;
+                        readonly file?: never;
+                        readonly kind: 'unknown';
+                        readonly line?: never;
+                    }
+                >,
+                true
             >());
-            typeScope.assert(sameType<SourceLocationProvider, () => SourceLocation>());
-            typeScope.assert(sameType<ResolvableSourceLocation, SourceLocation | SourceLocationProvider>());
-            typeScope.assert(sameType<typeof captureSourceLocation, () => SourceLocationProvider>());
-            typeScope.assert(assignableTo<typeof unknownSourceLocation, SourceLocation>());
-            typeScope.assert(assignableTo<AssertAssertionNode, {
-                readonly sourceLocations: NonEmptyReadonlyArray<ResolvableSourceLocation>;
-            }>());
+            typeScope.assert(sameType<IsEqual<SourceLocationProvider, () => SourceLocation>, true>());
+            typeScope.assert(
+                sameType<IsEqual<ResolvableSourceLocation, SourceLocation | SourceLocationProvider>, true>()
+            );
+            typeScope.assert(sameType<IsEqual<typeof captureSourceLocation, () => SourceLocationProvider>, true>());
+            typeScope.assert(sameType<IsAssignable<typeof unknownSourceLocation, SourceLocation>, true>());
+            typeScope.assert(sameType<
+                IsAssignable<AssertAssertionNode, {
+                    readonly sourceLocations: NonEmptyReadonlyArray<ResolvableSourceLocation>;
+                }>,
+                true
+            >());
             return typeScope.assert.collect();
         }),
         test('exposes first-class throwing test body types', function (typeScope) {
-            typeScope.assert(sameType<ThrowingTestScope, {
-                readonly debug: TestDebugScope;
-                readonly seed: bigint;
-                readonly random: TestRandom;
-                readonly assert: AssertAssertionFacade;
-                readonly require: RequireAssertionFacade;
-                readonly signal: AbortSignal;
-            }>());
+            typeScope.assert(sameType<
+                IsEqual<ThrowingTestScope, {
+                    readonly debug: TestDebugScope;
+                    readonly seed: bigint;
+                    readonly random: TestRandom;
+                    readonly assert: AssertAssertionFacade;
+                    readonly require: RequireAssertionFacade;
+                    readonly signal: AbortSignal;
+                }>,
+                true
+            >());
             typeScope.assert(assignableFrom.not<keyof ThrowingTestScope, 'plan'>());
             typeScope.assert(assignableFrom.not<keyof ThrowingTestScope['assert'], 'collect'>());
-            typeScope.assert(sameType<ThrowingTestBody, (scope: ThrowingTestScope) => Promise<void> | void>());
+            typeScope.assert(
+                sameType<IsEqual<ThrowingTestBody, (scope: ThrowingTestScope) => Promise<void> | void>, true>()
+            );
             typeScope.assert(acceptsCall, () =>
                 createThrowingTestCaseUnderTest({
                     annotations: {},
@@ -138,20 +153,29 @@ export const testNode = suite('engine', [
             return typeScope.assert.collect();
         }),
         test('defines explicit thrown matcher shapes', function (typeScope) {
-            typeScope.assert(assignableFrom<ExactThrownMatcher, { readonly exact: 'raw'; }>());
-            typeScope.assert(assignableFrom<ErrorMatcher, {
-                readonly message: 'expected';
-                readonly type: typeof Error;
-            }>());
-            typeScope.assert(assignableFrom<ThrownMatcher, {
-                readonly cause: { readonly exact: 'raw'; };
-                readonly message: RegExp;
-            }>());
-            typeScope.assert(assignableFrom.not<ErrorMatcher, { readonly unused?: never; }>());
-            typeScope.assert(assignableFrom.not<ThrownMatcher, {
-                readonly exact: 'raw';
-                readonly message: 'expected';
-            }>());
+            typeScope.assert(sameType<IsAssignable<{ readonly exact: 'raw'; }, ExactThrownMatcher>, true>());
+            typeScope.assert(sameType<
+                IsAssignable<{
+                    readonly message: 'expected';
+                    readonly type: typeof Error;
+                }, ErrorMatcher>,
+                true
+            >());
+            typeScope.assert(sameType<
+                IsAssignable<{
+                    readonly cause: { readonly exact: 'raw'; };
+                    readonly message: RegExp;
+                }, ThrownMatcher>,
+                true
+            >());
+            typeScope.assert(sameType<IsAssignable<{ readonly unused?: never; }, ErrorMatcher>, false>());
+            typeScope.assert(sameType<
+                IsAssignable<{
+                    readonly exact: 'raw';
+                    readonly message: 'expected';
+                }, ThrownMatcher>,
+                false
+            >());
             return typeScope.assert.collect();
         }),
         test('accepts explicit throws and rejects assertions', function (typeScope) {
@@ -238,12 +262,18 @@ export const testNode = suite('engine', [
         test('infers callable custom assertion references', function (typeScope) {
             const value: unknown = null;
 
-            typeScope.assert(sameType.withActual<typeof syncAssertion>(), syncAssertion);
-            typeScope.assert(sameType<AssertReferenceArguments<typeof syncAssertion>, readonly [value: boolean]>());
-            typeScope.assert(sameType<AssertReferenceReturn<typeof syncAssertion>, SyncAssertionReturn>());
-            typeScope.assert(sameType<AssertReferenceReturn<typeof asyncAssertion>, Promise<void>>());
-            typeScope.assert(sameType<AssertReferenceReturn<typeof narrowingAssertion>, SyncAssertionReturn>());
-            typeScope.assert(sameType.withActual<typeof asyncAssertion>(), asyncAssertion);
+            typeScope.assert(sameType.withActual<true>(), isEqualTo<typeof syncAssertion>()(syncAssertion));
+            typeScope.assert(
+                sameType<IsEqual<AssertReferenceArguments<typeof syncAssertion>, readonly [value: boolean]>, true>()
+            );
+            typeScope.assert(
+                sameType<IsEqual<AssertReferenceReturn<typeof syncAssertion>, SyncAssertionReturn>, true>()
+            );
+            typeScope.assert(sameType<IsEqual<AssertReferenceReturn<typeof asyncAssertion>, Promise<void>>, true>());
+            typeScope.assert(
+                sameType<IsEqual<AssertReferenceReturn<typeof narrowingAssertion>, SyncAssertionReturn>, true>()
+            );
+            typeScope.assert(sameType.withActual<true>(), isEqualTo<typeof asyncAssertion>()(asyncAssertion));
             requireFacade(narrowingAssertion, value);
             typeScope.assert(sameType.withActual<string>(), value);
             return typeScope.assert.collect();

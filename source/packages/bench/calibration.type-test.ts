@@ -2,6 +2,7 @@ import { suite, test } from '../../../tools/type-tests/authoring.entry-point.ts'
 import { sameType } from '../../../tools/type-tests/relations.entry-point.ts';
 import * as standard from '../test/bench.entry-point.ts';
 import { defineResource } from '../resources/resources.entry-point.ts';
+import { isEqualTo } from '../../test-support/type-relations.ts';
 import * as bench from './bench.entry-point.ts';
 
 export const testNode = suite('calibrated measurement inference', [
@@ -14,7 +15,10 @@ export const testNode = suite('calibrated measurement inference', [
             workloads: [ bench.workload('one', {}) ],
             measurement,
             measure({ sample }) {
-                typeScope.assert(sameType.withActual<bench.BenchmarkSample<bench.MeasurementSample>>(), sample);
+                typeScope.assert(
+                    sameType.withActual<true>(),
+                    isEqualTo<bench.BenchmarkSample<bench.MeasurementSample>>()(sample)
+                );
                 return sample
                     .measure(function readReference() {
                         return 1;
@@ -24,7 +28,10 @@ export const testNode = suite('calibrated measurement inference', [
             diagnosticMetrics: [],
             budgets: { one: { durationMicroseconds: { maximum: 100 } } }
         });
-        typeScope.assert(sameType.withActual<typeof bench.calibratedMeasurement>(), standard.calibratedMeasurement);
+        typeScope.assert(
+            sameType.withActual<true>(),
+            isEqualTo<typeof bench.calibratedMeasurement>()(standard.calibratedMeasurement)
+        );
         return typeScope.assert.collect();
     }),
     test('preserves asynchronous and process sample inference', function (typeScope) {
@@ -37,7 +44,10 @@ export const testNode = suite('calibrated measurement inference', [
             workloads: [ bench.workload('one', {}) ],
             measurement: asyncStrategy,
             measure({ sample }) {
-                typeScope.assert(sameType.withActual<bench.BenchmarkSample<bench.AsyncMeasurementSample>>(), sample);
+                typeScope.assert(
+                    sameType.withActual<true>(),
+                    isEqualTo<bench.BenchmarkSample<bench.AsyncMeasurementSample>>()(sample)
+                );
                 return { value: 1 };
             },
             diagnosticMetrics: [],
@@ -51,7 +61,10 @@ export const testNode = suite('calibrated measurement inference', [
             workloads: [ bench.workload('one', {}) ],
             measurement: processStrategy,
             measure({ sample }) {
-                typeScope.assert(sameType.withActual<bench.BenchmarkSample<bench.ProcessSample>>(), sample);
+                typeScope.assert(
+                    sameType.withActual<true>(),
+                    isEqualTo<bench.BenchmarkSample<bench.ProcessSample>>()(sample)
+                );
                 return { durationMicroseconds: 1 };
             },
             diagnosticMetrics: [],
@@ -78,7 +91,10 @@ export const testNode = suite('calibrated measurement inference', [
             measurement: bench.wallClockMeasurement(),
             measure({ dependencies, sample }) {
                 typeScope.assert(sameType.withActual<number>(), dependencies.value);
-                typeScope.assert(sameType.withActual<bench.BenchmarkSample<bench.MeasurementSample>>(), sample);
+                typeScope.assert(
+                    sameType.withActual<true>(),
+                    isEqualTo<bench.BenchmarkSample<bench.MeasurementSample>>()(sample)
+                );
                 return sample
                     .measure(function readReference() {
                         return dependencies.value;

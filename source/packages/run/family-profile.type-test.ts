@@ -1,6 +1,7 @@
+import { z } from 'zod/v4';
+import type { IsEqual } from 'type-fest';
 import { suite, test } from '../../../tools/type-tests/authoring.entry-point.ts';
 import { acceptsCall, rejectsCall, sameType } from '../../../tools/type-tests/relations.entry-point.ts';
-import { z } from 'zod/v4';
 import { defineTestFamily } from '../engine/engine.entry-point.ts';
 import { isEqualTo } from '../../test-support/type-relations.ts';
 import { orchestrator, type ConfiguredRunCommand } from './run.entry-point.ts';
@@ -52,7 +53,9 @@ export const testNode = suite('family profile', [
                 isEqualTo<typeof numeric>()(config.profiles.numbers.testFamily)
             );
             typeScope.assert(sameType.withActual<true>(), isEqualTo<typeof textual>()(config.profiles.text.testFamily));
-            typeScope.assert(sameType<FamilySettingsOf<typeof numeric>, z.output<typeof numericSettings>>());
+            typeScope.assert(
+                sameType<IsEqual<FamilySettingsOf<typeof numeric>, z.output<typeof numericSettings>>, true>()
+            );
             return typeScope.assert.collect();
         }),
         test('rejects swapped settings and optional family strings', function (typeScope) {

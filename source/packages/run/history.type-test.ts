@@ -20,8 +20,8 @@ export const testNode = suite('@overkill-dev/run history', [
     }),
     test('exports a typed service requiring explicit confirmation for clear', function (typeScope) {
         typeScope.assert(sameType<IsEqual<typeof createHistory, (options: HistoryOptions) => History>, true>());
-        typeScope.assert(sameType<HistoryClearRequest, { readonly confirmed: true; }>());
-        typeScope.assert(sameType<Parameters<History['prune']>[0], { readonly dryRun: boolean; }>());
+        typeScope.assert(sameType<IsEqual<HistoryClearRequest, { readonly confirmed: true; }>, true>());
+        typeScope.assert(sameType<IsEqual<Parameters<History['prune']>[0], { readonly dryRun: boolean; }>, true>());
         return typeScope.assert.collect();
     })
 ]);

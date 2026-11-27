@@ -253,19 +253,19 @@ export const testNode = typeSuite('@overkill-dev/test', [
         typeScope.assert(acceptsCall, () => createTestFacadeUnderTest());
         typeScope.assert(acceptsCall, () => createTestFacadeUnderTest({}));
         typeScope.assert(sameType<IsEqual<typeof runIfMain, RunIfMain>, true>());
-        typeScope.assert(sameType<TestFamilyId, EngineTestFamily>());
+        typeScope.assert(sameType<IsEqual<TestFamilyId, EngineTestFamily>, true>());
         return typeScope.assert.collect();
     }),
     typeTest('re-exports doubles values from the root facade', function (typeScope) {
-        typeScope.assert(sameType<typeof doubleUsage, typeof leafDoubleUsage>());
-        typeScope.assert(sameType<typeof rule, typeof leafRule>());
-        typeScope.assert(sameType<typeof testAsyncDisposable, typeof leafTestAsyncDisposable>());
-        typeScope.assert(sameType<typeof testAsyncIterable, typeof leafTestAsyncIterable>());
-        typeScope.assert(sameType<typeof testAsyncIterator, typeof leafTestAsyncIterator>());
-        typeScope.assert(sameType<typeof testDisposable, typeof leafTestDisposable>());
-        typeScope.assert(sameType<typeof testDouble, typeof leafTestDouble>());
-        typeScope.assert(sameType<typeof testIterable, typeof leafTestIterable>());
-        typeScope.assert(sameType<typeof testIterator, typeof leafTestIterator>());
+        typeScope.assert(sameType<IsEqual<typeof doubleUsage, typeof leafDoubleUsage>, true>());
+        typeScope.assert(sameType<IsEqual<typeof rule, typeof leafRule>, true>());
+        typeScope.assert(sameType<IsEqual<typeof testAsyncDisposable, typeof leafTestAsyncDisposable>, true>());
+        typeScope.assert(sameType<IsEqual<typeof testAsyncIterable, typeof leafTestAsyncIterable>, true>());
+        typeScope.assert(sameType<IsEqual<typeof testAsyncIterator, typeof leafTestAsyncIterator>, true>());
+        typeScope.assert(sameType<IsEqual<typeof testDisposable, typeof leafTestDisposable>, true>());
+        typeScope.assert(sameType<IsEqual<typeof testDouble, typeof leafTestDouble>, true>());
+        typeScope.assert(sameType<IsEqual<typeof testIterable, typeof leafTestIterable>, true>());
+        typeScope.assert(sameType<IsEqual<typeof testIterator, typeof leafTestIterator>, true>());
         return typeScope.assert.collect();
     }),
     typeTest('re-exports doubles types from the root facade', function (typeScope) {

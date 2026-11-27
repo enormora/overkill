@@ -30,7 +30,10 @@ export const testNode = suite('model authoring', [
                 Object.assign(system, { count: system.count + operation });
             },
             check(state: number, system: Counter, sample: PropertySampleScope<readonly number[]>) {
-                typeScope.assert(sameType.withActual<readonly number[]>(), sample.reconstructInput());
+                typeScope.assert(
+                    sameType.withActual<true>(),
+                    isEqualTo<readonly number[]>()(sample.reconstructInput())
+                );
                 sample.assert.equal(system.count, state);
             }
         };

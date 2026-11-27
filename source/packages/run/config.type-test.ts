@@ -2,6 +2,7 @@ import type { IsEqual } from 'type-fest';
 import { suite, test } from '../../../tools/type-tests/authoring.entry-point.ts';
 import { acceptsCall, assignableFrom, sameType } from '../../../tools/type-tests/relations.entry-point.ts';
 import type { DefinedTestFamily, DefinedReporter } from '../engine/engine.entry-point.ts';
+import { type IsAssignable, isEqualTo } from '../../test-support/type-relations.ts';
 import {
     ConfigError,
     type defineConfig,
@@ -28,12 +29,15 @@ declare const defineConfigUnderTest: typeof defineConfig;
 
 export const testNode = suite('@overkill-dev/run/config', [
     test('exposes property exploration settings without coverage or worker pools', function (typeScope) {
-        typeScope.assert(assignableFrom<ProjectPropertyProfileConfig, {
-            readonly testFamily: 'property';
-            readonly files: { readonly include: readonly ['test/laws.ts']; };
-            readonly property: { readonly newTrials: number; readonly maxWork: number; };
-            readonly execution: { readonly processModel: 'supervised-process'; readonly scheduling: 'serial'; };
-        }>());
+        typeScope.assert(sameType<
+            IsAssignable<{
+                readonly testFamily: 'property';
+                readonly files: { readonly include: readonly ['test/laws.ts']; };
+                readonly property: { readonly newTrials: number; readonly maxWork: number; };
+                readonly execution: { readonly processModel: 'supervised-process'; readonly scheduling: 'serial'; };
+            }, ProjectPropertyProfileConfig>,
+            true
+        >());
         typeScope.assert(assignableFrom.not<keyof ProjectPropertyProfileConfig, 'coverage'>());
         typeScope.assert(assignableFrom.not<keyof ProjectPropertyProfileConfig, 'retries'>());
         typeScope.assert(assignableFrom.not<keyof ProjectPropertyProfileConfig, 'attachments'>());
@@ -41,8 +45,8 @@ export const testNode = suite('@overkill-dev/run/config', [
     }),
     test('exposes benchmark policy without adding it to ordinary execution profiles', function (typeScope) {
         typeScope.assert(sameType<IsEqual<typeof normalizeConfig, (config: Config) => NormalizedConfig>, true>());
-        typeScope.assert(sameType<ProfileConfig['testFamily'], ExpectedTestFamily | 'benchmark'>());
-        typeScope.assert(sameType<TestProfileConfig['testFamily'], ExpectedTestFamily>());
+        typeScope.assert(sameType<IsEqual<ProfileConfig['testFamily'], ExpectedTestFamily | 'benchmark'>, true>());
+        typeScope.assert(sameType<IsEqual<TestProfileConfig['testFamily'], ExpectedTestFamily>, true>());
         typeScope.assert(sameType<
             keyof ProjectBenchmarkProfileConfig,
             keyof {
@@ -61,13 +65,19 @@ export const testNode = suite('@overkill-dev/run/config', [
                 readonly timeouts: true;
             }
         >());
-        typeScope.assert(assignableFrom<ProjectBenchmarkProfileConfig, {
-            readonly testFamily: 'benchmark';
-            readonly files: { readonly include: readonly ['source/startup.bench.ts']; };
-        }>());
-        typeScope.assert(assignableFrom.not<ProjectBenchmarkProfileConfig, {
-            readonly testFamily: 'benchmark';
-        }>());
+        typeScope.assert(sameType<
+            IsAssignable<{
+                readonly testFamily: 'benchmark';
+                readonly files: { readonly include: readonly ['source/startup.bench.ts']; };
+            }, ProjectBenchmarkProfileConfig>,
+            true
+        >());
+        typeScope.assert(sameType<
+            IsAssignable<{
+                readonly testFamily: 'benchmark';
+            }, ProjectBenchmarkProfileConfig>,
+            false
+        >());
         return typeScope.assert.collect();
     }),
     test('retries are integration-only and retain an explicit artifact policy', function (typeScope) {
@@ -79,10 +89,13 @@ export const testNode = suite('@overkill-dev/run/config', [
             }] extends [ProjectIntegrationProfileConfig] ? true : false,
             true
         >());
-        typeScope.assert(assignableFrom.not<ProjectMicrotestProfileConfig, {
-            readonly testFamily: 'microtest';
-            readonly retries: { readonly maxAttempts: number; };
-        }>());
+        typeScope.assert(sameType<
+            IsAssignable<{
+                readonly testFamily: 'microtest';
+                readonly retries: { readonly maxAttempts: number; };
+            }, ProjectMicrotestProfileConfig>,
+            false
+        >());
         return typeScope.assert.collect();
     }),
     test('exposes configuration loading and authoring types', function (typeScope) {
@@ -93,11 +106,16 @@ export const testNode = suite('@overkill-dev/run/config', [
         typeScope.assert(
             sameType<IsEqual<Config['reporters'], readonly [DefinedReporter, ...DefinedReporter[]] | undefined>, true>()
         );
-        typeScope.assert(sameType<ProjectTimingProfilePolicy, {
-            readonly collection: 'precise' | 'summary';
-        }>());
+        typeScope.assert(sameType<
+            IsEqual<ProjectTimingProfilePolicy, {
+                readonly collection: 'precise' | 'summary';
+            }>,
+            true
+        >());
         typeScope.assert(sameType<ProjectCoverageOutput, 'html' | 'json' | 'lcov' | 'text' | 'v8'>());
-        typeScope.assert(sameType<ProjectMicrotestProfileConfig['coverage'], ProjectCoveragePolicy | undefined>());
+        typeScope.assert(
+            sameType<IsEqual<ProjectMicrotestProfileConfig['coverage'], ProjectCoveragePolicy | undefined>, true>()
+        );
         typeScope.assert(sameType<
             [{
                 readonly coverage: { readonly outputs: readonly ['text']; };
@@ -106,7 +124,7 @@ export const testNode = suite('@overkill-dev/run/config', [
             }] extends [ProjectIntegrationProfileConfig] ? true : false,
             false
         >());
-        typeScope.assert(sameType.withActual<ConfigError>(), new ConfigError('Invalid config.'));
+        typeScope.assert(sameType.withActual<true>(), isEqualTo<ConfigError>()(new ConfigError('Invalid config.')));
         return typeScope.assert.collect();
     })
 ]);

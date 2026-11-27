@@ -1,6 +1,6 @@
+import type { IsEqual, Writable } from 'type-fest';
 import { suite, test } from '../../../tools/type-tests/authoring.entry-point.ts';
 import { assignableFrom, rejectsCall, sameType } from '../../../tools/type-tests/relations.entry-point.ts';
-import type { IsEqual, Writable } from 'type-fest';
 import type * as standard from '../test/property.entry-point.ts';
 import { isEqualTo } from '../../test-support/type-relations.ts';
 import * as leaf from './property.entry-point.ts';
@@ -96,16 +96,19 @@ export const testNode = suite('fluent generator constructors', [
         });
         typeScope.assert(sameType.withActual<true>(), isEqualTo<leaf.Generator<Tree>>()(tree));
         typeScope.assert(
-            sameType<standard.RecursiveGeneratorDefinition<Tree>, leaf.RecursiveGeneratorDefinition<Tree>>()
+            sameType<
+                IsEqual<standard.RecursiveGeneratorDefinition<Tree>, leaf.RecursiveGeneratorDefinition<Tree>>,
+                true
+            >()
         );
         return typeScope.assert.collect();
     }),
     test('exposes identical types across property entry points without backend operations', function (typeScope) {
-        typeScope.assert(sameType<typeof standard.gen, typeof leaf.gen>());
-        typeScope.assert(sameType<standard.NumberBounds, leaf.NumberBounds>());
-        typeScope.assert(sameType<standard.BigintBounds, leaf.BigintBounds>());
-        typeScope.assert(sameType<standard.LengthBounds, leaf.LengthBounds>());
-        typeScope.assert(sameType<standard.GeneratorConstant, leaf.GeneratorConstant>());
+        typeScope.assert(sameType<IsEqual<typeof standard.gen, typeof leaf.gen>, true>());
+        typeScope.assert(sameType<IsEqual<standard.NumberBounds, leaf.NumberBounds>, true>());
+        typeScope.assert(sameType<IsEqual<standard.BigintBounds, leaf.BigintBounds>, true>());
+        typeScope.assert(sameType<IsEqual<standard.LengthBounds, leaf.LengthBounds>, true>());
+        typeScope.assert(sameType<IsEqual<standard.GeneratorConstant, leaf.GeneratorConstant>, true>());
         typeScope.assert(assignableFrom.not<keyof leaf.Generator<number>, 'generate'>());
         typeScope.assert(assignableFrom.not<keyof leaf.Generator<number>, 'shrink'>());
         typeScope.assert(assignableFrom.not<keyof leaf.Generator<number>, 'prepare'>());

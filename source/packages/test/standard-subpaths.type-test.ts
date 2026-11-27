@@ -1,6 +1,6 @@
 import type { IsEqual } from 'type-fest';
 import { suite, test } from '../../../tools/type-tests/authoring.entry-point.ts';
-import { acceptsCall, assignableFrom, sameType } from '../../../tools/type-tests/relations.entry-point.ts';
+import { acceptsCall, sameType } from '../../../tools/type-tests/relations.entry-point.ts';
 import type {
     DefinedOutputRenderer,
     DefinedReporter,
@@ -8,6 +8,7 @@ import type {
     RealTimeReporter
 } from '../engine/engine.entry-point.ts';
 import type { PerformanceBaselineAdapter } from '../baselines/baselines.entry-point.ts';
+import { type IsAssignable } from '../../test-support/type-relations.ts';
 import type {
     CompositeAssertionDefinition,
     CompositeCheckBuilder,
@@ -79,14 +80,17 @@ export const testNode = suite('@overkill-dev/test standard subpaths', [
         );
         typeScope.assert(
             sameType<
-                Extract<ProjectProfileConfig, { readonly testFamily: 'property'; }>,
-                ProjectPropertyProfileConfig
+                IsEqual<
+                    Extract<ProjectProfileConfig, { readonly testFamily: 'property'; }>,
+                    ProjectPropertyProfileConfig
+                >,
+                true
             >()
         );
-        typeScope.assert(assignableFrom<ProjectProfileFiles, ProjectProfileFilePatterns>());
-        typeScope.assert(assignableFrom<ProjectProfileFiles, ProjectProfileFileSets>());
-        typeScope.assert(
-            sameType<
+        typeScope.assert(sameType<IsAssignable<ProjectProfileFilePatterns, ProjectProfileFiles>, true>());
+        typeScope.assert(sameType<IsAssignable<ProjectProfileFileSets, ProjectProfileFiles>, true>());
+        typeScope.assert(sameType<
+            IsEqual<
                 keyof ProjectProcessBudgets,
                 [
                     'activeResourceCount',
@@ -94,8 +98,9 @@ export const testNode = suite('@overkill-dev/test standard subpaths', [
                     'residentSetBytes',
                     'residentSetGrowthBytesPerSecond'
                 ][number]
-            >()
-        );
+            >,
+            true
+        >());
         return typeScope.assert.collect();
     }),
     test('exposes reporter factories through the standard distribution', function (typeScope) {
@@ -118,16 +123,23 @@ export const testNode = suite('@overkill-dev/test standard subpaths', [
             >()
         );
         typeScope.assert(sameType<IsEqual<typeof createDotReporter, () => DefinedReporter<RealTimeReporter>>, true>());
-        typeScope.assert(sameType<typeof createGithubActionsOutputRenderer, () => DefinedOutputRenderer>());
+        typeScope.assert(
+            sameType<IsEqual<typeof createGithubActionsOutputRenderer, () => DefinedOutputRenderer>, true>()
+        );
         return typeScope.assert.collect();
     }),
     test('exposes assertion extension types from the assert package', function (typeScope) {
         typeScope.assert(sameType<CompositeBooleanDefinition['name'], string>());
-        typeScope.assert(sameType<NarrowingStringDefinition['narrows'], (actual: unknown) => actual is string>());
+        typeScope.assert(
+            sameType<IsEqual<NarrowingStringDefinition['narrows'], (actual: unknown) => actual is string>, true>()
+        );
         typeScope.assert(
             sameType<
-                CompositeCheckBuilder<'assert'>['true'],
-                (actual: unknown) => ReturnType<CompositeCheckBuilder<'assert'>['true']>
+                IsEqual<
+                    CompositeCheckBuilder<'assert'>['true'],
+                    (actual: unknown) => ReturnType<CompositeCheckBuilder<'assert'>['true']>
+                >,
+                true
             >()
         );
         return typeScope.assert.collect();

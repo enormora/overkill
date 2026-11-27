@@ -1,6 +1,8 @@
+import type { IsEqual } from 'type-fest';
 import { suite, test } from '../../../tools/type-tests/authoring.entry-point.ts';
 import { acceptsCall, rejectsCall, sameType } from '../../../tools/type-tests/relations.entry-point.ts';
 import type { AssertAssertionFacade, RequireAssertionFacade } from '../engine/engine.entry-point.ts';
+import { isEqualTo } from '../../test-support/type-relations.ts';
 import {
     defineCompositeAssertion,
     defineNarrowingCompositeAssertion,
@@ -43,26 +45,30 @@ declare const check: CompositeCheckBuilder<'assert'>;
 export const testNode = suite('./assert.entry-point.ts', [
     test('exports typed composite assertion references', function (typeScope) {
         typeScope.assert(
-            sameType.withActual<CompositeAssertionReference<[value: boolean], TrueCompositeChild>>(),
-            syncAssertion
+            sameType.withActual<true>(),
+            isEqualTo<CompositeAssertionReference<[value: boolean], TrueCompositeChild>>()(syncAssertion)
         );
         typeScope.assert(
-            sameType.withActual<CompositeAssertionReference<[value: boolean], Promise<TrueCompositeChild>>>(),
-            asyncAssertion
+            sameType.withActual<true>(),
+            isEqualTo<CompositeAssertionReference<[value: boolean], Promise<TrueCompositeChild>>>()(asyncAssertion)
         );
-        typeScope.assert(sameType<AssertReferenceArguments<typeof syncAssertion>, readonly [value: boolean]>());
-        typeScope.assert(sameType<AssertReferenceReturn<typeof syncAssertion>, SyncAssertionReturn>());
-        typeScope.assert(sameType<AssertReferenceReturn<typeof asyncAssertion>, Promise<void>>());
+        typeScope.assert(
+            sameType<IsEqual<AssertReferenceArguments<typeof syncAssertion>, readonly [value: boolean]>, true>()
+        );
+        typeScope.assert(sameType<IsEqual<AssertReferenceReturn<typeof syncAssertion>, SyncAssertionReturn>, true>());
+        typeScope.assert(sameType<IsEqual<AssertReferenceReturn<typeof asyncAssertion>, Promise<void>>, true>());
         return typeScope.assert.collect();
     }),
     test('exports typed narrowing assertion references', function (typeScope) {
         const value: unknown = null;
 
         typeScope.assert(
-            sameType.withActual<NarrowingCompositeAssertionReference<unknown, string, readonly []>>(),
-            narrowingAssertion
+            sameType.withActual<true>(),
+            isEqualTo<NarrowingCompositeAssertionReference<unknown, string, readonly []>>()(narrowingAssertion)
         );
-        typeScope.assert(sameType<AssertReferenceReturn<typeof narrowingAssertion>, SyncAssertionReturn>());
+        typeScope.assert(
+            sameType<IsEqual<AssertReferenceReturn<typeof narrowingAssertion>, SyncAssertionReturn>, true>()
+        );
         assertFacade(narrowingAssertion, value);
         requireFacade(narrowingAssertion, value);
         typeScope.assert(sameType.withActual<string>(), value);

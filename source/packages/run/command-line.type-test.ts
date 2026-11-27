@@ -1,12 +1,13 @@
 import type { IsEqual } from 'type-fest';
 import { suite, test } from '../../../tools/type-tests/authoring.entry-point.ts';
-import { acceptsCall, assignableFrom, sameType } from '../../../tools/type-tests/relations.entry-point.ts';
+import { acceptsCall, sameType } from '../../../tools/type-tests/relations.entry-point.ts';
 import type { ProjectDefinedFamilyProfile } from '../../config/schema.ts';
 import type { TestProfileConfig } from '../../config/types.ts';
 import type {
     DefinedOutputRenderer,
     DefinedReporter
 } from '../engine/engine.entry-point.ts';
+import { type IsAssignable, isEqualTo } from '../../test-support/type-relations.ts';
 import {
     ConfigError,
     type commandLineExitCodes,
@@ -130,26 +131,29 @@ export const testNode = suite('@overkill-dev/run/command-line', [
             typeScope.assert(sameType<keyof CommandLineRunTestsRequest, 'configPath' | 'cwd' | 'runRequest'>());
             typeScope.assert(sameType<CommandLineRunTestsRequest['configPath'], string | null>());
             typeScope.assert(sameType<CommandLineRunTestsRequest['cwd'], string>());
-            typeScope.assert(sameType<CommandLineRunTestsRequest['runRequest'], RunRequest>());
+            typeScope.assert(sameType<IsEqual<CommandLineRunTestsRequest['runRequest'], RunRequest>, true>());
             typeScope.assert(sameType<keyof CommandLineCommandContext, 'arguments' | 'configPath' | 'cwd'>());
             return typeScope.assert.collect();
         }),
         test('types selection and execution input', function (typeScope) {
-            typeScope.assert(sameType<CommandLineCommandContext['arguments'], readonly string[]>());
+            typeScope.assert(sameType<IsEqual<CommandLineCommandContext['arguments'], readonly string[]>, true>());
             typeScope.assert(sameType<CommandLineCommandContext['configPath'], string | null>());
             typeScope.assert(sameType<CommandLineCommandContext['cwd'], string>());
             typeScope.assert(sameType<keyof CommandLineListTestsRequest, 'configPath' | 'cwd' | 'listRequest'>());
-            typeScope.assert(sameType<CommandLineListTestsRequest['listRequest'], {
-                readonly lastFailed: boolean;
-                readonly order: Exclude<RunRequest['order'], 'plan'>;
-                readonly paths: readonly string[];
-                readonly profile: string;
-                readonly seed: RunRequest['seed'];
-                readonly selection: RunRequest['selection'];
-                readonly shard: RunRequest['shard'];
-                readonly withLocations: boolean;
-                readonly withOrphans: boolean;
-            }>());
+            typeScope.assert(sameType<
+                IsEqual<CommandLineListTestsRequest['listRequest'], {
+                    readonly lastFailed: boolean;
+                    readonly order: Exclude<RunRequest['order'], 'plan'>;
+                    readonly paths: readonly string[];
+                    readonly profile: string;
+                    readonly seed: RunRequest['seed'];
+                    readonly selection: RunRequest['selection'];
+                    readonly shard: RunRequest['shard'];
+                    readonly withLocations: boolean;
+                    readonly withOrphans: boolean;
+                }>,
+                true
+            >());
             return typeScope.assert.collect();
         })
     ]),
@@ -157,9 +161,9 @@ export const testNode = suite('@overkill-dev/run/command-line', [
         typeScope.assert(
             sameType<CommandLineRunnerResultKeys, 'exitCode' | 'fallbackDiagnostics' | 'runResult' | 'stdoutLines'>()
         );
-        typeScope.assert(sameType<CommandLineExitCode, ExpectedCommandLineExitCode>());
-        typeScope.assert(sameType<CommandLineRunnerResult['fallbackDiagnostics'], readonly string[]>());
-        typeScope.assert(sameType<CommandLineRunnerResult['stdoutLines'], readonly string[]>());
+        typeScope.assert(sameType<IsEqual<CommandLineExitCode, ExpectedCommandLineExitCode>, true>());
+        typeScope.assert(sameType<IsEqual<CommandLineRunnerResult['fallbackDiagnostics'], readonly string[]>, true>());
+        typeScope.assert(sameType<IsEqual<CommandLineRunnerResult['stdoutLines'], readonly string[]>, true>());
         return typeScope.assert.collect();
     }),
     test('requires benchmark run and list intent with nullable profile selection', function (typeScope) {
@@ -167,19 +171,19 @@ export const testNode = suite('@overkill-dev/run/command-line', [
         typeScope.assert(sameType<keyof CommandLineBenchmarkListRequest, 'configPath' | 'cwd' | 'listRequest'>());
         typeScope.assert(sameType<CommandLineBenchmarkRunRequest['runRequest']['profile'], string | null>());
         typeScope.assert(sameType<CommandLineBenchmarkListRequest['listRequest']['profile'], string | null>());
-        typeScope.assert(assignableFrom.not<CommandLineBenchmarkRunRequest, CommandLineCommandContext>());
+        typeScope.assert(sameType<IsAssignable<CommandLineCommandContext, CommandLineBenchmarkRunRequest>, false>());
         return typeScope.assert.collect();
     }),
     test('exposes typed config helpers', function (typeScope) {
         typeScope.assert(acceptsCall, () => defineConfigUnderTest({ profiles: { unit: { testFamily: 'microtest' } } }));
-        typeScope.assert(sameType<Config['outputRenderer'], DefinedOutputRenderer | undefined>());
-        typeScope.assert(sameType<LoadedConfig['outputRenderer'], DefinedOutputRenderer>());
+        typeScope.assert(sameType<IsEqual<Config['outputRenderer'], DefinedOutputRenderer | undefined>, true>());
+        typeScope.assert(sameType<IsEqual<LoadedConfig['outputRenderer'], DefinedOutputRenderer>, true>());
         typeScope.assert(
             sameType<IsEqual<Config['reporters'], readonly [DefinedReporter, ...DefinedReporter[]] | undefined>, true>()
         );
         typeScope.assert(sameType<IsEqual<LoadedConfig['reporters'], readonly DefinedReporter[] | null>, true>());
         typeScope.assert(sameType<ProjectProcessBudgets['residentSetBytes'], number | null | undefined>());
-        typeScope.assert(sameType.withActual<ConfigError>(), new ConfigError('Invalid config.'));
+        typeScope.assert(sameType.withActual<true>(), isEqualTo<ConfigError>()(new ConfigError('Invalid config.')));
         return typeScope.assert.collect();
     }),
     suite('exposes typed runner profiles', [
@@ -197,8 +201,11 @@ export const testNode = suite('@overkill-dev/run/command-line', [
             );
             typeScope.assert(
                 sameType<
-                    Extract<ProjectProfileConfig, { readonly testFamily: 'property'; }>,
-                    ProjectPropertyProfileConfig
+                    IsEqual<
+                        Extract<ProjectProfileConfig, { readonly testFamily: 'property'; }>,
+                        ProjectPropertyProfileConfig
+                    >,
+                    true
                 >()
             );
             typeScope.assert(sameType<
@@ -219,15 +226,17 @@ export const testNode = suite('@overkill-dev/run/command-line', [
                 true
             >());
             typeScope.assert(sameType<IsEqual<ProjectProfilesConfig['backend-http'], ProjectProfileConfig>, true>());
-            typeScope.assert(sameType<ProjectMicrotestProfileConfig['files'], ProjectProfileFiles | undefined>());
+            typeScope.assert(
+                sameType<IsEqual<ProjectMicrotestProfileConfig['files'], ProjectProfileFiles | undefined>, true>()
+            );
             typeScope.assert(sameType<TestProfileConfig['processUsage']['measure'], boolean>());
             typeScope.assert(sameType.not<LoadedConfig['profiles']['backend-http']['files'], undefined>());
             return typeScope.assert.collect();
         })
     ]),
     test('exposes typed profile file discovery', function (typeScope) {
-        typeScope.assert(assignableFrom<ProjectProfileFiles, ProjectProfileFilePatterns>());
-        typeScope.assert(assignableFrom<ProjectProfileFiles, ProjectProfileFileSets>());
+        typeScope.assert(sameType<IsAssignable<ProjectProfileFilePatterns, ProjectProfileFiles>, true>());
+        typeScope.assert(sameType<IsAssignable<ProjectProfileFileSets, ProjectProfileFiles>, true>());
         return typeScope.assert.collect();
     })
 ]);

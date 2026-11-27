@@ -1,5 +1,6 @@
 import { suite, test } from '../../../tools/type-tests/authoring.entry-point.ts';
 import { rejectsCall, sameType } from '../../../tools/type-tests/relations.entry-point.ts';
+import { isEqualTo } from '../../test-support/type-relations.ts';
 import {
     defineResource,
     defineLocalServiceResource,
@@ -38,18 +39,18 @@ export const testNode = suite('resource workload', [
             dependencies: { dependency },
             workload: parsePackages,
             acquire({ workload, dependencies }) {
-                typeScope.assert(sameType.withActual<PackageParameters>(), workload.parameters);
+                typeScope.assert(sameType.withActual<true>(), isEqualTo<PackageParameters>()(workload.parameters));
                 typeScope.assert(sameType.withActual<string>(), dependencies.dependency);
                 return workload.parameters.packages;
             },
             dispose(handle, { workload }) {
                 typeScope.assert(sameType.withActual<number>(), handle);
-                typeScope.assert(sameType.withActual<PackageParameters>(), workload.parameters);
+                typeScope.assert(sameType.withActual<true>(), isEqualTo<PackageParameters>()(workload.parameters));
             }
         });
         typeScope.assert(
-            sameType.withActual<(parameters: WorkloadParameters) => PackageParameters>(),
-            resource.workload
+            sameType.withActual<true>(),
+            isEqualTo<(parameters: WorkloadParameters) => PackageParameters>()(resource.workload)
         );
         return typeScope.assert.collect();
     }),
@@ -62,17 +63,17 @@ export const testNode = suite('resource workload', [
             workload: parsePackages,
             address: { kind: 'loopback', port: 0 },
             start({ workload }) {
-                typeScope.assert(sameType.withActual<PackageParameters>(), workload.parameters);
+                typeScope.assert(sameType.withActual<true>(), isEqualTo<PackageParameters>()(workload.parameters));
                 return workload.parameters.packages;
             },
             ready(handle, { workload }) {
                 typeScope.assert(sameType.withActual<number>(), handle);
-                typeScope.assert(sameType.withActual<PackageParameters>(), workload.parameters);
+                typeScope.assert(sameType.withActual<true>(), isEqualTo<PackageParameters>()(workload.parameters));
                 return { url: 'http://localhost', packages: handle };
             },
             dispose(handle, { workload }) {
                 typeScope.assert(sameType.withActual<number>(), handle);
-                typeScope.assert(sameType.withActual<PackageParameters>(), workload.parameters);
+                typeScope.assert(sameType.withActual<true>(), isEqualTo<PackageParameters>()(workload.parameters));
             }
         });
         return typeScope.assert.collect();
@@ -98,13 +99,13 @@ export const testNode = suite('resource workload', [
             workload: parsePackages,
             scenarios: { registry: { default: 'ready', timing: 'acquire', values: [ 'ready', 'failure' ] } },
             acquire({ workload, scenarios }) {
-                typeScope.assert(sameType.withActual<PackageParameters>(), workload.parameters);
+                typeScope.assert(sameType.withActual<true>(), isEqualTo<PackageParameters>()(workload.parameters));
                 typeScope.assert(sameType.withActual<'failure' | 'ready'>(), scenarios.registry);
                 return workload.parameters.packages;
             },
             dispose(handle, { workload, scenarios }) {
                 typeScope.assert(sameType.withActual<number>(), handle);
-                typeScope.assert(sameType.withActual<PackageParameters>(), workload.parameters);
+                typeScope.assert(sameType.withActual<true>(), isEqualTo<PackageParameters>()(workload.parameters));
                 typeScope.assert(sameType.withActual<'failure' | 'ready'>(), scenarios.registry);
             },
             serializeHandle(handle) {
@@ -116,10 +117,10 @@ export const testNode = suite('resource workload', [
         });
         typeScope.assert(sameType<ResourceHandle<typeof fixture>, string>());
         typeScope.assert(
-            sameType.withActual<
+            sameType.withActual<true>(),
+            isEqualTo<
                 ((payload: ResourceProjectionPayload, context: ResourceProjectionContext) => string) | undefined
-            >(),
-            fixture.deserializeHandle
+            >()(fixture.deserializeHandle)
         );
         return typeScope.assert.collect();
     }),
