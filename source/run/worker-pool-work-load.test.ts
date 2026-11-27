@@ -1,8 +1,12 @@
 import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { suite, test } from '@overkill-dev/test';
 
+import {
+    fakeWorkerRuntime,
+    placementPlan,
+    testCaseMetadata
+} from '../test-support/worker-pool-placement-validation-fixture.ts';
 import type { PlacementPlan } from './run-types.ts';
-import { fakeWorkerRuntime, placementPlan, testCaseMetadata } from './worker-pool-placement-validation.test.ts';
 import { runtimeUnitLoad } from './worker-pool-work-load.ts';
 import type { WorkerPoolRunRuntime } from './worker-pool-runtime.ts';
 

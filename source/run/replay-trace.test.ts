@@ -1,8 +1,8 @@
 import { type TestScope, suite, test } from '@overkill-dev/test';
 
+import { placementPlan, fakeWorkerRuntime } from '../test-support/worker-pool-placement-validation-fixture.ts';
 import type { PlacementPlan, PlacementLane } from './run-types.ts';
 import type { WorkerPoolWorkDispatcher } from './worker-pool-dispatch-state.ts';
-import { placementPlan, fakeWorkerRuntime } from './worker-pool-placement-validation.test.ts';
 import { createPlacementTraceRecorder, type PlacementTrace } from './placement-trace.ts';
 import { compileReplayTrace } from './replay-trace-plan.ts';
 import { createReplayDispatcher } from './replay-dispatcher.ts';

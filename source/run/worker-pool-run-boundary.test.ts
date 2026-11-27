@@ -4,6 +4,7 @@ import { createDeterministicClock } from '@enormora/clock';
 
 import { defaultFailureArtifactPolicy } from '../packages/engine/engine.entry-point.ts';
 import { fakeWorkerPoolRuntimeDependencies } from '../test-support/worker-pool-runtime-fixtures.ts';
+import { createCollectedPlan, workerPoolResolvedRun } from '../test-support/worker-pool-runtime-fixture.ts';
 import type {
     CreatedWorkerPool,
     RunOrchestratorDependencies,
@@ -13,7 +14,6 @@ import type { CollectedRunPlan } from './run-types.ts';
 import { createRunTimingMeasurement } from './run-timing-collection.ts';
 import type { WorkerPoolCollection, WorkerPoolCommand } from './worker-pool-protocol.ts';
 import { executeWorkerPoolRun, runWorkerPoolCommand } from './worker-pool-run.ts';
-import { createCollectedPlan, workerPoolResolvedRun } from './worker-pool-runtime.test.ts';
 
 type FakePoolInput = {
     readonly destroy: () => Promise<void>;

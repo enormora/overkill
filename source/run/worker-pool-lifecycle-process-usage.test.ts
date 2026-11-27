@@ -2,6 +2,11 @@ import { suite, test } from '@overkill-dev/test';
 
 import type { ProcessUsageSnapshot } from '../packages/engine/engine.entry-point.ts';
 import type { WorkerLifecycle } from '../config/types.ts';
+import {
+    fakeDependencies,
+    mixedLifecycleResolvedRun,
+    type CreatedWorkerPools
+} from '../test-support/worker-pool-lifecycle-routing-fixture.ts';
 import type {
     CreatedWorkerPool,
     WorkerPoolCreationOptions,
@@ -9,11 +14,6 @@ import type {
 } from './run-orchestrator-dependencies.ts';
 import { createSupervisedRunState } from './supervised-run-state.ts';
 import { createWorkerPoolRuntime, type WorkerPoolRunRuntime } from './worker-pool-runtime.ts';
-import {
-    fakeDependencies,
-    mixedLifecycleResolvedRun,
-    type CreatedWorkerPools
-} from './worker-pool-lifecycle-routing.test.ts';
 
 function measuredMixedLifecycleResolvedRun(): WorkerPoolRunRuntime['resolvedRun'] {
     const resolvedRun = mixedLifecycleResolvedRun();

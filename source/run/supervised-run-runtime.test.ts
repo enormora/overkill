@@ -1,9 +1,15 @@
 import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { type TestScope, suite, test } from '@overkill-dev/test';
-
 import type { CaseId } from '../engine/identity.ts';
 import { resolveRootTestAnnotations } from '../engine/test-data.ts';
 import type { ProcessUsageSnapshot } from '../engine/process-usage.ts';
+import {
+    childProcess,
+    timeoutRuntime,
+    runRuntime,
+    type ChildRecord,
+    type TimeoutRuntimeRecord
+} from '../test-support/supervised-run-runtime-fixture.ts';
 import type { CollectedRunPlan, ResolvedRun } from './run-types.ts';
 import { kill, type SupervisedChildProcess } from './supervised-child-process.ts';
 import { createStoredRunValue, createSupervisedRunState } from './supervised-run-state.ts';
@@ -13,27 +19,8 @@ import {
     handleCollectionSample,
     supervisedCollectedPlan,
     type SupervisedCollectionRuntime,
-    type SupervisedHardTimeout,
-    type SupervisedRunRuntime,
-    type SupervisedRunRuntimeSeed
+    type SupervisedHardTimeout
 } from './supervised-run-runtime.ts';
-
-type ChildState = {
-    readonly exitCode: number | null;
-    readonly pid: number | undefined;
-    readonly signalCode: string | null;
-};
-type ChildRecord = {
-    readonly child: SupervisedChildProcess;
-    readonly signals: () => readonly string[];
-};
-type TimeoutRuntimeRecord = {
-    readonly advanceTo: (microseconds: number) => void;
-    readonly callbacks: () => readonly (() => void)[];
-    readonly clears: () => number;
-    readonly delays: () => readonly number[];
-    readonly runtime: SupervisedRunRuntimeSeed;
-};
 
 const collectedPlan = {
     root: {
@@ -42,12 +29,14 @@ const collectedPlan = {
         title: 'root'
     }
 } as unknown as CollectedRunPlan;
+
 const caseId: CaseId = {
     file: 'source/example.test.ts',
     title: 'case',
     params: null,
     suite: []
 };
+
 const processUsageSample: ProcessUsageSnapshot = {
     activeResourceCount: 0,
     activeResourceTypes: [],
@@ -58,115 +47,6 @@ const processUsageSample: ProcessUsageSnapshot = {
 
 function resolvedRunWithPlan(plan: ResolvedRun['plan']): ResolvedRun {
     return { plan } as unknown as ResolvedRun;
-}
-
-function childProcess(state: ChildState): ChildRecord {
-    const signals: string[] = [];
-
-    return {
-        child: {
-            exitCode: state.exitCode,
-            kill(signal: string) {
-                signals.push(signal);
-                return true;
-            },
-            pid: state.pid,
-            signalCode: state.signalCode
-        } as unknown as SupervisedChildProcess,
-        signals() {
-            return signals;
-        }
-    };
-}
-
-function timeoutRuntime(child: SupervisedChildProcess): TimeoutRuntimeRecord {
-    const callbacks: (() => void)[] = [];
-    const delays: number[] = [];
-    const reports: Promise<void>[] = [];
-    let clears = 0;
-    let currentMonotonicMicroseconds = 0;
-
-    return {
-        advanceTo(microseconds) {
-            currentMonotonicMicroseconds = microseconds;
-        },
-        callbacks() {
-            return callbacks;
-        },
-        clears() {
-            return clears;
-        },
-        delays() {
-            return delays;
-        },
-        runtime: {
-            child,
-            collectedPlan: createStoredRunValue(null),
-            completedResult: createStoredRunValue(null),
-            dependencies: {
-                wallClock: {
-                    clearTimeout(timeout: unknown) {
-                        clears += timeout === null ? 0 : 1;
-                    },
-                    currentUnixEpochMilliseconds: 0,
-                    get currentMonotonicMicroseconds() {
-                        return BigInt(currentMonotonicMicroseconds);
-                    },
-                    setTimeout(callback: () => void, delay: number) {
-                        callbacks.push(callback);
-                        delays.push(delay);
-                        return callbacks.length;
-                    }
-                },
-                reporterDispatcher: {}
-            },
-            previousSample: createStoredRunValue(null),
-            reporterContext: { outputRenderer: { render: String }, reporters: [] },
-            reporterEvents: {
-                add(eventReport: Promise<void>) {
-                    reports.push(eventReport);
-                },
-                async wait() {
-                    await Promise.all(reports);
-                }
-            },
-            resolvedRun: {
-                facts: {
-                    execution: {
-                        processUsagePolicy: {
-                            budgets: {
-                                activeResourceCount: null,
-                                javaScriptEngineHeapBytes: null,
-                                residentSetBytes: null,
-                                residentSetGrowthBytesPerSecond: null
-                            }
-                        },
-                        timeoutPolicy: { hardMilliseconds: 1000 }
-                    }
-                }
-            },
-            state: createSupervisedRunState('first-failure-and-final'),
-            terminalFailure: createStoredRunValue(false)
-        } as unknown as SupervisedRunRuntimeSeed
-    };
-}
-
-function runRuntime(seed: SupervisedRunRuntimeSeed): SupervisedRunRuntime {
-    return {
-        ...seed,
-        timeout: {
-            clear() {
-                return undefined;
-            },
-            start() {
-                return undefined;
-            }
-        }
-    };
-}
-
-export function runningSupervisedRuntime(): SupervisedRunRuntime {
-    return runRuntime(timeoutRuntime(childProcess({ exitCode: null, pid: 1, signalCode: null }).child).runtime);
 }
 
 function collectionRuntime(

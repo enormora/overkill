@@ -1,6 +1,4 @@
 import { suite, test } from '@overkill-dev/test';
-
-import { defaultFailureArtifactPolicy } from '../packages/engine/engine.entry-point.ts';
 import {
     defaultIntegrationProfile,
     defaultRunConfig,
@@ -9,7 +7,12 @@ import {
 } from '../test-support/run-command-factory.ts';
 import { fakeWorkerPoolRuntimeDependencies as fakeDependencies } from '../test-support/worker-pool-runtime-fixtures.ts';
 import type { WorkerLifecycle } from '../config/types.ts';
-import { emptyWorkUnitResourceConstraints } from './run-types.ts';
+import {
+    createCollectedPlan,
+    workerPoolResolvedRun,
+    type CollectedRunPlan,
+    type ResolvedRun
+} from '../test-support/worker-pool-runtime-fixture.ts';
 import type { WorkerPoolCreationOptions } from './run-orchestrator-dependencies.ts';
 import { createSupervisedRunState } from './supervised-run-state.ts';
 import {
@@ -18,60 +21,12 @@ import {
     workerPoolExecutionFacts,
     type WorkerPoolRunRuntime
 } from './worker-pool-runtime.ts';
-import { createWorkerPoolPlacementPlan } from './worker-pool-placement-planning.ts';
 
-type CollectedRunPlan = WorkerPoolRunRuntime['collectedPlan'];
-type ResolvedRun = WorkerPoolRunRuntime['resolvedRun'];
 type RecordedPoolDependencies = {
     readonly createdWorkerPools: readonly WorkerPoolCreationOptions[];
     readonly dependencies: WorkerPoolRunRuntime['dependencies'];
     readonly measuredSamplingInterval: () => number;
 };
-
-const integrationPath = 'source/integration-tests/runtime/fixtures/passing.test.ts';
-const annotations = { ownership: [], tags: [] };
-const controls = { capture: null, duplicateExecution: null, timeoutMilliseconds: null };
-
-export function createCollectedPlan(): CollectedRunPlan {
-    return {
-        implementations: null,
-
-        family: null,
-        defined: 1,
-        discoveredFiles: [],
-        files: [
-            {
-                file: integrationPath,
-                cases: [
-                    {
-                        implementationDeclaration: null,
-
-                        skipReason: null,
-                        property: null,
-                        benchmark: null,
-                        workloadParameters: null,
-                        annotations,
-                        controls,
-                        definitionLocations: [ { kind: 'unknown' as const } ],
-                        params: null,
-                        resourceAttachments: {
-                            directResources: [],
-                            resourceGraph: [],
-                            runtimeGraphs: []
-                        },
-                        suitePath: [
-                            { definitionLocations: [ { kind: 'unknown' as const } ], title: 'integration' }
-                        ],
-                        testFamily: 'integration',
-                        title: 'first'
-                    }
-                ]
-            }
-        ],
-        orphans: [],
-        root: { annotations, controls, title: 'worker pool' }
-    };
-}
 
 function collectedPlanWithRunResource(): CollectedRunPlan {
     const plan = createCollectedPlan();
@@ -108,100 +63,6 @@ function collectedPlanWithRunResource(): CollectedRunPlan {
                 ]
             }
         ]
-    };
-}
-
-export function workerPoolResolvedRun(collectedPlan: CollectedRunPlan): ResolvedRun {
-    return {
-        collectionRunnerErrors: [],
-        config: defaultRunConfig(),
-        cwd: process.cwd(),
-        engine: { kind: 'default' },
-        facts: {
-            implementations: null,
-
-            family: { id: 'integration', version: '1', settings: null, preparation: null, collection: null },
-            adapter: null,
-            benchmarkHost: null,
-            benchmarkCalibration: null,
-            benchmarkNormalization: null,
-            benchmarkPlacement: null,
-            coveragePolicy: null,
-            durationHistory: null,
-            cases: [],
-            environment: {
-                node: { arch: 'x64', platform: 'linux', version: '26.1.1' },
-                projectRoot: process.cwd(),
-                runtimeStateDir: '.overkill'
-            },
-            execution: {
-                debuggedCases: [],
-                failureArtifacts: defaultFailureArtifactPolicy,
-                runRecords: { persist: false, reasons: [] },
-                benchmarkGarbageCollection: null,
-                propertyPolicy: null,
-                attachments: null,
-                retries: null,
-                assignmentPolicy: 'case-count-balanced',
-                baselineUpdateMode: 'none',
-                capture: 'buffered',
-                coverage: false,
-                debug: { mode: 'off', selectors: [] },
-                engine: { kind: 'default' },
-                maxConcurrency: 5,
-                dispatchPolicy: 'dynamic-lease',
-                hedging: { mode: 'off' },
-                hostProcess: { kind: 'direct' },
-                order: 'seeded',
-                placementPlan: createWorkerPoolPlacementPlan({
-                    runConstraints: emptyWorkUnitResourceConstraints,
-                    assignmentPolicy: 'case-count-balanced',
-                    availableParallelism: 2,
-                    profileMaximumWorkers: null,
-                    requestedWorkers: null,
-                    fileSetForFile() {
-                        return null;
-                    },
-                    order: 'plan',
-                    seed: { value: 42n },
-                    selectedPlan: collectedPlan,
-                    scheduling: 'serial',
-                    workDistribution: { mode: 'file' },
-                    workerLifecycle: 'reuse'
-                }),
-                processModel: 'worker-pool',
-                profile: 'integration',
-                processUsagePolicy: defaultIntegrationProfile({}).processUsage,
-                scheduling: 'serial',
-                testFamily: 'integration',
-                timingCollection: 'summary',
-                timeoutPolicy: {
-                    collectionMilliseconds: 1000,
-                    hardMilliseconds: 1000,
-                    softMilliseconds: 500
-                },
-                workDistribution: { mode: 'file' },
-                workerCount: {
-                    hostMaximum: 2,
-                    profileMaximum: null,
-                    requested: null,
-                    resolved: 1
-                },
-                workerLifecycle: 'reuse',
-                verbose: false
-            },
-            loader: { sourceMaps: false, stripMode: 'strip-only' },
-            reproducibility: {
-                selectedIdentities: [],
-                selection: { kind: 'all' },
-                seed: '42',
-                shard: { index: 1, total: 1 },
-                shardHashAlgorithm: 'xxh3-64-canonical-json-v1'
-            }
-        },
-        plan: { collectedPlan, kind: 'worker-pool' },
-        reporters: [],
-        request: defaultRunRequest({ paths: [ integrationPath ], profile: 'integration' })
     };
 }
 

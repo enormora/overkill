@@ -2,7 +2,7 @@ import { suite, test } from '@overkill-dev/test';
 
 import { createDeterministicClock, type DeterministicClock } from '@enormora/clock';
 
-import { placementPlan, fakeWorkerRuntime } from './worker-pool-placement-validation.test.ts';
+import { placementPlan, fakeWorkerRuntime } from '../test-support/worker-pool-placement-validation-fixture.ts';
 import { createDynamicDispatcher } from './worker-pool-dynamic-dispatcher.ts';
 import type { PlacementPlan, PlacementLane } from './run-types.ts';
 import type { WorkerPoolRunRuntime } from './worker-pool-runtime.ts';

@@ -1,12 +1,12 @@
 import { suite, test } from '@overkill-dev/test';
 
-import { createCommandLineRunner } from './command-line-runner.ts';
 import {
     createListDependencies,
     createMemoryReporter,
     createResolvedRun,
     listTests
-} from './command-line-list-runner.test.ts';
+} from '../test-support/command-line-list-runner-fixture.ts';
+import { createCommandLineRunner } from './command-line-runner.ts';
 import { RunCollectionError } from './run-errors.ts';
 
 export const testNode = suite('CLI list errors', [

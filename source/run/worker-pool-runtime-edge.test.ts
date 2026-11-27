@@ -1,9 +1,9 @@
 import { suite, test } from '@overkill-dev/test';
 
 import { fakeWorkerPoolRuntimeDependencies as fakeDependencies } from '../test-support/worker-pool-runtime-fixtures.ts';
+import { createCollectedPlan, workerPoolResolvedRun } from '../test-support/worker-pool-runtime-fixture.ts';
 import { createSupervisedRunState } from './supervised-run-state.ts';
 import { createWorkerPoolRuntime, type WorkerPoolRunRuntime } from './worker-pool-runtime.ts';
-import { createCollectedPlan, workerPoolResolvedRun } from './worker-pool-runtime.test.ts';
 
 type ResolvedRun = WorkerPoolRunRuntime['resolvedRun'];
 type PlacementPlan = NonNullable<ResolvedRun['facts']['execution']['placementPlan']>;

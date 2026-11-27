@@ -16,7 +16,7 @@ import { policyBaselineCommand } from '../../../run/frozen-run-policy.ts';
 export const passingFiles = [ 'source/integration-tests/runtime/fixtures/passing.test.ts' ] as const;
 
 const lifecycleModule = new URL(
-    '../fixtures/execution-session-lifecycle.test.ts',
+    '../fixtures/execution-session-lifecycle-factory.test.ts',
     import.meta.url
 );
 

@@ -14,7 +14,7 @@ import { mutationModes, type MutationMode } from '../runtime/fixtures/mutation-e
 
 const extension = import.meta.url.endsWith('.ts') ? 'ts' : 'js';
 const benchmarkUrl = new URL(
-    `../runtime/fixtures/mutation-evidence/mutation-cost.bench.test.${extension}`,
+    `../runtime/fixtures/mutation-evidence/mutation-cost-suite.test.${extension}`,
     import.meta.url
 );
 

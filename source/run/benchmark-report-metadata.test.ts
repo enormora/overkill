@@ -1,30 +1,13 @@
 import { type TestScope, suite, test } from '@overkill-dev/test';
-
 import { normalizeConfig } from '../config/config.ts';
-import { defaultRunRequest } from '../test-support/run-command-factory.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { readBenchmarkRunMetadata } from '../bench/benchmark-run-report.ts';
 import { createBenchmarkHtmlReport } from '../reporters/benchmark-html-model.ts';
+import { metadataCommand } from '../test-support/benchmark-report-metadata-fixture.ts';
 import { createRunFacts } from './run-facts.ts';
 import { withBenchmarkErrorMetadata } from './benchmark-report-metadata.ts';
 import type { RunCommand, ResolvedRun } from './run-types.ts';
 
-export function metadataCommand(processModel: 'supervised-process' | 'worker-pool'): RunCommand {
-    return {
-        config: normalizeConfig({
-            profiles: {
-                startup: {
-                    testFamily: 'benchmark',
-                    files: { include: [ 'fixture.bench.ts' ] },
-                    execution: { processModel }
-                }
-            }
-        }),
-        cwd: '/project',
-        engine: { kind: 'default' },
-        request: defaultRunRequest({ profile: 'startup' })
-    };
-}
 function metadataFacts(command: RunCommand): ResolvedRun['facts'] {
     return createRunFacts({
         hostProcess: null,
@@ -54,6 +37,7 @@ function metadataFacts(command: RunCommand): ResolvedRun['facts'] {
         workerCount: { hostMaximum: 4, profileMaximum: null, requested: null, resolved: 2 }
     });
 }
+
 export const testNode = suite('benchmark reporting context', [
     test('reads canonical process facts without creating metadata attachments', function (scope: TestScope) {
         for (const model of [ 'supervised-process', 'worker-pool' ] as const) {

@@ -4,8 +4,8 @@ import { createDefaultWorkId, workIdentityKey } from '../engine/identity.ts';
 import { createBoundaryFailureArtifact, type BoundaryFailure } from '../engine/run-artifact.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { createCollectedPlan } from '../test-support/worker-pool-execution-state.ts';
+import { runningSupervisedRuntime } from '../test-support/supervised-run-runtime-fixture.ts';
 import type { RunArtifact, RunResult } from './run-engine-primitives.ts';
-import { runningSupervisedRuntime } from './supervised-run-runtime.test.ts';
 import { handleChildMessage, type SupervisedRunRuntime } from './supervised-run-runtime.ts';
 
 const work = createDefaultWorkId({ file: 'example.test.ts', suite: [], title: 'crashes', params: null });

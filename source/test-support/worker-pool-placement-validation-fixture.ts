@@ -1,0 +1,380 @@
+import { defaultFailureArtifactPolicy, type CaseId, type RunResult } from '../packages/engine/engine.entry-point.ts';
+import { createRunResultFromCollectedPlan } from '../run/collected-run-plan.ts';
+import type { CreatedWorkerPool } from '../run/run-orchestrator-dependencies.ts';
+import { createStoredRunValue, createSupervisedRunState } from '../run/supervised-run-state.ts';
+import { createWorkerPoolPlacementTraceRecorder, type WorkerPoolRunRuntime } from '../run/worker-pool-runtime.ts';
+import { defaultRunConfig, defaultRunRequest } from './run-command-factory.ts';
+import { fakeWorkerPoolRuntimeDependencies } from './worker-pool-runtime-fixtures.ts';
+
+const testMetadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
+
+export type PlacementPlan = NonNullable<WorkerPoolRunRuntime['resolvedRun']['facts']['execution']['placementPlan']>;
+
+type WorkUnit = PlacementPlan['units'][number];
+
+export const integrationPath = 'source/integration-tests/runtime/fixtures/passing.test.ts';
+
+const controls = { capture: null, duplicateExecution: null, timeoutMilliseconds: null };
+
+export const testCaseMetadata = {
+    ...testMetadata
+} as const;
+
+const defaultUnitPolicy = {
+    order: 'plan',
+    resourceConstraints: {
+        affinityKeys: [],
+        capacityWeight: 1,
+        duplicateExecution: [],
+        faultDomains: [],
+        serialKeys: [],
+        singleWorkerKeys: []
+    },
+    scheduling: 'serial',
+    workerLifecycle: 'reuse'
+} as const;
+
+function firstCaseId(): CaseId {
+    return {
+        file: integrationPath,
+        params: null,
+        suite: [ 'integration' ],
+        title: 'first'
+    };
+}
+
+function createCollectedPlan(): WorkerPoolRunRuntime['collectedPlan'] {
+    return {
+        implementations: null,
+
+        family: null,
+        defined: 1,
+        discoveredFiles: [],
+        files: [
+            {
+                file: integrationPath,
+                cases: [
+                    {
+                        implementationDeclaration: null,
+
+                        skipReason: null,
+                        property: null,
+                        benchmark: null,
+                        workloadParameters: null,
+                        annotations: { ownership: [], tags: [] },
+                        controls,
+                        definitionLocations: [ { kind: 'unknown' as const } ],
+                        params: null,
+                        resourceAttachments: {
+                            directResources: [],
+                            resourceGraph: [],
+                            runtimeGraphs: []
+                        },
+                        suitePath: [ { definitionLocations: [ { kind: 'unknown' as const } ], title: 'integration' } ],
+                        testFamily: 'integration',
+                        title: 'first'
+                    }
+                ]
+            }
+        ],
+        orphans: [],
+        root: { annotations: { ownership: [], tags: [] }, controls, title: 'worker pool' }
+    };
+}
+
+export function firstWorkUnit(): WorkUnit {
+    return {
+        group: null,
+        id: { familyVariant: null, key: integrationPath, mode: 'file', runtimes: [], workload: null },
+        ...defaultUnitPolicy,
+        work: [
+            { familyVariant: null, case: firstCaseId(), runtimes: [], workload: null }
+        ]
+    };
+}
+
+export function placementPlan(): PlacementPlan {
+    const unit = firstWorkUnit();
+
+    return {
+        assignments: [ { lane: 'worker-1', unit: unit.id } ],
+        lanes: [
+            {
+                executor: {
+                    capabilities: [],
+                    capacity: 1,
+                    id: 'worker-1',
+                    kind: 'local-worker'
+                },
+                id: 'worker-1'
+            }
+        ],
+        resourceOwnership: { owners: [] },
+        units: [ unit ]
+    };
+}
+
+export function placementPlanWithGroupUnit(): PlacementPlan {
+    const unit: WorkUnit = {
+        ...firstWorkUnit(),
+        id: { familyVariant: null, key: 'grouped', mode: 'group', runtimes: [], workload: null }
+    };
+
+    return {
+        ...placementPlan(),
+        assignments: [ { lane: 'worker-1', unit: unit.id } ],
+        units: [ unit ]
+    };
+}
+
+export function placementPlanWithUnitPolicy(): PlacementPlan {
+    const unit: WorkUnit = {
+        ...firstWorkUnit(),
+        scheduling: 'concurrent',
+        workerLifecycle: 'fresh-worker-per-unit'
+    };
+
+    return {
+        ...placementPlan(),
+        assignments: [ { lane: 'worker-1', unit: unit.id } ],
+        units: [ unit ]
+    };
+}
+
+function workerPoolResolvedRun(placement: PlacementPlan): WorkerPoolRunRuntime['resolvedRun'] {
+    return {
+        collectionRunnerErrors: [],
+        config: defaultRunConfig(),
+        cwd: process.cwd(),
+        engine: { kind: 'default' },
+        facts: {
+            implementations: null,
+
+            family: { id: 'integration', version: '1', settings: null, preparation: null, collection: null },
+            adapter: null,
+            benchmarkHost: null,
+            benchmarkCalibration: null,
+            benchmarkNormalization: null,
+            benchmarkPlacement: null,
+            coveragePolicy: null,
+            durationHistory: null,
+            cases: [],
+            environment: {
+                node: { arch: 'x64', platform: 'linux', version: '26.1.1' },
+                projectRoot: process.cwd(),
+                runtimeStateDir: '.overkill'
+            },
+            execution: {
+                debuggedCases: [],
+                failureArtifacts: defaultFailureArtifactPolicy,
+                runRecords: { persist: false, reasons: [] },
+                benchmarkGarbageCollection: null,
+                propertyPolicy: null,
+                attachments: null,
+                retries: null,
+                assignmentPolicy: 'case-count-balanced',
+                baselineUpdateMode: 'none',
+                capture: 'buffered',
+                coverage: false,
+                debug: { mode: 'off', selectors: [] },
+                engine: { kind: 'default' },
+                maxConcurrency: 5,
+                dispatchPolicy: 'dynamic-lease',
+                hedging: { mode: 'off' },
+                hostProcess: { kind: 'direct' },
+                order: 'seeded',
+                placementPlan: placement,
+                processModel: 'worker-pool',
+                profile: 'integration',
+                processUsagePolicy: {
+                    budgets: {
+                        activeResourceCount: null,
+                        javaScriptEngineHeapBytes: null,
+                        residentSetBytes: null,
+                        residentSetGrowthBytesPerSecond: null
+                    },
+                    measure: false,
+                    samplingIntervalMilliseconds: 100
+                },
+                scheduling: 'serial',
+                testFamily: 'integration',
+                timingCollection: 'summary',
+                timeoutPolicy: {
+                    collectionMilliseconds: 1000,
+                    hardMilliseconds: 1000,
+                    softMilliseconds: 500
+                },
+                workDistribution: { mode: 'file' },
+                workerCount: { hostMaximum: 1, profileMaximum: null, requested: null, resolved: 1 },
+                workerLifecycle: 'reuse',
+                verbose: false
+            },
+            loader: { sourceMaps: false, stripMode: 'strip-only' },
+            reproducibility: {
+                selectedIdentities: [],
+                selection: { kind: 'all' },
+                seed: '42',
+                shard: { index: 1, total: 1 },
+                shardHashAlgorithm: 'xxh3-64-canonical-json-v1'
+            }
+        },
+        plan: { collectedPlan: createCollectedPlan(), kind: 'worker-pool' },
+        reporters: [],
+        request: defaultRunRequest({ paths: [ integrationPath ], profile: 'integration' })
+    };
+}
+
+function createFakePool(): CreatedWorkerPool {
+    return {
+        async destroy() {
+            return undefined;
+        },
+        options: { isolateWorkers: false, maxThreads: 1 },
+        async run() {
+            throw new Error('Fake worker pool did not receive a task implementation.');
+        }
+    };
+}
+
+export type CapturedWorkerTask = {
+    readonly assignedUnits: readonly {
+        readonly traceUnit: WorkUnit['id'];
+        readonly work: WorkUnit['work'];
+    }[];
+    readonly assignedWork: WorkUnit['work'];
+    readonly command: {
+        readonly paths: readonly string[];
+        readonly scheduling: 'concurrent' | 'serial';
+        readonly workerLifecycle: 'fresh-worker-per-unit' | 'reuse';
+    };
+    readonly lane: string;
+    readonly port: { readonly postMessage: (message: unknown, transferList: readonly []) => void; };
+};
+
+export type AcceptingPool = {
+    readonly capturedTasks: readonly CapturedWorkerTask[];
+    readonly pool: CreatedWorkerPool;
+};
+
+export function completedWorkerPoolOutput(task: CapturedWorkerTask): unknown {
+    task.port.postMessage({ kind: 'task-messages-completed' }, []);
+
+    return {
+        results: [
+            {
+                result: createRunResultFromCollectedPlan(
+                    createCollectedPlan(),
+                    [],
+                    [],
+                    {
+                        completedAtMicroseconds: 0,
+                        planStatus: 'planned',
+                        processUsage: null,
+                        startedAtMicroseconds: 0,
+                        testExecutionWallTimeMicroseconds: 0
+                    }
+                ),
+                traceUnit: firstWorkUnit().id
+            }
+        ]
+    };
+}
+
+export function createAcceptingPool(): AcceptingPool {
+    const capturedTasks: CapturedWorkerTask[] = [];
+
+    return {
+        capturedTasks,
+        pool: {
+            async destroy() {
+                return undefined;
+            },
+            options: { isolateWorkers: false, maxThreads: 1 },
+            async run(task) {
+                const workerTask = task as CapturedWorkerTask;
+
+                capturedTasks.push(workerTask);
+
+                return completedWorkerPoolOutput(workerTask);
+            }
+        }
+    };
+}
+
+async function emptyReporterErrors(): Promise<readonly []> {
+    return [];
+}
+
+const fakeReporterDelivery: WorkerPoolRunRuntime['reporterDelivery'] = {
+    disposeReporters: emptyReporterErrors,
+    reportEvent: emptyReporterErrors,
+    reportResult: emptyReporterErrors
+};
+
+function fakeDependencies(): WorkerPoolRunRuntime['dependencies'] {
+    const dependencies = fakeWorkerPoolRuntimeDependencies();
+    return {
+        ...dependencies,
+        createWorkerPool: createFakePool,
+        reporterDispatcher: {
+            ...dependencies.reporterDispatcher,
+            async createDelivery() {
+                return fakeReporterDelivery;
+            }
+        }
+    };
+}
+
+function placementCatalog(placement: PlacementPlan): WorkerPoolRunRuntime['collectedPlan'] {
+    const plan = createCollectedPlan();
+    const file = plan.files[0];
+    const template = file?.cases[0];
+    if (file === undefined || template === undefined) {
+        throw new Error('Placement fixture requires a collected case.');
+    }
+    const cases = placement.units.flatMap(function unitCases(unit) {
+        return unit.work.map(function workCase(workId) {
+            return { ...template, workId, title: workId.case.title, params: workId.case.params };
+        });
+    });
+    return { ...plan, defined: cases.length, files: [ { ...file, cases } ] };
+}
+
+export function fakeWorkerRuntime(placement: PlacementPlan): WorkerPoolRunRuntime {
+    const taskResults: RunResult[] = [];
+    const placementTrace = createWorkerPoolPlacementTraceRecorder();
+    return {
+        attachments: null,
+        activeTasks: new Set(),
+        collectedPlan: placementCatalog(placement),
+        collectionRunnerErrors: [],
+        dependencies: fakeDependencies(),
+        destroyPool: true,
+        async finalizeResult(completion) {
+            return completion.result;
+        },
+        pool: createFakePool(),
+        poolProcessUsageTracker: null,
+        placementTrace,
+        get placementTraceEntries() {
+            return placementTrace.entries();
+        },
+        previousPoolSample: createStoredRunValue<
+            ReturnType<WorkerPoolRunRuntime['previousPoolSample']['read']>
+        >(null),
+        reporterDelivery: fakeReporterDelivery,
+        reporterEvents: {
+            add() {
+                return undefined;
+            },
+            async wait() {
+                return undefined;
+            }
+        },
+        resolvedRun: workerPoolResolvedRun(placement),
+        runState: createSupervisedRunState('first-failure-and-final'),
+        taskResults,
+        terminalFailure: createStoredRunValue(false),
+        lifecycle: { endpoint: null, token: 'fake-worker-runtime' }
+    };
+}
