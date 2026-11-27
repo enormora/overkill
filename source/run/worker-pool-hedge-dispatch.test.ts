@@ -6,8 +6,12 @@ import {
 
 import { suite, test } from '@overkill-dev/test';
 
+import {
+    fakeWorkerRuntime,
+    placementPlan,
+    testCaseMetadata
+} from '../test-support/worker-pool-placement-validation-fixture.ts';
 import type { PlacementPlan } from './run-types.ts';
-import { fakeWorkerRuntime, placementPlan, testCaseMetadata } from './worker-pool-placement-validation.test.ts';
 import type { WorkerPoolUnitLease, WorkerPoolWorkDispatcher } from './worker-pool-dispatch-state.ts';
 import {
     hedgeWakeDelay,

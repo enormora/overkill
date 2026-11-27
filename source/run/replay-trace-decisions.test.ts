@@ -1,7 +1,7 @@
 import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { table, suite } from '@overkill-dev/test';
 
-import { placementPlan, fakeWorkerRuntime } from './worker-pool-placement-validation.test.ts';
+import { placementPlan, fakeWorkerRuntime } from '../test-support/worker-pool-placement-validation-fixture.ts';
 import {
     createPlacementTraceRecorder,
     type PlacementTraceRecorder,

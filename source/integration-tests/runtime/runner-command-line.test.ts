@@ -18,9 +18,14 @@ import type { LoadedConfig } from '../../config/config-loader.ts';
 import { orchestrator } from '../../run/run-orchestrator.entry-point.ts';
 import { defaultCoveragePolicy, normalizeHistoryPolicy } from '../../config/defaults.ts';
 import type { RunRequest } from '../../run/run-types.ts';
-import type { NormalizedConfig, MicrotestProcessModel, MicrotestProfileConfig } from '../../config/types.ts';
+import type {
+    NormalizedConfig,
+    MicrotestProcessModel,
+    MicrotestProfileConfig,
+    ProcessModel
+} from '../../config/types.ts';
 
-import { isolatedRunStateDirectory } from '../../test-support/run-command-factory.ts';
+import { defaultIntegrationProfile, isolatedRunStateDirectory } from '../../test-support/run-command-factory.ts';
 
 const emptySuiteFixturePath = 'source/integration-tests/runtime/fixtures/empty-suite.test.ts';
 const missingTestNodeFixturePath = 'source/integration-tests/runtime/fixtures/missing-test-node.test.ts';
@@ -28,6 +33,7 @@ const passingFixturePath = 'source/integration-tests/runtime/fixtures/passing.te
 const plainTestNodeFixturePath = 'source/integration-tests/runtime/fixtures/plain-test-node.test.ts';
 const throwsOnImportFixturePath = 'source/integration-tests/runtime/fixtures/throws-on-import.test.ts';
 const discoveryFixturePath = 'source/integration-tests/runtime/fixtures/discovery/unit.test.ts';
+const collectionMilliseconds = 60_000;
 
 const memoryReporter = defineReporter(function createMemoryReporter(): Reporter {
     return {
@@ -68,9 +74,9 @@ function createDefaultMicrotestProfile(): MicrotestProfileConfig {
         runRecords: { persist: 'on-demand' },
         timings: { collection: 'summary' },
         timeouts: {
-            collectionMilliseconds: 5000,
-            hardMilliseconds: 1000,
-            softMilliseconds: 500
+            collectionMilliseconds,
+            hardMilliseconds: 20_000,
+            softMilliseconds: 15_000
         }
     };
 }
@@ -204,7 +210,14 @@ async function runDiscoveryCommandLine(processModel: MicrotestProcessModel): Pro
     });
 }
 
-function listConfig(processModel: MicrotestProcessModel): NormalizedConfig {
+function listConfig(processModel: ProcessModel): NormalizedConfig {
+    if (processModel === 'worker-pool') {
+        return {
+            ...defaultConfig,
+            profiles: { microtest: defaultIntegrationProfile({ timeouts: { collectionMilliseconds } }) }
+        };
+    }
+
     return {
         ...defaultConfig,
         profiles: {
@@ -222,7 +235,7 @@ function listConfig(processModel: MicrotestProcessModel): NormalizedConfig {
 
 async function listCommandLine(
     paths: readonly string[],
-    processModel: MicrotestProcessModel,
+    processModel: ProcessModel,
     withOrphans: boolean
 ): Promise<CommandLineRunnerResult> {
     const runner = createCommandLineRunner(createRunnerDependencies(listConfig(processModel)));
@@ -332,6 +345,35 @@ export const testNode = suite('Command-line runner', [
             selectedEngineRunnerDiagnostic(plainTestNodeFixturePath)
         ]);
 
+        return scope.assert.collect();
+    }),
+    test('allows erased type exports and support module exports', async function (scope) {
+        const file = 'source/integration-tests/runtime/fixtures/entry-type-exports.test.ts';
+        const result = await runCommandLine(scope.cleanup, [ file ]);
+        scope.assert.equal(result.exitCode, 0);
+        scope.assert.equal(result.runResult?.summary.passed, 1);
+        return scope.assert.collect();
+    }),
+    test('rejects default and re-exported runtime values before execution', async function (scope) {
+        const file = 'source/integration-tests/runtime/fixtures/entry-extra-exports.test.ts';
+        const result = await runCommandLine(scope.cleanup, [ file ]);
+        scope.assert.equal(result.exitCode, 2);
+        const exports = '(unexpected exports: "alias", "default", "expected", "title")';
+        scope.assert.deepEqual(result.fallbackDiagnostics, [
+            `Overkill runner error: Test module must export only testNode: ${file} ${exports}`
+        ]);
+        return scope.assert.collect();
+    }),
+    test('rejects a callable then during local and worker collection', async function (scope) {
+        const file = 'source/integration-tests/runtime/fixtures/entry-then-export.test.ts';
+        const diagnostic = `Test module must export only testNode: ${file} (unexpected exports: "then")`;
+        const local = await listCommandLine([ file ], 'in-process', false);
+        const validWorker = await listCommandLine([ passingFixturePath ], 'worker-pool', false);
+        const worker = await listCommandLine([ file ], 'worker-pool', false);
+        scope.assert.equal(local.exitCode, 3);
+        scope.assert.deepEqual([ validWorker.exitCode, worker.exitCode ], [ 0, 2 ]);
+        scope.assert.deepEqual(local.fallbackDiagnostics, [ `Overkill argument error: ${diagnostic}` ]);
+        scope.assert.deepEqual(worker.fallbackDiagnostics, [ 'Overkill runner error: Worker-pool collection failed.' ]);
         return scope.assert.collect();
     }),
     test('maps collection failures to runner errors', async function (scope) {

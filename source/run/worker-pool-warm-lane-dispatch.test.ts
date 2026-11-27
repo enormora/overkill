@@ -1,9 +1,13 @@
 import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { suite, test } from '@overkill-dev/test';
 
+import {
+    fakeWorkerRuntime,
+    placementPlan,
+    testCaseMetadata
+} from '../test-support/worker-pool-placement-validation-fixture.ts';
 import type { PlacementTraceEntry } from './placement-trace.ts';
 import type { PlacementPlan } from './run-types.ts';
-import { fakeWorkerRuntime, placementPlan, testCaseMetadata } from './worker-pool-placement-validation.test.ts';
 import type { WorkerPoolUnitLease, WorkerPoolWorkDispatcher } from './worker-pool-dispatch-state.ts';
 import type { WorkerPoolRunRuntime } from './worker-pool-runtime.ts';
 import { createWorkDispatcher } from './worker-pool-work-dispatcher.ts';

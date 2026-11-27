@@ -1,6 +1,6 @@
 import { table, suite } from '@overkill-dev/test';
 
-import { placementPlan } from './worker-pool-placement-validation.test.ts';
+import { placementPlan } from '../test-support/worker-pool-placement-validation-fixture.ts';
 import type { PlacementPlan } from './run-types.ts';
 import type { PlacementTraceEntry } from './placement-trace.ts';
 import { compileReplayTrace, type ReplayAssignment } from './replay-trace-plan.ts';

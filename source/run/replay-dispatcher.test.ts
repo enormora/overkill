@@ -2,7 +2,7 @@ import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { type TestScope, suite, test } from '@overkill-dev/test';
 
 import { createTaskRun } from '../test-support/worker-pool-execution-state.ts';
-import { placementPlan, fakeWorkerRuntime } from './worker-pool-placement-validation.test.ts';
+import { placementPlan, fakeWorkerRuntime } from '../test-support/worker-pool-placement-validation-fixture.ts';
 import { createPlacementTraceRecorder, type PlacementTrace } from './placement-trace.ts';
 import type { WorkerPoolRunRuntime, WorkerPoolTaskRun } from './worker-pool-runtime.ts';
 import type { WorkerPoolWorkDispatcher } from './worker-pool-dispatch-state.ts';

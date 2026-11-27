@@ -6,7 +6,7 @@ import { table, type TestScope, suite, test } from '@overkill-dev/test';
 
 import { normalizeConfig, orchestrator, type RunCommand } from '../../packages/run/run.entry-point.ts';
 import { defaultRunRequest } from '../../test-support/run-command-factory.ts';
-import { propertyTrialCount, resetPropertyTrialCount } from './fixtures/property-console-trials.test.ts';
+import { propertyTrialCounter } from './fixtures/property-console-state.ts';
 
 const fixtureDirectory = 'source/integration-tests/runtime/fixtures/';
 
@@ -171,10 +171,10 @@ export const testNode = suite('property runner policy', [
         }
     }),
     test('in-process stops new property inputs after a capability violation', async function (scope) {
-        resetPropertyTrialCount();
+        propertyTrialCounter.trials = 0;
         const result = await orchestrator.run(propertyCommand(scope.cleanup, 'property-console-trials', 'in-process'));
         scope.assert.equal(result.summary.runtimePolicy, 1);
-        scope.assert.equal(propertyTrialCount(), 1);
+        scope.assert.equal(propertyTrialCounter.trials, 1);
         scope.assert.true(result.runnerErrors.some(function capabilityFailure(error) {
             return error.subtype === 'runtime-policy';
         }));

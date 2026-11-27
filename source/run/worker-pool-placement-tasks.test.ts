@@ -1,8 +1,6 @@
 import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { type TestScope, suite, test } from '@overkill-dev/test';
 
-import type { PlacementPlan } from './run-types.ts';
-import { executeWorkerPoolUnits } from './worker-pool-execution.ts';
 import {
     type AcceptingPool,
     type CapturedWorkerTask,
@@ -14,7 +12,9 @@ import {
     placementPlanWithGroupUnit,
     placementPlanWithUnitPolicy,
     testCaseMetadata
-} from './worker-pool-placement-validation.test.ts';
+} from '../test-support/worker-pool-placement-validation-fixture.ts';
+import type { PlacementPlan } from './run-types.ts';
+import { executeWorkerPoolUnits } from './worker-pool-execution.ts';
 import type { WorkerPoolRunRuntime, WorkerPoolTaskRun } from './worker-pool-runtime.ts';
 
 type PlacementAssignment = PlacementPlan['assignments'][number];

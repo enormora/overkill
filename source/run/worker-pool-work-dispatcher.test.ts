@@ -2,9 +2,13 @@ import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { suite, test } from '@overkill-dev/test';
 
 import { workIdentityKey } from '../engine/identity.ts';
+import {
+    fakeWorkerRuntime,
+    placementPlan,
+    testCaseMetadata
+} from '../test-support/worker-pool-placement-validation-fixture.ts';
 import type { DynamicWorkUnitId, PlacementTraceEntry } from './placement-trace.ts';
 import type { PlacementPlan } from './run-types.ts';
-import { fakeWorkerRuntime, placementPlan, testCaseMetadata } from './worker-pool-placement-validation.test.ts';
 import { createWorkDispatcher } from './worker-pool-work-dispatcher.ts';
 import type { WorkerPoolUnitLease, WorkerPoolWorkDispatcher } from './worker-pool-dispatch-state.ts';
 import { originalQueueItem, splitQueuedWorkUnit } from './worker-pool-pending-splitting.ts';

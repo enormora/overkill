@@ -1,33 +1,9 @@
-import { suite, test, type TestScope } from '@overkill-dev/test';
-
-import { increment } from './collected-subject.ts';
+import { suite, test } from '@overkill-dev/test';
+import { increment } from './collected-subject.test.ts';
 import { AsyncResource } from 'node:async_hooks';
+import { state } from './collected-lifecycle-state.test.ts';
 
 const metadata = { annotations: {}, controls: {} } as const;
-
-export type LifecycleFixtureState = {
-    calls: string[];
-    cleanupCount: number;
-    gate: Promise<void> | null;
-    mode: 'cleanup-error' | 'console' | 'fail' | 'no-assertions' | 'pass' | 'throw' | 'timeout';
-    scopes: TestScope[];
-    notifyStarted: () => void;
-    raiseLateError: () => void;
-};
-
-export const state: LifecycleFixtureState = {
-    calls: [],
-    cleanupCount: 0,
-    gate: null,
-    mode: 'pass',
-    scopes: [],
-    notifyStarted() {
-        return undefined;
-    },
-    raiseLateError() {
-        return undefined;
-    }
-};
 
 function lifecycleCase(title: string) {
     return test({

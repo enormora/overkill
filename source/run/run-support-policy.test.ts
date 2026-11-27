@@ -3,7 +3,7 @@ import { suite, test } from '@overkill-dev/test';
 import type { TestRuntimePolicy } from '../engine/case-execution-context.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { readBenchmarkRunMetadata } from '../bench/benchmark-run-report.ts';
-import { metadataCommand } from './benchmark-report-metadata.test.ts';
+import { metadataCommand } from '../test-support/benchmark-report-metadata-fixture.ts';
 import {
     composeRunRuntimePolicies,
     assertReplaySelection,

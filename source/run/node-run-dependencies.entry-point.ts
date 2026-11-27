@@ -21,6 +21,14 @@ export const loadRunEngineModule = createRunEngineModuleLoader({
 
 export const loadRunTestModules = createRunTestModuleLoader({
     async importModule(href) {
-        return await import(href) as unknown;
+        const source = `export * as namespace from ${JSON.stringify(href)};`;
+        const bridge: unknown = await import(`data:text/javascript,${encodeURIComponent(source)}`);
+
+        if (typeof bridge !== 'object' || bridge === null || !Object.hasOwn(bridge, 'namespace')) {
+            throw new TypeError('Test module import did not produce a namespace.');
+        }
+
+        const namespace: unknown = Reflect.get(bridge, 'namespace');
+        return { namespace };
     }
 });

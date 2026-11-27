@@ -18,7 +18,7 @@ function coveredCommand(directory: string): RunCommand {
                         outputs: [ 'json' ],
                         sources: {
                             mode: 'all',
-                            include: [ 'source/integration-tests/runtime/fixtures/collected-subject.ts' ],
+                            include: [ 'source/integration-tests/runtime/fixtures/collected-subject.test.ts' ],
                             exclude: []
                         }
                     }

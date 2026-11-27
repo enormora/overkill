@@ -47,7 +47,7 @@ function createVirtualRunTestModuleLoader(modules: Readonly<Record<string, unkno
                 throw new Error(`Missing virtual test module: ${href}`);
             }
 
-            return modules[href];
+            return { namespace: modules[href] };
         }
     });
 }
@@ -99,6 +99,25 @@ export const testNode = suite('Test module loading', [
         await scope.assert.rejects(async function loadForeignEngineExport() {
             await loadRunTestModules([ discoveredFile(passingFixturePath) ], createTestEngine());
         }, { message: `Test module testNode must be created by the selected engine: ${passingFixturePath}` });
+
+        return scope.assert.collect();
+    }),
+    test('rejects additional runtime exports in sorted order', async function (scope) {
+        const loadRunTestModules = createVirtualRunTestModuleLoader({
+            [`virtual:${passingFixturePath}`]: {
+                unused: undefined,
+                testNode: createPassingTestNode('passes'),
+                default: null
+            }
+        });
+
+        const unexpected = '(unexpected exports: "default", "unused")';
+        await scope.assert.rejects(async function loadExtraExports() {
+            await loadRunTestModules([ discoveredFile(passingFixturePath) ], defaultRunEngine);
+        }, {
+            name: 'RunResolutionError',
+            message: `Test module must export only testNode: ${passingFixturePath} ${unexpected}`
+        });
 
         return scope.assert.collect();
     }),
