@@ -139,8 +139,8 @@ export function startInFlight<Value>(
 
     return {
         async rejects(matcher: ThrownMatcher) {
-            record.markObserved();
             await assertContext.rejects(async function waitForTrackedRejection() {
+                record.markObserved();
                 return record.promise;
             }, matcher);
         },

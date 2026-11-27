@@ -1,13 +1,3 @@
-import {
-    admitCompositeChild,
-    assertCompositeChild,
-    dataField,
-    invalidAssertionProtocol,
-    InvalidAssertionProtocolError,
-    nonEmptyProtocolItems,
-    protocolObject
-} from '../assertion-protocol/assertion-validation.ts';
-import { captureAssertion, transferAssertionObservation } from '../assertion-protocol/evaluation.ts';
 import type {
     AssertAssertionNode,
     CompositeAssertionChildNode,
@@ -15,12 +5,9 @@ import type {
     RequireAssertionNode
 } from '../assertion-protocol/assertion-node.ts';
 import {
-    captureCompositeChild,
-    prepareCompositeGroup,
     getAssertionReferenceRecord,
     getNarrowingAssertionReferenceRecord,
     isAssertionReference,
-    isCompositeAssertionGroup,
     isNarrowingAssertionReference,
     type AssertionReferenceRecord,
     type CompositeAssertionReferenceRecord,
@@ -32,7 +19,8 @@ import type {
     NonEmptyReadonlyArray,
     ResolvableSourceLocations
 } from '../assertion-protocol/assertion-node-shape.ts';
-import { assertionProtocolFailure } from './assertion-protocol-failure.ts';
+import type { AssertionRecordingContext } from './assertion-lifetime.ts';
+import { recordCompositeDiagnosticsFor } from './composite-diagnostic-recording.ts';
 import type { TestContractFailure } from './run-result.ts';
 import type { PendingRecordedAssert } from './assertion-recorder.ts';
 import { isTestControlError } from './test-control-error.ts';
@@ -40,6 +28,7 @@ import { isTestControlError } from './test-control-error.ts';
 const expectedArgumentSlot = 1;
 
 export type AssertAssertionSink = {
+    readonly child: () => AssertionRecordingContext;
     readonly assertRecording: (operation: string) => void;
     readonly failContract: (failure: TestContractFailure) => never;
     readonly recordAssert: (assertion: AssertAssertionNode) => void;
@@ -47,12 +36,14 @@ export type AssertAssertionSink = {
 };
 
 export type RequireAssertionSink = {
+    readonly child: () => AssertionRecordingContext;
     readonly assertRecording: (operation: string) => void;
     readonly failContract: (failure: TestContractFailure) => never;
     readonly recordRequire: (assertion: RequireAssertionNode) => void;
 };
 
 type CompositeAssertionNodeInput<Source extends AssertionSource> = {
+    readonly sink: Pick<AssertAssertionSink, 'child'>;
     readonly annotation: string | null;
     readonly children: NonEmptyReadonlyArray<CompositeAssertionChildNode<Source>>;
     readonly parameters: readonly unknown[];
@@ -66,12 +57,16 @@ type PendingCompositeAssertionInput = {
     readonly parameters: readonly unknown[];
     readonly pending: PendingRecordedAssert;
     readonly record: CompositeAssertionReferenceRecord;
+    readonly resolveChildren: (
+        result: CompositeAssertionReturn<'assert'>
+    ) => NonEmptyReadonlyArray<CompositeAssertionChildNode<'assert'>>;
     readonly result: Promise<CompositeAssertionReturn<'assert'>>;
     readonly sink: AssertAssertionSink;
     readonly sourceLocations: ResolvableSourceLocations;
 };
 
 type NarrowingCompositeAssertionNodeInput<Source extends AssertionSource> = {
+    readonly sink: Pick<AssertAssertionSink, 'child'>;
     readonly annotation: string | null;
     readonly parameters: readonly unknown[];
     readonly record: NarrowingCompositeAssertionReferenceRecord;
@@ -123,29 +118,6 @@ function createInvalidRequireReferenceFailure(actual: unknown): TestContractFail
     };
 }
 
-function createInvalidCompositeResultFailure(actual: unknown): TestContractFailure {
-    return {
-        actual: typeof actual,
-        code: 'invalid-composite-result',
-        expected: 'composite assertion child or group',
-        kind: 'test-contract',
-        summary: 'Composite assertion returned an invalid result.'
-    };
-}
-
-function isPromiseLike<Source extends AssertionSource>(
-    value: unknown
-): value is Promise<CompositeAssertionReturn<Source>> {
-    return protocolObject(value) && !Object.hasOwn(value, 'check') &&
-        !isCompositeAssertionGroup(value) && typeof Reflect.get(value, 'then') === 'function';
-}
-
-function isCompositeAssertionChildNode<Source extends AssertionSource>(
-    value: unknown
-): value is CompositeAssertionChildNode<Source> {
-    return protocolObject(value) && Object.hasOwn(value, 'check');
-}
-
 function assertionArguments(parameters: readonly unknown[]): readonly [unknown, unknown] {
     return [
         parameters[0],
@@ -178,83 +150,14 @@ function customSummary(
     return defaultCustomSummary(record.name);
 }
 
-function parseGroupChildren(group: unknown): readonly [unknown, ...unknown[]] {
-    if (!protocolObject(group)) {
-        throw invalidAssertionProtocol('group', 'expected a protocol record');
-    }
-    return nonEmptyProtocolItems(dataField(group, 'children', 'group.children'), 'group.children');
-}
-
-function groupResult<Source extends AssertionSource>(
-    group: unknown,
-    source: Source
-): NonEmptyReadonlyArray<CompositeAssertionChildNode<Source>> {
-    const [ first, ...rest ] = parseGroupChildren(group);
-    assertCompositeChild(first, source, 'group.children[0]');
-    return [
-        first,
-        ...rest.map(function validate(child, index) {
-            assertCompositeChild(child, source, `group.children[${index + 1}]`);
-            return child;
-        })
-    ];
-}
-
-function isProtocolGroup(value: unknown): boolean {
-    return protocolObject(value) && isCompositeAssertionGroup(value);
-}
-
-function normalizeCompositeChildren(
-    result: CompositeAssertionReturn<'assert'>,
-    failContract: (failure: TestContractFailure) => never
-): NonEmptyReadonlyArray<CompositeAssertionChildNode<'assert'>> {
-    if (isProtocolGroup(result)) {
-        try {
-            return groupResult(result, 'assert');
-        } catch (error) {
-            if (!(error instanceof InvalidAssertionProtocolError)) {
-                throw error;
-            }
-            const failure = error.diagnostic().path === 'group.children'
-                ? createInvalidCompositeResultFailure(result)
-                : assertionProtocolFailure(error);
-            return failContract(failure);
-        }
-    }
-    if (isCompositeAssertionChildNode<'assert'>(result)) {
-        return [ result ];
-    }
-    return failContract(createInvalidCompositeResultFailure(result));
-}
-
-function flattenValidatedGroup(items: unknown): NonEmptyReadonlyArray<CompositeAssertionChildNode<'assert'>> {
-    const children = nonEmptyProtocolItems(items, 'group').flatMap(function prepareItem(item, index) {
-        if (isProtocolGroup(item)) {
-            return groupResult(item, 'assert');
-        }
-        assertCompositeChild(item, 'assert', `group[${index}]`);
-        return [ item ];
-    });
-    const [ first, ...rest ] = children;
-    if (first === undefined) {
-        throw invalidAssertionProtocol('group', 'expected at least one child');
-    }
-    return [ first, ...rest ];
-}
-
-function validatedGroup(
-    items: unknown,
-    sink: AssertAssertionSink
-): NonEmptyReadonlyArray<CompositeAssertionChildNode<'assert'>> {
+function runCustomCallback<Result>(context: AssertionRecordingContext, callback: () => Result): Result {
     try {
-        return flattenValidatedGroup(items);
-    } catch (error) {
-        if (!(error instanceof InvalidAssertionProtocolError)) {
-            throw error;
-        }
-        return sink.failContract(assertionProtocolFailure(error));
+        return context.run(callback);
+    } finally {
+        context.close('settled');
     }
 }
+
 function createCompositeAssertionNode<Source extends AssertionSource>(
     input: CompositeAssertionNodeInput<Source>
 ): CompositeAssertionNode<Source> {
@@ -269,14 +172,20 @@ function createCompositeAssertionNode<Source extends AssertionSource>(
         name: input.record.name,
         source: input.source,
         sourceLocations: input.sourceLocations,
-        summary: customSummary(input.record, input.source, input.annotation, input.parameters)
+        summary: input.record.formatSummary === null || input.annotation !== null
+            ? customSummary(input.record, input.source, input.annotation, input.parameters)
+            : runCustomCallback(input.sink.child(), function formatCustomSummary() {
+                return customSummary(input.record, input.source, input.annotation, input.parameters);
+            })
     };
 }
 
 function createNarrowingCompositeAssertionNode<Source extends AssertionSource>(
     input: NarrowingCompositeAssertionNodeInput<Source>
 ): CompositeAssertionNode<Source> {
-    const passed = input.record.narrows(input.parameters[0], ...input.parameters.slice(1));
+    const passed = runCustomCallback(input.sink.child(), function evaluateNarrowingPredicate() {
+        return input.record.narrows(input.parameters[0], ...input.parameters.slice(1));
+    });
     const child: CompositeAssertionChildNode<Source> = {
         actual: passed,
         check: 'true',
@@ -288,6 +197,7 @@ function createNarrowingCompositeAssertionNode<Source extends AssertionSource>(
     return createCompositeAssertionNode({
         annotation: input.annotation,
         children: [ child ],
+        sink: input.sink,
         parameters: input.parameters,
         record: input.record,
         source: input.source,
@@ -319,7 +229,8 @@ function resolveCompositeAssertion(
     try {
         return createCompositeAssertionNode({
             annotation: input.annotation,
-            children: normalizeCompositeChildren(resolved, input.sink.failContract),
+            children: input.resolveChildren(resolved),
+            sink: input.sink,
             parameters: input.parameters,
             record: input.record,
             source: 'assert',
@@ -338,40 +249,13 @@ async function recordResolvedCompositeAssertion(input: PendingCompositeAssertion
 }
 
 function recordCompositeAssertion(input: CompositeAssertionRecordingInput): Promise<void> | void {
-    const invocation = {
-        message: null,
-        parameters: input.parameters,
-        source: 'assert' as const,
-        sourceLocations: input.sourceLocations
-    };
-    Object.defineProperties(invocation, {
-        [captureCompositeChild]: {
-            value(child: CompositeAssertionChildNode<'assert'>) {
-                input.sink.assertRecording('record a composite assertion child');
-                try {
-                    const admitted = admitCompositeChild(child, 'assert', 'child');
-                    captureAssertion(admitted);
-                    transferAssertionObservation(admitted, child);
-                } catch (error) {
-                    if (!(error instanceof InvalidAssertionProtocolError)) {
-                        throw error;
-                    }
-                    input.sink.failContract(assertionProtocolFailure(error));
-                }
-            }
-        },
-        [prepareCompositeGroup]: {
-            value(items: unknown) {
-                return validatedGroup(items, input.sink);
-            }
-        }
-    });
-    const result = input.record.run(invocation);
+    const { result, resolveChildren } = recordCompositeDiagnosticsFor(input, input.sink.child());
 
-    if (!isPromiseLike(result)) {
+    if (!(result instanceof Promise)) {
         input.sink.recordAssert(createCompositeAssertionNode({
             annotation: input.annotation,
-            children: normalizeCompositeChildren(result, input.sink.failContract),
+            children: resolveChildren(result),
+            sink: input.sink,
             parameters: input.parameters,
             record: input.record,
             source: 'assert',
@@ -386,6 +270,7 @@ function recordCompositeAssertion(input: CompositeAssertionRecordingInput): Prom
         pending: input.sink.recordPendingAssert(),
         record: input.record,
         result,
+        resolveChildren,
         sink: input.sink,
         sourceLocations: input.sourceLocations
     });
@@ -404,6 +289,7 @@ export function recordAssertReference(input: AssertReferenceRecordingInput): Pro
             annotation: input.annotation,
             parameters: input.parameters,
             record,
+            sink: input.sink,
             source: 'assert',
             sourceLocations: input.sourceLocations
         }));
@@ -435,6 +321,7 @@ export function recordRequireReference(input: RequireReferenceRecordingInput): v
         annotation: input.annotation,
         parameters: input.parameters,
         record,
+        sink: input.sink,
         source: 'require',
         sourceLocations: input.sourceLocations
     }));

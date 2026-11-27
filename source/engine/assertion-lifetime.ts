@@ -2,7 +2,7 @@ import { types } from 'node:util';
 import { promiseHooks } from 'node:v8';
 import { threadId } from 'node:worker_threads';
 import { createStoredValue } from '../stored-value.ts';
-import { attachAssertionBodyExecutor } from '../execution-ownership.ts';
+import { attachAssertionBodyExecutor, sharedExecutionStorage } from '../execution-ownership.ts';
 import { TestContractSignalError } from './assertion-control-error.ts';
 import { currentLateAssertionSink } from './late-assertion-delivery.ts';
 import type { AttemptId, CaseId, WorkId } from './identity.ts';
@@ -27,7 +27,7 @@ type AssertionClosure = 'interrupted' | 'settled';
 type AssertionBody<Value> = () => Promise<Value> | Value;
 
 type SettlementObservation = {
-    readonly invoke: <Value>(body: AssertionBody<Value>) => Promise<Value> | Value;
+    readonly invoke: <Result>(body: () => Result) => Result;
     readonly track: (promise: Promise<unknown>, close: () => void) => () => void;
     readonly retain: () => void;
     readonly release: () => void;
@@ -54,7 +54,7 @@ function observeSettlement(): SettlementObservation {
     });
 
     return {
-        invoke<Value>(body: AssertionBody<Value>): Promise<Value> | Value {
+        invoke<Result>(body: () => Result): Result {
             invoking += 1;
             try {
                 return body();
@@ -97,9 +97,9 @@ export async function withAssertionSettlement<Value>(run: () => Promise<Value>):
     }
 }
 
-function invokeBody<Value>(body: AssertionBody<Value>, close: () => void): Promise<Value> | Value {
+function invokeAssertionBody<Result>(body: () => Result, close: () => void): Result {
     const observation = settlement.read();
-    const execute = observation === null ? body : function executeObservedBody(): Promise<Value> | Value {
+    const execute = observation === null ? body : function executeObservedBody(): Result {
         return observation.invoke(body);
     };
     try {
@@ -110,12 +110,7 @@ function invokeBody<Value>(body: AssertionBody<Value>, close: () => void): Promi
     }
 }
 
-export async function runAssertionBody<Value>(body: AssertionBody<Value>, close: () => void): Promise<Value> {
-    const value = invokeBody(body, close);
-    if (!types.isPromise(value)) {
-        close();
-        return value;
-    }
+async function settleAssertionPromise<Value>(value: Promise<Value>, close: () => void): Promise<Value> {
     const untrack = settlement.read()?.track(value, close);
     try {
         return await value;
@@ -123,6 +118,19 @@ export async function runAssertionBody<Value>(body: AssertionBody<Value>, close:
         untrack?.();
         close();
     }
+}
+
+export function observeAssertionBody<Value>(body: AssertionBody<Value>, close: () => void): Promise<Value> | Value {
+    const value = invokeAssertionBody(body, close);
+    if (types.isPromise(value)) {
+        return settleAssertionPromise(value, close);
+    }
+    close();
+    return value;
+}
+
+export async function runAssertionBody<Value>(body: AssertionBody<Value>, close: () => void): Promise<Value> {
+    return await observeAssertionBody(body, close);
 }
 
 export function scopeWithAssertionSettlement<Scope extends Readonly<Record<string, unknown>>>(
@@ -199,12 +207,28 @@ export function retainUniqueLateAssertionDiagnostics(errors: readonly RunnerErro
     });
 }
 
-export type AssertionContext = {
+export type AssertionRecordingContext = {
     readonly origin: AssertionOrigin;
-    readonly interruption: AbortSignal;
-    readonly close: (reason: AssertionClosure) => void;
-    readonly publish: () => void;
+    readonly run: <Value>(operation: () => Value) => Value;
     readonly assertRecording: (operation: string) => void;
+    readonly fail: (failure: TestContractFailure) => never;
+    readonly child: () => AssertionRecordingContext;
+    readonly close: (reason: AssertionClosure) => void;
+};
+
+type ActiveAssertionContext = {
+    readonly origin: AssertionOrigin;
+    readonly assertOpen: (operation: string) => void;
+    readonly fail: AssertionRecordingContext['fail'];
+};
+
+const activeAssertions = sharedExecutionStorage<ActiveAssertionContext>(
+    Symbol.for('@overkill-dev/engine/active-assertions/v1')
+);
+
+export type AssertionContext = AssertionRecordingContext & {
+    readonly interruption: AbortSignal;
+    readonly publish: () => void;
     readonly lateFailures: () => readonly TestContractFailure[];
     readonly acceptsPropertyEvidence: () => boolean;
 };
@@ -226,40 +250,94 @@ export function createAssertionContext(
         readonly closure: AssertionClosure;
     } | { readonly kind: 'recording'; } = { kind: 'recording' };
 
-    function assertRecording(operation: string): void {
-        if (state.kind === 'recording') {
-            return;
-        }
-        const activity = { kind: 'late-assertion-activity', origin, operation, closure: state.closure } as const;
+    function fail(failure: TestContractFailure): never {
+        const recorded = Object.freeze({ ...failure });
+        retainFailure(recorded);
+        throw new TestContractSignalError(recorded, undefined);
+    }
+
+    function rejectLate(operation: string, closure: AssertionClosure): never {
+        const activity = { kind: 'late-assertion-activity', origin, operation, closure } as const;
         const failure = lateAssertionFailure(activity);
-        if (state.kind === 'closed') {
+        if (state.kind === 'published') {
+            reportLate(lateAssertionDiagnostic(activity, failure.summary));
+        } else {
             lateFailures.push(failure);
             retainFailure(failure);
-        } else {
-            reportLate(lateAssertionDiagnostic(activity, failure.summary));
         }
         throw new TestContractSignalError(failure, undefined);
     }
 
+    function assertOpen(operation: string): void {
+        if (state.kind !== 'recording') {
+            rejectLate(operation, state.closure);
+        }
+    }
+
+    function recordingContext(
+        assertContextOpen: (operation: string) => void,
+        close: (reason: AssertionClosure) => void
+    ): AssertionRecordingContext {
+        const context = { origin, assertOpen: assertContextOpen, fail };
+        return {
+            origin,
+            run(operation) {
+                return activeAssertions.run(context, operation);
+            },
+            assertRecording(operation) {
+                assertContextOpen(operation);
+                const active = activeAssertions.getStore();
+                if (active !== undefined && active !== context) {
+                    active.assertOpen(operation);
+                    active.fail({
+                        actual: {
+                            reason: 'wrong-active-context',
+                            operation,
+                            origin: active.origin,
+                            destination: origin
+                        },
+                        code: 'invalid-assertion-context',
+                        expected: 'the injected assertion context for the active callback',
+                        kind: 'test-contract',
+                        summary: `Cannot ${operation} through a different assertion context.`
+                    });
+                }
+            },
+            fail,
+            child() {
+                let closure: AssertionClosure | null = null;
+                return recordingContext(function assertChildOpen(operation) {
+                    if (closure !== null) {
+                        rejectLate(operation, closure);
+                    }
+                    assertContextOpen(operation);
+                }, function closeChild(reason) {
+                    closure = closure ?? reason;
+                });
+            },
+            close
+        };
+    }
+
+    const recording = recordingContext(assertOpen, function closeRoot(reason) {
+        if (state.kind === 'recording') {
+            state = { kind: 'closed', closure: reason };
+            if (reason === 'interrupted') {
+                interruption.abort();
+            }
+        }
+    });
+
     return {
         owner: Symbol('assertion recorder'),
         lifetime: {
-            origin,
             interruption: interruption.signal,
-            assertRecording,
+            ...recording,
             acceptsPropertyEvidence() {
                 return state.kind === 'recording' || state.kind === 'closed' && state.closure === 'settled';
             },
             lateFailures() {
                 return lateFailures.slice();
-            },
-            close(reason) {
-                if (state.kind === 'recording') {
-                    state = { kind: 'closed', closure: reason };
-                    if (reason === 'interrupted') {
-                        interruption.abort();
-                    }
-                }
             },
             publish() {
                 if (state.kind === 'closed') {

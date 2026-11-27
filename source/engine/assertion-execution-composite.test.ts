@@ -8,7 +8,7 @@ import {
     requireEngineNarrowingReference,
     requireEngineCompositeReference
 } from '../test-support/assertion-reference-boundary.ts';
-import { type EngineCaseBody, createTestEngine as createEngine } from '../test-support/create-test-engine.ts';
+import { executeSingleBody } from '../test-support/execute-assertion-case.ts';
 
 import type {
     FailedCheck,
@@ -73,29 +73,6 @@ function firstFailOutcome(result: RunResult): FailOutcome | null {
     }
 
     return null;
-}
-
-async function executeSingleBody(body: EngineCaseBody): Promise<RunResult> {
-    const engine = createEngine();
-
-    return await engine.execute(
-        engine.createTestPlan(
-            engine.createRoot({
-                children: [
-                    engine.createTestCase({
-                        definitionLocations: [ { kind: 'unknown' as const } ],
-                        body,
-                        annotations: {},
-                        controls: {},
-                        title: 'case'
-                    })
-                ],
-                annotations: {},
-                controls: {},
-                title: 'root'
-            })
-        )
-    );
 }
 
 function callUnknownFacade(target: unknown, parameters: readonly unknown[]): void {
@@ -179,6 +156,34 @@ function firstForeignChild(outcome: FailOutcome): FailedForeignCheck | null {
     return null;
 }
 
+async function executeCompositeSummaryCase(): Promise<{
+    readonly outcome: FailOutcome | null;
+    readonly summaryArguments: readonly (readonly [ValueResult, unknown])[];
+}> {
+    const summaryArguments: (readonly [ValueResult, unknown])[] = [];
+    const resultOk = defineCompositeAssertion({
+        assert(check, result: ValueResult, expected: unknown) {
+            return check.group([
+                check.annotated('status').true(result.ok),
+                check.annotated('value').deepEqual(result.value, expected)
+            ]);
+        },
+        formatSummary(context, result: ValueResult, expected: unknown) {
+            summaryArguments.push([ result, expected ]);
+            return `Expected ${context.name} to match.`;
+        },
+        name: 'resultOk'
+    });
+    requireEngineCompositeReference(resultOk);
+    const outcome = firstFailOutcome(
+        await executeSingleBody(function testBody(testScope) {
+            testScope.assert(resultOk, { ok: false, value: { count: 1 } }, { count: 2 });
+            return testScope.assert.collect();
+        })
+    );
+    return { outcome, summaryArguments };
+}
+
 export const testNode = suite('Composite assertion execution', [
     test(
         'records callable composite assertion references as one planned boundary',
@@ -214,31 +219,12 @@ export const testNode = suite('Composite assertion execution', [
         }
     ),
     test('reports composite parent failures with child diagnostics', async function (scope: TestScope) {
-        const resultOk = defineCompositeAssertion({
-            assert(check, result: ValueResult, expected: unknown) {
-                return check.group([
-                    check.annotated('status').true(result.ok),
-                    check.annotated('value').deepEqual(result.value, expected)
-                ]);
-            },
-            formatSummary(context, result: ValueResult, expected: unknown) {
-                scope.assert.deepEqual(result, { ok: false, value: { count: 1 } });
-                scope.assert.deepEqual(expected, { count: 2 });
-                return `Expected ${context.name} to match.`;
-            },
-            name: 'resultOk'
-        });
-        requireEngineCompositeReference(resultOk);
-        const outcome = firstFailOutcome(
-            await executeSingleBody(function testBody(testScope) {
-                testScope.assert(resultOk, { ok: false, value: { count: 1 } }, { count: 2 });
-                return testScope.assert.collect();
-            })
-        );
+        const { outcome, summaryArguments } = await executeCompositeSummaryCase();
         scope.require.notNull(outcome);
         const composite = firstCompositeCheck(outcome);
         scope.require.notNull(composite);
 
+        scope.assert.deepEqual(summaryArguments, [ [ { ok: false, value: { count: 1 } }, { count: 2 } ] ]);
         scope.assert(capturedTestLocation, composite.sourceLocations[0]);
         scope.assert.deepEqual(
             composite.children.map(function toLocation(child) {
@@ -477,12 +463,12 @@ export const testNode = suite('Composite assertion execution', [
             name: 'eventuallyOk'
         });
         requireEngineCompositeReference(eventuallyOk);
+        const pendingAssertions: Promise<void>[] = [];
         const result = await executeSingleBody(function testBody(testScope) {
-            const pendingAssertions = [ testScope.assert(eventuallyOk) ];
-
-            scope.assert.equal(pendingAssertions.length, 1);
+            pendingAssertions.push(testScope.assert(eventuallyOk));
             return testScope.assert.collect();
         });
+        scope.assert.equal(pendingAssertions.length, 1);
         const outcome = firstFailOutcome(result);
 
         scope.require.notNull(outcome);

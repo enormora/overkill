@@ -1,7 +1,6 @@
 import { once } from 'node:events';
 import { suite, test, type TestScope } from '@overkill-dev/test';
-import { defineCompositeAssertion } from '@overkill-dev/test/assert';
-import { requireEngineCompositeReference } from '../test-support/assertion-reference-boundary.ts';
+import { defineCompositeAssertion } from '../assert/assertion-extension.ts';
 import { test as subjectTest, suite as subjectSuite } from '../packages/test/test.entry-point.ts';
 
 import type { AssertionResult } from '../packages/engine/engine.entry-point.ts';
@@ -193,7 +192,8 @@ export const testNode = suite('property trial scopes', [
     test('retains the first failed composite child as the property boundary', async function (scope) {
         const comparison = defineCompositeAssertion({
             name: 'sample comparison',
-            assert(check, value: number) {
+            async assert(check, value: number) {
+                await Promise.resolve();
                 return check.group([
                     check.true(true),
                     check.equal(value, 0),
@@ -201,12 +201,11 @@ export const testNode = suite('property trial scopes', [
                 ]);
             }
         });
-        requireEngineCompositeReference(comparison);
         const node = property({
             title: 'composite sample',
             generator: gen.constant(1),
-            test(value, sample) {
-                sample.assert(comparison, value);
+            async test(value, sample) {
+                await sample.assert(comparison, value);
                 return sample.assert.collect();
             }
         });

@@ -62,3 +62,8 @@ budget. Live failed checks expose that value as `error.thrown` with
 `error.thrownEncoding: 'serialized'`.
 
 Error assertions and foreign bridges propagate engine control signals unchanged.
+
+An injected `check` builder and its diagnostics belong to one custom assertion
+invocation. Await its async checks before returning a child or group. Authors
+can await multiple custom assertions together before collecting the case
+assertions. Each invocation contributes one assertion to the plan.

@@ -33,7 +33,12 @@ function isExecutionStorage<Value>(value: unknown): value is AsyncLocalStorage<V
     return value instanceof AsyncLocalStorage;
 }
 
-function sharedExecutionStorage<Value>(key: symbol): AsyncLocalStorage<Value> {
+type ExecutionStorage<Value> = {
+    readonly getStore: () => Value | undefined;
+    readonly run: <Result>(store: Value, operation: () => Result) => Result;
+};
+
+export function sharedExecutionStorage<Value>(key: symbol): ExecutionStorage<Value> {
     const existing: unknown = Reflect.get(globalThis, key);
     if (isExecutionStorage<Value>(existing)) {
         return existing;

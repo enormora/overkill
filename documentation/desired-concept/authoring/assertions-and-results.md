@@ -962,7 +962,12 @@ type TestFailure =
     }
     | {
         readonly kind: 'test-contract';
-        readonly code: 'no-assertions' | 'plan-mismatch' | 'invalid-plan' | 'invalid-assertion-protocol';
+        readonly code:
+            | 'no-assertions'
+            | 'plan-mismatch'
+            | 'invalid-plan'
+            | 'invalid-assertion-context'
+            | 'invalid-assertion-protocol';
         readonly message: string;
     };
 ```
@@ -1133,8 +1138,16 @@ Assertions inside a property trial must record against its injected trial
 context, not a captured outer test context. Custom assertion implementations
 use their injected check builder rather than a captured test assertion facade.
 Reject recording into a proven wrong active context and retain the violation
-in the relevant result. Supported asynchronous composition preserves its
-declared context relationships.
+in the active result with `invalid-assertion-context`. The same code covers
+foreign injected diagnostics. A diagnostic child or group produced by an
+injected builder belongs to that custom assertion invocation. Independent
+low-level protocol nodes remain reusable under their lazy contract.
+
+Awaited callbacks keep their injected context across asynchronous work.
+Multiple custom assertions can run concurrently when the caller awaits all
+of them before collection. Each invocation must settle its own async checks
+before returning. Nested property invocations are awaited sequentially.
+Closed builders follow the recording lifetime rules above.
 
 Custom assertion implementations may use conditional logic. Their child checks
 remain diagnostics within the enclosing assertion boundary, not extra plan

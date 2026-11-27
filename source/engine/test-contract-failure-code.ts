@@ -1,5 +1,6 @@
 type TestContractFailureCodeByName = {
     readonly deadBuilderAssertion: 'dead-builder-assertion';
+    readonly invalidAssertionContext: 'invalid-assertion-context';
     readonly invalidAssertionProtocol: 'invalid-assertion-protocol';
     readonly invalidAssertionReference: 'invalid-assertion-reference';
     readonly invalidCompositeResult: 'invalid-composite-result';

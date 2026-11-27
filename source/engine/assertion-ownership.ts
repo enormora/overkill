@@ -12,12 +12,39 @@ import {
 import { transferAssertionObservation } from '../assertion-protocol/evaluation.ts';
 import type { AssertAssertionNode, AssertionNode } from '../assertion-protocol/assertion-node.ts';
 import { assertionProtocolFailure } from './assertion-protocol-failure.ts';
+import type { AssertionOrigin, AssertionRecordingContext } from './assertion-lifetime.ts';
 import type { TestContractFailure } from './run-result.ts';
 
 type BuilderOwnership = {
     readonly assertion: AssertAssertionNode;
     readonly owner: symbol;
 };
+
+const diagnosticOwners = new WeakMap<ProtocolRecord, AssertionRecordingContext>();
+
+export function ownAssertionDiagnostic(diagnostic: ProtocolRecord, owner: AssertionRecordingContext): void {
+    diagnosticOwners.set(diagnostic, owner);
+}
+
+export function foreignDiagnostic(
+    diagnostic: unknown,
+    owner: AssertionRecordingContext | null
+): boolean {
+    const recorded = protocolObject(diagnostic)
+        ? diagnosticOwners.get(diagnostic)
+        : undefined;
+    return recorded !== undefined && recorded !== owner;
+}
+
+export function foreignAssertionDiagnostic(origin: AssertionOrigin): TestContractFailure {
+    return {
+        actual: { reason: 'foreign-diagnostic', operation: 'admit an assertion diagnostic', origin },
+        code: 'invalid-assertion-context',
+        expected: 'diagnostics owned by this custom assertion invocation',
+        kind: 'test-contract',
+        summary: 'Injected assertion diagnostics belong to a different assertion context.'
+    };
+}
 
 const builderOwners = new WeakMap<ProtocolRecord, BuilderOwnership>();
 
@@ -87,14 +114,36 @@ function previousOwnerFailure(
     return null;
 }
 
+function foreignReturnedDiagnostic(assertion: ReturnedAssertion, originals: OriginalNodes): boolean {
+    const { original, node } = assertion;
+    if (foreignDiagnostic(original, null)) {
+        return true;
+    }
+    if (node.check !== 'composite' || builderOwners.has(original)) {
+        return false;
+    }
+    return node.children.some(function containsForeignDiagnostic(child) {
+        return foreignDiagnostic(originals.get(child), null);
+    });
+}
+
+export type AssertionReturnOwner = {
+    readonly identity: symbol;
+    readonly origin: AssertionOrigin;
+};
+
 export function returnedAssertionOwnershipFailure(
     assertions: readonly ReturnedAssertion[],
-    owner: symbol,
+    owner: AssertionReturnOwner,
     originals: OriginalNodes
 ): TestContractFailure | null {
     const seen = new WeakSet<ProtocolRecord>();
-    for (const { original, node } of assertions) {
-        const failure = previousOwnerFailure(original, owner, seen) ?? recordedBuilderChildFailure(node, originals);
+    for (const assertion of assertions) {
+        if (foreignReturnedDiagnostic(assertion, originals)) {
+            return foreignAssertionDiagnostic(owner.origin);
+        }
+        const failure = previousOwnerFailure(assertion.original, owner.identity, seen) ??
+            recordedBuilderChildFailure(assertion.node, originals);
         if (failure !== null) {
             return failure;
         }
