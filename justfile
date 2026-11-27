@@ -1,6 +1,6 @@
 export PATH := './node_modules/.bin:' + env_var('PATH')
 packtory-node-options := '--max-old-space-size-percentage=75'
-analysis-node-options := '--max-old-space-size-percentage=75'
+eslint-node-options := '--max-old-space-size-percentage=75'
 type-overkill := './tools/type-tests/node_modules/@overkill-dev/test/packages/test/overkill.entry-point.js'
 
 default:
@@ -16,7 +16,7 @@ benchmark-html-browser:
     node build-benchmark-html.js
 
 eslint *OPTIONS:
-    NODE_OPTIONS="${NODE_OPTIONS:-} {{analysis-node-options}}" eslint . --cache --cache-location './target/.eslintcache' --cache-strategy content --max-warnings 0 {{OPTIONS}}
+    NODE_OPTIONS="${NODE_OPTIONS:-} {{eslint-node-options}}" eslint . --cache --cache-location './target/.eslintcache' --cache-strategy content --max-warnings 0 {{OPTIONS}}
 
 eslint-fix: (eslint '--fix')
 
