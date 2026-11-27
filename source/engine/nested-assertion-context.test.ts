@@ -1,8 +1,8 @@
 import { suite, test, type TestScope } from '@overkill-dev/test';
 import { defineCompositeAssertion as defineSubjectCompositeAssertion } from '../assert/assertion-extension.ts';
 import type { BuiltInAssertAssertionNode } from '../assertion-protocol/assertion-node.ts';
-import type { FailOutcome, RunResult } from './run-result.ts';
 import { executeSingleBody } from '../test-support/execute-assertion-case.ts';
+import type { FailOutcome, RunResult } from './run-result.ts';
 
 function firstFailOutcome(result: RunResult): FailOutcome | null {
     const outcome = result.perTest[0]?.outcome;

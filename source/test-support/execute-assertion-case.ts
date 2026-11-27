@@ -1,5 +1,5 @@
-import { type EngineCaseBody, createTestEngine as createEngine } from './create-test-engine.ts';
 import type { RunResult } from '../engine/run-result.ts';
+import { type EngineCaseBody, createTestEngine as createEngine } from './create-test-engine.ts';
 
 export async function executeSingleBody(body: EngineCaseBody): Promise<RunResult> {
     const engine = createEngine();

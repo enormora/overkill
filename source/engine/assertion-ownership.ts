@@ -116,11 +116,15 @@ function previousOwnerFailure(
 
 function foreignReturnedDiagnostic(assertion: ReturnedAssertion, originals: OriginalNodes): boolean {
     const { original, node } = assertion;
-    return foreignDiagnostic(original, null) ||
-        node.check === 'composite' && !builderOwners.has(original) &&
-        node.children.some(function containsForeignDiagnostic(child) {
-            return foreignDiagnostic(originals.get(child), null);
-        });
+    if (foreignDiagnostic(original, null)) {
+        return true;
+    }
+    if (node.check !== 'composite' || builderOwners.has(original)) {
+        return false;
+    }
+    return node.children.some(function containsForeignDiagnostic(child) {
+        return foreignDiagnostic(originals.get(child), null);
+    });
 }
 
 export type AssertionReturnOwner = {

@@ -492,7 +492,12 @@ export function defineCompositeAssertion<
         name: definition.name,
         run(input) {
             return definition.assert(
-                compositeCheckBuilder(input.source, input.message, input.sourceLocations, compositeDiagnosticHooks(input)),
+                compositeCheckBuilder(
+                    input.source,
+                    input.message,
+                    input.sourceLocations,
+                    compositeDiagnosticHooks(input)
+                ),
                 ...input.parameters
             );
         }
