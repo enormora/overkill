@@ -56,6 +56,13 @@ function validateAssertionSyntax(analysis: SourceAnalysis, call: TypeScript.Call
         );
     }
 }
+function validateOperandCount(call: TypeScript.CallExpression, binding: NativeReference): void {
+    const operandCounts = { typed: 0, withActual: 1, withExpected: 1, expressions: 2 };
+    if (binding.kind === 'relation' && call.arguments.length - 1 !== operandCounts[binding.form]) {
+        throw new UnsupportedEvidenceError('Invalid native relation operand count.', undefined);
+    }
+}
+
 async function assertionSite(
     analysis: SourceAnalysis,
     call: TypeScript.CallExpression,
@@ -67,23 +74,11 @@ async function assertionSite(
         throw new UnsupportedEvidenceError('Native assertion is missing its reference.', undefined);
     }
     const binding = await nativeReference(analysis, reference, call.arguments.slice(1));
-    if (binding.kind === 'call') {
-        return {
-            call,
-            reference: binding,
-            ...authoredPosition(binding.probe),
-            owners: [ owner ],
-            message: await assertionAnnotation(analysis, call)
-        };
-    }
-    const operandCounts = { typed: 0, withActual: 1, withExpected: 1, expressions: 2 };
-    if (call.arguments.length - 1 !== operandCounts[binding.form]) {
-        throw new UnsupportedEvidenceError('Invalid native relation operand count.', undefined);
-    }
+    validateOperandCount(call, binding);
     return {
         call,
         reference: binding,
-        ...authoredPosition(call),
+        ...authoredPosition(binding.kind === 'call' ? binding.probe : call),
         owners: [ owner ],
         message: await assertionAnnotation(analysis, call)
     };

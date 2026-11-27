@@ -1,5 +1,5 @@
 import * as syntax from 'typescript-beta/ast';
-import { ModuleKind, ModuleResolutionKind, SymbolFlags, TypeFlags } from 'typescript-beta/async';
+import { DiagnosticCategory, ModuleKind, ModuleResolutionKind, SymbolFlags, TypeFlags } from 'typescript-beta/async';
 import { CaseSensitivity, toRootedFilePath, pathKey } from 'typescript-beta/path';
 import {
     createSourceAnalysis,
@@ -12,6 +12,7 @@ import {
 
 const compilerSyntax = {
     ...syntax,
+    DiagnosticCategory,
     ModuleKind,
     ModuleResolutionKind,
     SymbolFlags,

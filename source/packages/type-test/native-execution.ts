@@ -1,5 +1,3 @@
-import type { Diagnostic } from 'typescript-beta/async';
-import type { Node } from 'typescript-beta/ast';
 import { workIdentityKey, type TestPlan } from '../engine/engine.entry-point.ts';
 import { parseAdapterFacts } from '../../config/adapter-facts.ts';
 import type { CheckerExecution } from './checker-plan.ts';
@@ -12,60 +10,16 @@ import {
 } from './frozen-project.ts';
 import { collectOriginalAssertions, type OriginalAssertionPlan, type NativeSite } from './original-assertions.ts';
 import { nativeCheckResult, type SiteEvidence } from './native-results.ts';
-import { attributeCallDiagnostics, type CallDiagnostic } from './call-diagnostics.ts';
+import { projectDiagnostics, type AttributedCallDiagnostics } from './project-diagnostics.ts';
 import { evaluateSite } from './original-evidence.ts';
 
 import { projectSourceAnalysis } from './project-source-analysis.ts';
 import { validateCompilerProject, type RememberProjectValidation } from './project-validation-cache.ts';
 
-function projectDiagnostic(diagnostic: Diagnostic): string {
-    const position = diagnostic.startPosition;
-    if (position === undefined) {
-        return `${diagnostic.fileName ?? 'project'}: TS${diagnostic.code}: ${diagnostic.text}`;
-    }
-    const line = position.line + 1;
-    const column = position.character + 1;
-    return `${diagnostic.fileName}:${line}:${column}: TS${diagnostic.code}: ${diagnostic.text}`;
-}
-
-function requireCleanProject(diagnostics: readonly Diagnostic[]): void {
-    if (diagnostics.length > 0) {
-        throw new Error(diagnostics.map(projectDiagnostic).join('\n'), { cause: diagnostics });
-    }
-}
-
-async function projectDiagnostics(
-    project: FrozenProject,
-    signal: AbortSignal,
-    probes: readonly NativeSite[]
-): Promise<ReadonlyMap<Node, readonly CallDiagnostic[]>> {
-    if (probes.length > 0 && project.project.options.noCheck === true) {
-        throw new Error('Call assertions require semantic diagnostics. Disable noCheck in the type-test project.');
-    }
-    const program = await project.diagnosticProgram();
-    const diagnostics: Diagnostic[] = [];
-    for (
-        const read of [
-            program.getConfigFileParsingDiagnostics,
-            program.getGlobalDiagnostics,
-            program.getProgramDiagnostics,
-            program.getSyntacticDiagnostics
-        ]
-    ) {
-        signal.throwIfAborted();
-        diagnostics.push(...await read.call(program));
-    }
-    signal.throwIfAborted();
-    const semantic = await program.getSemanticDiagnostics();
-    const { attributed, remaining } = attributeCallDiagnostics(project.compiler.syntax, probes, semantic);
-    requireCleanProject([ ...diagnostics, ...remaining ]);
-    return attributed;
-}
-
 async function checkOriginalAssertions(
     project: FrozenProject,
     assertionPlan: OriginalAssertionPlan,
-    diagnostics: ReadonlyMap<Node, readonly CallDiagnostic[]>,
+    diagnostics: AttributedCallDiagnostics,
     signal: AbortSignal
 ): Promise<readonly SiteEvidence[]> {
     const checked: SiteEvidence[] = [];
@@ -78,10 +32,23 @@ async function checkOriginalAssertions(
     return checked;
 }
 
-function assertionFacts(site: NativeSite) {
+type AssertionFacts = Pick<NativeSite, 'column' | 'line' | 'message' | 'owners' | 'path' | 'range'> & {
+    readonly relation: NativeSite['reference']['relation'];
+    readonly negated: boolean;
+};
+type CallAssertionFacts = AssertionFacts & { readonly reason: string | null; };
+
+function assertionFacts(site: NativeSite): AssertionFacts | CallAssertionFacts {
     const { path, range, owners, line, column, message, reference } = site;
     return {
-        path, range, owners, line, column, message, relation: reference.relation, negated: reference.negated,
+        path,
+        range,
+        owners,
+        line,
+        column,
+        message,
+        relation: reference.relation,
+        negated: reference.negated,
         ...reference.kind === 'call' ? { reason: reference.reason } : {}
     };
 }
@@ -99,7 +66,7 @@ export async function collectProject(
 ): Promise<CompilerCheck> {
     const { assertionPlan, probes } = await project.execute(collectionSignal, async function collectAssertions() {
         const analysis = projectSourceAnalysis(project);
-        const assertionPlan = await collectOriginalAssertions(analysis, plan);
+        const selectedPlan = await collectOriginalAssertions(analysis, plan);
         const selected = new Set(plan.cases.map(function identity(entry) {
             return workIdentityKey(entry.workId);
         }));
@@ -108,19 +75,19 @@ export async function collectProject(
                 !selected.has(workIdentityKey(entry.workId));
         });
         const [ first, ...rest ] = otherCases;
-        const otherSites = first === undefined
-            ? []
-            : (await collectOriginalAssertions(analysis, { ...plan, cases: [ first, ...rest ] })).sites;
-        const probes = Array.from(new Map(
-            [ ...assertionPlan.sites, ...otherSites ]
+        const unselectedPlan = first === undefined
+            ? null
+            : await collectOriginalAssertions(analysis, { ...plan, cases: [ first, ...rest ] });
+        const byAssertion = new Map(
+            [ ...selectedPlan.sites, ...unselectedPlan?.sites ?? [] ]
                 .filter(function probe(site) {
                     return site.reference.kind === 'call';
                 })
                 .map(function byCall(site) {
                     return [ site.call, site ];
                 })
-        ).values());
-        return { assertionPlan, probes };
+        );
+        return { assertionPlan: selectedPlan, probes: Array.from(byAssertion.values()) };
     });
     const sourceFacts = {
         identities: plan.cases.map(function (testCase) {
@@ -170,8 +137,8 @@ export async function collectProject(
                         evidence: checked.map(function (entry) {
                             return {
                                 ...assertionFacts(entry.site),
-                                ...entry.site.reference.kind !== 'call' ? {} : { diagnostics: entry.diagnostics },
-                            actual: entry.actual,
+                                ...(entry.site.reference.kind === 'call' ? { diagnostics: entry.diagnostics } : {}),
+                                actual: entry.actual,
                                 expected: entry.expected,
                                 compilerVersion: entry.compilerVersion,
                                 result: entry.result
