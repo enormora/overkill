@@ -234,11 +234,15 @@ assert.equal(decodePropertyInput(migrated, current, consume), 42n);
 console.log('property codecs passed');
 `;
 
+const propertyReplayObservations = `
+export const observations = { direct: [], nested: [], surrounding: [], cleanup: [], after: 0 };
+`;
+
 const propertyReplayFixture = `
 import { property, withProperties, gen } from '@overkill-dev/property';
 import { createSuite, createTestCase } from '@overkill-dev/engine';
+import { observations } from './observations.mjs';
 
-export const observations = { direct: [], nested: [], surrounding: [], cleanup: [], after: 0 };
 const generator = gen.constant(0).map(function forbidGeneration() {
     throw new Error('Witness replay must not generate target inputs.');
 });
@@ -285,8 +289,9 @@ import { parseWitnessFile } from '@overkill-dev/engine';
 
 const cwd = await mkdtemp(path.join(process.cwd(), 'witness-replay-'));
 try {
+await writeFile(path.join(cwd, 'observations.mjs'), ${JSON.stringify(propertyReplayObservations)});
 await writeFile(path.join(cwd, 'law.mjs'), ${JSON.stringify(propertyReplayFixture)});
-const { observations } = await import(pathToFileURL(path.join(cwd, 'law.mjs')).href);
+const { observations } = await import(pathToFileURL(path.join(cwd, 'observations.mjs')).href);
 const config = normalizeConfig({ runtimeStateDir: path.join(cwd, 'state'), profiles: { laws: {
     testFamily: 'property', files: { include: [ 'law.mjs' ] },
     execution: { processModel: 'in-process', scheduling: 'serial' },
