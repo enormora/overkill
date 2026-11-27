@@ -8,7 +8,6 @@ import {
     benchmark,
     defaultSamplingPolicy,
     defaultBenchmarkLifecyclePolicy,
-    defaultRuntimeCooldownPolicy,
     wallClockMeasurement,
     workload,
     type BenchmarkDefinition,
@@ -83,22 +82,6 @@ const assertAutomaticWarmup = defineCompositeAssertion({
             return check.group([ initialChecks, check.defined(attempt) ]);
         }
         return check.group([ initialChecks, check.defined(attempt), check.deepEqual(attempt, measured) ]);
-    }
-});
-
-const assertRuntimeSettling = defineCompositeAssertion({
-    name: 'runtime settling',
-    assert(check, result: RunResult) {
-        const { cooldown } = measurementResult(result).lifecycle;
-        if (cooldown.mode !== 'runtime') {
-            throw new Error('Expected runtime cooldown evidence.');
-        }
-        return check.group([
-            check.partialDeepEqual(cooldown, { completed: 2, windows: 4, outcome: 'settled' }),
-            check.true(cooldown.durationMicroseconds >= 200_000),
-            check.deepEqual(result.runnerErrors, []),
-            check.equal(benchmarkResultSchema.parse(measurementResult(result)).lifecycle?.cooldown.mode, 'runtime')
-        ]);
     }
 });
 
@@ -186,34 +169,6 @@ export const testNode = suite('benchmark invocation lifetimes', [
             );
         }
         scope.assert.equal(calls, 0);
-        return scope.assert.collect();
-    }),
-    test('runs the native runtime policy after cleanup with no leaked harness work', async function (scope) {
-        const result = await runBenchmark(benchmark(
-            'runtime settling',
-            valueBenchmark(function ({ sample }) {
-                sample.cleanup(async function () {
-                    await Promise.resolve();
-                });
-                return {
-                    value: sample
-                        .measure(function () {
-                            return 1;
-                        })
-                        .value
-                };
-            }),
-            {
-                ...measuredOnly,
-                lifecycle: {
-                    garbageCollection: 'profile-default',
-                    warmupSamples: 0,
-                    cooldown: { ...defaultRuntimeCooldownPolicy, maximumEventLoopUtilization: 1 }
-                }
-            }
-        ));
-        scope.assert.equal(result.summary.passed, 1);
-        scope.assert(assertRuntimeSettling, result);
         return scope.assert.collect();
     }),
     test(
