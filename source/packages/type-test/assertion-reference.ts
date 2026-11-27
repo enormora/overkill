@@ -59,3 +59,7 @@ export function typeRelation(relation: string): TypeRelationBindings & { readonl
 }
 
 export type TypeRelation = TypeRelationBindings & { readonly not: TypeRelationBindings; };
+
+export type CallRejection = 'argument-count' | 'argument-type' | 'no-matching-overload';
+
+export type CallReference = TypeAssertionReference<readonly [call: () => unknown], readonly []>;

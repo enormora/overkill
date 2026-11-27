@@ -104,10 +104,11 @@ loads the new compiler modules.
 
 ## Write assertions
 
-The root exports `family`, `sameType`, `assignableTo`, and `assignableFrom`.
+The root exports `family`, `sameType`, `assignableTo`, `assignableFrom`,
+`acceptsCall`, and `rejectsCall`.
 Its type exports are `CompilerSelection`, `CompilerPolicy`,
-`TypeTestSettings`, `TypeAssertionReference`, `TypeRelationBindings`, and
-`TypeRelation`.
+`TypeTestSettings`, `TypeAssertionReference`, `TypeRelationBindings`,
+`TypeRelation`, and `CallRejection`.
 
 Each relation supports the following forms inside a case body:
 
@@ -133,6 +134,23 @@ Expression operands use the types at their authored locations. For calls,
 constructors, and generic inference, write the TypeScript expression and assert
 its inferred type, as in the quickstart.
 
+### Check calls
+
+Pass an inline, parameterless arrow with a single TypeScript call:
+
+```ts
+scope.assert(acceptsCall, () => greet('Ada'));
+scope.assert(rejectsCall('argument-count'), () => greet());
+```
+
+Import both assertions from `@overkill-dev/type-test`. The compiler checks the
+original call and infers its arguments. The supported rejection reasons are
+`argument-count`, `argument-type`, and `no-matching-overload`. A rejection for
+another reason or a call that starts compiling fails the owning test. Unrelated
+errors remain project diagnostics. Use a dedicated compiler project checked by
+Overkill for suites that contain intentionally invalid calls. Select cases by
+profile filters so Overkill can still identify call probes in unselected cases.
+
 ### Source requirements
 
 Provide the original callback source in the configured compiler project. For
@@ -149,14 +167,13 @@ selected owner.
 
 Use a statically identifiable callback and a direct `scope.assert` boundary
 with a package relation reference. Import aliases work. Dynamic reference
-selection, detached assertion methods, scope forwarding, nested assertion
-callbacks, and mixed runtime assertions are unsupported. These references are
+selection, detached assertion methods, scope forwarding, assertions inside
+assertion operands, and mixed runtime assertions are unsupported. Nested
+callbacks may use their owning case’s scope directly. The compiler checks the
+callback’s original contextual types, even when it is never invoked. These references are
 assert-only. Runtime invocation throws.
 
-The catalog provides three type relations. TSX and decorators follow the
-project's compiler configuration. Use TypeScript's `@ts-expect-error` directive
-when any diagnostic on the next line is sufficient. TypeScript reports unused
-directives.
+TSX and decorators follow the project's compiler configuration.
 
 ## Run directly through the engine
 

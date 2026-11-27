@@ -203,7 +203,7 @@ export const testNode = suite('isolated native syntax analysis', [
         }, { message: /Scope forwarding/u });
         return scope.assert.collect();
     }),
-    test('rejects nested assertions within operands and callbacks', async function (scope) {
+    test('rejects nested assertions within operands', async function (scope) {
         const fixture = sourceFixture();
         const nested = sourceCall(sourceMember(ast.factory.createIdentifier('scope'), 'assert'), []);
         const outer = sourceCall(sourceMember(ast.factory.createIdentifier('scope'), 'assert'), [

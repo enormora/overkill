@@ -38,6 +38,7 @@ function checkedSite(site: NativeSite, result: SiteEvidence['result']): SiteEvid
         compilerVersion: '7.1.0-beta',
         actual: 'string',
         expected: 'number',
+        diagnostics: [],
         result,
         durationMicroseconds: 25
     };

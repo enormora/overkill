@@ -66,7 +66,16 @@ async function assertionSite(
     if (reference === undefined) {
         throw new UnsupportedEvidenceError('Native assertion is missing its reference.', undefined);
     }
-    const binding = await nativeReference(analysis, reference);
+    const binding = await nativeReference(analysis, reference, call.arguments.slice(1));
+    if (binding.kind === 'call') {
+        return {
+            call,
+            reference: binding,
+            ...authoredPosition(binding.probe),
+            owners: [ owner ],
+            message: await assertionAnnotation(analysis, call)
+        };
+    }
     const operandCounts = { typed: 0, withActual: 1, withExpected: 1, expressions: 2 };
     if (call.arguments.length - 1 !== operandCounts[binding.form]) {
         throw new UnsupportedEvidenceError('Invalid native relation operand count.', undefined);

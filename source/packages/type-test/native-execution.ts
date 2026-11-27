@@ -1,5 +1,6 @@
 import type { Diagnostic } from 'typescript-beta/async';
-import type { TestPlan } from '../engine/engine.entry-point.ts';
+import type { Node } from 'typescript-beta/ast';
+import { workIdentityKey, type TestPlan } from '../engine/engine.entry-point.ts';
 import { parseAdapterFacts } from '../../config/adapter-facts.ts';
 import type { CheckerExecution } from './checker-plan.ts';
 import {
@@ -11,6 +12,7 @@ import {
 } from './frozen-project.ts';
 import { collectOriginalAssertions, type OriginalAssertionPlan, type NativeSite } from './original-assertions.ts';
 import { nativeCheckResult, type SiteEvidence } from './native-results.ts';
+import { attributeCallDiagnostics, type CallDiagnostic } from './call-diagnostics.ts';
 import { evaluateSite } from './original-evidence.ts';
 
 import { projectSourceAnalysis } from './project-source-analysis.ts';
@@ -26,7 +28,20 @@ function projectDiagnostic(diagnostic: Diagnostic): string {
     return `${diagnostic.fileName}:${line}:${column}: TS${diagnostic.code}: ${diagnostic.text}`;
 }
 
-async function validateProject(project: FrozenProject, signal: AbortSignal): Promise<void> {
+function requireCleanProject(diagnostics: readonly Diagnostic[]): void {
+    if (diagnostics.length > 0) {
+        throw new Error(diagnostics.map(projectDiagnostic).join('\n'), { cause: diagnostics });
+    }
+}
+
+async function projectDiagnostics(
+    project: FrozenProject,
+    signal: AbortSignal,
+    probes: readonly NativeSite[]
+): Promise<ReadonlyMap<Node, readonly CallDiagnostic[]>> {
+    if (probes.length > 0 && project.project.options.noCheck === true) {
+        throw new Error('Call assertions require semantic diagnostics. Disable noCheck in the type-test project.');
+    }
     const program = await project.diagnosticProgram();
     const diagnostics: Diagnostic[] = [];
     for (
@@ -34,40 +49,41 @@ async function validateProject(project: FrozenProject, signal: AbortSignal): Pro
             program.getConfigFileParsingDiagnostics,
             program.getGlobalDiagnostics,
             program.getProgramDiagnostics,
-            program.getSyntacticDiagnostics,
-            program.getSemanticDiagnostics
+            program.getSyntacticDiagnostics
         ]
     ) {
         signal.throwIfAborted();
         diagnostics.push(...await read.call(program));
     }
-    if (diagnostics.length > 0) {
-        throw new Error(diagnostics.map(projectDiagnostic).join('\n'), { cause: diagnostics });
-    }
+    signal.throwIfAborted();
+    const semantic = await program.getSemanticDiagnostics();
+    const { attributed, remaining } = attributeCallDiagnostics(project.compiler.syntax, probes, semantic);
+    requireCleanProject([ ...diagnostics, ...remaining ]);
+    return attributed;
 }
 
 async function checkOriginalAssertions(
     project: FrozenProject,
     assertionPlan: OriginalAssertionPlan,
+    diagnostics: ReadonlyMap<Node, readonly CallDiagnostic[]>,
     signal: AbortSignal
 ): Promise<readonly SiteEvidence[]> {
     const checked: SiteEvidence[] = [];
     const analysis = typeAnalysis(project);
     for (const site of assertionPlan.sites) {
         signal.throwIfAborted();
-        checked.push(await evaluateSite(analysis, site, project.compiler.version));
+        const owned = site.reference.kind === 'call' ? diagnostics.get(site.reference.probe) ?? [] : [];
+        checked.push(await evaluateSite(analysis, site, project.compiler.version, owned));
     }
     return checked;
 }
 
-function assertionFacts(
-    site: NativeSite
-): Pick<NativeSite, 'column' | 'line' | 'message' | 'owners' | 'path' | 'range'> & {
-    readonly relation: NativeSite['reference']['relation'];
-    readonly negated: boolean;
-} {
+function assertionFacts(site: NativeSite) {
     const { path, range, owners, line, column, message, reference } = site;
-    return { path, range, owners, line, column, message, relation: reference.relation, negated: reference.negated };
+    return {
+        path, range, owners, line, column, message, relation: reference.relation, negated: reference.negated,
+        ...reference.kind === 'call' ? { reason: reference.reason } : {}
+    };
 }
 
 export type CompilerCheck = {
@@ -81,8 +97,30 @@ export async function collectProject(
     project: FrozenProject,
     collectionSignal: AbortSignal
 ): Promise<CompilerCheck> {
-    const assertionPlan = await project.execute(collectionSignal, async function collectAssertions() {
-        return await collectOriginalAssertions(projectSourceAnalysis(project), plan);
+    const { assertionPlan, probes } = await project.execute(collectionSignal, async function collectAssertions() {
+        const analysis = projectSourceAnalysis(project);
+        const assertionPlan = await collectOriginalAssertions(analysis, plan);
+        const selected = new Set(plan.cases.map(function identity(entry) {
+            return workIdentityKey(entry.workId);
+        }));
+        const otherCases = plan.discoveredCases.filter(function unselected(entry) {
+            return entry.workId.familyVariant?.key === `typescript@${project.compiler.version}` &&
+                !selected.has(workIdentityKey(entry.workId));
+        });
+        const [ first, ...rest ] = otherCases;
+        const otherSites = first === undefined
+            ? []
+            : (await collectOriginalAssertions(analysis, { ...plan, cases: [ first, ...rest ] })).sites;
+        const probes = Array.from(new Map(
+            [ ...assertionPlan.sites, ...otherSites ]
+                .filter(function probe(site) {
+                    return site.reference.kind === 'call';
+                })
+                .map(function byCall(site) {
+                    return [ site.call, site ];
+                })
+        ).values());
+        return { assertionPlan, probes };
     });
     const sourceFacts = {
         identities: plan.cases.map(function (testCase) {
@@ -103,10 +141,14 @@ export async function collectProject(
         signal: AbortSignal,
         remember: RememberProjectValidation
     ): Promise<readonly SiteEvidence[]> {
-        await validateCompilerProject(project, signal, async function validate() {
-            await validateProject(project, signal);
-        }, remember);
-        return await checkOriginalAssertions(project, assertionPlan, signal);
+        if (probes.length === 0) {
+            await validateCompilerProject(project, signal, async function validate() {
+                await projectDiagnostics(project, signal, []);
+            }, remember);
+            return await checkOriginalAssertions(project, assertionPlan, new Map(), signal);
+        }
+        const diagnostics = await projectDiagnostics(project, signal, probes);
+        return await checkOriginalAssertions(project, assertionPlan, diagnostics, signal);
     }
     const facts = parseAdapterFacts(sourceFacts);
     return {
@@ -128,7 +170,8 @@ export async function collectProject(
                         evidence: checked.map(function (entry) {
                             return {
                                 ...assertionFacts(entry.site),
-                                actual: entry.actual,
+                                ...entry.site.reference.kind !== 'call' ? {} : { diagnostics: entry.diagnostics },
+                            actual: entry.actual,
                                 expected: entry.expected,
                                 compilerVersion: entry.compilerVersion,
                                 result: entry.result
