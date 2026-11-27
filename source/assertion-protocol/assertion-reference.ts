@@ -9,10 +9,10 @@ import type {
 
 export const recordCompositeDiagnostics = Symbol.for('@overkill-dev/record-composite-diagnostics/v1');
 
-export type CompositeDiagnosticRecording = {
+export type CompositeDiagnosticRecording<Source extends AssertionSource = 'assert'> = {
     readonly assertRecording: (operation: string) => void;
     readonly beginAsync: () => () => void;
-    readonly group: (group: CompositeAssertionGroup<'assert'>) => void;
+    readonly group: (group: CompositeAssertionGroup<Source>) => void;
 };
 
 export const captureCompositeChild = Symbol.for('@overkill-dev/capture-composite-child/v1');

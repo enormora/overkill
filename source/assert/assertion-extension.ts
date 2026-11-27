@@ -2,7 +2,8 @@ import {
     captureCompositeChild,
     prepareCompositeGroup,
     recordCompositeDiagnostics,
-    type CompositeDiagnosticRecording
+    type CompositeDiagnosticRecording,
+    type CompositeAssertionRunnerInput
 } from '../assertion-protocol/assertion-reference.ts';
 import {
     createCompositeAssertionGroup,
@@ -196,9 +197,7 @@ function isCompositeDiagnosticRecording(value: unknown): value is CompositeDiagn
 }
 
 type CompositeCheckHooks<Source extends AssertionSource> = {
-    readonly assertRecording: CompositeDiagnosticRecording['assertRecording'] | null;
-    readonly beginAsync: CompositeDiagnosticRecording['beginAsync'] | null;
-    readonly captureGroup: ((group: CompositeAssertionGroup<Source>) => void) | null;
+    readonly diagnostics: CompositeDiagnosticRecording<Source> | null;
     readonly capture: ((child: CompositeAssertionChildNode<Source>) => void) | null;
     readonly prepareGroup: ((items: unknown) => NonEmptyReadonlyArray<CompositeAssertionChildNode<Source>>) | null;
 };
@@ -209,17 +208,17 @@ function compositeCheckBuilder<Source extends AssertionSource>(
     sourceLocations: ResolvableSourceLocations,
     hooks: CompositeCheckHooks<Source>
 ): CompositeCheckBuilder<Source> {
-    const { assertRecording, beginAsync, captureGroup, capture, prepareGroup } = hooks;
+    const { diagnostics, capture, prepareGroup } = hooks;
     function group(
         children: NonEmptyReadonlyArray<CompositeAssertionChildNode<Source>>
     ): CompositeAssertionGroup<Source> {
         const result = createCompositeAssertionGroup(children);
-        captureGroup?.(result);
+        diagnostics?.group(result);
         return result;
     }
 
     async function asyncCheck<Result>(operation: () => Promise<Result>): Promise<Result> {
-        const finish = beginAsync?.();
+        const finish = diagnostics?.beginAsync();
         try {
             return await operation();
         } finally {
@@ -281,8 +280,8 @@ function compositeCheckBuilder<Source extends AssertionSource>(
             return child({ actual, check: 'false', message, source, sourceLocations });
         },
 
-        fromRejectable(label, body) {
-            return asyncCheck(async function observeForeignRejection() {
+        async fromRejectable(label, body) {
+            return await asyncCheck(async function observeForeignRejection() {
                 let result: ForeignAssertionNode<Source>['result'] = { passed: true };
                 try {
                     await body();
@@ -298,7 +297,7 @@ function compositeCheckBuilder<Source extends AssertionSource>(
         },
 
         fromThrowable(label, body) {
-            assertRecording?.('invoke a foreign assertion');
+            diagnostics?.assertRecording('invoke a foreign assertion');
             let result: ForeignAssertionNode<Source>['result'] = { passed: true };
             try {
                 body();
@@ -398,8 +397,8 @@ function compositeCheckBuilder<Source extends AssertionSource>(
             return child({ actual, check: 'partial-deep-equal', expected, message, source, sourceLocations });
         },
 
-        rejects(thunk, matcher) {
-            return asyncCheck(async function observeExpectedRejection() {
+        async rejects(thunk, matcher) {
+            return await asyncCheck(async function observeExpectedRejection() {
                 const promise = thunk();
 
                 const observation = await observeRejection(promise);
@@ -431,7 +430,7 @@ function compositeCheckBuilder<Source extends AssertionSource>(
         },
 
         throws(body, matcher) {
-            assertRecording?.('invoke an error assertion');
+            diagnostics?.assertRecording('invoke an error assertion');
             const observation = observeThrow(body);
 
             const children = thrownMatcherChildren({
@@ -464,12 +463,23 @@ export function createCompositeCheckBuilder<Source extends AssertionSource>(
     sourceLocations: ResolvableSourceLocations
 ): CompositeCheckBuilder<Source> {
     return compositeCheckBuilder(source, message, sourceLocations, {
-        assertRecording: null,
-        beginAsync: null,
-        captureGroup: null,
+        diagnostics: null,
         capture: null,
         prepareGroup: null
     });
+}
+
+function compositeDiagnosticHooks<Arguments extends readonly unknown[]>(
+    input: CompositeAssertionRunnerInput<Arguments, 'assert'>
+): CompositeCheckHooks<'assert'> {
+    const capture: unknown = Reflect.get(input, captureCompositeChild);
+    const diagnostics: unknown = Reflect.get(input, recordCompositeDiagnostics);
+    const prepare: unknown = Reflect.get(input, prepareCompositeGroup);
+    return {
+        diagnostics: isCompositeDiagnosticRecording(diagnostics) ? diagnostics : null,
+        capture: isChildCapture(capture) ? capture : null,
+        prepareGroup: isGroupPreparation(prepare) ? prepare : null
+    };
 }
 
 export function defineCompositeAssertion<
@@ -481,23 +491,8 @@ export function defineCompositeAssertion<
         kind: 'composite',
         name: definition.name,
         run(input) {
-            const capture: unknown = Reflect.get(input, captureCompositeChild);
-            const diagnostics: unknown = Reflect.get(input, recordCompositeDiagnostics);
-            const recording = isCompositeDiagnosticRecording(diagnostics) ? diagnostics : null;
-            const prepare: unknown = Reflect.get(input, prepareCompositeGroup);
             return definition.assert(
-                compositeCheckBuilder(
-                    input.source,
-                    input.message,
-                    input.sourceLocations,
-                    {
-                        assertRecording: recording?.assertRecording ?? null,
-                        beginAsync: recording?.beginAsync ?? null,
-                        captureGroup: recording?.group ?? null,
-                        capture: isChildCapture(capture) ? capture : null,
-                        prepareGroup: isGroupPreparation(prepare) ? prepare : null
-                    }
-                ),
+                compositeCheckBuilder(input.source, input.message, input.sourceLocations, compositeDiagnosticHooks(input)),
                 ...input.parameters
             );
         }

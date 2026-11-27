@@ -84,12 +84,6 @@ type PropertyScope = TestScope & {
     readonly [propertyRecording]: PropertyRecording | undefined;
 };
 
-export function assertPropertyInvocationOwner(scope: TestScope): void {
-    if (hasPropertyHost(scope)) {
-        scope[propertyRecording]?.('start a property invocation');
-    }
-}
-
 export function propertyScope(
     scope: TestScope,
     host: PropertyExecutionHost,
@@ -101,6 +95,12 @@ export function propertyScope(
 
 function hasPropertyHost(scope: Pick<TestScope, 'cleanup' | 'signal'>): scope is PropertyScope {
     return Object.hasOwn(scope, propertyHost);
+}
+
+export function assertPropertyInvocationOwner(scope: TestScope): void {
+    if (hasPropertyHost(scope)) {
+        scope[propertyRecording]?.('start a property invocation');
+    }
 }
 
 export function readPropertyExecutionHost(scope: Pick<TestScope, 'cleanup' | 'signal'>): PropertyExecutionHost {

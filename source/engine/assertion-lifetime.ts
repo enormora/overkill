@@ -99,35 +99,18 @@ export async function withAssertionSettlement<Value>(run: () => Promise<Value>):
 
 function invokeAssertionBody<Result>(body: () => Result, close: () => void): Result {
     const observation = settlement.read();
+    const execute = observation === null ? body : function executeObservedBody(): Result {
+        return observation.invoke(body);
+    };
     try {
-        return observation === null ? body() : observation.invoke(body);
+        return execute();
     } catch (error: unknown) {
         close();
         throw error;
     }
 }
 
-export function observeAssertionBody<Result>(body: () => Result, close: () => void): Result {
-    const result = invokeAssertionBody(body, close);
-    if (types.isPromise(result)) {
-        const untrack = settlement.read()?.track(result, close);
-        function finish(): void {
-            untrack?.();
-            close();
-        }
-        result.then(finish, finish);
-    } else {
-        close();
-    }
-    return result;
-}
-
-export async function runAssertionBody<Value>(body: AssertionBody<Value>, close: () => void): Promise<Value> {
-    const value = invokeAssertionBody(body, close);
-    if (!types.isPromise(value)) {
-        close();
-        return value;
-    }
+async function settleAssertionPromise<Value>(value: Promise<Value>, close: () => void): Promise<Value> {
     const untrack = settlement.read()?.track(value, close);
     try {
         return await value;
@@ -135,6 +118,19 @@ export async function runAssertionBody<Value>(body: AssertionBody<Value>, close:
         untrack?.();
         close();
     }
+}
+
+export function observeAssertionBody<Value>(body: AssertionBody<Value>, close: () => void): Promise<Value> | Value {
+    const value = invokeAssertionBody(body, close);
+    if (types.isPromise(value)) {
+        return settleAssertionPromise(value, close);
+    }
+    close();
+    return value;
+}
+
+export async function runAssertionBody<Value>(body: AssertionBody<Value>, close: () => void): Promise<Value> {
+    return await observeAssertionBody(body, close);
 }
 
 export function scopeWithAssertionSettlement<Scope extends Readonly<Record<string, unknown>>>(
@@ -316,7 +312,7 @@ export function createAssertionContext(
                     }
                     assertContextOpen(operation);
                 }, function closeChild(reason) {
-                    closure ??= reason;
+                    closure = closure ?? reason;
                 });
             },
             close

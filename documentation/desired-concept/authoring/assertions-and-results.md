@@ -962,8 +962,12 @@ type TestFailure =
     }
     | {
         readonly kind: 'test-contract';
-        readonly code: 'no-assertions' | 'plan-mismatch' | 'invalid-plan'
-            | 'invalid-assertion-context' | 'invalid-assertion-protocol';
+        readonly code:
+            | 'no-assertions'
+            | 'plan-mismatch'
+            | 'invalid-plan'
+            | 'invalid-assertion-context'
+            | 'invalid-assertion-protocol';
         readonly message: string;
     };
 ```

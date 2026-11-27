@@ -20,9 +20,9 @@ type BuilderOwnership = {
     readonly owner: symbol;
 };
 
-const diagnosticOwners = new WeakMap<object, AssertionRecordingContext>();
+const diagnosticOwners = new WeakMap<ProtocolRecord, AssertionRecordingContext>();
 
-export function ownAssertionDiagnostic(diagnostic: object, owner: AssertionRecordingContext): void {
+export function ownAssertionDiagnostic(diagnostic: ProtocolRecord, owner: AssertionRecordingContext): void {
     diagnosticOwners.set(diagnostic, owner);
 }
 
@@ -30,7 +30,7 @@ export function foreignDiagnostic(
     diagnostic: unknown,
     owner: AssertionRecordingContext | null
 ): boolean {
-    const recorded = typeof diagnostic === 'object' && diagnostic !== null
+    const recorded = protocolObject(diagnostic)
         ? diagnosticOwners.get(diagnostic)
         : undefined;
     return recorded !== undefined && recorded !== owner;
@@ -118,7 +118,9 @@ function foreignReturnedDiagnostic(assertion: ReturnedAssertion, originals: Orig
     const { original, node } = assertion;
     return foreignDiagnostic(original, null) ||
         node.check === 'composite' && !builderOwners.has(original) &&
-            node.children.some(child => foreignDiagnostic(originals.get(child), null));
+        node.children.some(function containsForeignDiagnostic(child) {
+            return foreignDiagnostic(originals.get(child), null);
+        });
 }
 
 export type AssertionReturnOwner = {
