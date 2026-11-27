@@ -1,8 +1,9 @@
 import type { IsEqual } from 'type-fest';
-import { suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test-type-authoring';
 import { assignableFrom, rejectsCall, sameType } from '@overkill-dev/type-test';
 import * as standard from '../test/bench.entry-point.ts';
 import { defineResource, withResource } from '../test/resources.entry-point.ts';
+import { isAssignableTo, isEqualTo } from '../../test-support/type-relations.ts';
 import * as bench from './bench.entry-point.ts';
 
 const entries = 3;
@@ -63,7 +64,7 @@ export const testNode = suite('benchmark measurement authoring', [
             diagnosticMetrics: [],
             budgets: { small: { durationMicroseconds: { maximum: 100 } } }
         });
-        typeScope.assert(sameType<IsEqual<typeof node, bench.TestCase>, true>());
+        typeScope.assert(sameType.withActual<true>(), isEqualTo<bench.TestCase>()(node));
         typeScope.assert(sameType<IsEqual<typeof standard.benchmark, typeof bench.benchmark>, true>());
         return typeScope.assert.collect();
     }),
@@ -124,16 +125,12 @@ export const testNode = suite('benchmark measurement authoring', [
             return { size: measured.value };
         });
         typeScope.assert(
-            sameType<
-                [typeof measure] extends
-                    [
-                        (
-                            context: bench.BenchmarkMeasureContext<{ readonly size: number; }>
-                        ) => Promise<{ readonly size: number; }>
-                    ] ? true
-                    : false,
-                true
-            >()
+            sameType.withActual<true>(),
+            isAssignableTo<
+                (
+                    context: bench.BenchmarkMeasureContext<{ readonly size: number; }>
+                ) => Promise<{ readonly size: number; }>
+            >()(measure)
         );
         bench.benchmark('contextual resource', {
             kind: 'memory',

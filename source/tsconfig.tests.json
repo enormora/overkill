@@ -28,7 +28,8 @@
         "./property/fixtures/property-graph-v1.json",
         "./property/fixtures/property-custom-v1.json",
         "./property/fixtures/property-graph-state-v1.json",
-        "../overkill.config.ts"
+        "../overkill.config.ts",
+        "../overkill.types.config.ts"
     ],
     "exclude": [
         "./**/*.type-test.ts"

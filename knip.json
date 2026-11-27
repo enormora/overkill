@@ -16,6 +16,7 @@
         "dependency-cruiser.config.js",
         "packtory.config.js",
         "overkill.config.ts",
+        "overkill.types.config.ts",
         "source/integration-tests/package-smoke/support/pack-packages.ts",
         "source/benchmarks/run-performance.entry-point.ts"
     ],

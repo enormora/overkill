@@ -1,8 +1,8 @@
-import { isEqualTo } from '../../test-support/type-relations.ts';
-import { suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test-type-authoring';
 import { assignableTo, rejectsCall, sameType } from '@overkill-dev/type-test';
 import type { Rule } from 'eslint';
 import type { Suite } from '../engine/engine.entry-point.ts';
+import { isEqualTo } from '../../test-support/type-relations.ts';
 import { defineRuleTests, type ConfigSelection } from './eslint-test.entry-point.ts';
 
 const rule: Rule.RuleModule = {

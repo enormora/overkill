@@ -1,5 +1,5 @@
 import type { IsEqual } from 'type-fest';
-import { suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test-type-authoring';
 import { sameType } from '@overkill-dev/type-test';
 import type { Logger } from '@stryker-mutator/api/logging';
 import type { FileDescriptions } from '@stryker-mutator/api/core';

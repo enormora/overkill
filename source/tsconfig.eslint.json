@@ -9,7 +9,8 @@
     "include": [
         "./**/*.ts",
         "./**/*.json",
-        "../overkill.config.ts"
+        "../overkill.config.ts",
+        "../overkill.types.config.ts"
     ],
     "exclude": [
         "./reporters/benchmark-html-browser.entry-point.ts"

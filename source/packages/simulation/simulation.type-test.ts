@@ -1,7 +1,7 @@
 import type { IsEqual } from 'type-fest';
-import { isEqualTo } from '../../test-support/type-relations.ts';
-import { suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test-type-authoring';
 import { acceptsCall, assignableFrom, rejectsCall, sameType } from '@overkill-dev/type-test';
+import { isEqualTo } from '../../test-support/type-relations.ts';
 import {
     defineSimulatedHttpServer,
     defineSimulation,
@@ -56,14 +56,14 @@ export const testNode = suite('simulation', [
                     true
                 >()
             );
-            typeScope.assert(acceptsCall, () =>
+            typeScope.assert(acceptsCall, async () =>
                 httpSimulation.handle(new Request('https://example.test'), {
                     descriptor: httpSimulation.scenarios.default,
                     key: 'default'
                 }));
             typeScope.assert(
                 rejectsCall('argument-type'),
-                () =>
+                async () =>
                     httpSimulation.handle(new Request('https://example.test'), {
                         descriptor: httpSimulation.scenarios.default,
                         key: 'missing'
@@ -78,14 +78,14 @@ export const testNode = suite('simulation', [
             );
             typeScope.assert(
                 rejectsCall('argument-type'),
-                () =>
+                async () =>
                     startFixedSimulatedHttpServer<typeof httpSimulation.name, typeof httpSimulation.scenarios>({
                         simulation: httpSimulation
                     })
             );
             typeScope.assert(
                 rejectsCall('argument-type'),
-                () =>
+                async () =>
                     startFixedSimulatedHttpServer<typeof httpSimulation.name, typeof httpSimulation.scenarios>({
                         simulation: httpSimulation,
                         scenario: 'missing'

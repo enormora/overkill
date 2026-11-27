@@ -1,8 +1,8 @@
-import { isEqualTo } from '../../test-support/type-relations.ts';
-import { suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test-type-authoring';
 import { sameType } from '@overkill-dev/type-test';
 import { gen, type PropertyInvocation, type PropertySampleScope } from '../property/property.entry-point.ts';
 import type { TestCase } from '../engine/engine.entry-point.ts';
+import { isEqualTo } from '../../test-support/type-relations.ts';
 import { model, modelScenario } from './model.entry-point.ts';
 
 type Counter = { readonly count: number; };

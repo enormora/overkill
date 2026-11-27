@@ -1,5 +1,5 @@
 import type { IsEqual } from 'type-fest';
-import { suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test-type-authoring';
 import { assignableFrom, sameType } from '@overkill-dev/type-test';
 import * as standard from '../test/bench.entry-point.ts';
 import * as bench from './bench.entry-point.ts';

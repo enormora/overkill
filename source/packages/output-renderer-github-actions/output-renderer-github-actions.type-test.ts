@@ -1,4 +1,4 @@
-import { suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test-type-authoring';
 import { sameType } from '@overkill-dev/type-test';
 import type { DefinedOutputRenderer } from '../engine/engine.entry-point.ts';
 import type { createGithubActionsOutputRenderer } from './output-renderer-github-actions.entry-point.ts';

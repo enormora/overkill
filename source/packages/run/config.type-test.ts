@@ -1,5 +1,5 @@
 import type { IsEqual } from 'type-fest';
-import { suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test-type-authoring';
 import { acceptsCall, assignableFrom, sameType } from '@overkill-dev/type-test';
 import type { DefinedTestFamily, DefinedReporter } from '../engine/engine.entry-point.ts';
 import {

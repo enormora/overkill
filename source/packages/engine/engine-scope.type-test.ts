@@ -1,4 +1,4 @@
-import { suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test-type-authoring';
 import { acceptsCall, assignableFrom, assignableTo, rejectsCall, sameType } from '@overkill-dev/type-test';
 import type {
     AssertAssertionFacade,
@@ -120,8 +120,8 @@ export const testNode = suite('TestScope', [
     test('types the in-flight task handle', function (typeScope) {
         typeScope.assert(sameType<InFlightTask<string>['wait'], () => Promise<string>>());
         typeScope.assert(assignableTo<InFlightTask<string>['rejects'], (matcher: ThrownMatcher) => Promise<void>>());
-        typeScope.assert(acceptsCall, () => callUnderTest({ type: Error, code: 'ECONNREFUSED' }));
-        typeScope.assert(rejectsCall('argument-type'), () => callUnderTest({ type: Error }));
+        typeScope.assert(acceptsCall, async () => callUnderTest({ type: Error, code: 'ECONNREFUSED' }));
+        typeScope.assert(rejectsCall('argument-type'), async () => callUnderTest({ type: Error }));
         return typeScope.assert.collect();
     })
 ]);

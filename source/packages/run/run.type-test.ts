@@ -1,90 +1,63 @@
 import type { IsEqual } from 'type-fest';
-import { suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test-type-authoring';
 import { acceptsCall, assignableFrom, rejectsCall, sameType } from '@overkill-dev/type-test';
-import type { ProjectDefinedFamilyProfile } from '../../config/schema.ts';
 import type {
-    AttachmentLimits,
-    FailureArtifactPolicy,
     DefinedOutputRenderer,
     DefinedReporter,
     TestAnnotationsInput,
     TestControlsInput
 } from '../engine/engine.entry-point.ts';
-import type { OrdinaryBaselinePolicy } from './config.entry-point.ts';
-import {
-    ConfigError,
-    RunResolutionError,
-    type TestProfileConfig,
-    type defineConfig,
-    type DynamicWorkUnitId,
-    type loadConfig,
-    type LoadedConfig,
-    type PlacementPlan,
-    type PlacementTrace,
-    type RunCommand,
-    type NormalizedConfig,
-    type ConfigLoadRequest,
-    type RunEngineSelection,
-    type RunExecutionFacts,
-    type RunExecutionPlanError,
-    type RunExecutionPlanConflict,
-    type RunFacts,
-    type RunIfMain,
-    type RunIfMainOptions,
-    type RunIfMainRootOptions,
-    type HostProcess,
-    type RunHostProcessFacts,
-    type RunHostProcessReason,
-    type runIfMain,
-    type IntegrationExecution,
-    type IntegrationProfileConfig,
-    type MaxConcurrency,
-    type MicrotestExecution,
-    type RunSelection,
-    type MicrotestProfileConfig,
-    type PropertyProfileConfig,
-    type RunOrder,
-    type ProcessModel,
-    type ProfileConfig,
-    type BenchmarkProfileConfig,
-    type DefinedFamilyProfile,
-    type ProfileFiles,
-    type Config,
-    type ProjectIntegrationProfileConfig,
-    type ProjectIntegrationExecution,
-    type ProjectProfileFiles,
-    type ProjectMicrotestProfileConfig,
-    type ProjectPropertyProfileConfig,
-    type ProjectMicrotestExecution,
-    type ProjectProfileConfig,
-    type ProjectBenchmarkProfileConfig,
-    type ProcessBudgets,
-    type ProcessUsagePolicy,
-    type ResourceOwnershipPlan,
-    type RunRequest,
-    type Scheduling,
-    type RunTestFamily,
-    type ProjectTimingProfilePolicy,
-    type TimingCollectionMode,
-    type TimingCollectionOverride,
-    type TimingProfilePolicy,
-    type WorkDistribution,
-    type WorkGroup,
-    type WorkGroupGranularity,
-    type WorkGroupOrder,
-    type WorkGroupScheduling,
-    type WorkGroupWorkerLifecycle,
-    type WorkerPoolAssignmentPolicy,
-    type WorkerPoolDispatchPolicy,
-    type WorkerLifecycle,
-    type RunWorkerCountFacts,
-    type RuntimeId,
-    type TraceWorkUnitId,
-    type WorkloadId,
-    type WorkId,
-    type WorkUnit,
-    type WorkUnitId,
-    type WorkUnitMode
+import type {
+    DynamicWorkUnitId,
+    PlacementPlan,
+    PlacementTrace,
+    RunCommand,
+    NormalizedConfig,
+    RunEngineSelection,
+    RunExecutionFacts,
+    RunFacts,
+    RunIfMain,
+    RunIfMainOptions,
+    RunIfMainRootOptions,
+    HostProcess,
+    RunHostProcessFacts,
+    RunHostProcessReason,
+    runIfMain,
+    IntegrationExecution,
+    MaxConcurrency,
+    MicrotestExecution,
+    RunSelection,
+    RunOrder,
+    ProcessModel,
+    ProjectIntegrationProfileConfig,
+    ProjectIntegrationExecution,
+    ProjectProfileFiles,
+    ProjectMicrotestExecution,
+    ProcessBudgets,
+    ProcessUsagePolicy,
+    ResourceOwnershipPlan,
+    RunRequest,
+    Scheduling,
+    RunTestFamily,
+    TimingCollectionMode,
+    TimingCollectionOverride,
+    WorkDistribution,
+    WorkGroup,
+    WorkGroupGranularity,
+    WorkGroupOrder,
+    WorkGroupScheduling,
+    WorkGroupWorkerLifecycle,
+    WorkerPoolAssignmentPolicy,
+    WorkerPoolDispatchPolicy,
+    WorkerLifecycle,
+    RunWorkerCountFacts,
+    RuntimeId,
+    TraceWorkUnitId,
+    WorkloadId,
+    WorkId,
+    WorkUnit,
+    WorkUnitId,
+    WorkUnitMode
 } from './run.entry-point.ts';
 
 declare const outputRenderer: DefinedOutputRenderer;
@@ -116,31 +89,6 @@ type RunRequestKeys = readonly [
 ];
 
 type ExpectedRunRequestKey = RunRequestKeys[number];
-type RuntimeProfileFilePatterns = {
-    readonly exclude: readonly string[];
-    readonly include: readonly [string, ...readonly string[]];
-};
-type RuntimeProfileFileSets = {
-    readonly sets: Readonly<
-        Record<string, {
-            readonly exclude: readonly string[];
-            readonly include: readonly [string, ...readonly string[]];
-        }>
-    >;
-};
-type MixedRuntimeProfileFiles = RuntimeProfileFilePatterns & RuntimeProfileFileSets;
-type ProjectProfileFilePatterns = {
-    readonly exclude?: readonly string[];
-    readonly include: readonly [string, ...readonly string[]];
-};
-type ProjectProfileFileSets = {
-    readonly sets: Readonly<
-        Record<string, {
-            readonly exclude?: readonly string[];
-            readonly include: readonly [string, ...readonly string[]];
-        }>
-    >;
-};
 type ExpectedPlacementTraceKinds = {
     readonly 'attempt-assigned': true;
     readonly 'attempt-completed': true;
@@ -178,11 +126,7 @@ type ExpectedRunHostProcessFacts = {
     readonly kind: 'direct';
 };
 
-type OrdinaryProfile = IntegrationProfileConfig | MicrotestProfileConfig | PropertyProfileConfig;
-type OrdinaryProjectProfile = ProjectIntegrationProfileConfig | ProjectMicrotestProfileConfig;
-
 declare const runIfMainUnderTest: typeof runIfMain;
-declare const defineConfigUnderTest: typeof defineConfig;
 
 export const testNode = suite('run', [
     suite('@overkill-dev/run', [
@@ -209,8 +153,8 @@ export const testNode = suite('run', [
                 readonly controls?: TestControlsInput;
                 readonly title: string;
             }>());
-            typeScope.assert(acceptsCall, () => runIfMainUnderTest(import.meta, mainTest));
-            typeScope.assert(acceptsCall, () =>
+            typeScope.assert(acceptsCall, async () => runIfMainUnderTest(import.meta, mainTest));
+            typeScope.assert(acceptsCall, async () =>
                 runIfMainUnderTest(import.meta, mainTest, {
                     outputRenderer,
                     reporters: [ reporter ],
@@ -222,35 +166,40 @@ export const testNode = suite('run', [
                 }));
             typeScope.assert(
                 rejectsCall('argument-type'),
-                () => runIfMainUnderTest(import.meta, mainTest, { runFacts: {} })
+                async () => runIfMainUnderTest(import.meta, mainTest, { runFacts: {} })
             );
             typeScope.assert(
                 rejectsCall('argument-type'),
-                () => runIfMainUnderTest(import.meta, mainTest, { profile: 'microtest' })
+                async () => runIfMainUnderTest(import.meta, mainTest, { profile: 'microtest' })
             );
             typeScope.assert(
                 rejectsCall('argument-type'),
-                () => runIfMainUnderTest(import.meta, mainTest, { cwd: 'project' })
+                async () => runIfMainUnderTest(import.meta, mainTest, { cwd: 'project' })
             );
             return typeScope.assert.collect();
         }),
-        test('keeps request fields explicit for the implemented runner slice', function (typeScope) {
-            typeScope.assert(sameType<keyof RunRequest, ExpectedRunRequestKey>());
-            typeScope.assert(sameType<RunRequest['capabilityRestrictions']['mode'], 'disabled' | 'enabled'>());
-            typeScope.assert(sameType<RunRequest['execution']['mode'], 'profile-default' | 'serial'>());
-            typeScope.assert(sameType<RunRequest['measureProcessUsage'], boolean | null>());
-            typeScope.assert(sameType<RunRequest['profile'], string>());
-            typeScope.assert(sameType<RunRequest['processBudgetOverrides'], ProcessBudgets | null>());
-            typeScope.assert(sameType<RunRequest['timingCollection'], TimingCollectionOverride>());
-            typeScope.assert(sameType<Pick<RunRequest, 'capture' | 'coverage' | 'order'>, {
-                readonly capture: 'buffered' | 'live';
-                readonly coverage: boolean;
-                readonly order: RunOrder;
-            }>());
-            typeScope.assert(sameType<RunOrder, 'lexical' | 'plan' | 'seeded'>());
-            typeScope.assert(sameType<RunRequest['selection'], RunSelection>());
-            return typeScope.assert.collect();
-        }),
+        suite('keeps request fields explicit for the implemented runner slice', [
+            test('types run request selection', function (typeScope) {
+                typeScope.assert(sameType<keyof RunRequest, ExpectedRunRequestKey>());
+                typeScope.assert(sameType<RunRequest['capabilityRestrictions']['mode'], 'disabled' | 'enabled'>());
+                typeScope.assert(sameType<RunRequest['execution']['mode'], 'profile-default' | 'serial'>());
+                typeScope.assert(sameType<RunRequest['measureProcessUsage'], boolean | null>());
+                typeScope.assert(sameType<RunRequest['profile'], string>());
+                return typeScope.assert.collect();
+            }),
+            test('types run request execution and recording', function (typeScope) {
+                typeScope.assert(sameType<RunRequest['processBudgetOverrides'], ProcessBudgets | null>());
+                typeScope.assert(sameType<RunRequest['timingCollection'], TimingCollectionOverride>());
+                typeScope.assert(sameType<Pick<RunRequest, 'capture' | 'coverage' | 'order'>, {
+                    readonly capture: 'buffered' | 'live';
+                    readonly coverage: boolean;
+                    readonly order: RunOrder;
+                }>());
+                typeScope.assert(sameType<RunOrder, 'lexical' | 'plan' | 'seeded'>());
+                typeScope.assert(sameType<RunRequest['selection'], RunSelection>());
+                return typeScope.assert.collect();
+            })
+        ]),
         test('exposes serializable run execution facts', function (typeScope) {
             typeScope.assert(sameType<RunExecutionFacts['engine']['kind'], 'default' | 'instance' | 'module'>());
             typeScope.assert(sameType<RunExecutionFacts['capture'], 'buffered' | 'live'>());
@@ -272,51 +221,56 @@ export const testNode = suite('run', [
             typeScope.assert(assignableFrom.not<RunRequest['execution'], { readonly mode: 'supervised-process'; }>());
             return typeScope.assert.collect();
         }),
-        test('exposes run scheduling and family facts', function (typeScope) {
-            typeScope.assert(sameType<RunExecutionFacts['scheduling'], Scheduling>());
-            typeScope.assert(sameType<RunExecutionFacts['testFamily'], RunTestFamily>());
-            typeScope.assert(
-                sameType<
-                    Extract<RunExecutionFacts, { readonly processModel: 'worker-pool'; }>['workerLifecycle'],
-                    WorkerLifecycle
-                >()
-            );
-            typeScope.assert(
-                sameType<
-                    Extract<RunExecutionFacts, { readonly processModel: 'worker-pool'; }>['workDistribution'],
-                    WorkDistribution
-                >()
-            );
-            typeScope.assert(
-                sameType<
-                    Extract<RunExecutionFacts, { readonly processModel: 'worker-pool'; }>['hostProcess'],
-                    RunHostProcessFacts
-                >()
-            );
-            typeScope.assert(sameType<HostProcess, ExpectedRunHostProcess>());
-            typeScope.assert(sameType<RunHostProcessFacts, ExpectedRunHostProcessFacts>());
-            typeScope.assert(sameType<
-                RunHostProcessReason,
-                keyof {
-                    readonly 'benchmark-isolation': true;
-                    readonly debugging: true;
-                    readonly 'forced-garbage-collection': true;
-                    readonly 'host-isolation': true;
-                    readonly 'node-arguments': true;
-                    readonly profiling: true;
-                }
-            >());
-            typeScope.assert(sameType<WorkDistribution, ExpectedRunWorkDistribution>());
-            typeScope.assert(sameType<WorkGroup, {
-                readonly fileSets: readonly [string, ...readonly string[]];
-                readonly granularity: WorkGroupGranularity;
-                readonly name: string;
-                readonly order: WorkGroupOrder;
-                readonly scheduling: WorkGroupScheduling;
-                readonly workerLifecycle: WorkGroupWorkerLifecycle;
-            }>());
-            return typeScope.assert.collect();
-        }),
+        suite('exposes run scheduling and family facts', [
+            test('types scheduling and family identity', function (typeScope) {
+                typeScope.assert(sameType<RunExecutionFacts['scheduling'], Scheduling>());
+                typeScope.assert(sameType<RunExecutionFacts['testFamily'], RunTestFamily>());
+                typeScope.assert(
+                    sameType<
+                        Extract<RunExecutionFacts, { readonly processModel: 'worker-pool'; }>['workerLifecycle'],
+                        WorkerLifecycle
+                    >()
+                );
+                typeScope.assert(
+                    sameType<
+                        Extract<RunExecutionFacts, { readonly processModel: 'worker-pool'; }>['workDistribution'],
+                        WorkDistribution
+                    >()
+                );
+                typeScope.assert(
+                    sameType<
+                        Extract<RunExecutionFacts, { readonly processModel: 'worker-pool'; }>['hostProcess'],
+                        RunHostProcessFacts
+                    >()
+                );
+                return typeScope.assert.collect();
+            }),
+            test('types work distribution and identity', function (typeScope) {
+                typeScope.assert(sameType<HostProcess, ExpectedRunHostProcess>());
+                typeScope.assert(sameType<RunHostProcessFacts, ExpectedRunHostProcessFacts>());
+                typeScope.assert(sameType<
+                    RunHostProcessReason,
+                    keyof {
+                        readonly 'benchmark-isolation': true;
+                        readonly debugging: true;
+                        readonly 'forced-garbage-collection': true;
+                        readonly 'host-isolation': true;
+                        readonly 'node-arguments': true;
+                        readonly profiling: true;
+                    }
+                >());
+                typeScope.assert(sameType<WorkDistribution, ExpectedRunWorkDistribution>());
+                typeScope.assert(sameType<WorkGroup, {
+                    readonly fileSets: readonly [string, ...readonly string[]];
+                    readonly granularity: WorkGroupGranularity;
+                    readonly name: string;
+                    readonly order: WorkGroupOrder;
+                    readonly scheduling: WorkGroupScheduling;
+                    readonly workerLifecycle: WorkGroupWorkerLifecycle;
+                }>());
+                return typeScope.assert.collect();
+            })
+        ]),
         test('exposes worker-pool placement facts', function (typeScope) {
             typeScope.assert(
                 sameType<
@@ -332,25 +286,30 @@ export const testNode = suite('run', [
             );
             return typeScope.assert.collect();
         }),
-        test('exposes work-unit planning types', function (typeScope) {
-            typeScope.assert(sameType<RuntimeId['scenarios'], Readonly<Record<string, string>>>());
-            typeScope.assert(sameType<WorkId['runtimes'], readonly RuntimeId[]>());
-            typeScope.assert(sameType<WorkId['workload'], WorkloadId | null>());
-            typeScope.assert(sameType<WorkUnit['work'], readonly [WorkId, ...readonly WorkId[]]>());
-            typeScope.assert(sameType<WorkUnit['id']['mode'], WorkUnitMode>());
-            typeScope.assert(sameType<WorkUnit['order'], RunOrder>());
-            typeScope.assert(sameType<WorkUnit['scheduling'], Scheduling>());
-            typeScope.assert(sameType<WorkUnit['workerLifecycle'], WorkerLifecycle>());
-            typeScope.assert(
-                sameType<
-                    PlacementPlan['lanes'][number]['executor']['kind'],
-                    'browser' | 'local-process' | 'local-worker' | 'remote'
-                >()
-            );
-            typeScope.assert(sameType<PlacementPlan['assignments'][number]['unit'], WorkUnit['id']>());
-            typeScope.assert(sameType<PlacementPlan['resourceOwnership'], ResourceOwnershipPlan>());
-            return typeScope.assert.collect();
-        }),
+        suite('exposes work-unit planning types', [
+            test('types work-unit identity', function (typeScope) {
+                typeScope.assert(sameType<RuntimeId['scenarios'], Readonly<Record<string, string>>>());
+                typeScope.assert(sameType<WorkId['runtimes'], readonly RuntimeId[]>());
+                typeScope.assert(sameType<WorkId['workload'], WorkloadId | null>());
+                typeScope.assert(sameType<WorkUnit['work'], readonly [WorkId, ...readonly WorkId[]]>());
+                typeScope.assert(sameType<WorkUnit['id']['mode'], WorkUnitMode>());
+                return typeScope.assert.collect();
+            }),
+            test('types worker placement and dispatch', function (typeScope) {
+                typeScope.assert(sameType<WorkUnit['order'], RunOrder>());
+                typeScope.assert(sameType<WorkUnit['scheduling'], Scheduling>());
+                typeScope.assert(sameType<WorkUnit['workerLifecycle'], WorkerLifecycle>());
+                typeScope.assert(
+                    sameType<
+                        PlacementPlan['lanes'][number]['executor']['kind'],
+                        'browser' | 'local-process' | 'local-worker' | 'remote'
+                    >()
+                );
+                typeScope.assert(sameType<PlacementPlan['assignments'][number]['unit'], WorkUnit['id']>());
+                typeScope.assert(sameType<PlacementPlan['resourceOwnership'], ResourceOwnershipPlan>());
+                return typeScope.assert.collect();
+            })
+        ]),
         test('exposes placement trace entry kinds', function (typeScope) {
             typeScope.assert(
                 sameType<
@@ -430,162 +389,6 @@ export const testNode = suite('run', [
                 sameType<WorkerPoolAssignmentPolicy, 'case-count-balanced' | 'duration-history-balanced' | 'stable'>()
             );
             typeScope.assert(sameType<WorkerPoolDispatchPolicy, 'dynamic-lease' | 'static-assignment'>());
-            return typeScope.assert.collect();
-        })
-    ]),
-    suite('@overkill-dev/run config', [
-        test('exposes collection, soft, and hard timeout facts', function (typeScope) {
-            typeScope.assert(sameType<RunExecutionFacts['timeoutPolicy']['collectionMilliseconds'], number>());
-            typeScope.assert(sameType<RunExecutionFacts['timeoutPolicy']['hardMilliseconds'], number>());
-            typeScope.assert(sameType<RunExecutionFacts['timeoutPolicy']['softMilliseconds'], number>());
-            return typeScope.assert.collect();
-        }),
-        test('exposes config and resolution errors', function (typeScope) {
-            typeScope.assert(
-                sameType<
-                    keyof NormalizedConfig,
-                    'history' | 'loader' | 'outputRenderer' | 'profiles' | 'reporters' | 'runtimeStateDir'
-                >()
-            );
-            typeScope.assert(sameType<NormalizedConfig['outputRenderer'], DefinedOutputRenderer>());
-            typeScope.assert(sameType<IsEqual<NormalizedConfig['profiles'][string], ProfileConfig>, true>());
-            typeScope.assert(
-                sameType<
-                    IsEqual<ProfileConfig, BenchmarkProfileConfig | DefinedFamilyProfile | OrdinaryProfile>,
-                    true
-                >()
-            );
-            typeScope.assert(sameType<IsEqual<NormalizedConfig['profiles']['backend-http'], ProfileConfig>, true>());
-            typeScope.assert(
-                sameType<IsEqual<NormalizedConfig['reporters'], readonly DefinedReporter[] | null>, true>()
-            );
-            typeScope.assert(sameType<TestProfileConfig['timings'], TimingProfilePolicy>());
-            typeScope.assert(sameType<TimingProfilePolicy, { readonly collection: TimingCollectionMode; }>());
-            typeScope.assert(sameType<ProjectTimingProfilePolicy, { readonly collection: TimingCollectionMode; }>());
-            return typeScope.assert.collect();
-        }),
-        test('exposes run process budget and resolution error types', function (typeScope) {
-            typeScope.assert(
-                sameType<
-                    keyof ProcessBudgets,
-                    | 'activeResourceCount'
-                    | 'javaScriptEngineHeapBytes'
-                    | 'residentSetBytes'
-                    | 'residentSetGrowthBytesPerSecond'
-                >()
-            );
-            typeScope.assert(
-                sameType.withActual<RunResolutionError>(),
-                new RunResolutionError('Unsupported.', undefined, 'unsupported-request')
-            );
-            typeScope.assert(
-                sameType<
-                    ReturnType<RunExecutionPlanError['conflicts']>,
-                    readonly [RunExecutionPlanConflict, ...readonly RunExecutionPlanConflict[]]
-                >()
-            );
-            return typeScope.assert.collect();
-        }),
-        test('exposes profile file discovery types', function (typeScope) {
-            typeScope.assert(sameType<MicrotestProfileConfig['files'], ProfileFiles | null>());
-            typeScope.assert(sameType<IntegrationProfileConfig['files'], ProfileFiles>());
-            typeScope.assert(assignableFrom<ProfileFiles, RuntimeProfileFilePatterns>());
-            typeScope.assert(assignableFrom<ProfileFiles, RuntimeProfileFileSets>());
-            typeScope.assert(assignableFrom.not<ProfileFiles, MixedRuntimeProfileFiles>());
-            typeScope.assert(sameType<ProjectMicrotestProfileConfig['files'], ProjectProfileFiles | undefined>());
-            typeScope.assert(sameType<ProjectIntegrationProfileConfig['files'], ProjectProfileFiles>());
-            typeScope.assert(assignableFrom<ProjectProfileFiles, ProjectProfileFilePatterns>());
-            typeScope.assert(assignableFrom<ProjectProfileFiles, ProjectProfileFileSets>());
-            return typeScope.assert.collect();
-        }),
-        test('exposes property profile config types', function (typeScope) {
-            typeScope.assert(
-                sameType<
-                    IsEqual<
-                        Exclude<ProjectProfileConfig, ProjectPropertyProfileConfig>,
-                        OrdinaryProjectProfile | ProjectBenchmarkProfileConfig | ProjectDefinedFamilyProfile
-                    >,
-                    true
-                >()
-            );
-            typeScope.assert(
-                sameType<
-                    Extract<ProjectProfileConfig, { readonly testFamily: 'property'; }>,
-                    ProjectPropertyProfileConfig
-                >()
-            );
-            return typeScope.assert.collect();
-        }),
-        test('exposes config loading helpers from the main package surface', function (typeScope) {
-            typeScope.assert(
-                acceptsCall,
-                () => defineConfigUnderTest({ profiles: { unit: { testFamily: 'microtest' } } })
-            );
-            typeScope.assert(
-                sameType<IsEqual<typeof loadConfig, (request: ConfigLoadRequest) => Promise<LoadedConfig>>, true>()
-            );
-            typeScope.assert(sameType<Config['outputRenderer'], DefinedOutputRenderer | undefined>());
-            typeScope.assert(
-                sameType<
-                    IsEqual<Config['reporters'], readonly [DefinedReporter, ...DefinedReporter[]] | undefined>,
-                    true
-                >()
-            );
-            typeScope.assert(sameType<
-                [{
-                    readonly execution: ProjectMicrotestProfileConfig['execution'];
-                    readonly testFamily: 'microtest';
-                }] extends [ProjectProfileConfig] ? true : false,
-                true
-            >());
-            typeScope.assert(sameType<
-                [{
-                    readonly files: ProjectProfileFiles;
-                    readonly testFamily: 'integration';
-                }] extends [ProjectProfileConfig] ? true : false,
-                true
-            >());
-            typeScope.assert(sameType<
-                [{
-                    readonly property: null;
-                    readonly baselines: OrdinaryBaselinePolicy;
-                    readonly attachments: AttachmentLimits;
-                    readonly failureArtifacts: FailureArtifactPolicy;
-                    readonly retries: null;
-                    readonly execution: {
-                        readonly hostProcess: { readonly kind: 'child'; readonly nodeArguments: readonly string[]; };
-                        readonly processModel: 'worker-pool';
-                        readonly scheduling: 'concurrent';
-                        readonly assignmentPolicy: 'case-count-balanced';
-                        readonly dispatchPolicy: 'dynamic-lease';
-                        readonly hedging: { readonly mode: 'off'; };
-                        readonly maxConcurrency: MaxConcurrency;
-                        readonly maxWorkers: null;
-                        readonly workDistribution: { readonly mode: 'file'; };
-                        readonly workerLifecycle: 'reuse';
-                    };
-                    readonly files: ProfileFiles;
-                    readonly reporters: null;
-                    readonly processUsage: ProcessUsagePolicy;
-                    readonly testFamily: 'integration';
-                    readonly runRecords: { readonly persist: 'on-demand'; };
-                    readonly timings: TimingProfilePolicy;
-                    readonly timeouts: RunExecutionFacts['timeoutPolicy'];
-                }] extends [IntegrationProfileConfig] ? true : false,
-                true
-            >());
-            typeScope.assert(sameType<
-                [{
-                    readonly execution: {
-                        readonly hostProcess: { readonly kind: 'child'; readonly nodeArguments: readonly string[]; };
-                        readonly processModel: 'worker-pool';
-                    };
-                    readonly files: ProjectProfileFiles;
-                    readonly testFamily: 'integration';
-                }] extends [ProjectIntegrationProfileConfig] ? true : false,
-                false
-            >());
-            typeScope.assert(sameType.withActual<ConfigError>(), new ConfigError('Invalid config.'));
             return typeScope.assert.collect();
         })
     ])

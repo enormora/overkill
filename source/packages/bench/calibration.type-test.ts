@@ -1,4 +1,4 @@
-import { suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test-type-authoring';
 import { sameType } from '@overkill-dev/type-test';
 import * as standard from '../test/bench.entry-point.ts';
 import { defineResource } from '../resources/resources.entry-point.ts';

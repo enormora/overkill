@@ -1,6 +1,5 @@
 import type { IsEqual } from 'type-fest';
-import { isEqualTo } from '../../test-support/type-relations.ts';
-import { suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test-type-authoring';
 import { acceptsCall, assignableFrom, assignableTo, rejectsCall, sameType } from '@overkill-dev/type-test';
 import type {
     AssertionResult,
@@ -11,6 +10,7 @@ import type {
     TestScope
 } from '../engine/engine.entry-point.ts';
 import * as standard from '../test/property.entry-point.ts';
+import { isEqualTo } from '../../test-support/type-relations.ts';
 import * as leaf from './property.entry-point.ts';
 
 declare const namedGenerator: leaf.Generator<{ readonly name: string; }>;
@@ -43,7 +43,7 @@ export const testNode = suite('property', [
                     return sample.assert.collect();
                 }
             });
-            typeScope.assert(sameType<IsEqual<typeof node, TestCase>, true>());
+            typeScope.assert(sameType.withActual<true>(), isEqualTo<TestCase>()(node));
             return typeScope.assert.collect();
         }),
         test('infers custom codec values on both entry points', function (typeScope) {
@@ -79,7 +79,7 @@ export const testNode = suite('property', [
                     return sample.assert.collect();
                 }
             });
-            typeScope.assert(sameType<IsEqual<typeof node, TestCase>, true>());
+            typeScope.assert(sameType.withActual<true>(), isEqualTo<TestCase>()(node));
             typeScope.assert(sameType<IsEqual<typeof standard.property, typeof leaf.property>, true>());
             typeScope.assert(sameType<IsEqual<standard.Generator<string>, leaf.Generator<string>>, true>());
             typeScope.assert(sameType<IsEqual<standard.PropertyBody<string>, leaf.PropertyBody<string>>, true>());
@@ -98,7 +98,7 @@ export const testNode = suite('property', [
                     return sample.assert.collect();
                 }
             });
-            typeScope.assert(sameType<IsEqual<typeof node, TestCase>, true>());
+            typeScope.assert(sameType.withActual<true>(), isEqualTo<TestCase>()(node));
             typeScope.assert(sameType<standard.PropertyExample<number>, leaf.PropertyExample<number>>());
             standard.withProperties(async function (scope) {
                 const authoredValue = scope.forall({
@@ -115,7 +115,7 @@ export const testNode = suite('property', [
                 typeScope.assert(sameType.withActual<Promise<AssertionResult>>(), authoredValue);
                 return scope.assert.collect();
             });
-            function wrongExample() {
+            function wrongExample(): boolean {
                 return true;
             }
             typeScope.assert(rejectsCall('argument-type'), () =>
@@ -142,7 +142,7 @@ export const testNode = suite('property', [
                 typeScope.assert(sameType.withActual<Promise<AssertionResult>>(), authoredValue2);
                 return scope.assert.collect();
             });
-            typeScope.assert(sameType<IsEqual<typeof body, TestBody>, true>());
+            typeScope.assert(sameType.withActual<true>(), isEqualTo<TestBody>()(body));
             typeScope.assert(assignableFrom.not<keyof TestScope, 'forall'>());
             typeScope.assert(assignableFrom.not<keyof TestScope, 'target'>());
             typeScope.assert(assignableFrom.not<keyof TestScope, 'cover'>());

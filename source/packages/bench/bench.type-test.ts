@@ -1,9 +1,9 @@
 import type { IsEqual } from 'type-fest';
-import { isEqualTo } from '../../test-support/type-relations.ts';
-import { suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test-type-authoring';
 import { acceptsCall, rejectsCall, sameType } from '@overkill-dev/type-test';
 import type * as ordinary from '../test/test.entry-point.ts';
 import * as standard from '../test/bench.entry-point.ts';
+import { isEqualTo } from '../../test-support/type-relations.ts';
 import * as bench from './bench.entry-point.ts';
 
 const parameterValue = 3;
@@ -139,7 +139,7 @@ export const testNode = suite('bench', [
                 },
                 title: 'rows'
             });
-            typeScope.assert(sameType<IsEqual<typeof authoredTable, bench.Table>, true>());
+            typeScope.assert(sameType.withActual<true>(), isEqualTo<bench.Table>()(authoredTable));
             typeScope.assert(sameType<IsEqual<bench.TestBody, ordinary.TestBody>, true>());
             return typeScope.assert.collect();
         })
@@ -178,7 +178,7 @@ export const testNode = suite('bench', [
                 },
                 title: 'rows'
             });
-            typeScope.assert(sameType<IsEqual<typeof authoredTable2, standard.Table>, true>());
+            typeScope.assert(sameType.withActual<true>(), isEqualTo<standard.Table>()(authoredTable2));
             const body = standard.defineParameterizedTestBody<number>(function (scope, value) {
                 scope.assert.equal(value, parameterValue);
                 return scope.assert.collect();
@@ -193,25 +193,32 @@ export const testNode = suite('bench', [
         })
     ]),
     suite('workload types', [
-        test('preserves named JSON inputs and deep immutability', function (typeScope) {
-            const packages = 5;
-            const firstValue = 1;
-            const secondValue = 2;
-            const small = bench.workload('small', { packages, nested: { values: [ firstValue, secondValue ] } });
-            typeScope.assert(sameType.withActual<'small'>(), small.name);
-            typeScope.assert(sameType.withActual<typeof packages>(), small.parameters.packages);
-            typeScope.assert(
-                sameType.withActual<readonly [typeof firstValue, typeof secondValue]>(),
-                small.parameters.nested.values
-            );
-            const mutable = { nested: { values: [ firstValue, secondValue ] } };
-            const snapshot = standard.workload('mutable', mutable);
-            typeScope.assert(sameType.withActual<readonly number[]>(), snapshot.parameters.nested.values);
-            return typeScope.assert.collect();
-        }),
+        suite('preserves named JSON inputs and deep immutability', [
+            test('preserves literal JSON inputs', function (typeScope) {
+                const packages = 5;
+                const firstValue = 1;
+                const secondValue = 2;
+                const small = bench.workload('small', { packages, nested: { values: [ firstValue, secondValue ] } });
+                typeScope.assert(sameType.withActual<'small'>(), small.name);
+                typeScope.assert(sameType.withActual<typeof packages>(), small.parameters.packages);
+                typeScope.assert(
+                    sameType.withActual<readonly [typeof firstValue, typeof secondValue]>(),
+                    small.parameters.nested.values
+                );
+                return typeScope.assert.collect();
+            }),
+            test('makes mutable JSON inputs readonly', function (typeScope) {
+                const firstValue = 1;
+                const secondValue = 2;
+                const mutable = { nested: { values: [ firstValue, secondValue ] } };
+                const snapshot = standard.workload('mutable', mutable);
+                typeScope.assert(sameType.withActual<readonly number[]>(), snapshot.parameters.nested.values);
+                return typeScope.assert.collect();
+            })
+        ]),
         test('rejects non-JSON input types and non-string names', function (typeScope) {
             const invalidName = 42;
-            function workloadCallback() {
+            function workloadCallback(): number {
                 return 1;
             }
             typeScope.assert(rejectsCall('argument-type'), () => bench.workload('bad', { callback: workloadCallback }));

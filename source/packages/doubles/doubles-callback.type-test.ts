@@ -1,5 +1,6 @@
-import { suite, test } from '@overkill-dev/test';
-import { acceptsCall, assignableFrom, rejectsCall } from '@overkill-dev/type-test';
+import { suite, test } from '@overkill-dev/test-type-authoring';
+import { acceptsCall, rejectsCall, sameType } from '@overkill-dev/type-test';
+import { hasKey } from '../../test-support/type-relations.ts';
 import {
     rule,
     testDouble
@@ -98,8 +99,8 @@ export const testNode = suite('@overkill-dev/doubles callback behavior', [
                 ])
             }));
         const constructorRule = rule.whenConstructedWith('https://api.example.test');
-        typeScope.assert(assignableFrom.not<keyof typeof constructorRule, 'callsCallback'>());
-        typeScope.assert(assignableFrom.not<keyof typeof constructorRule, 'callsCallbackAsync'>());
+        typeScope.assert(sameType.withActual<false>(), hasKey<'callsCallback'>()(constructorRule));
+        typeScope.assert(sameType.withActual<false>(), hasKey<'callsCallbackAsync'>()(constructorRule));
         return typeScope.assert.collect();
     })
 ]);

@@ -1,8 +1,8 @@
-import type { IsEqual } from 'type-fest';
-import { suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test-type-authoring';
 import { acceptsCall, rejectsCall, sameType } from '@overkill-dev/type-test';
 import { z } from 'zod/v4';
 import { defineTestFamily } from '../engine/engine.entry-point.ts';
+import { isEqualTo } from '../../test-support/type-relations.ts';
 import { orchestrator, type ConfiguredRunCommand } from './run.entry-point.ts';
 import { defineConfig, type FamilySettingsOf } from './config.entry-point.ts';
 
@@ -47,8 +47,11 @@ export const testNode = suite('family profile', [
                     unit: { testFamily: 'microtest' }
                 }
             });
-            typeScope.assert(sameType<IsEqual<typeof config.profiles.numbers.testFamily, typeof numeric>, true>());
-            typeScope.assert(sameType<IsEqual<typeof config.profiles.text.testFamily, typeof textual>, true>());
+            typeScope.assert(
+                sameType.withActual<true>(),
+                isEqualTo<typeof numeric>()(config.profiles.numbers.testFamily)
+            );
+            typeScope.assert(sameType.withActual<true>(), isEqualTo<typeof textual>()(config.profiles.text.testFamily));
             typeScope.assert(sameType<FamilySettingsOf<typeof numeric>, z.output<typeof numericSettings>>());
             return typeScope.assert.collect();
         }),
@@ -75,9 +78,9 @@ export const testNode = suite('family profile', [
         })
     ]),
     test('explicit configuration sources are accepted by ordinary operations', function (typeScope) {
-        typeScope.assert(acceptsCall, () => orchestrator.run(configuredCommand));
-        typeScope.assert(acceptsCall, () => orchestrator.resolve(configuredCommand));
-        typeScope.assert(acceptsCall, () => orchestrator.initialize(configuredCommand));
+        typeScope.assert(acceptsCall, async () => orchestrator.run(configuredCommand));
+        typeScope.assert(acceptsCall, async () => orchestrator.resolve(configuredCommand));
+        typeScope.assert(acceptsCall, async () => orchestrator.initialize(configuredCommand));
         return typeScope.assert.collect();
     })
 ]);

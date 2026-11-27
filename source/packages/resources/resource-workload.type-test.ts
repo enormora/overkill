@@ -1,4 +1,4 @@
-import { suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test-type-authoring';
 import { rejectsCall, sameType } from '@overkill-dev/type-test';
 import {
     defineResource,

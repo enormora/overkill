@@ -1,7 +1,7 @@
-import { isAssignableTo } from '../../test-support/type-relations.ts';
-import { suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test-type-authoring';
 import { acceptsCall, rejectsCall, sameType } from '@overkill-dev/type-test';
 import { P } from 'ts-pattern';
+import { isAssignableTo } from '../../test-support/type-relations.ts';
 import { matches, rule, testDouble, type ArgumentMatcher } from './doubles.entry-point.ts';
 
 type LoadOptions = { readonly limit: number; };

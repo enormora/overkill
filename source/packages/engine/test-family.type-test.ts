@@ -1,5 +1,5 @@
 import type { IsEqual } from 'type-fest';
-import { suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test-type-authoring';
 import { acceptsCall, assignableFrom, rejectsCall, sameType } from '@overkill-dev/type-test';
 import {
     defineTestFamily,
@@ -84,7 +84,7 @@ export const testNode = suite('test family', [
                 throw new Error('Not loaded');
             }
         });
-        typeScope.assert(acceptsCall, () =>
+        typeScope.assert(acceptsCall, async () =>
             projectSettingsUnderTest({
                 testPlan: plan,
                 projectRoot: '/project',
@@ -92,7 +92,7 @@ export const testNode = suite('test family', [
                 testFamily: family,
                 settings: { project: 'tsconfig.json' }
             }));
-        typeScope.assert(rejectsCall('argument-type'), () =>
+        typeScope.assert(rejectsCall('argument-type'), async () =>
             projectSettingsUnderTest({
                 testPlan: plan,
                 projectRoot: '/project',
@@ -103,8 +103,8 @@ export const testNode = suite('test family', [
         return typeScope.assert.collect();
     }),
     test('collected execution requires a signal', function (typeScope) {
-        typeScope.assert(acceptsCall, () => execute(collectedRun, executeOptions));
-        typeScope.assert(rejectsCall('argument-type'), () => execute(collectedRun));
+        typeScope.assert(acceptsCall, async () => execute(collectedRun, executeOptions));
+        typeScope.assert(rejectsCall('argument-type'), async () => execute(collectedRun));
         return typeScope.assert.collect();
     }),
     test('prepared facts are available without collection evidence', function (typeScope) {

@@ -1,8 +1,8 @@
-import { isEqualTo } from '../../test-support/type-relations.ts';
-import { test } from '@overkill-dev/test';
+import { test } from '@overkill-dev/test-type-authoring';
 import { sameType } from '@overkill-dev/type-test';
 import type { TSESLint } from '@typescript-eslint/utils';
 import type { Suite } from '../engine/engine.entry-point.ts';
+import { isEqualTo } from '../../test-support/type-relations.ts';
 import { defineRuleTests } from './eslint-test.entry-point.ts';
 
 export const testNode = test(

@@ -1,8 +1,8 @@
-import { isEqualTo } from '../../test-support/type-relations.ts';
-import { suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test-type-authoring';
 import { assignableFrom, rejectsCall, sameType } from '@overkill-dev/type-test';
 import type { IsEqual, Writable } from 'type-fest';
 import type * as standard from '../test/property.entry-point.ts';
+import { isEqualTo } from '../../test-support/type-relations.ts';
 import * as leaf from './property.entry-point.ts';
 
 type Tree = { readonly left: Tree; readonly right: Tree; } | null;
@@ -94,7 +94,7 @@ export const testNode = suite('fluent generator constructors', [
             },
             maxDepth: 4
         });
-        typeScope.assert(sameType<IsEqual<typeof tree, leaf.Generator<Tree>>, true>());
+        typeScope.assert(sameType.withActual<true>(), isEqualTo<leaf.Generator<Tree>>()(tree));
         typeScope.assert(
             sameType<standard.RecursiveGeneratorDefinition<Tree>, leaf.RecursiveGeneratorDefinition<Tree>>()
         );
@@ -111,17 +111,19 @@ export const testNode = suite('fluent generator constructors', [
         typeScope.assert(assignableFrom.not<keyof leaf.Generator<number>, 'prepare'>());
         return typeScope.assert.collect();
     }),
-    test(
-        'rejects incomplete constraints, empty choices, sampling functions, and mutable constants',
-        function (typeScope) {
+    suite('rejects incomplete constraints, empty choices, sampling functions, and mutable constants', [
+        test('rejects incomplete constraints and mutable constants', function (typeScope) {
             typeScope.assert(rejectsCall('argument-count'), () => leaf.gen.integer());
             typeScope.assert(rejectsCall('argument-type'), () => leaf.gen.integer({ min: 0 }));
             typeScope.assert(rejectsCall('argument-type'), () => leaf.gen.bigint({ min: 0, max: 10 }));
             typeScope.assert(rejectsCall('argument-type'), () => leaf.gen.string({ maxLength: 10 }));
             typeScope.assert(rejectsCall('argument-type'), () => leaf.gen.bytes({ minLength: 1 }));
+            return typeScope.assert.collect();
+        }),
+        test('rejects empty choices and invalid generators', function (typeScope) {
             typeScope.assert(rejectsCall('argument-type'), () => leaf.gen.constant({ value: 1 }));
             typeScope.assert(rejectsCall('argument-count'), () => leaf.gen.choice());
-            function sample() {
+            function sample(): number {
                 return 1;
             }
             typeScope.assert(rejectsCall('argument-type'), () => leaf.gen.array(sample));
@@ -133,6 +135,6 @@ export const testNode = suite('fluent generator constructors', [
                     }
                 }));
             return typeScope.assert.collect();
-        }
-    )
+        })
+    ])
 ]);

@@ -1,12 +1,10 @@
 import type { IsEqual } from 'type-fest';
-import { isEqualTo } from '../../test-support/type-relations.ts';
-import { suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test-type-authoring';
 import { acceptsCall, assignableFrom, assignableTo, rejectsCall, sameType } from '@overkill-dev/type-test';
 import { defineSimulatedHttpServer } from '../simulation/simulation.entry-point.ts';
+import { isEqualTo } from '../../test-support/type-relations.ts';
 import {
     type assertPerCaseResourceGraph,
-    composeRuntimeContext,
-    composeRuntimes,
     createLocalHttpServiceResource,
     createLocalProcessServiceResource,
     createSimulatedHttpServerResource,
@@ -163,12 +161,6 @@ const hiddenDependencyRuntime = defineRuntime({
     resources: { server },
     requirements: []
 });
-const secondaryRuntime = defineRuntime({
-    name: 'secondary-api',
-    dimensions: {},
-    resources: { database },
-    requirements: []
-});
 const runtimeMatrix = defineRuntimeMatrix({
     name: 'node',
     variants: {
@@ -181,7 +173,6 @@ const runtimeMatrix = defineRuntimeMatrix({
         })
     }
 });
-const composedRuntime = composeRuntimes(runtime, secondaryRuntime);
 const typeTestController = new AbortController();
 const simulatedApi = defineSimulatedHttpServer({
     name: 'simulated-api',
@@ -261,7 +252,6 @@ const databaseHandle = {
         return [ sql ];
     }
 };
-const serverHandle = { url: 'http://localhost' };
 const projectedDatabase = defineResource({
     name: 'projected-database',
     scope: 'per-run',
@@ -291,27 +281,33 @@ function createInvalidDatabase(): Database {
 }
 
 declare const assertPerCaseResourceGraphUnderTest: typeof assertPerCaseResourceGraph;
-declare const composeRuntimeContextUnderTest: typeof composeRuntimeContext;
 declare const defineResourceUnderTest: typeof defineResource;
 declare const defineRuntimeUnderTest: typeof defineRuntime;
 
 export const testNode = suite('resources', [
     suite('@overkill-dev/resources', [
-        test('infers resource handles and runtime context from descriptors', function (typeScope) {
-            typeScope.assert(sameType<ResourceHandle<typeof database>, Database>());
-            typeScope.assert(sameType<ResourceHandle<typeof server>, Server>());
-            typeScope.assert(sameType<ResourceContext<typeof server.dependencies>, ExpectedDatabaseResourceContext>());
-            typeScope.assert(sameType.withActual<typeof database>(), server.dependencies.database);
-            typeScope.assert(sameType.withActual<Readonly<Record<PropertyKey, never>>>(), database.dependencies);
-            typeScope.assert(sameType<IsEqual<RuntimeContext<typeof runtime>, ExpectedRuntimeContext>, true>());
-            typeScope.assert(sameType<RuntimeContext<typeof runtime>['database'], Database>());
-            typeScope.assert(sameType<RuntimeContext<typeof runtime>['server'], Server>());
-            typeScope.assert(
-                sameType<IsEqual<RuntimeScopeContext<typeof runtime>, ExpectedRuntimeScopeContext>, true>()
-            );
-            typeScope.assert(sameType.withActual<'api'>(), runtime.name);
-            return typeScope.assert.collect();
-        }),
+        suite('infers resource handles and runtime context from descriptors', [
+            test('infers handles from descriptors', function (typeScope) {
+                typeScope.assert(sameType<ResourceHandle<typeof database>, Database>());
+                typeScope.assert(sameType<ResourceHandle<typeof server>, Server>());
+                typeScope.assert(
+                    sameType<ResourceContext<typeof server.dependencies>, ExpectedDatabaseResourceContext>()
+                );
+                typeScope.assert(sameType.withActual<typeof database>(), server.dependencies.database);
+                typeScope.assert(sameType.withActual<Readonly<Record<PropertyKey, never>>>(), database.dependencies);
+                return typeScope.assert.collect();
+            }),
+            test('infers runtime and resource contexts', function (typeScope) {
+                typeScope.assert(sameType<IsEqual<RuntimeContext<typeof runtime>, ExpectedRuntimeContext>, true>());
+                typeScope.assert(sameType<RuntimeContext<typeof runtime>['database'], Database>());
+                typeScope.assert(sameType<RuntimeContext<typeof runtime>['server'], Server>());
+                typeScope.assert(
+                    sameType<IsEqual<RuntimeScopeContext<typeof runtime>, ExpectedRuntimeScopeContext>, true>()
+                );
+                typeScope.assert(sameType.withActual<'api'>(), runtime.name);
+                return typeScope.assert.collect();
+            })
+        ]),
         test('infers projected resource handles', function (typeScope) {
             typeScope.assert(sameType<ResourceHandle<typeof projectedDatabase>, ProjectedDatabase>());
             typeScope.assert(sameType.withActual<'projected-database'>(), projectedDatabase.name);
@@ -339,12 +335,13 @@ export const testNode = suite('resources', [
             const runtimeSession = startRuntime({ runtime, signal: typeTestController.signal });
             const resourceSession = startResources({ resources: { database }, signal: typeTestController.signal });
 
-            typeScope.assert(sameType<IsEqual<typeof runtimeSession, Promise<RuntimeSession<typeof runtime>>>, true>());
             typeScope.assert(
-                sameType<
-                    IsEqual<typeof resourceSession, Promise<ResourceSession<{ readonly database: typeof database; }>>>,
-                    true
-                >()
+                sameType.withActual<true>(),
+                isEqualTo<Promise<RuntimeSession<typeof runtime>>>()(runtimeSession)
+            );
+            typeScope.assert(
+                sameType.withActual<true>(),
+                isEqualTo<Promise<ResourceSession<{ readonly database: typeof database; }>>>()(resourceSession)
             );
             typeScope.assert(acceptsCall, () => assertPerCaseResourceGraphUnderTest({ database }));
             typeScope.assert(sameType<ResourceLifecycleFailure, {
@@ -391,91 +388,6 @@ export const testNode = suite('resources', [
                 >()
             );
             typeScope.assert(sameType.withActual<'simulated-api'>(), simulatedApiResource.name);
-            return typeScope.assert.collect();
-        }),
-        test('composes runtime handles into a typed context', function (typeScope) {
-            const context = composeRuntimeContext({ test: true }, runtime, {
-                database: databaseHandle,
-                server: serverHandle
-            });
-            const nestedContext = composeRuntimeContext(context, secondaryRuntime, {
-                database: databaseHandle
-            });
-
-            typeScope.assert(sameType<IsEqual<typeof context.runtimes.api, ExpectedRuntimeContext>, true>());
-            typeScope.assert(sameType.withActual<boolean>(), context.test);
-            typeScope.assert(sameType<IsEqual<typeof nestedContext.runtimes.api, ExpectedRuntimeContext>, true>());
-            typeScope.assert(
-                sameType.withActual<true>(),
-                isEqualTo<{ readonly database: Database; }>()(nestedContext.runtimes['secondary-api'])
-            );
-            typeScope.assert(
-                rejectsCall('argument-type'),
-                () =>
-                    composeRuntimeContextUnderTest({ test: true }, runtime, {
-                        database: databaseHandle
-                    })
-            );
-            typeScope.assert(
-                rejectsCall('argument-type'),
-                () =>
-                    composeRuntimeContextUnderTest({ test: true }, runtime, {
-                        database: databaseHandle,
-                        server: { port: 80 }
-                    })
-            );
-            typeScope.assert(rejectsCall('argument-type'), () =>
-                composeRuntimeContextUnderTest(context, runtime, {
-                    database: databaseHandle,
-                    server: serverHandle
-                }));
-            return typeScope.assert.collect();
-        }),
-        test('composes runtime graphs into typed scopes', function (typeScope) {
-            const context = composeRuntimeContext({ test: true }, composedRuntime, {
-                api: {
-                    database: databaseHandle,
-                    server: serverHandle
-                },
-                'secondary-api': {
-                    database: databaseHandle
-                }
-            });
-
-            typeScope.assert(sameType.withActual<'composed-runtimes'>(), composedRuntime.kind);
-            typeScope.assert(sameType<IsEqual<typeof context.runtimes.api, ExpectedRuntimeContext>, true>());
-            typeScope.assert(
-                sameType.withActual<true>(),
-                isEqualTo<{ readonly database: Database; }>()(context.runtimes['secondary-api'])
-            );
-            typeScope.assert(rejectsCall('argument-type'), () =>
-                composeRuntimeContextUnderTest(
-                    {
-                        runtimes: {
-                            api: {
-                                database: databaseHandle,
-                                server: serverHandle
-                            }
-                        }
-                    },
-                    composedRuntime,
-                    {
-                        api: {
-                            database: databaseHandle,
-                            server: serverHandle
-                        },
-                        'secondary-api': {
-                            database: databaseHandle
-                        }
-                    }
-                ));
-            typeScope.assert(
-                rejectsCall('argument-type'),
-                () =>
-                    composeRuntimeContextUnderTest({ test: true }, composedRuntime, {
-                        api: { database: databaseHandle }
-                    })
-            );
             return typeScope.assert.collect();
         }),
         test('exposes required descriptor field contracts', function (typeScope) {
@@ -571,50 +483,5 @@ export const testNode = suite('resources', [
             typeScope.assert(sameType<ResourceProjectionContext['attachments'], RuntimeAttachments>());
             return typeScope.assert.collect();
         })
-    ]),
-    test('infers database dependencies in resource callbacks', function (typeScope) {
-        defineResource({
-            name: 'server',
-            scope: 'shared-per-worker',
-            requirements: [ { kind: 'single-worker' } ],
-            dependencies: { database },
-            async acquire(context): Promise<Server> {
-                typeScope.assert(sameType.withActual<Database>(), context.dependencies.database);
-                typeScope.assert(
-                    sameType.withActual<(sql: string) => Promise<readonly string[]>>(),
-                    context.dependencies.database.query
-                );
-                const queryResult = await context.dependencies.database.query('url');
-
-                return { url: String(queryResult[0]) };
-            },
-            dispose(_server, context) {
-                typeScope.assert(sameType.withActual<Database>(), context.dependencies.database);
-            }
-        });
-        return typeScope.assert.collect();
-    }),
-    test('infers scenario keys in resource callbacks', function (typeScope) {
-        defineResource({
-            name: 'scenario-database',
-            scope: 'per-case',
-            requirements: [],
-            scenarios: {
-                database: {
-                    default: 'populated',
-                    timing: 'acquire',
-                    values: [ 'populated', 'empty' ]
-                }
-            },
-            acquire(context) {
-                typeScope.assert(sameType.withActual<'empty' | 'populated'>(), context.scenarios.database);
-
-                return context.scenarios.database;
-            },
-            dispose(_handle, context) {
-                typeScope.assert(sameType.withActual<'empty' | 'populated'>(), context.scenarios.database);
-            }
-        });
-        return typeScope.assert.collect();
-    })
+    ])
 ]);

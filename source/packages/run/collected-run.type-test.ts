@@ -1,5 +1,5 @@
 import type { IsEqual } from 'type-fest';
-import { suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test-type-authoring';
 import { rejectsCall, sameType } from '@overkill-dev/type-test';
 import type { RunReport, RunResult } from '../engine/engine.entry-point.ts';
 import type {
@@ -77,11 +77,11 @@ export const testNode = suite('public runner lifecycle', [
     test('rejects invocation policy overrides', function (typeScope) {
         typeScope.assert(
             rejectsCall('argument-type'),
-            () => callUnderTest({ selection: { kind: 'all' }, runtimePolicy: null })
+            async () => callUnderTest({ selection: { kind: 'all' }, runtimePolicy: null })
         );
         typeScope.assert(
             rejectsCall('argument-type'),
-            () => callUnderTest({ selection: { kind: 'all' }, coverage: true })
+            async () => callUnderTest({ selection: { kind: 'all' }, coverage: true })
         );
         return typeScope.assert.collect();
     })

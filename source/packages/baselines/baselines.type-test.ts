@@ -1,4 +1,4 @@
-import { suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test-type-authoring';
 import { assignableTo, sameType } from '@overkill-dev/type-test';
 import type { snapshot as standardSnapshot, BaselineEntry as StandardEntry } from '../test/baselines.entry-point.ts';
 import type { AssertReferenceArguments } from '../engine/assertion-protocol.entry-point.ts';

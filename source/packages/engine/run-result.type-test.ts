@@ -1,4 +1,4 @@
-import { suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test-type-authoring';
 import { acceptsCall, assignableFrom, sameType } from '@overkill-dev/type-test';
 import type {
     RuntimeAttachmentArtifact,
@@ -162,19 +162,24 @@ export const testNode = suite('run result', [
         })
     ]),
     suite('RunResult', [
-        test('includes process usage as nullable measured data', function (typeScope) {
-            typeScope.assert(sameType<keyof RunResult, ExpectedRunResultKey>());
-            typeScope.assert(sameType<RunResult['status'], 'failed' | 'passed'>());
-            typeScope.assert(sameType<RunResult['planStatus'], RunPlanStatus>());
-            typeScope.assert(sameType<RunResult['processUsage'], RunProcessUsage | null>());
-            typeScope.assert(sameType<RunResult['resourceChecks'], readonly ResourceCheckSnapshot[]>());
-            typeScope.assert(sameType<RunResult['timings'], RunTimings>());
-            typeScope.assert(sameType<RunTimings['precise'], RunPreciseTimingReport | null>());
-            typeScope.assert(sameType<keyof RunPreciseTimingReport, ExpectedPreciseTimingKey>());
-            typeScope.assert(sameType<RunProcessUsage['start'], ProcessUsageSnapshot>());
-            typeScope.assert(sameType<RunProcessUsageTracker['finish'], () => RunProcessUsage>());
-            return typeScope.assert.collect();
-        }),
+        suite('includes process usage as nullable measured data', [
+            test('types measured process usage', function (typeScope) {
+                typeScope.assert(sameType<keyof RunResult, ExpectedRunResultKey>());
+                typeScope.assert(sameType<RunResult['status'], 'failed' | 'passed'>());
+                typeScope.assert(sameType<RunResult['planStatus'], RunPlanStatus>());
+                typeScope.assert(sameType<RunResult['processUsage'], RunProcessUsage | null>());
+                typeScope.assert(sameType<RunResult['resourceChecks'], readonly ResourceCheckSnapshot[]>());
+                return typeScope.assert.collect();
+            }),
+            test('types process usage on execution outcomes', function (typeScope) {
+                typeScope.assert(sameType<RunResult['timings'], RunTimings>());
+                typeScope.assert(sameType<RunTimings['precise'], RunPreciseTimingReport | null>());
+                typeScope.assert(sameType<keyof RunPreciseTimingReport, ExpectedPreciseTimingKey>());
+                typeScope.assert(sameType<RunProcessUsage['start'], ProcessUsageSnapshot>());
+                typeScope.assert(sameType<RunProcessUsageTracker['finish'], () => RunProcessUsage>());
+                return typeScope.assert.collect();
+            })
+        ]),
         test('artifacts carry runtime and workload identity', function (typeScope) {
             typeScope.assert(sameType<RunArtifactId['runtimes'], readonly RuntimeId[]>());
             typeScope.assert(sameType<RunArtifactId['workload'], WorkloadId | null>());
@@ -224,7 +229,7 @@ export const testNode = suite('run result', [
         test('extends artifacts without extending the base test scope', function (typeScope) {
             typeScope.assert(sameType<[RuntimeAttachmentArtifact] extends [RunArtifact] ? true : false, true>());
             typeScope.assert(assignableFrom.not<keyof TestScope, 'attachments'>());
-            typeScope.assert(acceptsCall, () =>
+            typeScope.assert(acceptsCall, async () =>
                 callUnderTest({
                     name: 'accessibility',
                     mediaType: 'application/json'

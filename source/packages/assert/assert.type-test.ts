@@ -1,4 +1,4 @@
-import { suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test-type-authoring';
 import { acceptsCall, rejectsCall, sameType } from '@overkill-dev/type-test';
 import type { AssertAssertionFacade, RequireAssertionFacade } from '../engine/engine.entry-point.ts';
 import {
@@ -73,7 +73,7 @@ export const testNode = suite('./assert.entry-point.ts', [
             check.fromThrowable('foreign', function assertForeign() {
                 return undefined;
             }));
-        typeScope.assert(acceptsCall, () =>
+        typeScope.assert(acceptsCall, async () =>
             check.fromRejectable('foreign', async function assertForeign() {
                 await Promise.resolve();
             }));

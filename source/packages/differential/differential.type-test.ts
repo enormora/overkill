@@ -1,7 +1,8 @@
 import type { IsEqual } from 'type-fest';
-import { suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test-type-authoring';
 import { rejectsCall, sameType } from '@overkill-dev/type-test';
 import type { PropertyBody, PropertySampleScope } from '../property/property.entry-point.ts';
+import { isEqualTo } from '../../test-support/type-relations.ts';
 import { differential } from './differential.entry-point.ts';
 
 export const testNode = suite('differential', [
@@ -31,7 +32,7 @@ export const testNode = suite('differential', [
                 return sample.assert.collect();
             }
         });
-        typeScope.assert(sameType<IsEqual<typeof body, PropertyBody<number>>, true>());
+        typeScope.assert(sameType.withActual<true>(), isEqualTo<PropertyBody<number>>()(body));
         return typeScope.assert.collect();
     }),
     test('rejects a single implementation', function (typeScope) {

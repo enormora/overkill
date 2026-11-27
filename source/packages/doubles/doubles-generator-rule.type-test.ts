@@ -1,5 +1,6 @@
-import { suite, test } from '@overkill-dev/test';
-import { acceptsCall, assignableFrom, rejectsCall } from '@overkill-dev/type-test';
+import { suite, test } from '@overkill-dev/test-type-authoring';
+import { acceptsCall, rejectsCall, sameType } from '@overkill-dev/type-test';
+import { hasKey } from '../../test-support/type-relations.ts';
 import {
     rule,
     testDouble
@@ -47,8 +48,8 @@ export const testNode = suite('@overkill-dev/doubles generator rules', [
                 rules: [ rule.when('1').yields([ 'event' ]) ]
             }));
         const constructorRule = rule.whenConstructedWith('https://api.example.test');
-        typeScope.assert(assignableFrom.not<keyof typeof constructorRule, 'yields'>());
-        typeScope.assert(assignableFrom.not<keyof typeof constructorRule, 'yieldsAsync'>());
+        typeScope.assert(sameType.withActual<false>(), hasKey<'yields'>()(constructorRule));
+        typeScope.assert(sameType.withActual<false>(), hasKey<'yieldsAsync'>()(constructorRule));
         return typeScope.assert.collect();
     })
 ]);

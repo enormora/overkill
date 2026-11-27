@@ -1,7 +1,7 @@
-import { isEqualTo } from '../../test-support/type-relations.ts';
-import { test } from '@overkill-dev/test';
+import { test } from '@overkill-dev/test-type-authoring';
 import { rejectsCall, sameType } from '@overkill-dev/type-test';
 import type { DefinedReporter, FinalResultReporter } from '../engine/engine.entry-point.ts';
+import { isEqualTo } from '../../test-support/type-relations.ts';
 import { createBenchmarkHtmlReporter, type BenchmarkHtmlReporterSinks } from './reporter-benchmark-html.entry-point.ts';
 
 export const testNode = test('defines a final-result reporter with one file sink', function (typeScope) {

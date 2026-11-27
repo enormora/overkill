@@ -1,4 +1,4 @@
-import { suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test-type-authoring';
 import { assignableFrom, assignableTo, rejectsCall, sameType } from '@overkill-dev/type-test';
 import type { CaseId } from '../engine/engine.entry-point.ts';
 import * as filters from './filters.entry-point.ts';

@@ -1,8 +1,8 @@
-import type { IsEqual } from 'type-fest';
-import { suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test-type-authoring';
 import { assignableTo, sameType } from '@overkill-dev/type-test';
 import type { PropertyBody } from '../property/property.entry-point.ts';
 import type { ModelTransition } from '../model/model.entry-point.ts';
+import { isEqualTo } from '../../test-support/type-relations.ts';
 import {
     checkLinearizability,
     linearizability,
@@ -64,7 +64,7 @@ export const testNode = suite('linearizability', [
             },
             maxWork: 100
         });
-        typeScope.assert(sameType<IsEqual<typeof body, PropertyBody<LinearizabilityProgram<number>>>, true>());
+        typeScope.assert(sameType.withActual<true>(), isEqualTo<PropertyBody<LinearizabilityProgram<number>>>()(body));
         return typeScope.assert.collect();
     })
 ]);

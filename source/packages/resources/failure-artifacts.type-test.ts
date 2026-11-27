@@ -1,4 +1,4 @@
-import { test } from '@overkill-dev/test';
+import { test } from '@overkill-dev/test-type-authoring';
 import { acceptsCall, assignableFrom, sameType } from '@overkill-dev/type-test';
 import {
     defineResource,
@@ -31,7 +31,7 @@ export const testNode = test(
             typeScope.assert(assignableFrom.not<keyof typeof capture.handle, 'url'>());
             if (capture.kind === 'attempt') {
                 typeScope.assert(sameType.withActual<FailureArtifactAttachments>(), capture.attachments);
-                typeScope.assert(acceptsCall, () =>
+                typeScope.assert(acceptsCall, async () =>
                     capture.attachments.witness({
                         producedBy: { library: 'simulation', libraryVersion: '1.0.0' },
                         simulation: { name: 'service', payload: { version: 1 } },

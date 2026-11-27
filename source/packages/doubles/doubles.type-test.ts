@@ -1,8 +1,7 @@
-import type { IsEqual } from 'type-fest';
-import { isEqualTo } from '../../test-support/type-relations.ts';
-import { suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test-type-authoring';
 import { acceptsCall, assignableFrom, assignableTo, rejectsCall, sameType } from '@overkill-dev/type-test';
 import type { AssertAssertionFacade } from '../engine/engine.entry-point.ts';
+import { isEqualTo } from '../../test-support/type-relations.ts';
 import {
     doubleUsage,
     rule,
@@ -10,7 +9,6 @@ import {
     type DoubleCall,
     type DoubleConstruction,
     type DoubleHistory,
-    type DoubleInvocation,
     type DoubleIteratorEvent,
     type DoubleResult,
     type TestDouble
@@ -25,15 +23,7 @@ type Client = {
     readonly baseUrl: string;
 };
 
-type UserQuery = {
-    readonly id: string;
-    readonly profile: {
-        readonly role: string;
-    };
-};
-
 type LoadUser = (id: string, includeDeleted: boolean) => User;
-type SearchUser = (query: UserQuery, includeDeleted: boolean) => User;
 type SaveUser = (user: User) => Promise<User>;
 type LoadEvents = (id: string) => Generator<string, number, boolean>;
 type LoadEventProtocolArguments = readonly [] | readonly [boolean] | readonly [number] | readonly [unknown];
@@ -152,8 +142,8 @@ export const testNode = suite('./doubles.entry-point.ts', [
                 untyped
             );
             typeScope.assert(sameType.withActual<TestDouble<SaveUser>>(), typed);
-            typeScope.assert(acceptsCall, () => typed(user));
-            typeScope.assert(rejectsCall('argument-type'), () => typed('user'));
+            typeScope.assert(acceptsCall, async () => typed(user));
+            typeScope.assert(rejectsCall('argument-type'), async () => typed('user'));
             typeScope.assert(sameType.withActual<Promise<User>>(), typed(user));
             typeScope.assert(rejectsCall('argument-type'), () => testDouble.resolves<LoadUser>(user));
             return typeScope.assert.collect();
@@ -167,7 +157,7 @@ export const testNode = suite('./doubles.entry-point.ts', [
                 untyped
             );
             typeScope.assert(sameType.withActual<TestDouble<SaveUser>>(), typed);
-            typeScope.assert(acceptsCall, () => typed(user));
+            typeScope.assert(acceptsCall, async () => typed(user));
             typeScope.assert(sameType.withActual<Promise<User>>(), typed(user));
             typeScope.assert(rejectsCall('argument-type'), () => testDouble.rejects<LoadUser>(new Error('expected')));
             return typeScope.assert.collect();
@@ -202,13 +192,10 @@ export const testNode = suite('./doubles.entry-point.ts', [
             const typed = testDouble.yields<LoadEvents>([ 'created' ], 1);
 
             typeScope.assert(
-                sameType<
-                    IsEqual<
-                        typeof untyped,
-                        TestDouble<(...arguments_: readonly unknown[]) => Generator<string, undefined, unknown>>
-                    >,
-                    true
-                >()
+                sameType.withActual<true>(),
+                isEqualTo<TestDouble<(...arguments_: readonly unknown[]) => Generator<string, undefined, unknown>>>()(
+                    untyped
+                )
             );
             typeScope.assert(sameType.withActual<TestDouble<LoadEvents>>(), typed);
             typeScope.assert(acceptsCall, () => typed('1'));
@@ -234,13 +221,10 @@ export const testNode = suite('./doubles.entry-point.ts', [
             const typed = testDouble.yieldsAsync<LoadAsyncEvents>([ 'created' ], 1);
 
             typeScope.assert(
-                sameType<
-                    IsEqual<
-                        typeof untyped,
-                        TestDouble<(...arguments_: readonly unknown[]) => AsyncGenerator<string, undefined, unknown>>
-                    >,
-                    true
-                >()
+                sameType.withActual<true>(),
+                isEqualTo<
+                    TestDouble<(...arguments_: readonly unknown[]) => AsyncGenerator<string, undefined, unknown>>
+                >()(untyped)
             );
             typeScope.assert(sameType.withActual<TestDouble<LoadAsyncEvents>>(), typed);
             typeScope.assert(acceptsCall, () => typed('1'));
@@ -369,24 +353,41 @@ export const testNode = suite('./doubles.entry-point.ts', [
             typeScope.assert(assignableFrom.not<keyof typeof doubleUsage, 'returnedWith'>());
             return typeScope.assert.collect();
         }),
-        test('accepts doubles through the engine assert facade', function (typeScope) {
-            const loadUser = testDouble<LoadUser>();
-            const Client = testDouble<ClientConstructor>({
-                fallback: rule.constructs(client)
-            });
-
-            assertFacade(doubleUsage.called, loadUser);
-            assertFacade(doubleUsage.calledWith, loadUser, [ '1', false ]);
-            assertFacade(doubleUsage.calledWithExactly, loadUser, [ '1', false ]);
-            assertFacade(doubleUsage.calledWithPrefix, loadUser, [ '1' ]);
-            assertFacade(doubleUsage.nthCallWith, loadUser, 0, [ '1', false ]);
-            assertFacade(doubleUsage.constructedWith, Client, [ 'https://api.example.test' ]);
-            assertFacade(doubleUsage.callCount, loadUser, 1);
-            assertFacade(doubleUsage.callOrder, [ loadUser, testDouble<LoadUser>() ]);
-            return typeScope.assert.collect();
-        }),
+        suite('accepts doubles through the engine assert facade', [
+            test('counts interactions and matches calls', function (typeScope) {
+                const loadUser = testDouble<LoadUser>();
+                const Client = testDouble<ClientConstructor>({
+                    fallback: rule.constructs(client)
+                });
+                typeScope.assert(acceptsCall, () => assertFacade(doubleUsage.called, loadUser));
+                typeScope.assert(acceptsCall, () => assertFacade(doubleUsage.calledWith, loadUser, [ '1', false ]));
+                typeScope.assert(
+                    acceptsCall,
+                    () => assertFacade(doubleUsage.calledWithExactly, loadUser, [ '1', false ])
+                );
+                typeScope.assert(acceptsCall, () => assertFacade(doubleUsage.calledWithPrefix, loadUser, [ '1' ]));
+                typeScope.assert(acceptsCall, () => assertFacade(doubleUsage.nthCallWith, loadUser, 0, [ '1', false ]));
+                typeScope.assert(
+                    acceptsCall,
+                    () => assertFacade(doubleUsage.constructedWith, Client, [ 'https://api.example.test' ])
+                );
+                return typeScope.assert.collect();
+            }),
+            test('matches invocation and result evidence', function (typeScope) {
+                const loadUser = testDouble<LoadUser>();
+                typeScope.assert(acceptsCall, () => assertFacade(doubleUsage.callCount, loadUser, 1));
+                typeScope.assert(
+                    acceptsCall,
+                    () => assertFacade(doubleUsage.callOrder, [ loadUser, testDouble<LoadUser>() ])
+                );
+                return typeScope.assert.collect();
+            })
+        ]),
         test('accepts generator doubles through the engine assert facade', function (typeScope) {
-            assertFacade(doubleUsage.yieldedExactly, testDouble.yields([ 'event' ]), [ 'event' ]);
+            typeScope.assert(
+                acceptsCall,
+                () => assertFacade(doubleUsage.yieldedExactly, testDouble.yields([ 'event' ]), [ 'event' ])
+            );
             return typeScope.assert.collect();
         }),
         test('rejects empty prefix and short order arguments at compile time', function (typeScope) {
@@ -394,150 +395,20 @@ export const testNode = suite('./doubles.entry-point.ts', [
 
             typeScope.assert(
                 rejectsCall('no-matching-overload'),
-                () => assertFacade(doubleUsage.calledWithPrefix, loadUser, [])
+                async () => assertFacade(doubleUsage.calledWithPrefix, loadUser, [])
             );
             typeScope.assert(
                 rejectsCall('no-matching-overload'),
-                () => assertFacade(doubleUsage.callOrder, [ loadUser ])
+                async () => assertFacade(doubleUsage.callOrder, [ loadUser ])
             );
             typeScope.assert(
                 rejectsCall('no-matching-overload'),
-                () => assertFacade(doubleUsage.callCount, loadUser, '1')
+                async () => assertFacade(doubleUsage.callCount, loadUser, '1')
             );
             typeScope.assert(
                 rejectsCall('no-matching-overload'),
-                () => assertFacade(doubleUsage.yieldedExactly, loadUser, 'event')
+                async () => assertFacade(doubleUsage.yieldedExactly, loadUser, 'event')
             );
-            return typeScope.assert.collect();
-        })
-    ]),
-    suite('rule-based doubles', [
-        test('does not expose fluent behavior on created doubles', function (typeScope) {
-            const typed = testDouble.returns<LoadUser>(user);
-            const configured = testDouble<LoadUser>({
-                fallback: rule.returns(user)
-            });
-
-            typeScope.assert(assignableFrom.not<keyof typeof typed, 'returns'>());
-            typeScope.assert(assignableFrom.not<keyof typeof typed, 'resolves'>());
-            typeScope.assert(assignableFrom.not<keyof typeof typed, 'rejects'>());
-            typeScope.assert(assignableFrom.not<keyof typeof typed, 'throws'>());
-            typeScope.assert(assignableFrom.not<keyof typeof typed, 'constructs'>());
-            typeScope.assert(assignableFrom.not<keyof typeof configured, 'returns'>());
-            return typeScope.assert.collect();
-        }),
-        test('exports configured rule-based doubles', function (typeScope) {
-            const loadUser = testDouble<LoadUser>({
-                rules: [
-                    rule.when('1').returns(user),
-                    rule.onCall(1).returns(user)
-                ],
-                fallback: rule.throws(new Error('unexpected user'))
-            });
-
-            typeScope.assert(sameType.withActual<TestDouble<LoadUser>>(), loadUser);
-            typeScope.assert(acceptsCall, () => loadUser('1', false));
-            typeScope.assert(sameType.withActual<User>(), loadUser('1', false));
-            typeScope.assert(rejectsCall('argument-type'), () =>
-                testDouble<LoadUser>({
-                    fallback: rule.returns(user),
-                    unknown: true
-                }));
-            return typeScope.assert.collect();
-        }),
-        test('type-checks deep-partial argument patterns', function (typeScope) {
-            const searchUser = testDouble<SearchUser>({
-                rules: [
-                    rule.when({ profile: { role: 'admin' } }).returns(user),
-                    rule.when({ id: '1' }, false).returns(user)
-                ]
-            });
-
-            typeScope.assert(sameType.withActual<TestDouble<SearchUser>>(), searchUser);
-            typeScope.assert(rejectsCall('argument-type'), () =>
-                testDouble<SearchUser>({
-                    rules: [ rule.when({ missing: true }).returns(user) ]
-                }));
-            typeScope.assert(rejectsCall('argument-type'), () =>
-                testDouble<SearchUser>({
-                    rules: [ rule.when({ id: '1' }, false, 'extra').returns(user) ]
-                }));
-            return typeScope.assert.collect();
-        }),
-        test('requires non-empty when forms', function (typeScope) {
-            typeScope.assert(rejectsCall('argument-count'), () => rule.when());
-            typeScope.assert(rejectsCall('argument-count'), () => rule.whenConstructedWith());
-            return typeScope.assert.collect();
-        }),
-        test('requires sequence arrays with at least two entries', function (typeScope) {
-            typeScope.assert(acceptsCall, () => rule.sequence([ 'a', 'b' ]));
-            typeScope.assert(acceptsCall, () =>
-                rule.sequence([
-                    rule.resolves('a'),
-                    rule.resolves('b')
-                ]));
-            typeScope.assert(rejectsCall('argument-type'), () => rule.sequence([ 'a' ]));
-            typeScope.assert(rejectsCall('argument-type'), () => rule.sequence([]));
-            return typeScope.assert.collect();
-        }),
-        test('distinguishes returns and resolves for async rules', function (typeScope) {
-            typeScope.assert(acceptsCall, () =>
-                testDouble<SaveUser>({
-                    rules: [ rule.when(user).resolves(user) ]
-                }));
-            typeScope.assert(rejectsCall('argument-type'), () =>
-                testDouble<SaveUser>({
-                    rules: [ rule.when(user).returns(user) ]
-                }));
-            typeScope.assert(rejectsCall('argument-type'), () =>
-                testDouble<LoadUser>({
-                    rules: [ rule.when('1', false).resolves(user) ]
-                }));
-            return typeScope.assert.collect();
-        }),
-        test('type-checks constructor arguments and instances', function (typeScope) {
-            typeScope.assert(acceptsCall, () =>
-                testDouble<ClientConstructor>({
-                    rules: [
-                        rule.whenConstructedWith('https://api.example.test').constructs(client),
-                        rule.onConstruction(1).constructs(client)
-                    ],
-                    fallback: rule.constructs(client)
-                }));
-            typeScope.assert(rejectsCall('argument-type'), () =>
-                testDouble<ClientConstructor>({
-                    rules: [ rule.whenConstructedWith(1).constructs(client) ]
-                }));
-            typeScope.assert(rejectsCall('argument-type'), () =>
-                testDouble<ClientConstructor>({
-                    rules: [ rule.whenConstructedWith('https://api.example.test').constructs({ id: 'client' }) ]
-                }));
-            return typeScope.assert.collect();
-        }),
-        test('types fallback objects and answer invocations', function (typeScope) {
-            const Client = testDouble<ClientFactory>({
-                fallback: {
-                    call: rule.returns(client),
-                    construction: rule.constructs(client)
-                }
-            });
-            const answered = testDouble<SearchUser>({
-                answer(invocation) {
-                    typeScope.assert(sameType.withActual<DoubleInvocation<Parameters<SearchUser>>>(), invocation);
-
-                    return user;
-                }
-            });
-
-            typeScope.assert(sameType.withActual<TestDouble<ClientFactory>>(), Client);
-            typeScope.assert(sameType.withActual<TestDouble<SearchUser>>(), answered);
-            typeScope.assert(rejectsCall('argument-type'), () =>
-                testDouble<LoadUser>({
-                    answer() {
-                        return user;
-                    },
-                    fallback: rule.returns(user)
-                }));
             return typeScope.assert.collect();
         })
     ])

@@ -1,5 +1,6 @@
-import { test } from '@overkill-dev/test';
-import { acceptsCall, assignableFrom, sameType } from '@overkill-dev/type-test';
+import { test } from '@overkill-dev/test-type-authoring';
+import { acceptsCall, sameType } from '@overkill-dev/type-test';
+import { hasKey } from '../../test-support/type-relations.ts';
 import { defineResource, type RuntimeAttachments } from './resources.entry-point.ts';
 
 declare const attachments: RuntimeAttachments;
@@ -17,12 +18,12 @@ export const testNode = test('separates acquisition and handle exposure bindings
             }
         },
         acquire(context): string {
-            typeScope.assert(assignableFrom.not<keyof typeof context.scenarios, 'database'>());
+            typeScope.assert(sameType.withActual<false>(), hasKey<'database'>()(context.scenarios));
 
             return 'database';
         },
         dispose(_handle, context) {
-            typeScope.assert(assignableFrom.not<keyof typeof context.scenarios, 'database'>());
+            typeScope.assert(sameType.withActual<false>(), hasKey<'database'>()(context.scenarios));
         },
         exposeHandle(handle, context) {
             typeScope.assert(sameType.withActual<'primary' | 'replica'>(), context.scenarios.database);

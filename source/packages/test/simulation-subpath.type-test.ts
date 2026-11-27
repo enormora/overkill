@@ -1,4 +1,4 @@
-import { suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test-type-authoring';
 import { acceptsCall, sameType } from '@overkill-dev/type-test';
 import {
     defineSimulatedHttpServer,
@@ -31,7 +31,7 @@ export const testNode = suite('@overkill-dev/test/simulation', [
         typeScope.assert(sameType<ScenarioKeyOf<typeof apiSimulation>, 'default' | 'outage'>());
         typeScope.assert(sameType<ScenarioKeyOf<typeof httpSimulation>, 'default' | 'outage'>());
         typeScope.assert(sameType.withActual<'api'>(), apiSimulation.name);
-        typeScope.assert(acceptsCall, () =>
+        typeScope.assert(acceptsCall, async () =>
             httpSimulation.handle(new Request('https://example.test'), {
                 descriptor: httpSimulation.scenarios.outage,
                 key: 'outage'

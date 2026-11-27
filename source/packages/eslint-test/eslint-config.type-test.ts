@@ -1,8 +1,8 @@
-import { isEqualTo } from '../../test-support/type-relations.ts';
-import { test } from '@overkill-dev/test';
+import { test } from '@overkill-dev/test-type-authoring';
 import { sameType } from '@overkill-dev/type-test';
 import type { Suite } from '../engine/engine.entry-point.ts';
 import { gen } from '../property/property.entry-point.ts';
+import { isEqualTo } from '../../test-support/type-relations.ts';
 import { defineConfigTests, type ConfigInput, type ConfigSource } from './eslint-test.entry-point.ts';
 
 export const testNode = test('retains named config selection and independent suite types', function (typeScope) {

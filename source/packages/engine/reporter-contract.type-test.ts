@@ -1,7 +1,7 @@
 import type { IsEqual } from 'type-fest';
-import { isAssignableTo } from '../../test-support/type-relations.ts';
-import { suite, test } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test-type-authoring';
 import { assignableTo, sameType } from '@overkill-dev/type-test';
+import { isAssignableTo, type IsAssignable } from '../../test-support/type-relations.ts';
 import {
     defineOutputRenderer,
     defineReporter,
@@ -88,28 +88,33 @@ type LateManagedStdoutRealTimeReporter = RealTimeReporter<
 >;
 
 export const testNode = suite('Reporter contract', [
-    test('uses explicit run facts and nullable finish callbacks', function (typeScope) {
-        typeScope.assert(sameType<keyof ExecuteOptions, ExpectedExecuteOptionKey>());
-        typeScope.assert(sameType<ExecuteOptions['outputRenderer'], DefinedOutputRenderer | undefined>());
-        typeScope.assert(
-            sameType<IsEqual<ExecuteOptions['finalizeResult'], ExecuteResultFinalizer | undefined>, true>()
-        );
-        typeScope.assert(sameType<ExecuteExecution, ExpectedExecuteExecution>());
-        typeScope.assert(sameType<RunFacts, Readonly<Record<string, unknown>>>());
-        typeScope.assert(sameType<RealTimeReporter['dispose'], (() => Promise<void> | void) | null>());
-        typeScope.assert(
-            sameType<IsEqual<RealTimeReporter['onEvent'], (event: ReporterEvent) => Promise<void> | void>, true>()
-        );
-        typeScope.assert(
-            sameType<
-                IsEqual<RealTimeReporter['onFinish'], ((report: RunReport) => Promise<void> | void) | null>,
-                true
-            >()
-        );
-        typeScope.assert(sameType<FinalResultReporter['dispose'], (() => Promise<void> | void) | null>());
-        typeScope.assert(sameType<FinalResultReporter['kind'], 'final-result'>());
-        return typeScope.assert.collect();
-    }),
+    suite('uses explicit run facts and nullable finish callbacks', [
+        test('types run lifecycle callbacks', function (typeScope) {
+            typeScope.assert(sameType<keyof ExecuteOptions, ExpectedExecuteOptionKey>());
+            typeScope.assert(sameType<ExecuteOptions['outputRenderer'], DefinedOutputRenderer | undefined>());
+            typeScope.assert(
+                sameType<IsEqual<ExecuteOptions['finalizeResult'], ExecuteResultFinalizer | undefined>, true>()
+            );
+            typeScope.assert(sameType<ExecuteExecution, ExpectedExecuteExecution>());
+            typeScope.assert(sameType<RunFacts, Readonly<Record<string, unknown>>>());
+            return typeScope.assert.collect();
+        }),
+        test('types nullable completion and execution facts', function (typeScope) {
+            typeScope.assert(sameType<RealTimeReporter['dispose'], (() => Promise<void> | void) | null>());
+            typeScope.assert(
+                sameType<IsEqual<RealTimeReporter['onEvent'], (event: ReporterEvent) => Promise<void> | void>, true>()
+            );
+            typeScope.assert(
+                sameType<
+                    IsEqual<RealTimeReporter['onFinish'], ((report: RunReport) => Promise<void> | void) | null>,
+                    true
+                >()
+            );
+            typeScope.assert(sameType<FinalResultReporter['dispose'], (() => Promise<void> | void) | null>());
+            typeScope.assert(sameType<FinalResultReporter['kind'], 'final-result'>());
+            return typeScope.assert.collect();
+        })
+    ]),
     test('allows returned output only for managed output sink reporters', function (typeScope) {
         typeScope.assert(
             sameType<
@@ -133,9 +138,10 @@ export const testNode = suite('Reporter contract', [
         );
         typeScope.assert(
             sameType<
-                [(report: RunReport) => Promise<ReporterOutput>] extends
-                    [FileAndManagedStderrFinalResultReporter['onResult']] ? true
-                    : false,
+                IsAssignable<
+                    (report: RunReport) => Promise<ReporterOutput>,
+                    FileAndManagedStderrFinalResultReporter['onResult']
+                >,
                 true
             >()
         );
