@@ -1,6 +1,12 @@
 import type { IsEqual } from 'type-fest';
 import { suite, test } from '../../../tools/type-tests/authoring.entry-point.ts';
-import { acceptsCall, assignableFrom, rejectsCall, sameType } from '../../../tools/type-tests/relations.entry-point.ts';
+import {
+    acceptsCall,
+    assignableFrom,
+    assignableTo,
+    rejectsCall,
+    sameType
+} from '../../../tools/type-tests/relations.entry-point.ts';
 import { isEqualTo } from '../../test-support/type-relations.ts';
 import {
     defineSimulatedHttpServer,
@@ -122,14 +128,14 @@ export const testNode = suite('simulation', [
         })
     ]),
     test('infers scenario keys and status in HTTP handlers', function (typeScope) {
-        defineSimulatedHttpServer({
+        const simulationWithHandler = defineSimulatedHttpServer({
             name: 'http-api',
             scenarios: {
                 default: { status: successStatus, title: 'standard responses' },
                 outage: { status: outageStatus, title: 'upstream outage' }
             },
             handle(_request, scenario) {
-                typeScope.assert(sameType.withActual<'default' | 'outage'>(), scenario.key);
+                typeScope.assert(assignableTo.withActual<'default' | 'outage'>(), scenario.key);
                 typeScope.assert(
                     sameType.withActual<true>(),
                     isEqualTo<OutageStatus | SuccessStatus>()(scenario.descriptor.status)
@@ -138,6 +144,11 @@ export const testNode = suite('simulation', [
                 return Response.json({ status: scenario.descriptor.status });
             }
         });
+        typeScope.assert(sameType<ScenarioKeyOf<typeof simulationWithHandler>, 'default' | 'outage'>());
+        typeScope.assert(
+            sameType.withActual<true>(),
+            isEqualTo<SimulatedHttpHandler<typeof simulationWithHandler.scenarios>>()(simulationWithHandler.handle)
+        );
         return typeScope.assert.collect();
     })
 ]);

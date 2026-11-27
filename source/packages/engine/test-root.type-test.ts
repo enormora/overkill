@@ -1,4 +1,4 @@
-import type { IsEqual } from 'type-fest';
+import type { IsEqual, Simplify } from 'type-fest';
 import { suite, test } from '../../../tools/type-tests/authoring.entry-point.ts';
 import { rejectsCall, sameType } from '../../../tools/type-tests/relations.entry-point.ts';
 import {
@@ -14,6 +14,19 @@ import {
     type TestPlanFromTestFilesOptions,
     type TestRoot
 } from './engine.entry-point.ts';
+
+type FilePlanEntry = {
+    readonly file: string;
+    readonly testNode: TestNode;
+};
+type ExpectedFilePlanOptions = {
+    readonly files: readonly [FilePlanEntry, ...(readonly FilePlanEntry[])];
+    readonly root: {
+        readonly annotations: TestAnnotationsInput;
+        readonly controls: TestControlsInput;
+        readonly title: string;
+    };
+};
 
 declare const userTest: TestNode;
 
@@ -32,23 +45,7 @@ export const testNode = suite('TestRoot', [
         return typeScope.assert.collect();
     }),
     test('exposes file-backed planning for explicit run inputs', function (typeScope) {
-        typeScope.assert(sameType<TestPlanFromTestFilesOptions, {
-            readonly files: readonly [
-                {
-                    readonly file: string;
-                    readonly testNode: TestNode;
-                },
-                ...(readonly {
-                    readonly file: string;
-                    readonly testNode: TestNode;
-                }[])
-            ];
-            readonly root: {
-                readonly annotations: TestAnnotationsInput;
-                readonly controls: TestControlsInput;
-                readonly title: string;
-            };
-        }>());
+        typeScope.assert(sameType<IsEqual<Simplify<TestPlanFromTestFilesOptions>, ExpectedFilePlanOptions>, true>());
         typeScope.assert(sameType<
             IsEqual<
                 Engine['createTestPlanFromTestFiles'],

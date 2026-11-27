@@ -1,4 +1,4 @@
-import type { IsEqual } from 'type-fest';
+import type { Except, IsEqual, ReadonlyKeysOf, Simplify } from 'type-fest';
 import { suite, test } from '../../../tools/type-tests/authoring.entry-point.ts';
 import { sameType } from '../../../tools/type-tests/relations.entry-point.ts';
 import type {
@@ -133,12 +133,21 @@ export const testNode = suite('@overkill-dev/test/resources standard subpath', [
             )
         );
         typeScope.assert(sameType<IsAssignable<ResourceLifecycleError, Error>, true>());
+        const composedContext = composeRuntimeContext(testScope, runtime, {
+            database: { url: 'postgres://localhost' }
+        });
         typeScope.assert(
-            sameType.withActual<ExpectedComposedRuntimeScope>(),
-            composeRuntimeContext(testScope, runtime, {
-                database: { url: 'postgres://localhost' }
-            })
+            sameType<IsEqual<Simplify<Except<typeof composedContext, 'runtimes'>>, Simplify<TestScope>>, true>()
         );
+        typeScope.assert(sameType<
+            IsEqual<Simplify<typeof composedContext.runtimes>, ExpectedComposedRuntimeScope['runtimes']>,
+            true
+        >());
+        typeScope.assert(sameType<
+            IsEqual<ReadonlyKeysOf<typeof composedContext>, ReadonlyKeysOf<ExpectedComposedRuntimeScope>>,
+            true
+        >());
+        typeScope.assert(sameType.withActual<true>(), isEqualTo<DatabaseContext>()(composedContext.runtimes.api));
         typeScope.assert(
             sameType.withActual<true>(),
             isEqualTo<DatabaseContext>()(
