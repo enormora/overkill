@@ -14,8 +14,14 @@ type CompilerFile = {
     readonly fingerprint: string;
 };
 type CompilerResolution = { readonly path: string; readonly target: string | null; };
-type NativeModule = Pick<typeof NativeApi, 'API' | 'ModuleKind' | 'ModuleResolutionKind' | 'SymbolFlags' | 'TypeFlags'>;
-type NativeSyntax = Pick<NativeModule, 'ModuleKind' | 'ModuleResolutionKind' | 'SymbolFlags' | 'TypeFlags'>;
+type NativeModule = Pick<
+    typeof NativeApi,
+    'API' | 'DiagnosticCategory' | 'ModuleKind' | 'ModuleResolutionKind' | 'SymbolFlags' | 'TypeFlags'
+>;
+type NativeSyntax = Pick<
+    NativeModule,
+    'DiagnosticCategory' | 'ModuleKind' | 'ModuleResolutionKind' | 'SymbolFlags' | 'TypeFlags'
+>;
 type SyntaxAliases = {
     readonly isTypeAssertionExpression: typeof Ast.isTypeAssertion;
     readonly isStringLiteralLike: typeof Ast.isStringLiteralLikeNode;
@@ -44,9 +50,11 @@ const manifestSchema = z.object({ name: z.literal('typescript'), version: z.stri
 const loadedImplementations = new Map<string, string>();
 const nativeSchema = z.custom<NativeModule>(function nativeModule(value) {
     return typeof value === 'object' && value !== null && typeof Reflect.get(value, 'API') === 'function' &&
-        [ 'SymbolFlags', 'TypeFlags', 'ModuleKind', 'ModuleResolutionKind' ].every(function exported(name) {
-            return typeof Reflect.get(value, name) === 'object';
-        });
+        [ 'SymbolFlags', 'TypeFlags', 'ModuleKind', 'ModuleResolutionKind', 'DiagnosticCategory' ].every(
+            function exported(name) {
+                return typeof Reflect.get(value, name) === 'object';
+            }
+        );
 });
 const syntaxSchema = z.custom<typeof Ast>(function syntaxModule(value) {
     return typeof value === 'object' && value !== null && typeof Reflect.get(value, 'SyntaxKind') === 'object' &&
@@ -210,6 +218,7 @@ async function loadCompiler(input: Installation): Promise<InstalledCompiler> {
         ...ast,
         SymbolFlags: native.SymbolFlags,
         TypeFlags: native.TypeFlags,
+        DiagnosticCategory: native.DiagnosticCategory,
         ModuleKind: native.ModuleKind,
         ModuleResolutionKind: native.ModuleResolutionKind,
         isTypeAssertionExpression: ast.isTypeAssertion,

@@ -134,7 +134,7 @@ export const testNode = suite('native type-test adapter', [
             );
             const definitions = `import {sameType as onlyInline} from ${JSON.stringify(referencePath)};
         void [same,assignableTo,assignableFrom,suite,table,defineMacro,defineParameterizedTestBody,
-            defineResource,withResource,family,prepareCompilerPlan,metadata];
+            defineResource,withResource,family,prepareCompilerPlan,metadata,acceptsCall,rejectsCall];
         const nodes=[test('unused imports',scope=>{
             scope.assert(onlyInline<string,string>());return scope.assert.collect();
         })];
@@ -385,18 +385,6 @@ const options={...metadata,title:'named',body};
 const nodes=[engine.createTestCase(options)];`;
         const result = await runNativeProject(scope.cleanup, definitions, null);
         scope.assert.equal(result.summary.passed, 1, { message: result.errors.join('\n') });
-        return scope.assert.collect();
-    }),
-    test('rejects nested assertion boundaries instead of omitting their evidence', async function (scope) {
-        const definitions = `const nodes=[test('nested',scope=>{
-    scope.assert(same<string,string>());
-    function nested(){scope.assert(same<string,number>());}
-    nested();return scope.assert.collect();
-})];`;
-        const result = await runNativeProject(scope.cleanup, definitions, null);
-        scope.assert.equal(result.status, 'failed');
-        scope.assert.equal(result.summary.passed, 0);
-        scope.assert.includes(result.errors.join('\n'), 'Nested native assertion');
         return scope.assert.collect();
     }),
     test('rejects runtime case controls for static execution', async function (scope) {

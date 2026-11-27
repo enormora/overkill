@@ -11,6 +11,7 @@ import {
     type RunnerError,
     type FailedCheck
 } from '../engine/engine.entry-point.ts';
+import type { CallDiagnostic } from './call-diagnostics.ts';
 import type { RelationEvidence } from './relation-evidence.ts';
 import type { OriginalAssertionPlan, NativeSite } from './original-assertions.ts';
 
@@ -21,12 +22,15 @@ export type SiteEvidence = {
     readonly expected: string;
     readonly result: RelationEvidence;
     readonly durationMicroseconds: number;
+    readonly diagnostics: readonly CallDiagnostic[];
 };
 
 function failedCheck(evidence: SiteEvidence, index: number): FailedCheck {
     const { relation, negated } = evidence.site.reference;
     const name = negated ? `${relation}.not` : relation;
-    const message = `Type relation ${name} does not hold (TypeScript ${evidence.compilerVersion}).`;
+    const message = evidence.site.reference.kind === 'call'
+        ? `${name}: expected ${evidence.expected}, observed ${evidence.actual}.`
+        : `Type relation ${name} does not hold (TypeScript ${evidence.compilerVersion}).`;
     return {
         kind: 'foreign',
         id: String(index + 1),

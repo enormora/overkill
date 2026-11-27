@@ -3,23 +3,37 @@ import type { Relation } from './relation-evidence.ts';
 import { UnsupportedEvidenceError } from './unsupported-evidence-error.ts';
 import type { SourceAnalysis } from './source-analysis-port.ts';
 import { sourceSymbol } from './source-analysis.ts';
+import type { CallRejection } from './assertion-reference.ts';
 
 type BindingKind = 'relation';
-type Binding = {
+type RelationBinding = {
     readonly relation: Relation;
     readonly kind: BindingKind;
 };
+type CallBinding = {
+    readonly kind: 'call';
+    readonly relation: 'acceptsCall' | 'rejectsCall';
+};
+type Binding = CallBinding | RelationBinding;
 const bindings: Readonly<Record<string, Binding>> = {
     sameType: { relation: 'sameType', kind: 'relation' },
     assignableTo: { relation: 'assignableTo', kind: 'relation' },
-    assignableFrom: { relation: 'assignableFrom', kind: 'relation' }
+    assignableFrom: { relation: 'assignableFrom', kind: 'relation' },
+    acceptsCall: { relation: 'acceptsCall', kind: 'call' },
+    rejectsCall: { relation: 'rejectsCall', kind: 'call' }
 };
 type ReferenceForm = 'expressions' | 'typed' | 'withActual' | 'withExpected';
-export type NativeReference = Binding & {
+export type NativeRelationReference = RelationBinding & {
     readonly negated: boolean;
     readonly form: ReferenceForm;
     readonly types: readonly TypeScript.TypeNode[];
 };
+export type CallProbe = CallBinding & {
+    readonly negated: false;
+    readonly reason: CallRejection | null;
+    readonly probe: TypeScript.CallExpression;
+};
+export type NativeReference = CallProbe | NativeRelationReference;
 export async function nativeRelationBinding(
     analysis: SourceAnalysis,
     expression: TypeScript.Expression
@@ -88,9 +102,78 @@ function validateReferenceSyntax(form: ReferenceForm, syntax: ReferenceSyntax): 
         throw new UnsupportedEvidenceError('Invalid native reference factory arguments.', undefined);
     }
 }
-export async function nativeReference(analysis: SourceAnalysis, node: TypeScript.Expression): Promise<NativeReference> {
+function rejectionReason(value: string): CallRejection {
+    const reasons: readonly CallRejection[] = [ 'argument-count', 'argument-type', 'no-matching-overload' ];
+    const match = reasons.find(function matches(reason) {
+        return reason === value;
+    });
+    if (match !== undefined) {
+        return match;
+    }
+    throw new UnsupportedEvidenceError('Unknown call rejection reason.', undefined);
+}
+
+function callReason(
+    compiler: SourceAnalysis['compiler'],
+    relation: CallBinding['relation'],
+    syntax: ReferenceSyntax
+): CallRejection | null {
+    const [ reason ] = syntax.operands;
+    if (relation === 'acceptsCall') {
+        return null;
+    }
+    if (syntax.operands.length !== 1 || reason === undefined || !compiler.isStringLiteral(reason)) {
+        throw new UnsupportedEvidenceError('Call rejection requires one literal reason.', undefined);
+    }
+    return rejectionReason(reason.text);
+}
+
+function probeExpression(
+    compiler: SourceAnalysis['compiler'],
+    operands: readonly TypeScript.Expression[]
+): TypeScript.CallExpression {
+    const [ callback ] = operands;
+    if (
+        operands.length !== 1 || callback === undefined || !compiler.isArrowFunction(callback) ||
+        callback.parameters.length > 0 || !compiler.isCallExpression(callback.body)
+    ) {
+        throw new UnsupportedEvidenceError('A call assertion requires an inline arrow containing one call.', undefined);
+    }
+    return callback.body;
+}
+
+type CallReferenceBinding = ReferenceBinding & { readonly binding: CallBinding; };
+
+function callProbe(
+    analysis: SourceAnalysis,
+    reference: CallReferenceBinding,
+    syntax: ReferenceSyntax,
+    operands: readonly TypeScript.Expression[]
+): CallProbe {
+    if (
+        reference.members.length > 0 || syntax.types.length > 0 ||
+        syntax.called !== (reference.binding.relation === 'rejectsCall')
+    ) {
+        throw new UnsupportedEvidenceError('Invalid native call assertion reference.', undefined);
+    }
+    return {
+        ...reference.binding,
+        negated: false,
+        reason: callReason(analysis.compiler, reference.binding.relation, syntax),
+        probe: probeExpression(analysis.compiler, operands)
+    };
+}
+
+export async function nativeReference(
+    analysis: SourceAnalysis,
+    node: TypeScript.Expression,
+    operands: readonly TypeScript.Expression[] = []
+): Promise<NativeReference> {
     const syntax = referenceSyntax(analysis, node);
     const { binding, members } = await referenceBinding(analysis, syntax.expression);
+    if (binding.kind === 'call') {
+        return callProbe(analysis, { binding, members }, syntax, operands);
+    }
     const negated = members[0] === 'not';
     const form = referenceForm(negated ? members.slice(1) : members);
     validateReferenceSyntax(form, syntax);

@@ -412,8 +412,10 @@ public APIs without generated source.
 Expected-diagnostic assertions must identify an authored source boundary and
 match the expected diagnostic; an unrelated error must not satisfy them. Define
 that boundary and its diagnostic ownership before exposing such an assertion.
-Ordinary `@ts-expect-error` only establishes that some error occurred on the next
-line and must not be presented as a precise diagnostic assertion.
+Call assertions use a single authored call inside a parameterless arrow.
+`acceptsCall` expects no call diagnostic. `rejectsCall(reason)` expects a
+compiler diagnostic associated with that call and matching the stated reason.
+Unexpected diagnostics outside the call remain project errors.
 
 The initial catalog has no dedicated JSX or decorator applicability assertions.
 The user's project may still contain TSX or decorators and is checked according
@@ -434,6 +436,8 @@ context. Applying a macro with `string` does not specialize its generic callback
 into a new compiler input. Tables retain row expansion and names, but their
 shared body has its static parameter type, not a different type per runtime row.
 Shared assertion sites retain ownership across all selected cases using them.
+A direct assertion in a nested callback belongs to the case whose scope it
+captures and uses the callback's original contextual types.
 
 Source ownership is required for both direct engine roots and runner profiles.
 The engine captures source anchors and first-party wrappers forward original

@@ -3,7 +3,7 @@ import { cp, mkdir, mkdtemp, rm, writeFile, readFile, readdir } from 'node:fs/pr
 import { setTimeout as delay } from 'node:timers/promises';
 import { join } from 'node:path';
 
-import { suite } from '@overkill-dev/test';
+import { suite, type TestScope } from '@overkill-dev/test';
 import { sealConsumerDependencies } from './support/consumer-resolution-boundary.ts';
 import { consumerEnvironment } from './support/consumer-environment.ts';
 import { packageConsumer } from './support/package-consumer.ts';
@@ -186,18 +186,54 @@ async function waitForCompilerShutdown(directory: string): Promise<void> {
     await Promise.all(ownedProcesses.map(waitForProcessExit));
 }
 
+type ConsumerMode = 'cli' | 'engine' | 'runner';
+
+async function copyConsumerPackages(source: string, destination: string, mode: ConsumerMode): Promise<void> {
+    const known = { engine: [ 'engine', 'type-test' ], runner: [ 'engine', 'run', 'type-test' ] };
+    const packages = mode === 'cli' ? await readdir(source) : known[mode];
+    for (const name of packages) {
+        await cp(join(source, name), join(destination, name), { recursive: true });
+    }
+}
+
+const callContractSource = `import { test, suite } from '@overkill-dev/test';
+import { acceptsCall, rejectsCall, sameType } from '@overkill-dev/type-test';
+function greet(name: string): string { return name ?? 'guest'; }
+function supply(callback: (name: string) => void): void { callback('Ada'); }
+export const testNode = suite('type contracts', [
+    test('requires a name', scope => {
+        scope.assert(acceptsCall, () => greet('Ada'));
+        scope.assert(rejectsCall('argument-count'), () => greet());
+        return scope.assert.collect();
+    }),
+    test('infers the callback parameter', scope => {
+        supply(name => { scope.assert(sameType<typeof name, string>()); });
+        return scope.assert.collect();
+    })
+]);`;
+
+async function runCallContract(directory: string, source: string): Promise<ScriptOutput> {
+    await writeFile(join(directory, 'runner.mts'), source);
+    return await runNode(directory, [
+        'node_modules/@overkill-dev/test/packages/test/overkill.entry-point.js',
+        'run',
+        '--profile',
+        'types'
+    ]);
+}
+
+async function assertCallContractPasses(assert: TestScope['assert'], directory: string): Promise<void> {
+    const result = await runCallContract(directory, callContractSource);
+    assert.equal(result.code, 0, { message: result.stdout + result.stderr });
+}
+
 const consumerFacade = packageConsumer('packaged native type tests', function consumerFixture(consumerDirectory) {
-    async function isolatedConsumer(includeRunner: boolean): Promise<string> {
+    async function isolatedConsumer(mode: ConsumerMode): Promise<string> {
         const directory = await mkdtemp(join(consumerDirectory, 'overkill-type-test-consumer-'));
 
         const destination = join(directory, 'node_modules/@overkill-dev');
         await mkdir(destination, { recursive: true });
-        const packages = includeRunner ? [ 'engine', 'run', 'type-test' ] : [ 'engine', 'type-test' ];
-        for (const name of packages) {
-            await cp(join(consumerDirectory, 'node_modules/@overkill-dev', name), join(destination, name), {
-                recursive: true
-            });
-        }
+        await copyConsumerPackages(join(consumerDirectory, 'node_modules/@overkill-dev'), destination, mode);
         await provisionCompiler(directory);
         await sealConsumerDependencies(directory);
         await writeFile(join(directory, 'package.json'), JSON.stringify({ type: 'module' }));
@@ -211,7 +247,7 @@ export const testNode = suite('packaged native type tests', [
     test('checks engine roots without the high-level distribution', async function (scope) {
         const { isolatedConsumer } = scope.resources.consumer;
 
-        const directory = await isolatedConsumer(false);
+        const directory = await isolatedConsumer('engine');
         await writeCheckingProject(directory);
         const result = await runNode(directory, [ 'case.mts' ]);
         scope.assert.equal(result.code, 0, { message: result.stderr });
@@ -226,7 +262,7 @@ export const testNode = suite('packaged native type tests', [
         async function (scope) {
             const { isolatedConsumer } = scope.resources.consumer;
 
-            const directory = await isolatedConsumer(true);
+            const directory = await isolatedConsumer('runner');
             await writeRunnerProject(directory, 'supervised-process');
             const result = await runNode(directory, [ 'runner.mts' ]);
             scope.assert.equal(result.code, 0, { message: result.stderr });
@@ -234,9 +270,46 @@ export const testNode = suite('packaged native type tests', [
             return scope.assert.collect();
         }
     ),
+    table({
+        title: 'fails the owning case when call or callback types regress',
+        cases: [
+            {
+                title: 'requires a name',
+                original: 'greet(name: string)',
+                changed: 'greet(name?: string)',
+                diagnostic: 'Call accepted'
+            },
+            {
+                title: 'infers the callback parameter',
+                original: 'callback: (name: string)',
+                changed: 'callback: (name: string | number)',
+                diagnostic: 'Type relation sameType'
+            }
+        ],
+        caseTitle({ title }) {
+            return title;
+        },
+        async test(scope) {
+            const directory = await scope.resources.consumer.isolatedConsumer('cli');
+            await writeRunnerProject(directory, 'supervised-process');
+            await assertCallContractPasses(scope.assert, directory);
+            const { original, changed, title, diagnostic } = scope.parameters;
+            const regression = await runCallContract(
+                directory,
+                callContractSource.replace(original, function replacement() {
+                    return changed;
+                })
+            );
+            scope.assert.equal(regression.code, 1, { message: regression.stdout + regression.stderr });
+            scope.assert.includes(regression.stdout + regression.stderr, title);
+            scope.assert.includes(regression.stdout + regression.stderr, diagnostic);
+            await assertCallContractPasses(scope.assert, directory);
+            return scope.assert.collect();
+        }
+    }),
     test('delivers the same original evidence through the engine and runner', async function (scope) {
         const { isolatedConsumer } = scope.resources.consumer;
-        const directory = await isolatedConsumer(true);
+        const directory = await isolatedConsumer('runner');
         await writeRunnerProject(directory, 'in-process');
         await writeParityProject(directory);
         const result = await runNode(directory, [ '--permission-audit', 'parity.mjs' ]);
@@ -250,7 +323,7 @@ export const testNode = suite('packaged native type tests', [
         caseTitle: String,
         async test(scope) {
             const { isolatedConsumer } = scope.resources.consumer;
-            const directory = await isolatedConsumer(true);
+            const directory = await isolatedConsumer('runner');
             await writeRunnerProject(directory, scope.parameters);
             const request = serializedTypeTestRequest({
                 profile: 'types',
@@ -298,7 +371,7 @@ console.log('reproduced and rejected drift');`;
     }),
     test('hard timeout reaps a wedged analysis host and its native compiler', async function (scope) {
         const { isolatedConsumer } = scope.resources.consumer;
-        const directory = await isolatedConsumer(true);
+        const directory = await isolatedConsumer('runner');
         await writeRunnerProject(directory, 'supervised-process');
         await wedgeCompilerOnExecution(directory);
         const result = await runNode(directory, [ 'runner.mts' ]);
@@ -313,7 +386,7 @@ console.log('reproduced and rejected drift');`;
     test('authoring and profile imports do not load the execution backend', async function (scope) {
         const { isolatedConsumer } = scope.resources.consumer;
 
-        const directory = await isolatedConsumer(false);
+        const directory = await isolatedConsumer('engine');
         const backend = join(
             directory,
             'node_modules/@overkill-dev/type-test/packages/type-test/family-backend.entry-point.js'

@@ -148,6 +148,9 @@ export const testNode = suite('native assertion boundary validation', [
     test('recognizes typed adapter references', async function (scope) {
         const fixture = matcher(adapterSource, true);
         const result = await nativeReference(fixture.analysis, referenceCall('', true));
+        if (result.kind !== 'relation') {
+            throw new Error('Expected a type relation.');
+        }
         scope.assert.equal(result.form, 'typed');
         scope.assert.equal(result.types.length, 2);
         scope.assert.false(result.negated);
@@ -156,6 +159,9 @@ export const testNode = suite('native assertion boundary validation', [
     test('retains negated typed references', async function (scope) {
         const fixture = matcher(adapterSource, true);
         const result = await nativeReference(fixture.analysis, referenceCall('not', true));
+        if (result.kind !== 'relation') {
+            throw new Error('Expected a type relation.');
+        }
         scope.assert.true(result.negated);
         scope.assert.equal(result.form, 'typed');
         return scope.assert.collect();

@@ -143,17 +143,13 @@ async function validateOperands(
 async function checkedScopeNode(
     analysis: SourceAnalysis,
     node: TypeScript.Node,
-    scope: TypeScript.Identifier | null,
-    nested: boolean
+    scope: TypeScript.Identifier | null
 ): Promise<TypeScript.CallExpression | null> {
     const call = await assertionCall(analysis, node, scope);
     if (call === null) {
         await rejectScopeForwarding(analysis, node, scope);
         await rejectUnownedReference(analysis, node);
         return null;
-    }
-    if (nested) {
-        throw new UnsupportedEvidenceError('Nested native assertion boundaries are unsupported.', undefined);
     }
     await validateOperands(analysis, call, scope);
     return call;
@@ -167,11 +163,10 @@ export async function scopeAssertions(
 ): Promise<readonly TypeScript.CallExpression[]> {
     const calls: TypeScript.CallExpression[] = [];
     async function inspect(
-        node: TypeScript.Node,
-        nested: boolean
+        node: TypeScript.Node
     ): Promise<TypeScript.CallExpression | null | undefined> {
         try {
-            return await checkedScopeNode(analysis, node, scope, nested);
+            return await checkedScopeNode(analysis, node, scope);
         } catch (error: unknown) {
             if (!(error instanceof UnsupportedEvidenceError)) {
                 throw error;
@@ -180,9 +175,8 @@ export async function scopeAssertions(
             return undefined;
         }
     }
-    async function visit(node: TypeScript.Node, nested: boolean): Promise<void> {
-        const insideNested = nested || node !== body && analysis.compiler.isFunctionLike(node);
-        const call = await inspect(node, insideNested);
+    async function visit(node: TypeScript.Node): Promise<void> {
+        const call = await inspect(node);
         if (call === undefined) {
             return;
         }
@@ -191,10 +185,10 @@ export async function scopeAssertions(
             return;
         }
         for (const child of sourceChildren(node)) {
-            await visit(child, insideNested);
+            await visit(child);
         }
     }
-    await visit(body, false);
+    await visit(body);
     return calls;
 }
 export async function assertionAnnotation(
