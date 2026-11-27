@@ -5,13 +5,14 @@ import type { DiscoveredRunFile } from './run-types.ts';
 import { invalidRequest, RunCollectionError } from './run-errors.ts';
 
 type TestModuleNamespace = Readonly<Record<string, unknown>>;
+type ImportedTestModule = { readonly namespace: unknown; };
 type RunTestFile = TestPlanFromTestFilesOptions['files'][number];
 export type RunTestModuleLoader = (
     files: NonEmptyReadonlyArray<DiscoveredRunFile>,
     engine: Engine
 ) => Promise<NonEmptyReadonlyArray<RunTestFile>>;
 export type RunTestModuleLoaderDependencies = {
-    readonly importModule: (href: string) => Promise<unknown>;
+    readonly importModule: (href: string) => Promise<ImportedTestModule>;
 };
 
 function isTestModuleNamespace(value: unknown): value is TestModuleNamespace {
@@ -21,7 +22,7 @@ function isTestModuleNamespace(value: unknown): value is TestModuleNamespace {
 async function importRawTestModule(
     file: DiscoveredRunFile,
     dependencies: RunTestModuleLoaderDependencies
-): Promise<unknown> {
+): Promise<ImportedTestModule> {
     try {
         return await dependencies.importModule(file.href);
     } catch (error: unknown) {
@@ -29,11 +30,29 @@ async function importRawTestModule(
     }
 }
 
-async function importTestModule(
+function assertNoExtraExports(moduleNamespace: TestModuleNamespace, file: string): void {
+    const extraExports = Object.getOwnPropertyNames(moduleNamespace).filter(function isExtraExport(name) {
+        return name !== 'testNode';
+    });
+
+    if (extraExports.length > 0) {
+        const names = extraExports
+            .toSorted(function compareExportNames(left, right) {
+                return left.localeCompare(right, 'en');
+            })
+            .map(function quoteExport(name) {
+                return JSON.stringify(name);
+            });
+        invalidRequest(`Test module must export only testNode: ${file} (unexpected exports: ${names.join(', ')})`);
+    }
+}
+
+async function loadRunTestModule(
     file: DiscoveredRunFile,
+    engine: Engine,
     dependencies: RunTestModuleLoaderDependencies
-): Promise<TestModuleNamespace> {
-    const moduleNamespace = await importRawTestModule(file, dependencies);
+): Promise<RunTestFile> {
+    const { namespace: moduleNamespace } = await importRawTestModule(file, dependencies);
 
     if (!isTestModuleNamespace(moduleNamespace)) {
         throw new RunCollectionError(
@@ -42,16 +61,6 @@ async function importTestModule(
             'loader'
         );
     }
-
-    return moduleNamespace;
-}
-
-async function loadRunTestModule(
-    file: DiscoveredRunFile,
-    engine: Engine,
-    dependencies: RunTestModuleLoaderDependencies
-): Promise<RunTestFile> {
-    const moduleNamespace = await importTestModule(file, dependencies);
 
     if (!Object.hasOwn(moduleNamespace, 'testNode')) {
         invalidRequest(`Test module must export testNode: ${file.file}`);
@@ -62,6 +71,8 @@ async function loadRunTestModule(
     if (!engine.ownsTestNode(testNode)) {
         invalidRequest(`Test module testNode must be created by the selected engine: ${file.file}`);
     }
+
+    assertNoExtraExports(moduleNamespace, file.file);
 
     return {
         file: file.file,

@@ -258,7 +258,9 @@ entries use the same include/exclude shape. Named sets must be non-empty and
 non-overlapping. Explicit files bypass top-level discovery, but when the
 selected profile uses `sets`, each explicit file must match exactly one set.
 Each discovered or explicit file is imported as a native Node ESM module and
-must export a named `testNode` value created by the selected engine.
+must expose exactly one runtime export, a named `testNode` value created by
+the selected engine. Type-only exports are allowed. Put reusable values in
+support modules outside the selected entries.
 Attach broad module annotations to that exported top-level node.
 `commandLineRunner.listTests(...)` resolves those modules and prints a plain
 plan tree without executing tests or loading fallback reporters.

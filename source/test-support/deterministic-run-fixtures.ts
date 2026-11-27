@@ -256,7 +256,7 @@ export function createDeterministicRunTestModuleLoader(
                     input.recordLoadEnvironmentMutation();
                 }
 
-                return { testNode: deterministicRunTestNode(file) };
+                return { namespace: { testNode: deterministicRunTestNode(file) } };
             }
         })(files, engine);
     };
