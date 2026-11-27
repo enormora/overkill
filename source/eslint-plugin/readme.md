@@ -12,7 +12,12 @@ A conflicting write, unsupported expression, or unreachable use yields an
 unknown origin. Local object fields lose their facts when the object can
 escape or when an untracked write can change them. A value extracted earlier
 keeps its own origin. The escape rule also queries aggregate contents at
-transfer sites and retains proven alternatives when branches disagree. Repeated-read stability requires separate evidence.
+transfer sites and retains proven alternatives when branches disagree.
+
+`no-self-comparison` tracks which bindings, local data fields, and evaluated
+operands hold the same value. Copies preserve identity, and control-flow joins
+retain only agreements across all paths. An origin can establish which API is
+called without proving two application property reads have the same value.
 
 ESLint parser fixtures and the packed consumer test exercise this tooling under
 the integration profiles. The compiler and ESLint probe the host environment

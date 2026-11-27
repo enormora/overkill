@@ -129,10 +129,13 @@ export function reachingBindings(
     frame: Frame,
     entry: State,
     apply: ApplyEvent,
-    observe: ObserveExpression
+    observations: { readonly expression: ObserveExpression; readonly finish: (state: State) => void; }
 ): void {
     const inputs = reachingInputs(frame, entry, apply);
     for (const [ segment, input ] of inputs) {
-        replay(input, frame.events.get(segment) ?? [], apply, observe);
+        const output = replay(input, frame.events.get(segment) ?? [], apply, observations.expression);
+        if (frame.path.finalSegments.includes(segment)) {
+            observations.finish(output);
+        }
     }
 }

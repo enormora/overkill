@@ -12,10 +12,13 @@ type CallbackParameter = { readonly kind: 'parameter'; readonly owner: FunctionN
 export type BindingOrigin = {
     readonly root: CallbackParameter | CallResult | LocalFunction | ModuleImport;
     readonly path: readonly string[];
+    readonly builderOnly: boolean;
+    readonly preboundOperands: boolean;
 };
 
 export function sameOrigin(left: BindingOrigin, right: BindingOrigin): boolean {
     if (
+        left.builderOnly !== right.builderOnly || left.preboundOperands !== right.preboundOperands ||
         left.path.length !== right.path.length || left.path.some(function (key, index) {
             return key !== right.path[index];
         })
@@ -37,6 +40,11 @@ export function sameOrigin(left: BindingOrigin, right: BindingOrigin): boolean {
             return right.root.kind === 'function' && matched.node === right.root.node;
         })
         .exhaustive();
+}
+
+export function coversOrigin(prefix: BindingOrigin, origin: BindingOrigin): boolean {
+    return sameOrigin(prefix, { ...origin, path: origin.path.slice(0, prefix.path.length),
+        preboundOperands: prefix.preboundOperands });
 }
 
 const functionTypes: ReadonlySet<NodeType> = new Set([

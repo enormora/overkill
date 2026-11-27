@@ -351,6 +351,7 @@ export const noScopeEscape: TSESLint.RuleModule<'escape' | 'forward'> = {
         return bindingAnalysis(context.sourceCode, function report(result) {
             reportEscapes(context, result, { calls, sites, references });
         }, {
+            stableOperands: false,
             query,
             visit(node) {
                 if (query(node).length > 0) {

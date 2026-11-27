@@ -29,3 +29,10 @@ can use `scope.assert.equal(response.status, 200)` directly.
 The rule counts source uses through local aliases. A use in a table callback
 counts once. Exported references, opaque transfers, narrowing, groups of
 multiple checks, and custom diagnostics are preserved.
+
+Enable `overkill/no-self-comparison` to catch equality checks that use the same
+value for both operands. For example, `scope.assert.equal(result, result)` and
+`scope.assert.equal(result, alias)` are reported when `alias` is a proven copy
+of `result`. This also covers proven local data properties and composite check
+builders. Repeated reads such as `scope.assert.equal(response.status, response.status)`
+are allowed when the rule cannot establish that `status` is a stable data property.

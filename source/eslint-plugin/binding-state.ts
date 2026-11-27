@@ -1,6 +1,7 @@
 import { match } from 'ts-pattern';
 import type { TSESLint, TSESTree as Tree } from '@typescript-eslint/utils';
-import { type BindingOrigin, sameOrigin } from './binding-origin.ts';
+import { type BindingOrigin, coversOrigin, sameOrigin } from './binding-origin.ts';
+import { OperandIdentity, type OperandSlot } from './operand-identity.ts';
 
 export type Variable = TSESLint.Scope.Variable;
 export type Allocation = Tree.ArrayExpression | Tree.ObjectExpression;
@@ -35,7 +36,29 @@ export function bindingValues<Key>(entries: ReadonlyMap<Key, Value>): BindingVal
     });
 }
 
+type OperandSlots = (allocation: Allocation, key: string) => OperandSlot;
+
+export function operandSlots(): OperandSlots {
+    const allocations = new Map<Allocation, Map<string, OperandSlot>>();
+    return function fieldSlot(allocation, key) {
+        const fields = allocations.get(allocation) ?? new Map<string, OperandSlot>();
+        const slot = fields.get(key) ?? {};
+        fields.set(key, slot);
+        allocations.set(allocation, fields);
+        return slot;
+    };
+}
+
+type OperandFacts = {
+    readonly identity: OperandIdentity;
+    readonly field: OperandSlots;
+    readonly keys: Map<Allocation, Set<string>>;
+    readonly writes: BindingOrigin[];
+    readonly liveImports: ReadonlySet<Variable>;
+};
+
 export type State = {
+    readonly operands: OperandFacts | null;
     readonly trackAlternatives: boolean;
     readonly bindings: BindingValues<Variable>;
     readonly expressions: BindingValues<Readonly<Tree.Node>>;
@@ -44,10 +67,11 @@ export type State = {
     readonly deleteObject: (allocation: Allocation) => void;
 };
 
-export function emptyState(trackAlternatives: boolean): State {
+export function emptyState(trackAlternatives: boolean, operands: OperandFacts | null): State {
     const objects = new Map<Allocation, BindingValues<string>>();
     return {
         trackAlternatives,
+        operands,
         bindings: bindingValues(new Map()),
         expressions: bindingValues(new Map()),
         objects,
@@ -56,12 +80,18 @@ export function emptyState(trackAlternatives: boolean): State {
         },
         deleteObject(allocation) {
             objects.delete(allocation);
+            if (operands !== null) {
+                for (const key of operands.keys.get(allocation) ?? []) {
+                    operands.identity.forget(operands.field(allocation, key));
+                }
+                operands.keys.delete(allocation);
+            }
         }
     };
 }
 
 export function originValue(root: BindingOrigin['root'], path: readonly string[]): Value {
-    return { kind: 'origin', origin: { root, path } };
+    return { kind: 'origin', origin: { root, path, builderOnly: false, preboundOperands: false } };
 }
 
 export function sameValue(left: Value, right: Value): boolean {
@@ -182,9 +212,47 @@ function mergeAllocations(left: State, right: State, result: State): void {
     }
 }
 
+export function recordOriginWrite(writes: BindingOrigin[], origin: BindingOrigin): void {
+    if (!writes.some(write => coversOrigin(write, origin))) {
+        for (const [ index, write ] of writes.entries().toArray().reverse()) {
+            if (coversOrigin(origin, write)) {
+                writes.splice(index, 1);
+            }
+        }
+        writes.push(origin);
+    }
+}
+
+export function operandFacts(
+    field: OperandSlots,
+    identity: OperandIdentity,
+    liveImports: ReadonlySet<Variable>
+): OperandFacts {
+    return { field, identity, keys: new Map(), writes: [], liveImports };
+}
+
+function joinOperands(left: OperandFacts | null, right: OperandFacts | null): OperandFacts | null {
+    if (left === null || right === null) {
+        return null;
+    }
+    const identity = left.identity.join(right.identity);
+    const keys = new Map<Allocation, Set<string>>();
+    left.keys.forEach(function (fields, allocation) {
+        const shared = new Set(Array.from(fields).filter(key => identity.has(left.field(allocation, key))));
+        if (shared.size > 0) {
+            keys.set(allocation, shared);
+        }
+    });
+    const writes = left.writes.slice();
+    for (const origin of right.writes) {
+        recordOriginWrite(writes, origin);
+    }
+    return { ...left, identity, keys, writes };
+}
+
 export function joinStates(left: State, right: State): State {
     const { trackAlternatives } = left;
-    const result = emptyState(trackAlternatives);
+    const result = emptyState(trackAlternatives, joinOperands(left.operands, right.operands));
     mergeAllocations(left, right, result);
     mergeValues(left.bindings, right.bindings, trackAlternatives).forEach(function (value, variable) {
         result.bindings.store(variable, value);
@@ -196,7 +264,13 @@ export function joinStates(left: State, right: State): State {
 }
 
 export function copyState(state: State): State {
-    const result = emptyState(state.trackAlternatives);
+    const { operands } = state;
+    const result = emptyState(state.trackAlternatives, operands === null ? null : {
+        ...operands,
+        identity: operands.identity.copy(),
+        keys: new Map(Array.from(operands.keys, ([ allocation, keys ]) => [ allocation, new Set(keys) ])),
+        writes: operands.writes.slice()
+    });
     for (const [ variable, value ] of state.bindings) {
         result.bindings.store(variable, value);
     }
@@ -216,8 +290,18 @@ function sameValues<Key>(left: ReadonlyMap<Key, Value>, right: ReadonlyMap<Key, 
     });
 }
 
+function sameWrites(left: readonly BindingOrigin[], right: readonly BindingOrigin[]): boolean {
+    return left.length === right.length && left.every(origin => right.some(write => coversOrigin(write, origin) &&
+        coversOrigin(origin, write)));
+}
+
+function sameOperandFacts(left: OperandFacts | null, right: OperandFacts | null): boolean {
+    return left === null || right === null ||
+        left.identity.sameFacts(right.identity) && sameWrites(left.writes, right.writes);
+}
+
 export function sameState(left: State, right: State): boolean {
-    return sameValues(left.bindings, right.bindings) && sameValues(left.expressions, right.expressions) &&
+    return sameOperandFacts(left.operands, right.operands) && sameValues(left.bindings, right.bindings) && sameValues(left.expressions, right.expressions) &&
         left.objects.size === right.objects.size &&
         Array.from(left.objects).every(function ([ allocation, properties ]) {
             const other = right.objects.get(allocation);
@@ -235,6 +319,12 @@ function possibleProperty(state: State, value: Value | undefined, key: string | 
 
 const maximumAlternativePathLength = 3;
 
+function readOriginProperty(state: State, receiver: BindingOrigin, key: string): Value | undefined {
+    const origin = { ...receiver, path: [ ...receiver.path, key ] };
+    const written = state.operands?.writes.some(write => coversOrigin(write, origin)) === true;
+    return written ? undefined : { kind: 'origin', origin };
+}
+
 export function propertyOf(state: State, value: Value | undefined, key: string | undefined): Value | undefined {
     if (key === undefined) {
         return possibleProperty(state, value, key);
@@ -249,7 +339,7 @@ export function propertyOf(state: State, value: Value | undefined, key: string |
             if (state.trackAlternatives && origin.path.length >= maximumAlternativePathLength) {
                 return undefined;
             }
-            return originValue(origin.root, [ ...origin.path, key ]);
+            return readOriginProperty(state, origin, key);
         })
         .with({ kind: 'object' }, function ({ allocation }) {
             return state.objects.get(allocation)?.get(key);
