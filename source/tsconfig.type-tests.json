@@ -3,7 +3,8 @@
     "compilerOptions": {
         "composite": false,
         "noEmit": true,
-        "skipLibCheck": true
+        "skipLibCheck": true,
+        "rootDir": ".."
     },
     "include": [
         "./**/*.type-test.ts"
