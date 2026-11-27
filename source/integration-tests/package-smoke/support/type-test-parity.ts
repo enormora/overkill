@@ -2,9 +2,10 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { inspect } from 'node:util';
 
+import type { RunRequest } from '../../../packages/run/run.entry-point.ts';
 import { defaultRunRequest } from '../../../test-support/run-command-factory.ts';
 
-export function serializedTypeTestRequest(overrides: Parameters<typeof defaultRunRequest>[0]): string {
+export function serializedTypeTestRequest(overrides: Readonly<Partial<RunRequest>>): string {
     return inspect(defaultRunRequest(overrides), { depth: null });
 }
 
