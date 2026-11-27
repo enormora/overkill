@@ -82,9 +82,10 @@ function atContextualArgument(
 }
 
 function appliesToFile(compiler: CompilerSyntax, site: NativeSite, diagnostic: Diagnostic): boolean {
+    const errorCategory: number = compiler.DiagnosticCategory.Error;
     return String(diagnostic.fileName) === site.path &&
-        diagnostic.category === Number(compiler.DiagnosticCategory.Error)
-        && (diagnostic.source === undefined || diagnostic.source.length === 0);
+        diagnostic.category === errorCategory &&
+        (diagnostic.source === undefined || diagnostic.source.length === 0);
 }
 
 function ownsCallDiagnostic(compiler: CompilerSyntax, site: NativeSite, diagnostic: Diagnostic): boolean {
@@ -93,8 +94,8 @@ function ownsCallDiagnostic(compiler: CompilerSyntax, site: NativeSite, diagnost
     }
     const { probe } = site.reference;
     return contains(probe, diagnostic) &&
-        ![ probe.expression, ...probe.arguments ].some(function nested(node) {
-            return insideNestedExpression(compiler, node, diagnostic);
+        [ probe.expression, ...probe.arguments ].every(function outsideNestedExpression(node) {
+            return !insideNestedExpression(compiler, node, diagnostic);
         }) &&
         (!argumentTypeCodes.has(diagnostic.code) || probe.arguments.some(function contextual(argument) {
             return atContextualArgument(compiler, argument, diagnostic);

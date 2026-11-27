@@ -59,7 +59,9 @@ const nodes=[
         ]);
         scope.assert.deepEqual(
             full.diagnostics.map(function observedFailure(message) {
-                return [ 'TS2345', 'Call accepted' ].find((marker) => message.includes(marker));
+                return [ 'TS2345', 'Call accepted' ].find(function matches(marker) {
+                    return message.includes(marker);
+                });
             }),
             [ 'TS2345', 'TS2345', 'Call accepted' ]
         );

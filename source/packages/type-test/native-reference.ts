@@ -104,7 +104,9 @@ function validateReferenceSyntax(form: ReferenceForm, syntax: ReferenceSyntax): 
 }
 function rejectionReason(value: string): CallRejection {
     const reasons: readonly CallRejection[] = [ 'argument-count', 'argument-type', 'no-matching-overload' ];
-    const match = reasons.find((reason) => reason === value);
+    const match = reasons.find(function matches(reason) {
+        return reason === value;
+    });
     if (match !== undefined) {
         return match;
     }

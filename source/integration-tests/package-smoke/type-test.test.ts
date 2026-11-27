@@ -294,7 +294,12 @@ export const testNode = suite('packaged native type tests', [
             await writeRunnerProject(directory, 'supervised-process');
             await assertCallContractPasses(scope.assert, directory);
             const { original, changed, title, diagnostic } = scope.parameters;
-            const regression = await runCallContract(directory, callContractSource.replace(original, changed));
+            const regression = await runCallContract(
+                directory,
+                callContractSource.replace(original, function replacement() {
+                    return changed;
+                })
+            );
             scope.assert.equal(regression.code, 1, { message: regression.stdout + regression.stderr });
             scope.assert.includes(regression.stdout + regression.stderr, title);
             scope.assert.includes(regression.stdout + regression.stderr, diagnostic);

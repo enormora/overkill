@@ -3,8 +3,6 @@ import { attributeCallDiagnostics, type AttributedCallDiagnostics } from './call
 import type { FrozenProject } from './frozen-project.ts';
 import type { NativeSite } from './original-assertions.ts';
 
-export type { AttributedCallDiagnostics } from './call-diagnostics.ts';
-
 function projectDiagnostic(diagnostic: Diagnostic): string {
     const position = diagnostic.startPosition;
     if (position === undefined) {
@@ -19,23 +17,6 @@ function requireCleanProject(diagnostics: readonly Diagnostic[]): void {
     if (diagnostics.length > 0) {
         throw new Error(diagnostics.map(projectDiagnostic).join('\n'), { cause: diagnostics });
     }
-}
-
-export async function projectDiagnostics(
-    project: FrozenProject,
-    signal: AbortSignal,
-    probes: readonly NativeSite[]
-): Promise<AttributedCallDiagnostics> {
-    if (probes.length > 0 && project.project.options.noCheck === true) {
-        throw new Error('Call assertions require semantic diagnostics. Disable noCheck in the type-test project.');
-    }
-    const program = await project.diagnosticProgram();
-    const diagnostics = await structuralDiagnostics(program, signal);
-    signal.throwIfAborted();
-    const semantic = await program.getSemanticDiagnostics();
-    const { attributed, remaining } = attributeCallDiagnostics(project.compiler.syntax, probes, semantic);
-    requireCleanProject([ ...diagnostics, ...remaining ]);
-    return attributed;
 }
 
 async function structuralDiagnostics(
@@ -55,4 +36,21 @@ async function structuralDiagnostics(
         diagnostics.push(...await read.call(program));
     }
     return diagnostics;
+}
+
+export async function projectDiagnostics(
+    project: FrozenProject,
+    signal: AbortSignal,
+    probes: readonly NativeSite[]
+): Promise<AttributedCallDiagnostics> {
+    if (probes.length > 0 && project.project.options.noCheck === true) {
+        throw new Error('Call assertions require semantic diagnostics. Disable noCheck in the type-test project.');
+    }
+    const program = await project.diagnosticProgram();
+    const diagnostics = await structuralDiagnostics(program, signal);
+    signal.throwIfAborted();
+    const semantic = await program.getSemanticDiagnostics();
+    const { attributed, remaining } = attributeCallDiagnostics(project.compiler.syntax, probes, semantic);
+    requireCleanProject([ ...diagnostics, ...remaining ]);
+    return attributed;
 }

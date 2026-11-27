@@ -10,7 +10,7 @@ import {
 } from './frozen-project.ts';
 import { collectOriginalAssertions, type OriginalAssertionPlan, type NativeSite } from './original-assertions.ts';
 import { nativeCheckResult, type SiteEvidence } from './native-results.ts';
-import { projectDiagnostics, type AttributedCallDiagnostics } from './project-diagnostics.ts';
+import { projectDiagnostics } from './project-diagnostics.ts';
 import { evaluateSite } from './original-evidence.ts';
 
 import { projectSourceAnalysis } from './project-source-analysis.ts';
@@ -19,7 +19,7 @@ import { validateCompilerProject, type RememberProjectValidation } from './proje
 async function checkOriginalAssertions(
     project: FrozenProject,
     assertionPlan: OriginalAssertionPlan,
-    diagnostics: AttributedCallDiagnostics,
+    diagnostics: Awaited<ReturnType<typeof projectDiagnostics>>,
     signal: AbortSignal
 ): Promise<readonly SiteEvidence[]> {
     const checked: SiteEvidence[] = [];
@@ -137,7 +137,7 @@ export async function collectProject(
                         evidence: checked.map(function (entry) {
                             return {
                                 ...assertionFacts(entry.site),
-                                ...(entry.site.reference.kind === 'call' ? { diagnostics: entry.diagnostics } : {}),
+                                ...entry.site.reference.kind === 'call' ? { diagnostics: entry.diagnostics } : {},
                                 actual: entry.actual,
                                 expected: entry.expected,
                                 compilerVersion: entry.compilerVersion,
