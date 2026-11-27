@@ -25,11 +25,10 @@ export const testNode = suite('fresh worker compile cache', [
             if (cache === null) {
                 throw new Error('Expected an active worker cache.');
             }
-            const collection = await cache.claim('collect');
+            scope.assert.null(await cache.claim('collect'));
             const first = await cache.claim('run');
             cache.seedFailed();
             const retry = await cache.claim('run');
-            scope.assert.null(collection);
             scope.assert.equal(retry?.directory, first?.directory);
             scope.assert.equal(retry?.mode, 'seed');
             return retry?.directory;

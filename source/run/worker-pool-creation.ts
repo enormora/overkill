@@ -1,3 +1,4 @@
+import type { ResourceLimits } from 'node:worker_threads';
 import { readProcessEnvironment } from './node-host-readers.ts';
 import { loadTinypoolConstructor, type TinypoolInstance } from './tinypool-node-compatibility.ts';
 import { workerPoolEntryPointUrl } from './worker-pool-bootstrap.entry-point.ts';
@@ -119,11 +120,16 @@ function withOwnedCompileCache(pool: TinypoolInstance): TinypoolInstance {
     return withCompileCache(pool, cache, cache);
 }
 
+function freshWorkerResourceLimits(cache: WorkerCompileCache | null): ResourceLimits {
+    if (cache?.seedTask === 'collect') {
+        return { maxYoungGenerationSizeMb: freshWorkerYoungGenerationSizeMb };
+    }
+    return {};
+}
+
 export function createTinypoolWorkerPool(options: TinypoolWorkerPoolOptions): TinypoolInstance {
     const useCompileCache = automaticCompileCache(options);
-    const shared = currentWorkerCompileCache();
-    const boundedYoungGeneration = useCompileCache && shared?.seedTask === 'collect';
-    const resourceLimits = boundedYoungGeneration ? { maxYoungGenerationSizeMb: freshWorkerYoungGenerationSizeMb } : {};
+    const shared = useCompileCache ? currentWorkerCompileCache() : null;
     const pool = observeWorkerPoolLifetime(
         new Tinypool({
             concurrentTasksPerWorker: 1,
@@ -132,7 +138,7 @@ export function createTinypoolWorkerPool(options: TinypoolWorkerPoolOptions): Ti
             maxThreads: options.workerCount,
             minThreads: isolateWorkers(options) ? 0 : options.workerCount,
             runtime: 'worker_threads',
-            resourceLimits,
+            resourceLimits: freshWorkerResourceLimits(shared),
             useAtomics: false
         })
     );
