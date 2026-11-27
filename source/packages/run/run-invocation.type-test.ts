@@ -1,4 +1,6 @@
-import { describe, expect, test } from 'tstyche';
+import type { IsEqual } from 'type-fest';
+import { suite, test } from '../../../tools/type-tests/authoring.entry-point.ts';
+import { sameType } from '../../../tools/type-tests/relations.entry-point.ts';
 import type {
     orchestrator,
     BenchmarkOrchestrator,
@@ -15,38 +17,75 @@ import type {
     RunnerResult
 } from './run.entry-point.ts';
 
-describe('public runner invocation', function () {
-    test('preserves timing-only methods and adds supervised cancellation', function () {
-        expect<typeof orchestrator>().type.toBe<RunOrchestrator>();
-        expect<typeof orchestrator.freezePolicy>().type.toBe<
-            (input: FreezePolicyInput) => Promise<FrozenMicrotestPolicy>
-        >();
-        expect<typeof orchestrator.resolve>().type.toBe<
-            (
-                command: ConfiguredRunCommand | FrozenRunCommand | RunCommandInput,
-                options?: RunInvocationTimingOptions
-            ) => Promise<ResolvedRun>
-        >();
-        expect<typeof orchestrator.run>().type.toBe<
-            (
-                command: ConfiguredRunCommand | FrozenRunCommand | RunCommandInput,
-                options?: RunInvocationOptions | RunInvocationTimingOptions
-            ) => Promise<RunnerResult>
-        >();
-        expect<RunInvocationOptions>().type.toBe<
-            RunInvocationTimingOptions & { readonly signal: AbortSignal | null; }
-        >();
-    });
-    test('preserves benchmark invocation contracts', function () {
-        expect<typeof orchestrator.bench>().type.toBe<BenchmarkOrchestrator>();
-        expect<typeof orchestrator.bench.list>().type.toBe<
-            (command: RunCommandInput, options: RunInvocationTimingOptions) => Promise<ResolvedRun>
-        >();
-        expect<typeof orchestrator.bench.run>().type.toBe<
-            (command: RunCommandInput, options: RunInvocationTimingOptions) => Promise<RunnerResult>
-        >();
-        expect<typeof orchestrator.bench.runWithReporterDelivery>().type.toBe<
-            (command: RunCommandInput, options: RunInvocationTimingOptions) => Promise<RunReporterDeliveryResult>
-        >();
-    });
-});
+export const testNode = suite('public runner invocation', [
+    test('preserves timing-only methods and adds supervised cancellation', function (typeScope) {
+        typeScope.assert(sameType<IsEqual<typeof orchestrator, RunOrchestrator>, true>());
+        typeScope.assert(
+            sameType<
+                IsEqual<typeof orchestrator.freezePolicy, (input: FreezePolicyInput) => Promise<FrozenMicrotestPolicy>>,
+                true
+            >()
+        );
+        typeScope.assert(sameType<
+            IsEqual<
+                typeof orchestrator.resolve,
+                (
+                    command: ConfiguredRunCommand | FrozenRunCommand | RunCommandInput,
+                    options?: RunInvocationTimingOptions
+                ) => Promise<ResolvedRun>
+            >,
+            true
+        >());
+        typeScope.assert(sameType<
+            IsEqual<
+                typeof orchestrator.run,
+                (
+                    command: ConfiguredRunCommand | FrozenRunCommand | RunCommandInput,
+                    options?: RunInvocationOptions | RunInvocationTimingOptions
+                ) => Promise<RunnerResult>
+            >,
+            true
+        >());
+        typeScope.assert(
+            sameType<
+                IsEqual<RunInvocationOptions, RunInvocationTimingOptions & { readonly signal: AbortSignal | null; }>,
+                true
+            >()
+        );
+        return typeScope.assert.collect();
+    }),
+    test('preserves benchmark invocation contracts', function (typeScope) {
+        typeScope.assert(sameType<IsEqual<typeof orchestrator.bench, BenchmarkOrchestrator>, true>());
+        typeScope.assert(
+            sameType<
+                IsEqual<
+                    typeof orchestrator.bench.list,
+                    (command: RunCommandInput, options: RunInvocationTimingOptions) => Promise<ResolvedRun>
+                >,
+                true
+            >()
+        );
+        typeScope.assert(
+            sameType<
+                IsEqual<
+                    typeof orchestrator.bench.run,
+                    (command: RunCommandInput, options: RunInvocationTimingOptions) => Promise<RunnerResult>
+                >,
+                true
+            >()
+        );
+        typeScope.assert(
+            sameType<
+                IsEqual<
+                    typeof orchestrator.bench.runWithReporterDelivery,
+                    (
+                        command: RunCommandInput,
+                        options: RunInvocationTimingOptions
+                    ) => Promise<RunReporterDeliveryResult>
+                >,
+                true
+            >()
+        );
+        return typeScope.assert.collect();
+    })
+]);

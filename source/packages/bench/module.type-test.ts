@@ -1,5 +1,8 @@
-import { expect, test } from 'tstyche';
+import type { IsEqual } from 'type-fest';
+import { suite, test } from '../../../tools/type-tests/authoring.entry-point.ts';
+import { assignableFrom, sameType } from '../../../tools/type-tests/relations.entry-point.ts';
 import * as standard from '../test/bench.entry-point.ts';
+import { isEqualTo } from '../../test-support/type-relations.ts';
 import * as bench from './bench.entry-point.ts';
 
 const calibration = bench.cpuCalibration();
@@ -16,16 +19,20 @@ const strategies = [
     })
 ] as const;
 
-for (const measurement of strategies) {
-    test('preserves module sample inference through composed standard exports', function () {
+export const testNode = suite('module', [
+    test('preserves module sample inference through composed standard exports', function (typeScope) {
+        const measurement = strategies[0] as (typeof strategies)[number];
         standard.benchmark('composed import', {
             kind: 'startup',
             workloads: [ standard.workload('one', {}) ],
             measurement,
             async measure({ sample }) {
-                expect(sample).type.toBe<bench.BenchmarkSample<bench.ModuleSample>>();
-                expect(sample).type.not.toHaveProperty('measure');
-                expect(sample).type.not.toHaveProperty('process');
+                typeScope.assert(
+                    sameType.withActual<true>(),
+                    isEqualTo<bench.BenchmarkSample<bench.ModuleSample>>()(sample)
+                );
+                typeScope.assert(assignableFrom.not<keyof typeof sample, 'measure'>());
+                typeScope.assert(assignableFrom.not<keyof typeof sample, 'process'>());
                 const imported = await sample.importModule({
                     url: new URL('./entry.js', import.meta.url),
                     cwd: '.',
@@ -37,41 +44,53 @@ for (const measurement of strategies) {
             diagnosticMetrics: [],
             budgets: { one: { durationMicroseconds: { maximum: 1 } } }
         });
-    });
-}
-
-test('preserves module samples and authored timeline return types through wrappers', function () {
-    bench.benchmark('cold import', {
-        kind: 'startup',
-        workloads: [ bench.workload('one', {}) ],
-        measurement: bench.rawMeasurement(
-            bench.timelineMeasurement(bench.moduleMeasurement(), { maximumEvents: 4096 })
-        ),
-        async measure({ sample }) {
-            expect(sample).type.toBe<bench.BenchmarkSample<bench.ModuleSample>>();
-            expect(sample).type.not.toHaveProperty('measure');
-            expect(sample).type.not.toHaveProperty('process');
-            const synchronous = sample.timeline.span('synchronous', function () {
-                return 'value';
-            });
-            expect(synchronous).type.toBe<string>();
-            const pending = sample.timeline.span('async', async function () {
-                return await Promise.resolve(1);
-            });
-            expect(pending).type.toBe<Promise<number>>();
-            const imported = await sample.importModule({
-                url: new URL('./entry.js', import.meta.url),
-                cwd: '.',
-                env: null,
-                nodeArguments: []
-            });
-            expect(imported).type.toBe<bench.MeasuredModuleImport>();
-            return { durationMicroseconds: imported.metrics.durationMicroseconds };
-        },
-        diagnosticMetrics: [],
-        budgets: { one: { durationMicroseconds: { maximum: 1000 } } }
-    });
-    expect(standard.moduleMeasurement).type.toBe<typeof bench.moduleMeasurement>();
-    expect(standard.timelineMeasurement).type.toBe<typeof bench.timelineMeasurement>();
-    expect(standard.readBenchmarkTimeline).type.toBe<typeof bench.readBenchmarkTimeline>();
-});
+        return typeScope.assert.collect();
+    }),
+    test('preserves module samples and authored timeline return types through wrappers', function (typeScope) {
+        bench.benchmark('cold import', {
+            kind: 'startup',
+            workloads: [ bench.workload('one', {}) ],
+            measurement: bench.rawMeasurement(
+                bench.timelineMeasurement(bench.moduleMeasurement(), { maximumEvents: 4096 })
+            ),
+            async measure({ sample }) {
+                typeScope.assert(
+                    sameType.withActual<true>(),
+                    isEqualTo<bench.BenchmarkSample<bench.ModuleSample>>()(sample)
+                );
+                typeScope.assert(assignableFrom.not<keyof typeof sample, 'measure'>());
+                typeScope.assert(assignableFrom.not<keyof typeof sample, 'process'>());
+                const synchronous = sample.timeline.span('synchronous', function () {
+                    return 'value';
+                });
+                typeScope.assert(sameType.withActual<string>(), synchronous);
+                const pending = sample.timeline.span('async', async function () {
+                    return await Promise.resolve(1);
+                });
+                typeScope.assert(sameType.withActual<true>(), isEqualTo<Promise<number>>()(pending));
+                const imported = await sample.importModule({
+                    url: new URL('./entry.js', import.meta.url),
+                    cwd: '.',
+                    env: null,
+                    nodeArguments: []
+                });
+                typeScope.assert(sameType.withActual<true>(), isEqualTo<bench.MeasuredModuleImport>()(imported));
+                return { durationMicroseconds: imported.metrics.durationMicroseconds };
+            },
+            diagnosticMetrics: [],
+            budgets: { one: { durationMicroseconds: { maximum: 1000 } } }
+        });
+        typeScope.assert(
+            sameType.withActual<true>(),
+            isEqualTo<typeof bench.moduleMeasurement>()(standard.moduleMeasurement)
+        );
+        typeScope.assert(
+            sameType.withActual<true>(),
+            isEqualTo<typeof bench.timelineMeasurement>()(standard.timelineMeasurement)
+        );
+        typeScope.assert(
+            sameType<IsEqual<typeof standard.readBenchmarkTimeline, typeof bench.readBenchmarkTimeline>, true>()
+        );
+        return typeScope.assert.collect();
+    })
+]);

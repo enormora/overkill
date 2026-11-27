@@ -1,4 +1,7 @@
-import { describe, expect, test } from 'tstyche';
+import type { IsEqual } from 'type-fest';
+import { suite, test } from '../../../tools/type-tests/authoring.entry-point.ts';
+import { rejectsCall, sameType } from '../../../tools/type-tests/relations.entry-point.ts';
+import { type IsAssignable, isEqualTo } from '../../test-support/type-relations.ts';
 import {
     type DefinedHarness,
     type ExactHarnessOverrides,
@@ -85,63 +88,70 @@ function createInvalidHarness(overrides: TypeHarnessWithRequiredOverrides): stri
     return overrides.label;
 }
 
-function assertObjectHarnessTypes(
-    objectHarness: DefinedHarness<HarnessOverrides<TypeHarnessParts>, TypeHarnessCreated>
-): void {
-    expect(objectHarness.create()).type.toBe<TypeHarnessCreated>();
-    expect(objectHarness.create({})).type.toBe<TypeHarnessCreated>();
-    expect(objectHarness.create({
-        loadValue(id) {
-            return id;
-        }
-    }))
-        .type
-        .toBe<TypeHarnessCreated>();
-}
-
-function assertObjectHarnessRejections(
-    objectHarness: DefinedHarness<HarnessOverrides<TypeHarnessParts>, TypeHarnessCreated>
-): void {
-    const badVariableOverride = {
-        loadValue(id: string) {
-            return id;
-        },
-        missing: true
-    };
-
-    expect(objectHarness.create).type.not.toBeCallableWith({ missing: true });
-    expect(objectHarness.create).type.not.toBeCallableWith(badVariableOverride);
-}
-
-describe('@overkill-dev/test defineHarness()', function () {
-    test('defines object-form harnesses with exact sparse overrides', function () {
-        const objectHarness = defineHarness(partFactories, createSubject);
-
-        expect<typeof objectHarness>().type.toBeAssignableTo<
-            DefinedHarness<HarnessOverrides<TypeHarnessParts>, TypeHarnessCreated>
-        >();
-        assertObjectHarnessTypes(objectHarness);
-        assertObjectHarnessRejections(objectHarness);
-        expect<typeof partFactories>().type.toBeAssignableTo<HarnessPartFactories>();
-        expect<HarnessPartFactory<string>>().type.toBe<() => string>();
-        expect<HarnessParts<typeof partFactories>>().type.toBe<TypeHarnessParts>();
-        expect<HarnessOverrides<TypeHarnessParts>>().type.toBe<TypeObjectHarnessOverrides>();
-        expect<{ readonly missing: true; }>()
-            .type
-            .not
-            .toBeAssignableTo<ExactHarnessOverrides<{ readonly missing: true; }, TypeObjectHarnessOverrides>>();
-    });
-
-    test('defines function-form harnesses with sparse typed overrides', function () {
+export const testNode = suite('@overkill-dev/test defineHarness()', [
+    suite('defines object-form harnesses with exact sparse overrides', [
+        test('types the harness and its creation forms', function (typeScope) {
+            const objectHarness = defineHarness(partFactories, createSubject);
+            typeScope.assert(
+                sameType<
+                    IsAssignable<
+                        typeof objectHarness,
+                        DefinedHarness<HarnessOverrides<TypeHarnessParts>, TypeHarnessCreated>
+                    >,
+                    true
+                >()
+            );
+            typeScope.assert(sameType.withActual<true>(), isEqualTo<TypeHarnessCreated>()(objectHarness.create()));
+            typeScope.assert(sameType.withActual<true>(), isEqualTo<TypeHarnessCreated>()(objectHarness.create({})));
+            typeScope.assert(
+                sameType.withActual<true>(),
+                isEqualTo<TypeHarnessCreated>()(objectHarness.create({
+                    loadValue(id) {
+                        return id;
+                    }
+                }))
+            );
+            const badVariableOverride = {
+                loadValue(id: string) {
+                    return id;
+                },
+                missing: true
+            };
+            typeScope.assert(rejectsCall('argument-type'), () => objectHarness.create({ missing: true }));
+            typeScope.assert(rejectsCall('argument-type'), () => objectHarness.create(badVariableOverride));
+            return typeScope.assert.collect();
+        }),
+        test('rejects unknown overrides', function (typeScope) {
+            typeScope.assert(sameType<IsAssignable<typeof partFactories, HarnessPartFactories>, true>());
+            typeScope.assert(sameType<IsEqual<HarnessPartFactory<string>, () => string>, true>());
+            typeScope.assert(sameType<IsEqual<HarnessParts<typeof partFactories>, TypeHarnessParts>, true>());
+            typeScope.assert(sameType<IsEqual<HarnessOverrides<TypeHarnessParts>, TypeObjectHarnessOverrides>, true>());
+            typeScope.assert(
+                sameType<
+                    IsAssignable<
+                        { readonly missing: true; },
+                        ExactHarnessOverrides<{ readonly missing: true; }, TypeObjectHarnessOverrides>
+                    >,
+                    false
+                >()
+            );
+            return typeScope.assert.collect();
+        })
+    ]),
+    test('defines function-form harnesses with sparse typed overrides', function (typeScope) {
         const syncHarness = defineHarness(createLabel);
         const asyncHarness = defineHarness(createAsyncLabel);
         const badVariableOverride = { label: 'bad', missing: true };
 
-        expect(syncHarness.create()).type.toBe<TypeLabelHarness>();
-        expect(syncHarness.create({ label: 'custom' })).type.toBe<TypeLabelHarness>();
-        expect(syncHarness.create).type.not.toBeCallableWith({ missing: true });
-        expect(syncHarness.create).type.not.toBeCallableWith(badVariableOverride);
-        expect(asyncHarness.create()).type.toBe<Promise<TypeLabelHarness>>();
-        expect(defineHarness).type.not.toBeCallableWith(createInvalidHarness);
-    });
-});
+        typeScope.assert(sameType.withActual<true>(), isEqualTo<TypeLabelHarness>()(syncHarness.create()));
+        typeScope.assert(
+            sameType.withActual<true>(),
+            isEqualTo<TypeLabelHarness>()(syncHarness.create({ label: 'custom' }))
+        );
+        typeScope.assert(rejectsCall('argument-type'), () => syncHarness.create({ missing: true }));
+        typeScope.assert(rejectsCall('argument-type'), () => syncHarness.create(badVariableOverride));
+        typeScope.assert(sameType.withActual<true>(), isEqualTo<Promise<TypeLabelHarness>>()(asyncHarness.create()));
+        typeScope.assert(rejectsCall('argument-count'), () => defineHarness(createInvalidHarness));
+        return typeScope.assert.collect();
+    })
+]);

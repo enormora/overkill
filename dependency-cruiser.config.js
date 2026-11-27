@@ -1,7 +1,7 @@
 const configFiles = [
     '^dependency-cruiser\\.config\\.js$',
     '^eslint\\.config\\.js$',
-    '^overkill\\.config\\.ts$',
+    '^overkill(?:\\.types)?\\.config\\.ts$',
     '^packtory\\.config\\.js$'
 ];
 
@@ -11,7 +11,11 @@ const entryPointFiles = [
     '^source/reporters/',
     '^source/run/supervised-child\\.entry-point\\.ts$'
 ];
-const testSupportFiles = [ '^source/test-support/', '^source/integration-tests/[^/]+/support/' ];
+const testSupportFiles = [
+    '^source/test-support/',
+    '^source/integration-tests/[^/]+/support/',
+    '^tools/type-tests/[^/]+\\.entry-point\\.ts$'
+];
 const testFiles = [ '\\.(test|type-test)\\.ts$' ];
 const testFixtureFiles = [ '^source/integration-tests/runtime/fixtures/' ];
 const excludedFiles = [ '^(\\./)?target/', ...testFixtureFiles ];
@@ -110,7 +114,7 @@ export default {
                 path: '^source/(assertion-protocol|engine|config|run|packages/(engine|run|test))/',
                 pathNot: testFiles
             },
-            to: { path: '(^|node_modules/)(typescript|tstyche)(/|$)' }
+            to: { path: '(^|node_modules/)typescript(/|$)' }
         },
         {
             name: 'config-does-not-import-orchestration',

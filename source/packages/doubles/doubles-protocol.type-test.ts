@@ -1,4 +1,6 @@
-import { describe, expect, test } from 'tstyche';
+import { suite, test } from '../../../tools/type-tests/authoring.entry-point.ts';
+import { sameType } from '../../../tools/type-tests/relations.entry-point.ts';
+import { isEqualTo, isAssignableTo } from '../../test-support/type-relations.ts';
 import {
     testAsyncDisposable,
     testAsyncIterable,
@@ -15,51 +17,69 @@ import {
     type TestIterator
 } from './doubles.entry-point.ts';
 
-describe('@overkill-dev/doubles protocol doubles', function () {
-    test('exports sync iterator and iterable doubles', function () {
+export const testNode = suite('@overkill-dev/doubles protocol doubles', [
+    test('exports sync iterator and iterable doubles', function (typeScope) {
         const iterator = testIterator.yields([ 'created' ], 1);
         const iterable = testIterable.yields([ 'created' ], 1);
 
-        expect(iterator).type.toBe<TestIterator<string, number>>();
-        expect(iterator.next).type.toBeAssignableTo<
-            TestDouble<
-                (...arguments_: readonly unknown[]) => IteratorResult<
-                    string,
-                    number
+        typeScope.assert(sameType.withActual<true>(), isEqualTo<TestIterator<string, number>>()(iterator));
+        typeScope.assert(
+            sameType.withActual<true>(),
+            isAssignableTo<
+                TestDouble<
+                    (...arguments_: readonly unknown[]) => IteratorResult<
+                        string,
+                        number
+                    >
                 >
-            >
-        >();
-        expect(iterator[Symbol.iterator]()).type.toBe<IteratorObject<string, number>>();
-        expect(iterable).type.toBe<TestIterable<string, number>>();
-        expect(iterable[Symbol.iterator]).type.toBeAssignableTo<
-            TestDouble<() => TestIterator<string, number>>
-        >();
-    });
-
-    test('exports async iterator and iterable doubles', function () {
+            >()(iterator.next)
+        );
+        typeScope.assert(
+            sameType.withActual<true>(),
+            isEqualTo<IteratorObject<string, number>>()(iterator[Symbol.iterator]())
+        );
+        typeScope.assert(sameType.withActual<true>(), isEqualTo<TestIterable<string, number>>()(iterable));
+        typeScope.assert(
+            sameType.withActual<true>(),
+            isAssignableTo<TestDouble<() => TestIterator<string, number>>>()(iterable[Symbol.iterator])
+        );
+        return typeScope.assert.collect();
+    }),
+    test('exports async iterator and iterable doubles', function (typeScope) {
         const iterator = testAsyncIterator.yields([ 'created' ], 1);
         const iterable = testAsyncIterable.yields([ 'created' ], 1);
 
-        expect(iterator).type.toBe<TestAsyncIterator<string, number>>();
-        expect(iterator.next).type.toBeAssignableTo<
-            TestDouble<(...arguments_: readonly unknown[]) => Promise<IteratorResult<string, number>>>
-        >();
-        expect(iterator[Symbol.asyncIterator]()).type.toBeAssignableTo<AsyncIterator<string, number, unknown>>();
-        expect(iterable).type.toBe<TestAsyncIterable<string, number>>();
-        expect(iterable[Symbol.asyncIterator]).type.toBeAssignableTo<
-            TestDouble<() => TestAsyncIterator<string, number>>
-        >();
-    });
-
-    test('exports disposable doubles', function () {
+        typeScope.assert(sameType.withActual<true>(), isEqualTo<TestAsyncIterator<string, number>>()(iterator));
+        typeScope.assert(
+            sameType.withActual<true>(),
+            isAssignableTo<
+                TestDouble<(...arguments_: readonly unknown[]) => Promise<IteratorResult<string, number>>>
+            >()(iterator.next)
+        );
+        typeScope.assert(
+            sameType.withActual<true>(),
+            isAssignableTo<AsyncIterator<string, number, unknown>>()(iterator[Symbol.asyncIterator]())
+        );
+        typeScope.assert(sameType.withActual<true>(), isEqualTo<TestAsyncIterable<string, number>>()(iterable));
+        typeScope.assert(
+            sameType.withActual<true>(),
+            isAssignableTo<TestDouble<() => TestAsyncIterator<string, number>>>()(iterable[Symbol.asyncIterator])
+        );
+        return typeScope.assert.collect();
+    }),
+    test('exports disposable doubles', function (typeScope) {
         const disposable = testDisposable();
         const asyncDisposable = testAsyncDisposable();
 
-        expect(disposable).type.toBe<TestDisposable>();
-        expect(disposable).type.toBeAssignableTo<Disposable>();
-        expect(disposable.dispose).type.toBeAssignableTo<TestDouble<() => void>>();
-        expect(asyncDisposable).type.toBe<TestAsyncDisposable>();
-        expect(asyncDisposable).type.toBeAssignableTo<AsyncDisposable>();
-        expect(asyncDisposable.asyncDispose).type.toBeAssignableTo<TestDouble<() => Promise<void>>>();
-    });
-});
+        typeScope.assert(sameType.withActual<true>(), isEqualTo<TestDisposable>()(disposable));
+        typeScope.assert(sameType.withActual<true>(), isAssignableTo<Disposable>()(disposable));
+        typeScope.assert(sameType.withActual<true>(), isAssignableTo<TestDouble<() => void>>()(disposable.dispose));
+        typeScope.assert(sameType.withActual<true>(), isEqualTo<TestAsyncDisposable>()(asyncDisposable));
+        typeScope.assert(sameType.withActual<true>(), isAssignableTo<AsyncDisposable>()(asyncDisposable));
+        typeScope.assert(
+            sameType.withActual<true>(),
+            isAssignableTo<TestDouble<() => Promise<void>>>()(asyncDisposable.asyncDispose)
+        );
+        return typeScope.assert.collect();
+    })
+]);

@@ -1,20 +1,27 @@
-import { describe, expect, test } from 'tstyche';
+import type { IsEqual } from 'type-fest';
+import { suite, test } from '../../../tools/type-tests/authoring.entry-point.ts';
+import { sameType } from '../../../tools/type-tests/relations.entry-point.ts';
 import type { createHistory, History, HistoryOptions, HistoryClearRequest } from './run.entry-point.ts';
 import type { Config } from './config.entry-point.ts';
 
-describe('@overkill-dev/run history', function () {
-    test('accepts project history retention settings', function () {
-        expect<Config>().type.toBeAssignableFrom<{
-            readonly history: {
-                readonly detailedRunLimit: number;
-                readonly successfulArtifactRunLimit: number;
-                readonly failingArtifactRetentionDays: number;
-            };
-        }>();
-    });
-    test('exports a typed service requiring explicit confirmation for clear', function () {
-        expect<typeof createHistory>().type.toBe<(options: HistoryOptions) => History>();
-        expect<HistoryClearRequest>().type.toBe<{ readonly confirmed: true; }>();
-        expect<Parameters<History['prune']>[0]>().type.toBe<{ readonly dryRun: boolean; }>();
-    });
-});
+export const testNode = suite('@overkill-dev/run history', [
+    test('accepts project history retention settings', function (typeScope) {
+        typeScope.assert(sameType<
+            [{
+                readonly history: {
+                    readonly detailedRunLimit: number;
+                    readonly successfulArtifactRunLimit: number;
+                    readonly failingArtifactRetentionDays: number;
+                };
+            }] extends [Config] ? true : false,
+            true
+        >());
+        return typeScope.assert.collect();
+    }),
+    test('exports a typed service requiring explicit confirmation for clear', function (typeScope) {
+        typeScope.assert(sameType<IsEqual<typeof createHistory, (options: HistoryOptions) => History>, true>());
+        typeScope.assert(sameType<IsEqual<HistoryClearRequest, { readonly confirmed: true; }>, true>());
+        typeScope.assert(sameType<IsEqual<Parameters<History['prune']>[0], { readonly dryRun: boolean; }>, true>());
+        return typeScope.assert.collect();
+    })
+]);

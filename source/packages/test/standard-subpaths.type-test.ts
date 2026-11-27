@@ -1,32 +1,20 @@
-import { describe, expect, test } from 'tstyche';
+import type { IsEqual } from 'type-fest';
+import { suite, test } from '../../../tools/type-tests/authoring.entry-point.ts';
+import { acceptsCall, sameType } from '../../../tools/type-tests/relations.entry-point.ts';
 import type {
-    AssertAssertionFacade,
     DefinedOutputRenderer,
     DefinedReporter,
     FinalResultReporter,
-    RealTimeReporter,
-    RequireAssertionFacade,
-    Table,
-    TestBody,
-    TestCase,
-    TestDebugScope,
-    TestScope,
-    TestRandom
+    RealTimeReporter
 } from '../engine/engine.entry-point.ts';
 import type { PerformanceBaselineAdapter } from '../baselines/baselines.entry-point.ts';
+import type { IsAssignable } from '../../test-support/type-relations.ts';
 import type {
     CompositeAssertionDefinition,
     CompositeCheckBuilder,
     NarrowingCompositeAssertionDefinition
 } from './assert.entry-point.ts';
 import type { PerformanceBaselineAdapter as StandardBaselineAdapter } from './baselines.entry-point.ts';
-import {
-    throwingTest,
-    type ThrowingTestAuthor,
-    type ThrowingTestBody,
-    type ThrowingTestDefinition,
-    type ThrowingTestScope
-} from './compatibility.entry-point.ts';
 import type {
     defineConfig,
     ProjectIntegrationProfileConfig,
@@ -50,39 +38,6 @@ import type {
     LineReporterOptions,
     LineTreeReporterOptions
 } from './reporters.entry-point.ts';
-import {
-    composeRuntimeContext,
-    composeRuntimes,
-    createTemporaryDirectoryResource,
-    defineResource,
-    defineRuntime,
-    type ResourceLifecycleError,
-    startRuntime,
-    withResource,
-    withResources,
-    withRuntime,
-    type ResourceContext,
-    type ResourceHandle,
-    type ResourceScopeContext,
-    type ResourceTestScope,
-    type RuntimeAttachments,
-    type ResourceWrappedTestBody,
-    type RuntimeGraph,
-    type RuntimeSession,
-    type RuntimeContext,
-    type RuntimeScopeContext,
-    type RuntimeTestScope,
-    type RuntimeWrappedTestBody,
-    type TemporaryDirectoryHandle,
-    type TranscriptView
-} from './resources.entry-point.ts';
-import {
-    createTestFacade,
-    table as rootTable,
-    test as rootTest,
-    type ParameterizedTestScope,
-    type TableTestBody
-} from './test.entry-point.ts';
 
 type LineReporterFactory = (options?: LineReporterOptions) => DefinedReporter<RealTimeReporter>;
 type LineProgressReporterFactory = (
@@ -108,392 +63,89 @@ type ProjectProfileFileSets = {
         }>
     >;
 };
-type Database = {
-    readonly url: string;
-};
-type ProjectedDatabase = {
-    readonly connectionString: string;
-};
-type DatabaseContext = {
-    readonly database: Database;
-};
-type ExpectedComposedRuntimeScope = TestScope & {
-    readonly runtimes: {
-        readonly api: DatabaseContext;
-    };
-};
-type TableRow = {
-    readonly value: number;
-};
 
-const database = defineResource({
-    name: 'database',
-    scope: 'per-case',
-    requirements: [],
-    acquire(): Database {
-        return { url: 'postgres://localhost' };
-    },
-    dispose: null
-});
-const runtime = defineRuntime({
-    name: 'api',
-    dimensions: {},
-    resources: { database },
-    requirements: []
-});
-const secondaryRuntime = defineRuntime({
-    name: 'secondary',
-    dimensions: {},
-    resources: { database },
-    requirements: []
-});
-const composedRuntime = composeRuntimes(runtime, secondaryRuntime);
-const temporaryDirectory = createTemporaryDirectoryResource('scratch');
-const projectedDatabase = defineResource({
-    name: 'projected-database',
-    scope: 'per-file',
-    requirements: [],
-    acquire(): Database {
-        return { url: 'postgres://localhost' };
-    },
-    deserializeHandle(payload: string): ProjectedDatabase {
-        return { connectionString: payload };
-    },
-    dispose: null,
-    serializeHandle(handle): string {
-        return handle.url;
-    }
-});
-const typeTestController = new AbortController();
-declare const testScope: TestScope;
+declare const defineConfigUnderTest: typeof defineConfig;
 
-describe('@overkill-dev/test standard subpaths', function () {
-    test('exposes config authoring types', function () {
-        expect<typeof defineConfig>().type.toBeCallableWith({ profiles: { unit: { testFamily: 'microtest' } } });
-        expect<ProjectProfileConfig>().type.toBeAssignableFrom<ProjectIntegrationProfileConfig>();
-        expect<ProjectProfileConfig>().type.toBeAssignableFrom<ProjectMicrotestProfileConfig>();
-        expect<ProjectProfileConfig>().type.toBeAssignableFrom<ProjectBenchmarkProfileConfig>();
-        expect<Extract<ProjectProfileConfig, { readonly testFamily: 'property'; }>>().type.toBe<
-            ProjectPropertyProfileConfig
-        >();
-        expect<ProjectProfileFiles>().type.toBeAssignableFrom<ProjectProfileFilePatterns>();
-        expect<ProjectProfileFiles>().type.toBeAssignableFrom<ProjectProfileFileSets>();
-        expect<keyof ProjectProcessBudgets>().type.toBe<
-            'activeResourceCount' | 'javaScriptEngineHeapBytes' | 'residentSetBytes' | 'residentSetGrowthBytesPerSecond'
-        >();
-    });
-
-    test('exposes reporter factories through the standard distribution', function () {
-        expect<typeof createLineReporter>().type.toBe<LineReporterFactory>();
-        expect<typeof createLineProgressReporter>().type.toBe<LineProgressReporterFactory>();
-        expect<typeof createLineTreeReporter>().type.toBe<LineTreeReporterFactory>();
-        expect<typeof createBriefFinalResultReporter>().type.toBe<
-            () => DefinedReporter<FinalResultReporter<BriefReporterSinks>>
-        >();
-        expect<typeof createBriefReporter>().type.toBe<
-            () => DefinedReporter<RealTimeReporter<BriefReporterSinks>>
-        >();
-        expect<typeof createDotReporter>().type.toBe<() => DefinedReporter<RealTimeReporter>>();
-        expect<typeof createGithubActionsOutputRenderer>().type.toBe<() => DefinedOutputRenderer>();
-    });
-
-    test('exposes assertion extension types from the assert package', function () {
-        expect<CompositeBooleanDefinition['name']>().type.toBe<string>();
-        expect<NarrowingStringDefinition['narrows']>().type.toBe<(actual: unknown) => actual is string>();
-        expect<CompositeCheckBuilder<'assert'>['true']>().type.toBe<
-            (actual: unknown) => ReturnType<CompositeCheckBuilder<'assert'>['true']>
-        >();
-    });
-
-    test('exposes throwing test authoring through the compatibility subpath', function () {
-        expect<typeof throwingTest>().type.toBe<ThrowingTestAuthor>();
-        expect<ThrowingTestBody>().type.toBe<(scope: ThrowingTestScope) => Promise<void> | void>();
-        expect<ThrowingTestScope>().type.toBe<{
-            readonly debug: TestDebugScope;
-            readonly seed: bigint;
-            readonly random: TestRandom;
-            readonly assert: AssertAssertionFacade;
-            readonly require: RequireAssertionFacade;
-            readonly signal: AbortSignal;
-        }>();
-        expect<ThrowingTestScope>().type.not.toHaveProperty('plan');
-        expect<ThrowingTestScope['assert']>().type.not.toHaveProperty('collect');
-        expect(throwingTest('passes', function body() {
-            return undefined;
-        }))
-            .type
-            .toBe<TestCase>();
-        expect(throwingTest({
-            body() {
-                return undefined;
-            },
-            controls: { timeoutMilliseconds: 50 },
-            title: 'passes'
-        }))
-            .type
-            .toBe<TestCase>();
-        expect<ThrowingTestDefinition>().type.toBeAssignableFrom<{
-            readonly body: ThrowingTestBody;
-            readonly title: string;
-        }>();
-        expect(throwingTest).type.toBeCallableWith({
-            body() {
-                return undefined;
-            },
-            controls: { capture: 'live' },
-            title: 'captures'
-        });
-    });
-
-    describe('@overkill-dev/test/resources standard subpath', function () {
-        test('exposes resource descriptor types through the standard distribution', function () {
-            expect<ResourceHandle<typeof database>>().type.toBe<Database>();
-            expect<ResourceHandle<typeof temporaryDirectory>>().type.toBe<TemporaryDirectoryHandle>();
-            expect<ResourceContext<typeof runtime.resources>>().type.toBe<DatabaseContext>();
-            expect<ResourceScopeContext<{ readonly dir: typeof temporaryDirectory; }>>().type.toBe<{
-                readonly dir: TemporaryDirectoryHandle;
-            }>();
-            expect(temporaryDirectory.name).type.toBe<'scratch'>();
-            expect<TemporaryDirectoryHandle>().type.toBe<{
-                readonly path: string;
-                readonly transcript: TranscriptView<never>;
-            }>();
-        });
-
-        test('exposes runtime descriptor types through the standard distribution', function () {
-            expect<RuntimeContext<typeof runtime>>().type.toBe<{
-                readonly database: Database;
-            }>();
-            expect<RuntimeScopeContext<typeof runtime>>().type.toBe<{
-                readonly api: {
-                    readonly database: Database;
-                };
-            }>();
-            expect(runtime.name).type.toBe<'api'>();
-        });
-
-        test('exposes projected resource descriptor types through the standard distribution', function () {
-            expect<ResourceHandle<typeof projectedDatabase>>().type.toBe<ProjectedDatabase>();
-            expect(projectedDatabase.name).type.toBe<'projected-database'>();
-        });
-
-        test('exposes resource lifecycle types through the standard distribution', function () {
-            expect(startRuntime({ runtime, signal: typeTestController.signal })).type.toBe<
-                Promise<RuntimeSession<typeof runtime>>
-            >();
-            expect<ResourceLifecycleError>().type.toBeAssignableTo<Error>();
-            expect(composeRuntimeContext(testScope, runtime, {
-                database: { url: 'postgres://localhost' }
-            }))
-                .type
-                .toBe<ExpectedComposedRuntimeScope>();
-            expect(
-                composeRuntimeContext(testScope, composedRuntime, {
-                    api: { database: { url: 'postgres://localhost' } },
-                    secondary: { database: { url: 'postgres://localhost' } }
-                })
-                    .runtimes
-                    .secondary
-            )
-                .type
-                .toBe<DatabaseContext>();
-        });
-    });
-
-    describe('@overkill-dev/test/resources wrapper standard subpath', function () {
-        test('exposes runtime test context wrappers through the resources subpath', function () {
-            const runtimeBody = withRuntime(runtime, function runWithDatabase(scope) {
-                expect(scope).type.toBe<RuntimeTestScope<typeof runtime>>();
-                expect(scope.runtimes.api.database).type.toBe<Database>();
-                expect(scope.attachments).type.toBe<RuntimeAttachments>();
-
-                return scope.assert.collect();
-            });
-
-            expect(runtimeBody).type.toBe<RuntimeWrappedTestBody<typeof runtime>>();
-            expect(runtimeBody).type.toBeAssignableTo<TestBody>();
-            expect<RuntimeGraph>().type.toBeAssignableFrom<typeof runtime>();
-            expect<typeof withRuntime>().type.not.toBeCallableWith(runtime, {
-                database: { url: 'postgres://localhost' }
-            }, function runInvalidRuntimeScope(scope: TestScope) {
-                return scope.assert.collect();
-            });
-        });
-
-        test('types table runtime wrappers through the resources subpath', function () {
-            const tableRuntimeBody = withRuntime<typeof runtime, ParameterizedTestScope<TableRow>>(
-                runtime,
-                function runTableWithDatabase(scope) {
-                    expect(scope).type.toBe<RuntimeTestScope<typeof runtime, ParameterizedTestScope<TableRow>>>();
-                    expect(scope.parameters.value).type.toBe<number>();
-                    expect(scope.runtimes.api.database.url).type.toBe<string>();
-
-                    return scope.assert.collect();
-                }
-            );
-
-            expect(tableRuntimeBody).type.toBe<
-                RuntimeWrappedTestBody<typeof runtime, ParameterizedTestScope<TableRow>>
-            >();
-            expect(tableRuntimeBody).type.toBeAssignableTo<TableTestBody<TableRow>>();
-        });
-
-        test('types direct resource wrappers through the resources subpath', function () {
-            const resourceBody = withResource(temporaryDirectory, function runWithScratch(scope) {
-                expect(scope).type.toBe<ResourceTestScope<Record<'scratch', typeof temporaryDirectory>>>();
-                expect(scope.resources.scratch).type.toBe<TemporaryDirectoryHandle>();
-
-                return scope.assert.collect();
-            });
-            const resourcesBody = withResources({ dir: temporaryDirectory }, function runWithResources(scope) {
-                expect(scope).type.toBe<ResourceTestScope<{ readonly dir: typeof temporaryDirectory; }>>();
-                expect(scope.resources.dir.path).type.toBe<string>();
-                expect(scope.attachments).type.toBe<RuntimeAttachments>();
-
-                return scope.assert.collect();
-            });
-
-            expect(resourceBody).type.toBe<ResourceWrappedTestBody<Record<'scratch', typeof temporaryDirectory>>>();
-            expect(resourcesBody).type.toBe<ResourceWrappedTestBody<{ readonly dir: typeof temporaryDirectory; }>>();
-            expect(resourceBody).type.toBeAssignableTo<TestBody>();
-            expect(resourcesBody).type.toBeAssignableTo<TestBody>();
-        });
-
-        test('types nested resource wrappers through explicit scope generics', function () {
-            const nestedBody = withResource(
-                temporaryDirectory,
-                withRuntime<typeof runtime, ResourceTestScope<Record<'scratch', typeof temporaryDirectory>>>(
-                    runtime,
-                    function runWithScratchAndRuntime(scope) {
-                        expect(scope.resources.scratch).type.toBe<TemporaryDirectoryHandle>();
-                        expect(scope.runtimes.api.database).type.toBe<Database>();
-                        expect(scope.attachments).type.toBe<RuntimeAttachments>();
-
-                        return scope.assert.collect();
-                    }
-                )
-            );
-
-            expect(nestedBody).type.toBeAssignableTo<TestBody>();
-        });
-
-        test('accepts descriptor wrappers from neutral test authoring types', function () {
-            const runtimeBody = withRuntime(runtime, function runWithDatabase(scope) {
-                return scope.assert.collect();
-            });
-            const resourceBody = withResource(temporaryDirectory, function runWithScratch(scope) {
-                return scope.assert.collect();
-            });
-            const facade = createTestFacade();
-
-            expect(rootTest).type.toBeCallableWith('uses database', runtimeBody);
-            expect(rootTest).type.toBeCallableWith('uses scratch', resourceBody);
-            expect(rootTest).type.toBeCallableWith({ body: runtimeBody, title: 'uses database' });
-            expect(facade.test).type.toBeCallableWith('uses database', runtimeBody);
-            expect(facade.test).type.toBeCallableWith('uses scratch', resourceBody);
-        });
-
-        test('accepts descriptor wrappers from neutral table authoring types', function () {
-            const tableRuntimeBody = withRuntime<typeof runtime, ParameterizedTestScope<TableRow>>(
-                runtime,
-                function runTableWithDatabase(scope) {
-                    return scope.assert.collect();
-                }
-            );
-            const tableResourceBody = withResource<typeof temporaryDirectory, ParameterizedTestScope<TableRow>>(
-                temporaryDirectory,
-                function runTableWithScratch(scope) {
-                    return scope.assert.collect();
-                }
-            );
-            const facade = createTestFacade();
-
-            expect(rootTable).type.toBeCallableWith({
-                cases: [ { value: 1 }, { value: 2 } ],
-                test: tableRuntimeBody,
-                title: 'rows'
-            });
-            expect(rootTable).type.toBeCallableWith({
-                cases: [ { value: 1 }, { value: 2 } ],
-                test: tableResourceBody,
-                title: 'rows'
-            });
-            expect(facade.table).type.toBeCallableWith({
-                cases: [ { value: 1 }, { value: 2 } ],
-                test: tableRuntimeBody,
-                title: 'rows'
-            });
-            expect(facade.table).type.toBeCallableWith({
-                cases: [ { value: 1 }, { value: 2 } ],
-                test: tableResourceBody,
-                title: 'rows'
-            });
-        });
-
-        test('accepts runtime wrappers from neutral authoring types', function () {
-            const runtimeBody = withRuntime(runtime, function runWithDatabase(scope) {
-                return scope.assert.collect();
-            });
-            const tableRuntimeBody = withRuntime<typeof runtime, ParameterizedTestScope<TableRow>>(
-                runtime,
-                function runTableWithDatabase(scope) {
-                    return scope.assert.collect();
-                }
-            );
-            const facade = createTestFacade();
-
-            expect(facade.test).type.toBeCallableWith('uses database', runtimeBody);
-            expect(facade.table).type.toBeCallableWith({
-                cases: [ { value: 1 }, { value: 2 } ],
-                test: tableRuntimeBody,
-                title: 'rows'
-            });
-        });
-
-        test('types facade-bound runtime resources and mapped scope', function () {
-            const facade = createTestFacade({
-                runtime,
-                resources: { scratch: temporaryDirectory },
-                mapScope(scope) {
-                    expect(scope.runtimes.api.database).type.toBe<Database>();
-                    expect(scope.attachments).type.toBe<RuntimeAttachments>();
-                    expect(scope.resources.scratch).type.toBe<TemporaryDirectoryHandle>();
-
-                    return {
-                        databaseUrl: scope.runtimes.api.database.url,
-                        scratchPath: scope.resources.scratch.path
-                    };
-                }
-            });
-
-            expect(facade.test('uses facade runtime', function runWithFacade(scope) {
-                expect(scope.databaseUrl).type.toBe<string>();
-                expect(scope.scratchPath).type.toBe<string>();
-                expect(scope.resources.scratch).type.toBe<TemporaryDirectoryHandle>();
-                expect(scope.runtimes.api.database).type.toBe<Database>();
-                expect(scope.attachments).type.toBe<RuntimeAttachments>();
-
-                return scope.assert.collect();
-            }))
-                .type
-                .toBe<TestCase>();
-            expect(facade.table({
-                cases: [ { value: 1 }, { value: 2 } ],
-                test(scope) {
-                    expect(scope.parameters.value).type.toBe<number>();
-                    expect(scope.databaseUrl).type.toBe<string>();
-                    expect(scope.resources.scratch.path).type.toBe<string>();
-
-                    return scope.assert.collect();
-                },
-                title: 'rows'
-            }))
-                .type
-                .toBe<Table>();
-        });
-    });
-
-    test('reexports the leaf performance baseline contract', function () {
-        expect<StandardBaselineAdapter>().type.toBe<PerformanceBaselineAdapter>();
-    });
-});
+export const testNode = suite('@overkill-dev/test standard subpaths', [
+    test('exposes config authoring types', function (typeScope) {
+        typeScope.assert(acceptsCall, () => defineConfigUnderTest({ profiles: { unit: { testFamily: 'microtest' } } }));
+        typeScope.assert(
+            sameType<[ProjectIntegrationProfileConfig] extends [ProjectProfileConfig] ? true : false, true>()
+        );
+        typeScope.assert(
+            sameType<[ProjectMicrotestProfileConfig] extends [ProjectProfileConfig] ? true : false, true>()
+        );
+        typeScope.assert(
+            sameType<[ProjectBenchmarkProfileConfig] extends [ProjectProfileConfig] ? true : false, true>()
+        );
+        typeScope.assert(
+            sameType<
+                IsEqual<
+                    Extract<ProjectProfileConfig, { readonly testFamily: 'property'; }>,
+                    ProjectPropertyProfileConfig
+                >,
+                true
+            >()
+        );
+        typeScope.assert(sameType<IsAssignable<ProjectProfileFilePatterns, ProjectProfileFiles>, true>());
+        typeScope.assert(sameType<IsAssignable<ProjectProfileFileSets, ProjectProfileFiles>, true>());
+        typeScope.assert(sameType<
+            IsEqual<
+                keyof ProjectProcessBudgets,
+                [
+                    'activeResourceCount',
+                    'javaScriptEngineHeapBytes',
+                    'residentSetBytes',
+                    'residentSetGrowthBytesPerSecond'
+                ][number]
+            >,
+            true
+        >());
+        return typeScope.assert.collect();
+    }),
+    test('exposes reporter factories through the standard distribution', function (typeScope) {
+        typeScope.assert(sameType<IsEqual<typeof createLineReporter, LineReporterFactory>, true>());
+        typeScope.assert(sameType<IsEqual<typeof createLineProgressReporter, LineProgressReporterFactory>, true>());
+        typeScope.assert(sameType<IsEqual<typeof createLineTreeReporter, LineTreeReporterFactory>, true>());
+        typeScope.assert(
+            sameType<
+                IsEqual<
+                    typeof createBriefFinalResultReporter,
+                    () => DefinedReporter<FinalResultReporter<BriefReporterSinks>>
+                >,
+                true
+            >()
+        );
+        typeScope.assert(
+            sameType<
+                IsEqual<typeof createBriefReporter, () => DefinedReporter<RealTimeReporter<BriefReporterSinks>>>,
+                true
+            >()
+        );
+        typeScope.assert(sameType<IsEqual<typeof createDotReporter, () => DefinedReporter<RealTimeReporter>>, true>());
+        typeScope.assert(
+            sameType<IsEqual<typeof createGithubActionsOutputRenderer, () => DefinedOutputRenderer>, true>()
+        );
+        return typeScope.assert.collect();
+    }),
+    test('exposes assertion extension types from the assert package', function (typeScope) {
+        typeScope.assert(sameType<CompositeBooleanDefinition['name'], string>());
+        typeScope.assert(
+            sameType<IsEqual<NarrowingStringDefinition['narrows'], (actual: unknown) => actual is string>, true>()
+        );
+        typeScope.assert(
+            sameType<
+                IsEqual<
+                    CompositeCheckBuilder<'assert'>['true'],
+                    (actual: unknown) => ReturnType<CompositeCheckBuilder<'assert'>['true']>
+                >,
+                true
+            >()
+        );
+        return typeScope.assert.collect();
+    }),
+    test('reexports the leaf performance baseline contract', function (typeScope) {
+        typeScope.assert(sameType<IsEqual<StandardBaselineAdapter, PerformanceBaselineAdapter>, true>());
+        return typeScope.assert.collect();
+    })
+]);

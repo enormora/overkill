@@ -1,4 +1,6 @@
-import { expect, test } from 'tstyche';
+import { suite, test } from '../../../tools/type-tests/authoring.entry-point.ts';
+import { assignableFrom, sameType } from '../../../tools/type-tests/relations.entry-point.ts';
+import { isEqualTo } from '../../test-support/type-relations.ts';
 import {
     defineResource,
     withResourceChecks,
@@ -22,29 +24,38 @@ const owner = defineResource({
     }
 });
 
-test('resource checks retain descriptor inference and receive the owner handle', function () {
-    const observed = withResourceChecks(owner, function (context) {
-        expect(context.handle.secret).type.toBe<string>();
-        expect(context.handle).type.not.toHaveProperty('url');
-        context.cleanup.defer(function (signal) {
-            expect(signal).type.toBe<AbortSignal>();
+export const testNode = suite('resource checks', [
+    test('resource checks retain descriptor inference and receive the owner handle', function (typeScope) {
+        const observed = withResourceChecks(owner, function (context) {
+            typeScope.assert(sameType.withActual<string>(), context.handle.secret);
+            typeScope.assert(assignableFrom.not<keyof typeof context.handle, 'url'>());
+            context.cleanup.defer(function (signal) {
+                typeScope.assert(sameType.withActual<true>(), isEqualTo<AbortSignal>()(signal));
+            });
+            return {
+                prepare() {
+                    return undefined;
+                },
+                finalize() {
+                    return { kind: 'complete' };
+                }
+            };
         });
-        return {
-            prepare() {
-                return undefined;
-            },
-            finalize() {
-                return { kind: 'complete' };
-            }
-        };
-    });
-    expect(observed).type.toBe<typeof owner>();
-});
-
-test('standalone errors retain owner and interval evidence', function () {
-    const error = new ResourceCheckError('Resource checks failed.', { resourceChecks: [], errors: [] });
-    expect(error.resourceChecks()).type.toBe<readonly ResourceCheckSnapshot[]>();
-    expect<ResourceCheckSnapshot['owner']['scope']>().type.toBe<
-        'per-case' | 'per-file' | 'per-run' | 'per-suite' | 'shared-per-worker'
-    >();
-});
+        typeScope.assert(sameType.withActual<true>(), isEqualTo<typeof owner>()(observed));
+        return typeScope.assert.collect();
+    }),
+    test('standalone errors retain owner and interval evidence', function (typeScope) {
+        const error = new ResourceCheckError('Resource checks failed.', { resourceChecks: [], errors: [] });
+        typeScope.assert(
+            sameType.withActual<true>(),
+            isEqualTo<readonly ResourceCheckSnapshot[]>()(error.resourceChecks())
+        );
+        typeScope.assert(
+            sameType<
+                ResourceCheckSnapshot['owner']['scope'],
+                'per-case' | 'per-file' | 'per-run' | 'per-suite' | 'shared-per-worker'
+            >()
+        );
+        return typeScope.assert.collect();
+    })
+]);

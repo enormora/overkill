@@ -46,7 +46,9 @@ export function observeWorkerPoolLifetime(pool: TinypoolInstance): TinypoolInsta
         },
         async run(task, options) {
             observeWorkers();
-            return await pool.run(task, options);
+            const result = pool.run(task, options);
+            observeWorkers();
+            return await result;
         },
         async destroy() {
             observeWorkers();

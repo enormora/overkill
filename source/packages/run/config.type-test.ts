@@ -1,5 +1,8 @@
-import { describe, expect, test } from 'tstyche';
+import type { IsEqual } from 'type-fest';
+import { suite, test } from '../../../tools/type-tests/authoring.entry-point.ts';
+import { acceptsCall, assignableFrom, sameType } from '../../../tools/type-tests/relations.entry-point.ts';
 import type { DefinedTestFamily, DefinedReporter } from '../engine/engine.entry-point.ts';
+import { type IsAssignable, isEqualTo } from '../../test-support/type-relations.ts';
 import {
     ConfigError,
     type defineConfig,
@@ -22,23 +25,30 @@ import {
 
 type ExpectedTestFamily = DefinedTestFamily | 'integration' | 'microtest' | 'property';
 
-describe('@overkill-dev/run/config', function () {
-    test('exposes property exploration settings without coverage or worker pools', function () {
-        expect<ProjectPropertyProfileConfig>().type.toBeAssignableFrom<{
-            readonly testFamily: 'property';
-            readonly files: { readonly include: readonly ['test/laws.ts']; };
-            readonly property: { readonly newTrials: number; readonly maxWork: number; };
-            readonly execution: { readonly processModel: 'supervised-process'; readonly scheduling: 'serial'; };
-        }>();
-        expect<ProjectPropertyProfileConfig>().type.not.toHaveProperty('coverage');
-        expect<ProjectPropertyProfileConfig>().type.not.toHaveProperty('retries');
-        expect<ProjectPropertyProfileConfig>().type.not.toHaveProperty('attachments');
-    });
-    test('exposes benchmark policy without adding it to ordinary execution profiles', function () {
-        expect<typeof normalizeConfig>().type.toBe<(config: Config) => NormalizedConfig>();
-        expect<ProfileConfig['testFamily']>().type.toBe<ExpectedTestFamily | 'benchmark'>();
-        expect<TestProfileConfig['testFamily']>().type.toBe<ExpectedTestFamily>();
-        expect<keyof ProjectBenchmarkProfileConfig>().type.toBe<
+declare const defineConfigUnderTest: typeof defineConfig;
+
+export const testNode = suite('@overkill-dev/run/config', [
+    test('exposes property exploration settings without coverage or worker pools', function (typeScope) {
+        typeScope.assert(sameType<
+            IsAssignable<{
+                readonly testFamily: 'property';
+                readonly files: { readonly include: readonly ['test/laws.ts']; };
+                readonly property: { readonly newTrials: number; readonly maxWork: number; };
+                readonly execution: { readonly processModel: 'supervised-process'; readonly scheduling: 'serial'; };
+            }, ProjectPropertyProfileConfig>,
+            true
+        >());
+        typeScope.assert(assignableFrom.not<keyof ProjectPropertyProfileConfig, 'coverage'>());
+        typeScope.assert(assignableFrom.not<keyof ProjectPropertyProfileConfig, 'retries'>());
+        typeScope.assert(assignableFrom.not<keyof ProjectPropertyProfileConfig, 'attachments'>());
+        return typeScope.assert.collect();
+    }),
+    test('exposes benchmark policy without adding it to ordinary execution profiles', function (typeScope) {
+        typeScope.assert(sameType<IsEqual<typeof normalizeConfig, (config: Config) => NormalizedConfig>, true>());
+        typeScope.assert(sameType<IsEqual<ProfileConfig['testFamily'], ExpectedTestFamily | 'benchmark'>, true>());
+        typeScope.assert(sameType<IsEqual<TestProfileConfig['testFamily'], ExpectedTestFamily>, true>());
+        typeScope.assert(sameType<
+            keyof ProjectBenchmarkProfileConfig,
             keyof {
                 readonly attachments: true;
                 readonly baselines: true;
@@ -54,46 +64,67 @@ describe('@overkill-dev/run/config', function () {
                 readonly timings: true;
                 readonly timeouts: true;
             }
-        >();
-        expect<ProjectBenchmarkProfileConfig>().type.toBeAssignableFrom<{
-            readonly testFamily: 'benchmark';
-            readonly files: { readonly include: readonly ['source/startup.bench.ts']; };
-        }>();
-        expect<ProjectBenchmarkProfileConfig>().type.not.toBeAssignableFrom<{
-            readonly testFamily: 'benchmark';
-        }>();
-    });
-    test('retries are integration-only and retain an explicit artifact policy', function () {
-        expect<ProjectIntegrationProfileConfig>().type.toBeAssignableFrom<{
-            readonly testFamily: 'integration';
-            readonly files: { readonly include: readonly ['source/**/*.integration.test.ts']; };
-            readonly retries: { readonly maxAttempts: number; readonly artifacts: 'all'; };
-        }>();
-        expect<ProjectMicrotestProfileConfig>().type.not.toBeAssignableFrom<{
-            readonly testFamily: 'microtest';
-            readonly retries: { readonly maxAttempts: number; };
-        }>();
-    });
-    test('exposes configuration loading and authoring types', function () {
-        expect<typeof defineConfig>().type.toBeCallableWith({ profiles: { unit: { testFamily: 'microtest' } } });
-        expect<typeof loadConfig>().type.toBe<
-            (request: ConfigLoadRequest) => Promise<LoadedConfig>
-        >();
-        expect<Config['reporters']>().type.toBe<
-            readonly [DefinedReporter, ...DefinedReporter[]] | undefined
-        >();
-        expect<ProjectTimingProfilePolicy>().type.toBe<{
-            readonly collection: 'precise' | 'summary';
-        }>();
-        expect<ProjectCoverageOutput>().type.toBe<'html' | 'json' | 'lcov' | 'text' | 'v8'>();
-        expect<ProjectMicrotestProfileConfig['coverage']>().type.toBe<
-            ProjectCoveragePolicy | undefined
-        >();
-        expect<ProjectIntegrationProfileConfig>().type.not.toBeAssignableFrom<{
-            readonly coverage: { readonly outputs: readonly ['text']; };
-            readonly files: { readonly include: readonly ['source/**/*.test.ts']; };
-            readonly testFamily: 'integration';
-        }>();
-        expect(new ConfigError('Invalid config.')).type.toBe<ConfigError>();
-    });
-});
+        >());
+        typeScope.assert(sameType<
+            IsAssignable<{
+                readonly testFamily: 'benchmark';
+                readonly files: { readonly include: readonly ['source/startup.bench.ts']; };
+            }, ProjectBenchmarkProfileConfig>,
+            true
+        >());
+        typeScope.assert(sameType<
+            IsAssignable<{
+                readonly testFamily: 'benchmark';
+            }, ProjectBenchmarkProfileConfig>,
+            false
+        >());
+        return typeScope.assert.collect();
+    }),
+    test('retries are integration-only and retain an explicit artifact policy', function (typeScope) {
+        typeScope.assert(sameType<
+            [{
+                readonly testFamily: 'integration';
+                readonly files: { readonly include: readonly ['source/**/*.integration.test.ts']; };
+                readonly retries: { readonly maxAttempts: number; readonly artifacts: 'all'; };
+            }] extends [ProjectIntegrationProfileConfig] ? true : false,
+            true
+        >());
+        typeScope.assert(sameType<
+            IsAssignable<{
+                readonly testFamily: 'microtest';
+                readonly retries: { readonly maxAttempts: number; };
+            }, ProjectMicrotestProfileConfig>,
+            false
+        >());
+        return typeScope.assert.collect();
+    }),
+    test('exposes configuration loading and authoring types', function (typeScope) {
+        typeScope.assert(acceptsCall, () => defineConfigUnderTest({ profiles: { unit: { testFamily: 'microtest' } } }));
+        typeScope.assert(
+            sameType<IsEqual<typeof loadConfig, (request: ConfigLoadRequest) => Promise<LoadedConfig>>, true>()
+        );
+        typeScope.assert(
+            sameType<IsEqual<Config['reporters'], readonly [DefinedReporter, ...DefinedReporter[]] | undefined>, true>()
+        );
+        typeScope.assert(sameType<
+            IsEqual<ProjectTimingProfilePolicy, {
+                readonly collection: 'precise' | 'summary';
+            }>,
+            true
+        >());
+        typeScope.assert(sameType<ProjectCoverageOutput, 'html' | 'json' | 'lcov' | 'text' | 'v8'>());
+        typeScope.assert(
+            sameType<IsEqual<ProjectMicrotestProfileConfig['coverage'], ProjectCoveragePolicy | undefined>, true>()
+        );
+        typeScope.assert(sameType<
+            [{
+                readonly coverage: { readonly outputs: readonly ['text']; };
+                readonly files: { readonly include: readonly ['source/**/*.test.ts']; };
+                readonly testFamily: 'integration';
+            }] extends [ProjectIntegrationProfileConfig] ? true : false,
+            false
+        >());
+        typeScope.assert(sameType.withActual<true>(), isEqualTo<ConfigError>()(new ConfigError('Invalid config.')));
+        return typeScope.assert.collect();
+    })
+]);

@@ -1,4 +1,6 @@
-import { describe, expect, test } from 'tstyche';
+import { suite, test } from '../../../tools/type-tests/authoring.entry-point.ts';
+import { acceptsCall, rejectsCall, sameType } from '../../../tools/type-tests/relations.entry-point.ts';
+import { hasKey } from '../../test-support/type-relations.ts';
 import {
     rule,
     testDouble
@@ -7,41 +9,47 @@ import {
 type LoadEvents = (id: string) => Generator<string, number, boolean>;
 type LoadAsyncEvents = (id: string) => AsyncGenerator<string, number, boolean>;
 
-describe('@overkill-dev/doubles generator rules', function () {
-    test('type-checks sync generator rules and fallback behavior', function () {
-        expect(testDouble<LoadEvents>).type.toBeCallableWith({
-            rules: [
-                rule.when('1').yields<LoadEvents>([ 'event' ], 1),
-                rule.onCall(1).yieldsFrom<LoadEvents>(function* loadEvents(id) {
-                    yield id;
-                    return 1;
-                })
-            ],
-            fallback: rule.yields<LoadEvents>([ 'fallback' ], 1)
-        });
-    });
-
-    test('type-checks async generator rules and fallback behavior', function () {
-        expect(testDouble<LoadAsyncEvents>).type.toBeCallableWith({
-            rules: [
-                rule.when('1').yieldsAsync<LoadAsyncEvents>([ 'event' ], 1),
-                rule.onCall(1).yieldsAsyncFrom<LoadAsyncEvents>(function* loadEvents(id) {
-                    yield id;
-                    return 1;
-                })
-            ],
-            fallback: rule.yieldsAsync<LoadAsyncEvents>([ 'fallback' ], 1)
-        });
-    });
-
-    test('rejects mismatched generator rules and construction terminators', function () {
-        expect(testDouble<LoadEvents>).type.not.toBeCallableWith({
-            rules: [ rule.when('1').yieldsAsync([ 'event' ]) ]
-        });
-        expect(testDouble<LoadAsyncEvents>).type.not.toBeCallableWith({
-            rules: [ rule.when('1').yields([ 'event' ]) ]
-        });
-        expect(rule.whenConstructedWith('https://api.example.test')).type.not.toHaveProperty('yields');
-        expect(rule.whenConstructedWith('https://api.example.test')).type.not.toHaveProperty('yieldsAsync');
-    });
-});
+export const testNode = suite('@overkill-dev/doubles generator rules', [
+    test('type-checks sync generator rules and fallback behavior', function (typeScope) {
+        typeScope.assert(acceptsCall, () =>
+            testDouble<LoadEvents>({
+                rules: [
+                    rule.when('1').yields<LoadEvents>([ 'event' ], 1),
+                    rule.onCall(1).yieldsFrom<LoadEvents>(function* loadEvents(id) {
+                        yield id;
+                        return 1;
+                    })
+                ],
+                fallback: rule.yields<LoadEvents>([ 'fallback' ], 1)
+            }));
+        return typeScope.assert.collect();
+    }),
+    test('type-checks async generator rules and fallback behavior', function (typeScope) {
+        typeScope.assert(acceptsCall, () =>
+            testDouble<LoadAsyncEvents>({
+                rules: [
+                    rule.when('1').yieldsAsync<LoadAsyncEvents>([ 'event' ], 1),
+                    rule.onCall(1).yieldsAsyncFrom<LoadAsyncEvents>(function* loadEvents(id) {
+                        yield id;
+                        return 1;
+                    })
+                ],
+                fallback: rule.yieldsAsync<LoadAsyncEvents>([ 'fallback' ], 1)
+            }));
+        return typeScope.assert.collect();
+    }),
+    test('rejects mismatched generator rules and construction terminators', function (typeScope) {
+        typeScope.assert(rejectsCall('argument-type'), () =>
+            testDouble<LoadEvents>({
+                rules: [ rule.when('1').yieldsAsync([ 'event' ]) ]
+            }));
+        typeScope.assert(rejectsCall('argument-type'), () =>
+            testDouble<LoadAsyncEvents>({
+                rules: [ rule.when('1').yields([ 'event' ]) ]
+            }));
+        const constructorRule = rule.whenConstructedWith('https://api.example.test');
+        typeScope.assert(sameType.withActual<false>(), hasKey<'yields'>()(constructorRule));
+        typeScope.assert(sameType.withActual<false>(), hasKey<'yieldsAsync'>()(constructorRule));
+        return typeScope.assert.collect();
+    })
+]);

@@ -1,6 +1,8 @@
-import { expect, test } from 'tstyche';
+import { suite, test } from '../../../tools/type-tests/authoring.entry-point.ts';
+import { sameType } from '../../../tools/type-tests/relations.entry-point.ts';
 import type { PropertyBody } from '../property/property.entry-point.ts';
 import type { ModelTransition } from '../model/model.entry-point.ts';
+import { isEqualTo, type IsAssignable } from '../../test-support/type-relations.ts';
 import {
     checkLinearizability,
     linearizability,
@@ -9,59 +11,60 @@ import {
     type LinearizabilityTransition
 } from './linearizability.entry-point.ts';
 
-test('infers observation types and accepts deterministic model transitions', function () {
-    expect<ModelTransition<number>>().type.toBeAssignableTo<LinearizabilityTransition<number>>();
-    const controller = new AbortController();
-    const result = checkLinearizability({
-        history: [ { kind: 'invoke', id: 'one', operation: 1 }, {
-            kind: 'respond',
-            id: 'one',
-            outcome: { kind: 'returned', value: 'one' }
-        } ],
-        model: {
-            initial() {
-                return 0;
-            },
-            transition(state, observation) {
-                expect(state).type.toBe<number>();
-                expect(observation.operation).type.toBe<number>();
-                if (observation.outcome.kind === 'returned') {
-                    expect(observation.outcome.value).type.toBe<string>();
+export const testNode = suite('linearizability', [
+    test('infers observation types and accepts deterministic model transitions', function (typeScope) {
+        typeScope.assert(sameType<IsAssignable<ModelTransition<number>, LinearizabilityTransition<number>>, true>());
+        const controller = new AbortController();
+        const result = checkLinearizability({
+            history: [ { kind: 'invoke', id: 'one', operation: 1 }, {
+                kind: 'respond',
+                id: 'one',
+                outcome: { kind: 'returned', value: 'one' }
+            } ],
+            model: {
+                initial() {
+                    return 0;
+                },
+                transition(state, observation) {
+                    typeScope.assert(sameType.withActual<number>(), state);
+                    typeScope.assert(sameType.withActual<number>(), observation.operation);
+                    if (observation.outcome.kind === 'returned') {
+                        typeScope.assert(sameType.withActual<string>(), observation.outcome.value);
+                    }
+                    return { kind: 'alternatives', states: [ state, state + 1 ] };
                 }
-                return { kind: 'alternatives', states: [ state, state + 1 ] };
-            }
-        },
-        maxWork: 100,
-        signal: controller.signal
-    });
-    expect(result).type.toBe<Promise<LinearizabilityResult>>();
-});
-
-test('infers concurrent operation and output types', function () {
-    const body = linearizability({
-        create() {
-            return { value: 0 };
-        },
-        run(operation: number, system, signal) {
-            expect(system.value).type.toBe<number>();
-            expect(signal).type.toBe<AbortSignal>();
-            return String(operation);
-        },
-        model: {
-            initial() {
-                return 0;
             },
-            transition(state, observation) {
-                expect(observation.operation).type.toBe<number>();
-                if (observation.outcome.kind === 'returned') {
-                    expect(observation.outcome.value).type.toBe<string>();
+            maxWork: 100,
+            signal: controller.signal
+        });
+        typeScope.assert(sameType.withActual<true>(), isEqualTo<Promise<LinearizabilityResult>>()(result));
+        return typeScope.assert.collect();
+    }),
+    test('infers concurrent operation and output types', function (typeScope) {
+        const body = linearizability({
+            create() {
+                return { value: 0 };
+            },
+            run(operation: number, system, signal) {
+                typeScope.assert(sameType.withActual<number>(), system.value);
+                typeScope.assert(sameType.withActual<true>(), isEqualTo<AbortSignal>()(signal));
+                return String(operation);
+            },
+            model: {
+                initial() {
+                    return 0;
+                },
+                transition(state, observation) {
+                    typeScope.assert(sameType.withActual<number>(), observation.operation);
+                    if (observation.outcome.kind === 'returned') {
+                        typeScope.assert(sameType.withActual<string>(), observation.outcome.value);
+                    }
+                    return { kind: 'enabled', state };
                 }
-                return { kind: 'enabled', state };
-            }
-        },
-        maxWork: 100
-    });
-    expect(body).type.toBe<
-        PropertyBody<LinearizabilityProgram<number>>
-    >();
-});
+            },
+            maxWork: 100
+        });
+        typeScope.assert(sameType.withActual<true>(), isEqualTo<PropertyBody<LinearizabilityProgram<number>>>()(body));
+        return typeScope.assert.collect();
+    })
+]);

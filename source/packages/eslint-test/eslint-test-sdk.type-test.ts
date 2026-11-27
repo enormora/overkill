@@ -1,17 +1,23 @@
-import { expect, test } from 'tstyche';
 import type { TSESLint } from '@typescript-eslint/utils';
+import { test } from '../../../tools/type-tests/authoring.entry-point.ts';
+import { sameType } from '../../../tools/type-tests/relations.entry-point.ts';
 import type { Suite } from '../engine/engine.entry-point.ts';
+import { isEqualTo } from '../../test-support/type-relations.ts';
 import { defineRuleTests } from './eslint-test.entry-point.ts';
 
-test('accepts typed SDK rule modules without weakening their own context types', function () {
-    const rule: TSESLint.RuleModule<'found'> = {
-        defaultOptions: [],
-        meta: { type: 'problem', schema: [], messages: { found: 'Found.' } },
-        create(context) {
-            expect(context.options).type.toBe<[]>();
-            return {};
-        }
-    };
-    const rules = defineRuleTests({ name: 'typed', rule, configs: { ts: {} }, valid: [], invalid: [] });
-    expect(rules.examples()).type.toBe<Suite>();
-});
+export const testNode = test(
+    'accepts typed SDK rule modules without weakening their own context types',
+    function (typeScope) {
+        const rule: TSESLint.RuleModule<'found'> = {
+            defaultOptions: [],
+            meta: { type: 'problem', schema: [], messages: { found: 'Found.' } },
+            create(context) {
+                typeScope.assert(sameType.withActual<true>(), isEqualTo<[]>()(context.options));
+                return {};
+            }
+        };
+        const rules = defineRuleTests({ name: 'typed', rule, configs: { ts: {} }, valid: [], invalid: [] });
+        typeScope.assert(sameType.withActual<true>(), isEqualTo<Suite>()(rules.examples()));
+        return typeScope.assert.collect();
+    }
+);

@@ -3,7 +3,6 @@
     "references": [
         { "path": "tsconfig.sources.json" },
         { "path": "tsconfig.tests.json" },
-        { "path": "tsconfig.type-tests.json" },
         { "path": "tsconfig.benchmark-html-browser.json" }
     ]
 }

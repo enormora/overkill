@@ -1,10 +1,12 @@
-import { describe, expect, test } from 'tstyche';
+import { suite, test } from '../../../tools/type-tests/authoring.entry-point.ts';
+import { sameType } from '../../../tools/type-tests/relations.entry-point.ts';
 import * as standard from '../test/bench.entry-point.ts';
 import { defineResource } from '../resources/resources.entry-point.ts';
+import { isEqualTo } from '../../test-support/type-relations.ts';
 import * as bench from './bench.entry-point.ts';
 
-describe('calibrated measurement inference', function () {
-    test('preserves synchronous sample inference', function () {
+export const testNode = suite('calibrated measurement inference', [
+    test('preserves synchronous sample inference', function (typeScope) {
         const measurement = bench.calibratedMeasurement(bench.wallClockMeasurement(), {
             durationMicroseconds: { calibration: bench.cpuCalibration(), scaling: 'proportional' }
         });
@@ -13,7 +15,10 @@ describe('calibrated measurement inference', function () {
             workloads: [ bench.workload('one', {}) ],
             measurement,
             measure({ sample }) {
-                expect(sample).type.toBe<bench.BenchmarkSample<bench.MeasurementSample>>();
+                typeScope.assert(
+                    sameType.withActual<true>(),
+                    isEqualTo<bench.BenchmarkSample<bench.MeasurementSample>>()(sample)
+                );
                 return sample
                     .measure(function readReference() {
                         return 1;
@@ -23,9 +28,13 @@ describe('calibrated measurement inference', function () {
             diagnosticMetrics: [],
             budgets: { one: { durationMicroseconds: { maximum: 100 } } }
         });
-        expect(standard.calibratedMeasurement).type.toBe<typeof bench.calibratedMeasurement>();
-    });
-    test('preserves asynchronous and process sample inference', function () {
+        typeScope.assert(
+            sameType.withActual<true>(),
+            isEqualTo<typeof bench.calibratedMeasurement>()(standard.calibratedMeasurement)
+        );
+        return typeScope.assert.collect();
+    }),
+    test('preserves asynchronous and process sample inference', function (typeScope) {
         const calibration = bench.cpuCalibration();
         const asyncStrategy = bench.calibratedMeasurement(bench.asyncMeasurementStrategy([]), {
             value: { calibration, scaling: 'inverse' }
@@ -35,7 +44,10 @@ describe('calibrated measurement inference', function () {
             workloads: [ bench.workload('one', {}) ],
             measurement: asyncStrategy,
             measure({ sample }) {
-                expect(sample).type.toBe<bench.BenchmarkSample<bench.AsyncMeasurementSample>>();
+                typeScope.assert(
+                    sameType.withActual<true>(),
+                    isEqualTo<bench.BenchmarkSample<bench.AsyncMeasurementSample>>()(sample)
+                );
                 return { value: 1 };
             },
             diagnosticMetrics: [],
@@ -49,14 +61,18 @@ describe('calibrated measurement inference', function () {
             workloads: [ bench.workload('one', {}) ],
             measurement: processStrategy,
             measure({ sample }) {
-                expect(sample).type.toBe<bench.BenchmarkSample<bench.ProcessSample>>();
+                typeScope.assert(
+                    sameType.withActual<true>(),
+                    isEqualTo<bench.BenchmarkSample<bench.ProcessSample>>()(sample)
+                );
                 return { durationMicroseconds: 1 };
             },
             diagnosticMetrics: [],
             budgets: { one: { durationMicroseconds: { maximum: 100 } } }
         });
-    });
-    test('infers ordinary calibration dependencies', function () {
+        return typeScope.assert.collect();
+    }),
+    test('infers ordinary calibration dependencies', function (typeScope) {
         const value = defineResource({
             name: 'value',
             scope: 'shared-per-worker',
@@ -74,8 +90,11 @@ describe('calibrated measurement inference', function () {
             dependencies: { value },
             measurement: bench.wallClockMeasurement(),
             measure({ dependencies, sample }) {
-                expect(dependencies.value).type.toBe<number>();
-                expect(sample).type.toBe<bench.BenchmarkSample<bench.MeasurementSample>>();
+                typeScope.assert(sameType.withActual<number>(), dependencies.value);
+                typeScope.assert(
+                    sameType.withActual<true>(),
+                    isEqualTo<bench.BenchmarkSample<bench.MeasurementSample>>()(sample)
+                );
                 return sample
                     .measure(function readReference() {
                         return dependencies.value;
@@ -84,5 +103,6 @@ describe('calibrated measurement inference', function () {
                     .durationMicroseconds;
             }
         });
-    });
-});
+        return typeScope.assert.collect();
+    })
+]);

@@ -1,6 +1,9 @@
-import { describe, expect, test } from 'tstyche';
+import type { IsEqual } from 'type-fest';
+import { suite, test } from '../../../tools/type-tests/authoring.entry-point.ts';
+import { acceptsCall, rejectsCall, sameType } from '../../../tools/type-tests/relations.entry-point.ts';
 import type * as ordinary from '../test/test.entry-point.ts';
 import * as standard from '../test/bench.entry-point.ts';
+import { isEqualTo } from '../../test-support/type-relations.ts';
 import * as bench from './bench.entry-point.ts';
 
 const parameterValue = 3;
@@ -40,136 +43,197 @@ type SuiteCallSignatures = {
     (...input: readonly [title: string, children: readonly bench.TestNode[]]): bench.Suite;
 };
 
-describe('@overkill-dev/bench', function () {
-    test('exports explicit GC request and resolved policy types through both bench surfaces', function () {
-        expect<bench.BenchmarkLifecyclePolicy['garbageCollection']>().type.toBe<
-            'after-sample' | 'off' | 'profile-default'
-        >();
-        expect<bench.ResolvedBenchmarkLifecyclePolicy['garbageCollection']>().type.toBe<'after-sample' | 'off'>();
-        expect<standard.BenchmarkGarbageCollectionRequest>().type.toBe<bench.BenchmarkGarbageCollectionRequest>();
-        expect<standard.BenchmarkGarbageCollectionResult>().type.toBe<bench.BenchmarkGarbageCollectionResult>();
-    });
-    test('preserves object and positional overloads', function () {
-        expect<typeof bench.test>().type.toBe<TestCallSignatures>();
-        expect(bench.test).type.toBeCallableWith('referenced', referencedBody);
-        expect(bench.test).type.toBeCallableWith({ title: 'referenced', body: referencedBody });
-        expect<typeof bench.skippedTest>().type.toBe<SkippedTestCallSignatures>();
-        expect<typeof bench.suite>().type.toBe<SuiteCallSignatures>();
-    });
-    test('preserves ordinary authoring signatures and public types', function () {
-        expect<typeof bench.test>().type.toBe<typeof ordinary.test>();
-        expect<typeof bench.skippedTest>().type.toBe<typeof ordinary.skippedTest>();
-        expect<typeof bench.suite>().type.toBe<typeof ordinary.suite>();
-        expect<typeof bench.table>().type.toBe<typeof ordinary.table>();
-        expect<typeof bench.defineMacro>().type.toBe<typeof ordinary.defineMacro>();
-        expect<typeof bench.defineParameterizedTestBody>().type.toBe<typeof ordinary.defineParameterizedTestBody>();
-    });
-    test('preserves annotation and table types', function () {
-        expect<bench.AuthoringAnnotations>().type.toBe<ordinary.AuthoringAnnotations>();
-        expect<bench.AuthoringControls>().type.toBe<ordinary.AuthoringControls>();
-        expect<bench.ParameterizedTestScope<string>>().type.toBe<ordinary.ParameterizedTestScope<string>>();
-        expect<bench.TableDefinition<string>>().type.toBe<ordinary.TableDefinition<string>>();
-        expect<bench.TableTestBody<string>>().type.toBe<ordinary.TableTestBody<string>>();
-    });
-    test('infers parameterized bodies and macro return types', function () {
-        const body = bench.defineParameterizedTestBody(function (scope, value: number) {
-            expect(scope).type.toBe<bench.TestScope>();
-            scope.assert.equal(value, parameterValue);
-            return scope.assert.collect();
-        });
-        const child = bench.test('value', body(parameterValue));
-        const macro = bench.defineMacro(function (title: string) {
-            return bench.suite(title, [ child ]);
-        });
-
-        expect(child).type.toBe<bench.TestCase>();
-        expect(macro('suite')).type.toBe<bench.Suite>();
-        expect(body).type.not.toBeCallableWith('invalid');
-        expect(bench.test({ body: body(parameterValue), title: 'object form' })).type.toBe<bench.TestCase>();
-        expect(bench.suite({ children: [ child ], title: 'object form' })).type.toBe<bench.Suite>();
-        expect(bench.skippedTest('skip', 'unavailable')).type.toBe<bench.TestCase>();
-    });
-    test('infers table parameters and preserves core node types', function () {
-        const rows = [ { value: parameterValue } ];
-        expect<bench.TestNode>().type.toBe<ordinary.TestNode>();
-        expect<bench.TestScope>().type.toBe<ordinary.TestScope>();
-        expect<bench.TestScopeAssertContext>().type.toBe<ordinary.TestScopeAssertContext>();
-        expect(bench.table({
-            cases: rows,
-            test(scope) {
-                expect(scope.parameters).type.toBe<typeof rows[number]>();
-                scope.assert.equal(scope.parameters.value, parameterValue);
+export const testNode = suite('bench', [
+    suite('@overkill-dev/bench', [
+        test('exports explicit GC request and resolved policy types through both bench surfaces', function (typeScope) {
+            typeScope.assert(
+                sameType<
+                    bench.BenchmarkLifecyclePolicy['garbageCollection'],
+                    'after-sample' | 'off' | 'profile-default'
+                >()
+            );
+            typeScope.assert(
+                sameType<bench.ResolvedBenchmarkLifecyclePolicy['garbageCollection'], 'after-sample' | 'off'>()
+            );
+            typeScope.assert(
+                sameType<
+                    IsEqual<standard.BenchmarkGarbageCollectionRequest, bench.BenchmarkGarbageCollectionRequest>,
+                    true
+                >()
+            );
+            typeScope.assert(
+                sameType<
+                    IsEqual<standard.BenchmarkGarbageCollectionResult, bench.BenchmarkGarbageCollectionResult>,
+                    true
+                >()
+            );
+            return typeScope.assert.collect();
+        }),
+        test('preserves object and positional overloads', function (typeScope) {
+            typeScope.assert(sameType<IsEqual<typeof bench.test, TestCallSignatures>, true>());
+            typeScope.assert(acceptsCall, () => bench.test('referenced', referencedBody));
+            typeScope.assert(acceptsCall, () => bench.test({ title: 'referenced', body: referencedBody }));
+            typeScope.assert(sameType<IsEqual<typeof bench.skippedTest, SkippedTestCallSignatures>, true>());
+            typeScope.assert(sameType<IsEqual<typeof bench.suite, SuiteCallSignatures>, true>());
+            return typeScope.assert.collect();
+        }),
+        test('preserves ordinary authoring signatures and public types', function (typeScope) {
+            typeScope.assert(sameType<IsEqual<typeof bench.test, typeof ordinary.test>, true>());
+            typeScope.assert(sameType<IsEqual<typeof bench.skippedTest, typeof ordinary.skippedTest>, true>());
+            typeScope.assert(sameType<IsEqual<typeof bench.suite, typeof ordinary.suite>, true>());
+            typeScope.assert(sameType<IsEqual<typeof bench.table, typeof ordinary.table>, true>());
+            typeScope.assert(sameType<IsEqual<typeof bench.defineMacro, typeof ordinary.defineMacro>, true>());
+            typeScope.assert(
+                sameType<
+                    IsEqual<typeof bench.defineParameterizedTestBody, typeof ordinary.defineParameterizedTestBody>,
+                    true
+                >()
+            );
+            return typeScope.assert.collect();
+        }),
+        test('preserves annotation and table types', function (typeScope) {
+            typeScope.assert(sameType<IsEqual<bench.AuthoringAnnotations, ordinary.AuthoringAnnotations>, true>());
+            typeScope.assert(sameType<IsEqual<bench.AuthoringControls, ordinary.AuthoringControls>, true>());
+            typeScope.assert(
+                sameType<IsEqual<bench.ParameterizedTestScope<string>, ordinary.ParameterizedTestScope<string>>, true>()
+            );
+            typeScope.assert(
+                sameType<IsEqual<bench.TableDefinition<string>, ordinary.TableDefinition<string>>, true>()
+            );
+            typeScope.assert(sameType<IsEqual<bench.TableTestBody<string>, ordinary.TableTestBody<string>>, true>());
+            return typeScope.assert.collect();
+        }),
+        test('infers parameterized bodies and macro return types', function (typeScope) {
+            const body = bench.defineParameterizedTestBody(function (scope, value: number) {
+                typeScope.assert(sameType<IsEqual<typeof scope, bench.TestScope>, true>());
+                scope.assert.equal(value, parameterValue);
                 return scope.assert.collect();
-            },
-            title: 'rows'
-        }))
-            .type
-            .toBe<bench.Table>();
-        expect<bench.TestBody>().type.toBe<ordinary.TestBody>();
-    });
-});
+            });
+            const child = bench.test('value', body(parameterValue));
+            const macro = bench.defineMacro(function (title: string) {
+                return bench.suite(title, [ child ]);
+            });
 
-describe('@overkill-dev/test/bench', function () {
-    test('preserves leaf signatures, annotations, and table types', function () {
-        expect(standard).type.toBe<typeof bench>();
-        expect<standard.AuthoringAnnotations>().type.toBe<bench.AuthoringAnnotations>();
-        expect<standard.AuthoringControls>().type.toBe<bench.AuthoringControls>();
-        expect<standard.ParameterizedTestScope<string>>().type.toBe<bench.ParameterizedTestScope<string>>();
-        expect<standard.TableDefinition<string>>().type.toBe<bench.TableDefinition<string>>();
-        expect<standard.TableTestBody<string>>().type.toBe<bench.TableTestBody<string>>();
-    });
-    test('preserves engine node and scope types', function () {
-        expect<standard.Suite>().type.toBe<bench.Suite>();
-        expect<standard.Table>().type.toBe<bench.Table>();
-        expect<standard.TestBody>().type.toBe<bench.TestBody>();
-        expect<standard.TestCase>().type.toBe<bench.TestCase>();
-        expect<standard.TestNode>().type.toBe<bench.TestNode>();
-        expect<standard.TestScope>().type.toBe<bench.TestScope>();
-        expect<standard.TestScopeAssertContext>().type.toBe<bench.TestScopeAssertContext>();
-    });
-    test('infers table rows and parameterized bodies through the standard subpath', function () {
-        expect(standard.table({
-            cases: [ { value: parameterValue } ],
-            test(scope) {
-                expect(scope.parameters.value).type.toBe<number>();
-                scope.assert.greaterThan(scope.parameters.value, 0);
+            typeScope.assert(sameType<IsEqual<typeof child, bench.TestCase>, true>());
+            typeScope.assert(sameType.withActual<true>(), isEqualTo<bench.Suite>()(macro('suite')));
+            typeScope.assert(rejectsCall('argument-type'), () => body('invalid'));
+            typeScope.assert(
+                sameType.withActual<true>(),
+                isEqualTo<bench.TestCase>()(bench.test({ body: body(parameterValue), title: 'object form' }))
+            );
+            typeScope.assert(
+                sameType.withActual<true>(),
+                isEqualTo<bench.Suite>()(bench.suite({ children: [ child ], title: 'object form' }))
+            );
+            typeScope.assert(
+                sameType.withActual<true>(),
+                isEqualTo<bench.TestCase>()(bench.skippedTest('skip', 'unavailable'))
+            );
+            return typeScope.assert.collect();
+        }),
+        test('infers table parameters and preserves core node types', function (typeScope) {
+            const rows = [ { value: parameterValue } ];
+            typeScope.assert(sameType<IsEqual<bench.TestNode, ordinary.TestNode>, true>());
+            typeScope.assert(sameType<IsEqual<bench.TestScope, ordinary.TestScope>, true>());
+            typeScope.assert(sameType<IsEqual<bench.TestScopeAssertContext, ordinary.TestScopeAssertContext>, true>());
+            const authoredTable = bench.table({
+                cases: rows,
+                test(scope) {
+                    typeScope.assert(sameType.withActual<true>(), isEqualTo<typeof rows[number]>()(scope.parameters));
+                    scope.assert.equal(scope.parameters.value, parameterValue);
+                    return scope.assert.collect();
+                },
+                title: 'rows'
+            });
+            typeScope.assert(sameType.withActual<true>(), isEqualTo<bench.Table>()(authoredTable));
+            typeScope.assert(sameType<IsEqual<bench.TestBody, ordinary.TestBody>, true>());
+            return typeScope.assert.collect();
+        })
+    ]),
+    suite('@overkill-dev/test/bench', [
+        test('preserves leaf signatures, annotations, and table types', function (typeScope) {
+            typeScope.assert(sameType<IsEqual<typeof standard, typeof bench>, true>());
+            typeScope.assert(sameType<IsEqual<standard.AuthoringAnnotations, bench.AuthoringAnnotations>, true>());
+            typeScope.assert(sameType<IsEqual<standard.AuthoringControls, bench.AuthoringControls>, true>());
+            typeScope.assert(
+                sameType<IsEqual<standard.ParameterizedTestScope<string>, bench.ParameterizedTestScope<string>>, true>()
+            );
+            typeScope.assert(
+                sameType<IsEqual<standard.TableDefinition<string>, bench.TableDefinition<string>>, true>()
+            );
+            typeScope.assert(sameType<IsEqual<standard.TableTestBody<string>, bench.TableTestBody<string>>, true>());
+            return typeScope.assert.collect();
+        }),
+        test('preserves engine node and scope types', function (typeScope) {
+            typeScope.assert(sameType<IsEqual<standard.Suite, bench.Suite>, true>());
+            typeScope.assert(sameType<IsEqual<standard.Table, bench.Table>, true>());
+            typeScope.assert(sameType<IsEqual<standard.TestBody, bench.TestBody>, true>());
+            typeScope.assert(sameType<IsEqual<standard.TestCase, bench.TestCase>, true>());
+            typeScope.assert(sameType<IsEqual<standard.TestNode, bench.TestNode>, true>());
+            typeScope.assert(sameType<IsEqual<standard.TestScope, bench.TestScope>, true>());
+            typeScope.assert(sameType<IsEqual<standard.TestScopeAssertContext, bench.TestScopeAssertContext>, true>());
+            return typeScope.assert.collect();
+        }),
+        test('infers table rows and parameterized bodies through the standard subpath', function (typeScope) {
+            const authoredTable2 = standard.table({
+                cases: [ { value: parameterValue } ],
+                test(scope) {
+                    typeScope.assert(sameType.withActual<number>(), scope.parameters.value);
+                    scope.assert.greaterThan(scope.parameters.value, 0);
+                    return scope.assert.collect();
+                },
+                title: 'rows'
+            });
+            typeScope.assert(sameType.withActual<true>(), isEqualTo<standard.Table>()(authoredTable2));
+            const body = standard.defineParameterizedTestBody<number>(function (scope, value) {
+                scope.assert.equal(value, parameterValue);
                 return scope.assert.collect();
-            },
-            title: 'rows'
-        }))
-            .type
-            .toBe<standard.Table>();
-        const body = standard.defineParameterizedTestBody<number>(function (scope, value) {
-            scope.assert.equal(value, parameterValue);
-            return scope.assert.collect();
-        });
+            });
 
-        expect(body).type.not.toBeCallableWith('invalid');
-        expect(standard.test('parameterized', body(parameterValue))).type.toBe<standard.TestCase>();
-    });
-});
-
-describe('workload types', function () {
-    test('preserves named JSON inputs and deep immutability', function () {
-        const packages = 5;
-        const firstValue = 1;
-        const secondValue = 2;
-        const small = bench.workload('small', { packages, nested: { values: [ firstValue, secondValue ] } });
-        expect(small.name).type.toBe<'small'>();
-        expect(small.parameters.packages).type.toBe<typeof packages>();
-        expect(small.parameters.nested.values).type.toBe<readonly [typeof firstValue, typeof secondValue]>();
-        const mutable = { nested: { values: [ firstValue, secondValue ] } };
-        const snapshot = standard.workload('mutable', mutable);
-        expect(snapshot.parameters.nested.values).type.toBe<readonly number[]>();
-    });
-    test('rejects non-JSON input types and non-string names', function () {
-        const invalidName = 42;
-        expect(bench.workload).type.not.toBeCallableWith('bad', {
-            callback() {
+            typeScope.assert(rejectsCall('argument-type'), () => body('invalid'));
+            typeScope.assert(
+                sameType.withActual<true>(),
+                isEqualTo<standard.TestCase>()(standard.test('parameterized', body(parameterValue)))
+            );
+            return typeScope.assert.collect();
+        })
+    ]),
+    suite('workload types', [
+        suite('preserves named JSON inputs and deep immutability', [
+            test('preserves literal JSON inputs', function (typeScope) {
+                const packages = 5;
+                const firstValue = 1;
+                const secondValue = 2;
+                const small = bench.workload('small', { packages, nested: { values: [ firstValue, secondValue ] } });
+                typeScope.assert(sameType.withActual<'small'>(), small.name);
+                typeScope.assert(sameType.withActual<true>(), isEqualTo<typeof packages>()(small.parameters.packages));
+                typeScope.assert(
+                    sameType.withActual<true>(),
+                    isEqualTo<readonly [typeof firstValue, typeof secondValue]>()(small.parameters.nested.values)
+                );
+                return typeScope.assert.collect();
+            }),
+            test('makes mutable JSON inputs readonly', function (typeScope) {
+                const firstValue = 1;
+                const secondValue = 2;
+                const mutable = { nested: { values: [ firstValue, secondValue ] } };
+                const snapshot = standard.workload('mutable', mutable);
+                typeScope.assert(
+                    sameType.withActual<true>(),
+                    isEqualTo<readonly number[]>()(snapshot.parameters.nested.values)
+                );
+                return typeScope.assert.collect();
+            })
+        ]),
+        test('rejects non-JSON input types and non-string names', function (typeScope) {
+            const invalidName = 42;
+            function workloadCallback(): number {
                 return 1;
             }
-        });
-        expect(bench.workload).type.not.toBeCallableWith('bad', []);
-        expect(bench.workload).type.not.toBeCallableWith(invalidName, {});
-    });
-});
+            typeScope.assert(rejectsCall('argument-type'), () => bench.workload('bad', { callback: workloadCallback }));
+            typeScope.assert(rejectsCall('argument-type'), () => bench.workload('bad', []));
+            typeScope.assert(rejectsCall('argument-type'), () => bench.workload(invalidName, {}));
+            return typeScope.assert.collect();
+        })
+    ])
+]);

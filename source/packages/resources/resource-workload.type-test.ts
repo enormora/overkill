@@ -1,4 +1,6 @@
-import { expect, test } from 'tstyche';
+import { suite, test } from '../../../tools/type-tests/authoring.entry-point.ts';
+import { rejectsCall, sameType } from '../../../tools/type-tests/relations.entry-point.ts';
+import { isEqualTo } from '../../test-support/type-relations.ts';
 import {
     defineResource,
     defineLocalServiceResource,
@@ -19,113 +21,123 @@ function parsePackages(parameters: WorkloadParameters): PackageParameters {
     return { packages: parameters.packages };
 }
 
-test('infers workload parameters alongside dependency handles', function () {
-    const dependency = defineResource({
-        name: 'registry',
-        scope: 'per-case',
-        requirements: [],
-        dispose: null,
-        acquire() {
-            return 'registry';
-        }
-    });
-    const resource = defineResource({
-        name: 'fixture',
-        scope: 'per-case',
-        requirements: [],
-        dependencies: { dependency },
-        workload: parsePackages,
-        acquire({ workload, dependencies }) {
-            expect(workload.parameters).type.toBe<PackageParameters>();
-            expect(dependencies.dependency).type.toBe<string>();
-            return workload.parameters.packages;
-        },
-        dispose(handle, { workload }) {
-            expect(handle).type.toBe<number>();
-            expect(workload.parameters).type.toBe<PackageParameters>();
-        }
-    });
-    expect(resource.workload).type.toBe<(parameters: WorkloadParameters) => PackageParameters>();
-});
-
-test('infers workload parameters in local service callbacks', function () {
-    defineLocalServiceResource({
-        name: 'registry',
-        scope: 'per-case',
-        requirements: [],
-        dependencies: {},
-        workload: parsePackages,
-        address: { kind: 'loopback', port: 0 },
-        start({ workload }) {
-            expect(workload.parameters).type.toBe<PackageParameters>();
-            return workload.parameters.packages;
-        },
-        ready(handle, { workload }) {
-            expect(handle).type.toBe<number>();
-            expect(workload.parameters).type.toBe<PackageParameters>();
-            return { url: 'http://localhost', packages: handle };
-        },
-        dispose(handle, { workload }) {
-            expect(handle).type.toBe<number>();
-            expect(workload.parameters).type.toBe<PackageParameters>();
-        }
-    });
-});
-
-test('independent resources expose a null workload', function () {
-    defineResource({
-        name: 'registry',
-        scope: 'per-case',
-        requirements: [],
-        dispose: null,
-        acquire({ workload }) {
-            expect(workload).type.toBe<null>();
-            return 'registry';
-        }
-    });
-});
-
-test('infers workload parameters with projections and acquisition scenarios', function () {
-    const fixture = defineResource({
-        name: 'fixture',
-        scope: 'per-run',
-        requirements: [],
-        workload: parsePackages,
-        scenarios: { registry: { default: 'ready', timing: 'acquire', values: [ 'ready', 'failure' ] } },
-        acquire({ workload, scenarios }) {
-            expect(workload.parameters).type.toBe<PackageParameters>();
-            expect(scenarios.registry).type.toBe<'failure' | 'ready'>();
-            return workload.parameters.packages;
-        },
-        dispose(handle, { workload, scenarios }) {
-            expect(handle).type.toBe<number>();
-            expect(workload.parameters).type.toBe<PackageParameters>();
-            expect(scenarios.registry).type.toBe<'failure' | 'ready'>();
-        },
-        serializeHandle(handle) {
-            return { packages: handle };
-        },
-        deserializeHandle(payload: PackageParameters) {
-            return String(payload.packages);
-        }
-    });
-    expect<ResourceHandle<typeof fixture>>().type.toBe<string>();
-    expect(fixture.deserializeHandle).type.toBe<
-        ((payload: ResourceProjectionPayload, context: ResourceProjectionContext) => string) | undefined
-    >();
-});
-
-test('rejects asynchronous workload parsers', function () {
-    expect(defineResource).type.not.toBeCallableWith({
-        name: 'fixture',
-        scope: 'per-case',
-        requirements: [],
-        dispose: null,
-        async workload() {
-            return { packages: packageCount };
-        },
-        acquire() {
-            return packageCount;
-        }
-    });
-});
+export const testNode = suite('resource workload', [
+    test('infers workload parameters alongside dependency handles', function (typeScope) {
+        const dependency = defineResource({
+            name: 'registry',
+            scope: 'per-case',
+            requirements: [],
+            dispose: null,
+            acquire() {
+                return 'registry';
+            }
+        });
+        const resource = defineResource({
+            name: 'fixture',
+            scope: 'per-case',
+            requirements: [],
+            dependencies: { dependency },
+            workload: parsePackages,
+            acquire({ workload, dependencies }) {
+                typeScope.assert(sameType.withActual<true>(), isEqualTo<PackageParameters>()(workload.parameters));
+                typeScope.assert(sameType.withActual<string>(), dependencies.dependency);
+                return workload.parameters.packages;
+            },
+            dispose(handle, { workload }) {
+                typeScope.assert(sameType.withActual<number>(), handle);
+                typeScope.assert(sameType.withActual<true>(), isEqualTo<PackageParameters>()(workload.parameters));
+            }
+        });
+        typeScope.assert(
+            sameType.withActual<true>(),
+            isEqualTo<(parameters: WorkloadParameters) => PackageParameters>()(resource.workload)
+        );
+        return typeScope.assert.collect();
+    }),
+    test('infers workload parameters in local service callbacks', function (typeScope) {
+        defineLocalServiceResource({
+            name: 'registry',
+            scope: 'per-case',
+            requirements: [],
+            dependencies: {},
+            workload: parsePackages,
+            address: { kind: 'loopback', port: 0 },
+            start({ workload }) {
+                typeScope.assert(sameType.withActual<true>(), isEqualTo<PackageParameters>()(workload.parameters));
+                return workload.parameters.packages;
+            },
+            ready(handle, { workload }) {
+                typeScope.assert(sameType.withActual<number>(), handle);
+                typeScope.assert(sameType.withActual<true>(), isEqualTo<PackageParameters>()(workload.parameters));
+                return { url: 'http://localhost', packages: handle };
+            },
+            dispose(handle, { workload }) {
+                typeScope.assert(sameType.withActual<number>(), handle);
+                typeScope.assert(sameType.withActual<true>(), isEqualTo<PackageParameters>()(workload.parameters));
+            }
+        });
+        return typeScope.assert.collect();
+    }),
+    test('independent resources expose a null workload', function (typeScope) {
+        defineResource({
+            name: 'registry',
+            scope: 'per-case',
+            requirements: [],
+            dispose: null,
+            acquire({ workload }) {
+                typeScope.assert(sameType.withActual<null>(), workload);
+                return 'registry';
+            }
+        });
+        return typeScope.assert.collect();
+    }),
+    test('infers workload parameters with projections and acquisition scenarios', function (typeScope) {
+        const fixture = defineResource({
+            name: 'fixture',
+            scope: 'per-run',
+            requirements: [],
+            workload: parsePackages,
+            scenarios: { registry: { default: 'ready', timing: 'acquire', values: [ 'ready', 'failure' ] } },
+            acquire({ workload, scenarios }) {
+                typeScope.assert(sameType.withActual<true>(), isEqualTo<PackageParameters>()(workload.parameters));
+                typeScope.assert(sameType.withActual<'failure' | 'ready'>(), scenarios.registry);
+                return workload.parameters.packages;
+            },
+            dispose(handle, { workload, scenarios }) {
+                typeScope.assert(sameType.withActual<number>(), handle);
+                typeScope.assert(sameType.withActual<true>(), isEqualTo<PackageParameters>()(workload.parameters));
+                typeScope.assert(sameType.withActual<'failure' | 'ready'>(), scenarios.registry);
+            },
+            serializeHandle(handle) {
+                return { packages: handle };
+            },
+            deserializeHandle(payload: PackageParameters) {
+                return String(payload.packages);
+            }
+        });
+        typeScope.assert(sameType<ResourceHandle<typeof fixture>, string>());
+        typeScope.assert(
+            sameType.withActual<true>(),
+            isEqualTo<
+                ((payload: ResourceProjectionPayload, context: ResourceProjectionContext) => string) | undefined
+            >()(fixture.deserializeHandle)
+        );
+        return typeScope.assert.collect();
+    }),
+    test('rejects asynchronous workload parsers', function (typeScope) {
+        typeScope.assert(rejectsCall('no-matching-overload'), () =>
+            defineResource({
+                name: 'fixture',
+                scope: 'per-case',
+                requirements: [],
+                dispose: null,
+                async workload() {
+                    return { packages: packageCount };
+                },
+                acquire() {
+                    return packageCount;
+                }
+            }));
+        return typeScope.assert.collect();
+    })
+]);

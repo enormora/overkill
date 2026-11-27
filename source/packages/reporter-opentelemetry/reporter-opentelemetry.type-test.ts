@@ -1,11 +1,17 @@
-import { describe, expect, test } from 'tstyche';
+import { suite, test } from '../../../tools/type-tests/authoring.entry-point.ts';
+import { sameType } from '../../../tools/type-tests/relations.entry-point.ts';
 import type { DefinedReporter, FinalResultReporter } from '../engine/engine.entry-point.ts';
+import { isEqualTo } from '../../test-support/type-relations.ts';
 import { createOpenTelemetryReporter } from './reporter-opentelemetry.entry-point.ts';
 
-describe('createOpenTelemetryReporter', function () {
-    test('returns the public final-result reporter contract', function () {
-        expect(createOpenTelemetryReporter({ outputFile: 'traces.jsonl' })).type.toBe<
-            DefinedReporter<FinalResultReporter>
-        >();
-    });
-});
+export const testNode = suite('createOpenTelemetryReporter', [
+    test('returns the public final-result reporter contract', function (typeScope) {
+        typeScope.assert(
+            sameType.withActual<true>(),
+            isEqualTo<DefinedReporter<FinalResultReporter>>()(
+                createOpenTelemetryReporter({ outputFile: 'traces.jsonl' })
+            )
+        );
+        return typeScope.assert.collect();
+    })
+]);
