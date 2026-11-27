@@ -7,10 +7,9 @@ import type { BindingOrigin, FunctionNode } from './binding-origin.ts';
 type Call = Readonly<Tree.CallExpression>;
 type SourceCode = Readonly<TSESLint.SourceCode>;
 
-const equalityChecks: ReadonlySet<string> = new Set(
-    [ 'equal', 'notEqual', 'deepEqual', 'notDeepEqual' ] satisfies
-        readonly (keyof CompositeCheckBuilder)[]
-);
+const equalityNames: readonly (keyof CompositeCheckBuilder)[] = [ 'equal', 'notEqual', 'deepEqual', 'notDeepEqual' ];
+const equalityChecks: ReadonlySet<string> = new Set(equalityNames);
+const scopedMethodPathLength = 2;
 
 function propertyName(property: Readonly<Tree.Property>): string | null {
     const { key } = property;
@@ -20,7 +19,9 @@ function propertyName(property: Readonly<Tree.Property>): string | null {
     return key.type === NodeType.Literal && typeof key.value === 'string' ? key.value : null;
 }
 
-function builderField(field: Readonly<Tree.Property | Tree.SpreadElement> | undefined): field is Readonly<Tree.Property> {
+function builderField(
+    field: Readonly<Tree.Property | Tree.SpreadElement> | undefined
+): field is Readonly<Tree.Property> {
     return field?.type === NodeType.Property && field.kind === 'init' && propertyName(field) === 'assert';
 }
 
@@ -40,7 +41,7 @@ function builderBody(call: Call, analysis: BindingAnalysis): FunctionNode | null
 }
 
 function isScopeMethod(origin: BindingOrigin): boolean {
-    return !origin.builderOnly && origin.path.length === 2 && origin.path[0] === 'assert';
+    return !origin.builderOnly && origin.path.length === scopedMethodPathLength && origin.path[0] === 'assert';
 }
 
 function isBuilderMethod(origin: BindingOrigin, builders: ReadonlySet<FunctionNode | null>): boolean {
@@ -55,7 +56,10 @@ function equalityName(origin: BindingOrigin): string | null {
 
 function equalityMethod(source: SourceCode, analysis: BindingAnalysis, calls: readonly Call[]) {
     const scopes = scopeParameters(source, analysis, calls);
-    const builders = new Set(compositeAssertionFactories(source, analysis, calls).map(call => builderBody(call, analysis)));
+    const factories = compositeAssertionFactories(source, analysis, calls);
+    const builders = new Set(factories.map(function (call) {
+        return builderBody(call, analysis);
+    }));
     return function check(origin: BindingOrigin): string | null {
         const { root } = origin;
         const name = equalityName(origin);
@@ -66,7 +70,11 @@ function equalityMethod(source: SourceCode, analysis: BindingAnalysis, calls: re
             return name;
         }
         return isScopeMethod(origin) &&
-            scopes.some(scope => scope.body === root.owner && scope.index === root.index) ? name : null;
+                scopes.some(function (scope) {
+                    return scope.body === root.owner && scope.index === root.index;
+                }) ?
+            name :
+            null;
     };
 }
 
@@ -75,7 +83,7 @@ export const noSelfComparison: TSESLint.RuleModule<'selfComparison'> = {
         type: 'problem',
         schema: [],
         messages: {
-            selfComparison: 'Both operands of {{check}} read the same value. Compare against an independent expected value.'
+            selfComparison: 'Both operands of {{check}} read the same value. Use an independent expected value.'
         }
     },
     create(context) {
@@ -85,12 +93,11 @@ export const noSelfComparison: TSESLint.RuleModule<'selfComparison'> = {
             for (const call of calls) {
                 const expected = call.arguments[1];
                 const origin = analysis.originOf(call.callee);
-                if (expected === undefined || origin === null || !analysis.sameStableOperands(call)) {
-                    continue;
-                }
-                const check = method(origin);
-                if (check !== null) {
-                    context.report({ node: expected, messageId: 'selfComparison', data: { check } });
+                if (expected !== undefined && origin !== null && analysis.sameStableOperands(call)) {
+                    const check = method(origin);
+                    if (check !== null) {
+                        context.report({ node: expected, messageId: 'selfComparison', data: { check } });
+                    }
                 }
             }
         }, {

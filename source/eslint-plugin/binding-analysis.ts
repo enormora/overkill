@@ -7,7 +7,9 @@ import {
     alternatives,
     emptyState,
     originValue,
+    type OperandFacts,
     operandFacts,
+    type OperandSlots,
     operandSlots,
     sameValue,
     type State,
@@ -16,11 +18,15 @@ import {
 } from './binding-state.ts';
 import { bindIteration, bindPattern, transfer } from './binding-transfer.ts';
 import { type BindingEvent, createFrame, type Frame, reachingBindings } from './reaching-bindings.ts';
-
-import { OperandIdentity } from './operand-identity.ts';
+import { createOperandIdentity, type OperandIdentity } from './operand-identity.ts';
 
 type Node = Readonly<Tree.Node>;
 type Query = (site: Node) => readonly Node[];
+
+type OriginObservations = {
+    readonly get: (node: Node) => BindingOrigin | null | undefined;
+    readonly set: (node: Node, origin: BindingOrigin | null) => void;
+};
 
 export type BindingAnalysis = {
     readonly originsWithin: (value: Node, at: Node) => readonly BindingOrigin[];
@@ -65,8 +71,12 @@ function readsOnly(variable: Readonly<Variable>): boolean {
 }
 
 type LexicalBindings = {
-    readonly entry: (frame: Frame, captures: ReadonlyMap<Variable, Value>, trackAlternatives: boolean,
-        operands: ReturnType<typeof operandFacts> | null) => State;
+    readonly entry: (
+        frame: Frame,
+        captures: ReadonlyMap<Variable, Value>,
+        trackAlternatives: boolean,
+        operands: OperandFacts | null
+    ) => State;
     readonly liveImports: ReadonlySet<Variable>;
     readonly immutableCaptures: ReadonlySet<Variable>;
     readonly apply: (state: State, event: Readonly<BindingEvent>) => void;
@@ -140,9 +150,11 @@ function lexicalBindings(sourceCode: Readonly<TSESLint.SourceCode>): LexicalBind
             return;
         }
         index.captured.add(variable);
-        if (variable.defs.some(function (definition) {
-            return definition.type === TSESLint.Scope.DefinitionType.Variable && definition.parent.kind === 'const';
-        })) {
+        if (
+            variable.defs.some(function (definition) {
+                return definition.type === TSESLint.Scope.DefinitionType.Variable && definition.parent.kind === 'const';
+            })
+        ) {
             index.immutableCaptures.add(variable);
         }
     }
@@ -316,7 +328,13 @@ function matchingOperands(identity: OperandIdentity, call: Readonly<Tree.CallExp
         identity.isRead(expected) && identity.same(actual, expected);
 }
 
-function operandObservations(enabled: boolean) {
+type OperandObservations = {
+    readonly fields: OperandSlots | null;
+    readonly observe: (state: State, call: Readonly<Tree.CallExpression>) => void;
+    readonly sameStableOperands: BindingAnalysis['sameStableOperands'];
+};
+
+function operandObservations(enabled: boolean): OperandObservations {
     const comparisons = new Map<Readonly<Tree.CallExpression>, boolean>();
     return {
         fields: enabled ? operandSlots() : null,
@@ -335,7 +353,7 @@ function observeOrigin(
     state: State,
     node: Node,
     captures: CaptureObservations,
-    origins: Map<Node, BindingOrigin | null>
+    origins: OriginObservations
 ): void {
     if (!state.trackAlternatives) {
         const value = state.expressions.get(node);
@@ -343,6 +361,29 @@ function observeOrigin(
         origins.set(node, agreeingOrigin(origins.get(node), origin));
     }
     captures.observe(state, node);
+}
+
+type OperandCaptures = {
+    readonly observe: (state: State) => void;
+    readonly proven: () => OperandIdentity | null;
+};
+
+function captureOperandIdentity(
+    bindings: ReadonlySet<Variable>,
+    initial: OperandIdentity | null
+): OperandCaptures {
+    let identity: OperandIdentity | null = null;
+    return {
+        observe(state) {
+            if (state.operands !== null) {
+                const retained = state.operands.identity.retain(bindings);
+                identity = identity === null ? retained : identity.join(retained);
+            }
+        },
+        proven() {
+            return identity ?? (initial === null ? null : createOperandIdentity());
+        }
+    };
 }
 
 function analyzeBindings(
@@ -381,9 +422,14 @@ function analyzeBindings(
         trackAlternatives: boolean,
         identity: OperandIdentity | null
     ): void {
-        const entry = bindings.entry(frame, inherited, trackAlternatives,
-            fields === null || identity === null ? null : operandFacts(fields, identity.copy(), bindings.liveImports));
-        let capturedOperands: OperandIdentity | null = null;
+        const operands = fields === null || identity === null ? null : operandFacts(
+            fields,
+            identity.copy(),
+            bindings.liveImports,
+            { keys: new Map(), writes: [] }
+        );
+        const entry = bindings.entry(frame, inherited, trackAlternatives, operands);
+        const capturedOperands = captureOperandIdentity(bindings.immutableCaptures, identity);
         const captures = observeCaptures(bindings, entry, inherited);
         reachingBindings(frame, entry, bindings.apply, {
             expression(state, node, stage) {
@@ -397,21 +443,15 @@ function analyzeBindings(
                     observeOrigin(state, node, captures, observations.origins);
                 }
             },
-            finish(state) {
-                if (state.operands !== null) {
-                    const captured = state.operands.identity.retain(bindings.immutableCaptures);
-                    capturedOperands = capturedOperands === null ? captured : capturedOperands.join(captured);
-                }
-            }
+            finish: capturedOperands.observe
         });
         const captured = captures.proven();
         for (const child of frame.children) {
-            analyze(child, captured, trackAlternatives,
-                capturedOperands ?? (identity === null ? null : new OperandIdentity()));
+            analyze(child, captured, trackAlternatives, capturedOperands.proven());
         }
     }
 
-    analyze(root, new Map(), false, stableOperands ? new OperandIdentity() : null);
+    analyze(root, new Map(), false, stableOperands ? createOperandIdentity() : null);
     if (query !== null) {
         analyze(root, new Map(), true, null);
     }

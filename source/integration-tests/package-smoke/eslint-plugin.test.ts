@@ -21,7 +21,8 @@ const code = [
     "test('composite', scope => { scope.assert(isOk, 200); return scope.assert.collect(); });",
     "const wrapped = wrapComposite({ name: 'wrapped', assert: (check, status: number) => check.equal(status, 200) });",
     "test('wrapped composite', scope => { scope.assert(wrapped, 200); return scope.assert.collect(); });",
-    "test('self comparison', scope => { const value = 1; scope.assert.equal(value, value); return scope.assert.collect(); });"
+    "test('self comparison', scope => {",
+    "    const value = 1; scope.assert.equal(value, value); return scope.assert.collect(); });"
 ].join('\\n');
 writeFileSync('package.json', JSON.stringify({ type: 'module' }));
 writeFileSync('facade.d.ts', [
@@ -57,7 +58,10 @@ const linter = new Linter();
 const rule = 'overkill/no-scope-escape';
 const compositeRule = 'overkill/no-single-use-trivial-assertion';
 const selfComparisonRule = 'overkill/no-self-comparison';
-const settings = { plugins: { overkill: plugin }, rules: { [rule]: 'error', [compositeRule]: 'error', [selfComparisonRule]: 'error' } };
+const settings = {
+    plugins: { overkill: plugin },
+    rules: { [rule]: 'error', [compositeRule]: 'error', [selfComparisonRule]: 'error' }
+};
 const syntaxDiagnostics = linter.verify(
     "import { test } from '@overkill-dev/test'; test('escape', scope => scope.assert);",
     [settings]
@@ -82,7 +86,7 @@ const diagnostics = linter.verify(code, [{
 }], { filename });
 if (diagnostics.length !== 3 || diagnostics[0].ruleId !== rule || diagnostics[0].line !== 2 ||
     diagnostics[1].ruleId !== compositeRule || diagnostics[1].line !== 6 ||
-    diagnostics[2].ruleId !== selfComparisonRule || diagnostics[2].line !== 10) {
+    diagnostics[2].ruleId !== selfComparisonRule || diagnostics[2].line !== 11) {
     throw new Error(JSON.stringify(diagnostics));
 }
 console.log('Packed ESLint plugin passed');

@@ -10,7 +10,6 @@ import {
     bindingValues,
     forgetObject,
     propertyOf,
-    recordOriginWrite,
     type State,
     type Value,
     type Variable
@@ -45,7 +44,16 @@ function recordMemberWrite(state: State, origin: Value | undefined, key: string 
     }
     const receiver = origin.origin;
     const write = key === undefined ? receiver : { ...receiver, path: [ ...receiver.path, key ] };
-    recordOriginWrite(state.operands.writes, write);
+    state.operands.writeOrigin(write);
+}
+
+function writeFieldIdentity(state: State, receiver: Value | undefined, key: string, input: BindingInput): void {
+    const slot = fieldRead(state, receiver, key);
+    if (slot !== null) {
+        state.operands?.identity.assign(slot, input.source);
+    } else if (state.operands !== null) {
+        forgetObject(state, input.value);
+    }
 }
 
 function writeOwnField(state: State, receiver: Value | undefined, key: string, input: BindingInput): void {
@@ -56,15 +64,6 @@ function writeOwnField(state: State, receiver: Value | undefined, key: string, i
     }
     properties.store(key, input.value);
     writeFieldIdentity(state, receiver, key, input);
-}
-
-function writeFieldIdentity(state: State, receiver: Value | undefined, key: string, input: BindingInput): void {
-    const slot = fieldRead(state, receiver, key);
-    if (slot !== null) {
-        state.operands?.identity.assign(slot, input.source);
-    } else if (state.operands !== null) {
-        forgetObject(state, input.value);
-    }
 }
 
 function writeMember(state: State, target: Readonly<Tree.MemberExpression>, input: BindingInput): void {
@@ -116,7 +115,10 @@ export function bindPattern(
         .with({ type: NodeType.ArrayPattern }, function (matched) {
             for (const [ index, element ] of matched.elements.entries()) {
                 if (element !== null) {
-                    bindPattern(state, variables, element, { value: propertyOf(state, value, String(index)), source: null });
+                    bindPattern(state, variables, element, {
+                        value: propertyOf(state, value, String(index)),
+                        source: null
+                    });
                 }
             }
         })
@@ -227,6 +229,23 @@ function objectLiteral(state: State, node: Readonly<Tree.ObjectExpression>): Val
     return value;
 }
 
+function recordArrayFields(state: State, node: Readonly<Tree.ArrayExpression>, knownLength: number): void {
+    if (state.operands === null) {
+        return;
+    }
+    const fields = new Map<string, Tree.Node>();
+    node.elements.slice(0, knownLength).forEach(function (element, index) {
+        if (element !== null) {
+            fields.set(String(index), element);
+        }
+    });
+    recordFields(state, node, fields);
+}
+
+function assignedValue(state: State, node: Tree.AssignmentExpression): Value | undefined {
+    return node.operator === '=' ? state.expressions.get(node.right) : undefined;
+}
+
 function arrayLiteral(state: State, node: Readonly<Tree.ArrayExpression>): Value | undefined {
     const spreadIndex = node.elements.findIndex(function (element) {
         return element?.type === NodeType.SpreadElement;
@@ -249,26 +268,10 @@ function arrayLiteral(state: State, node: Readonly<Tree.ArrayExpression>): Value
     return value;
 }
 
-function recordArrayFields(state: State, node: Readonly<Tree.ArrayExpression>, knownLength: number): void {
-    if (state.operands === null) {
-        return;
-    }
-    const fields = new Map<string, Tree.Node>();
-    node.elements.slice(0, knownLength).forEach(function (element, index) {
-        if (element !== null) {
-            fields.set(String(index), element);
-        }
-    });
-    recordFields(state, node, fields);
-}
-
-function assignedValue(state: State, node: Tree.AssignmentExpression): Value | undefined {
-    return node.operator === '=' ? state.expressions.get(node.right) : undefined;
-}
-
 const facadeMembers = new Set([ 'assert', 'require' ]);
 const bindableMembers = new Set([ ...facadeMembers, 'plan' ]);
 const facadeMethodPathLength = 2;
+const scopeBindPathLength = 3;
 
 function derivesFacade(path: readonly string[]): boolean {
     const [ member, method ] = path;
@@ -285,28 +288,17 @@ function withBoundOperands(call: Readonly<Tree.CallExpression>): boolean {
     return call.arguments.length > 1 || call.arguments[0]?.type === NodeType.SpreadElement;
 }
 
-function derivedMethod(state: State, origin: BindingOrigin, call: Readonly<Tree.CallExpression>): BindingOrigin | null {
-    const { path } = origin;
-    const builderAnnotation = path.length === 1 && path[0] === 'annotated';
-    if (state.operands !== null && builderAnnotation) {
-        return { ...origin, builderOnly: true, path: [] };
-    }
-    if (derivesFacade(path)) {
-        return { ...origin, path: path.slice(0, -1) };
-    }
-    return boundMethod(state, origin, call);
-}
-
 function isScopeBind(path: readonly string[]): boolean {
     const [ facade, , method ] = path;
-    return facade !== undefined && facadeMembers.has(facade) && path.length === 3 && method === 'bind';
+    return facade !== undefined && facadeMembers.has(facade) && path.length === scopeBindPathLength &&
+        method === 'bind';
 }
 
 function bindKind(state: State, path: readonly string[]): 'builder' | 'scope' | null {
     if (state.operands === null) {
         return derivesBoundMethod(path) ? 'scope' : null;
     }
-    if (path.length === 2 && path[1] === 'bind') {
+    if (path.length === facadeMethodPathLength && path[1] === 'bind') {
         return 'builder';
     }
     return isScopeBind(path) ? 'scope' : null;
@@ -321,6 +313,18 @@ function boundMethod(state: State, origin: BindingOrigin, call: Readonly<Tree.Ca
         preboundOperands: origin.preboundOperands || state.operands !== null && withBoundOperands(call),
         path: path.slice(0, -1)
     };
+}
+
+function derivedMethod(state: State, origin: BindingOrigin, call: Readonly<Tree.CallExpression>): BindingOrigin | null {
+    const { path } = origin;
+    const builderAnnotation = path.length === 1 && path[0] === 'annotated';
+    if (state.operands !== null && builderAnnotation) {
+        return { ...origin, builderOnly: true, path: [] };
+    }
+    if (derivesFacade(path)) {
+        return { ...origin, path: path.slice(0, -1) };
+    }
+    return boundMethod(state, origin, call);
 }
 
 function callResult(state: State, call: Tree.CallExpression): Value | undefined {
@@ -392,27 +396,12 @@ function expressionValue(state: State, variables: Variables, node: Tree.Node): V
         });
 }
 
-function escapeArguments(
-    state: State,
-    node: Tree.CallExpression | Tree.NewExpression,
-    captured: ReadonlySet<Variable>
-): void {
-    for (const argument of node.arguments) {
-        forgetObject(
-            state,
-            state.expressions.get(argument.type === NodeType.SpreadElement ? argument.argument : argument)
-        );
-    }
-    if (node.callee.type === NodeType.MemberExpression) {
-        forgetObject(state, state.expressions.get(node.callee.object));
-    }
-    forgetCapturedObjects(state, captured);
-}
-
 function forgetCapturedObjects(state: State, captured: ReadonlySet<Variable>): void {
     if (state.operands !== null) {
         const { identity, liveImports } = state.operands;
-        liveImports.forEach(variable => identity.forget(variable));
+        liveImports.forEach(function (variable) {
+            identity.forget(variable);
+        });
     }
     for (const variable of captured) {
         forgetObject(state, state.bindings.get(variable));
@@ -433,6 +422,23 @@ export function bindIteration(
     }
 }
 
+function escapeArguments(
+    state: State,
+    node: Tree.CallExpression | Tree.NewExpression,
+    captured: ReadonlySet<Variable>
+): void {
+    for (const argument of node.arguments) {
+        forgetObject(
+            state,
+            state.expressions.get(argument.type === NodeType.SpreadElement ? argument.argument : argument)
+        );
+    }
+    if (node.callee.type === NodeType.MemberExpression) {
+        forgetObject(state, state.expressions.get(node.callee.object));
+    }
+    forgetCapturedObjects(state, captured);
+}
+
 export function transfer(
     state: State,
     variables: Variables,
@@ -449,11 +455,17 @@ export function transfer(
     match(node)
         .with({ type: NodeType.VariableDeclarator }, function (matched) {
             if (matched.init !== null) {
-                bindPattern(state, variables, matched.id, { value: state.expressions.get(matched.init), source: matched.init });
+                bindPattern(state, variables, matched.id, {
+                    value: state.expressions.get(matched.init),
+                    source: matched.init
+                });
             }
         })
         .with({ type: NodeType.AssignmentExpression }, function (matched) {
-            bindPattern(state, variables, matched.left, { value, source: matched.operator === '=' ? matched.right : null });
+            bindPattern(state, variables, matched.left, {
+                value,
+                source: matched.operator === '=' ? matched.right : null
+            });
         })
         .with({ type: NodeType.UpdateExpression }, function (matched) {
             bindPattern(state, variables, matched.argument, unknownInput);

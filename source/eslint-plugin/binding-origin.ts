@@ -43,8 +43,11 @@ export function sameOrigin(left: BindingOrigin, right: BindingOrigin): boolean {
 }
 
 export function coversOrigin(prefix: BindingOrigin, origin: BindingOrigin): boolean {
-    return sameOrigin(prefix, { ...origin, path: origin.path.slice(0, prefix.path.length),
-        preboundOperands: prefix.preboundOperands });
+    return sameOrigin(prefix, {
+        ...origin,
+        path: origin.path.slice(0, prefix.path.length),
+        preboundOperands: prefix.preboundOperands
+    });
 }
 
 const functionTypes: ReadonlySet<NodeType> = new Set([

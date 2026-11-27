@@ -125,11 +125,16 @@ function reachingInputs(frame: Frame, entry: State, apply: ApplyEvent): Readonly
     return inputs;
 }
 
+type ReachingObservations = {
+    readonly expression: ObserveExpression;
+    readonly finish: (state: State) => void;
+};
+
 export function reachingBindings(
     frame: Frame,
     entry: State,
     apply: ApplyEvent,
-    observations: { readonly expression: ObserveExpression; readonly finish: (state: State) => void; }
+    observations: ReachingObservations
 ): void {
     const inputs = reachingInputs(frame, entry, apply);
     for (const [ segment, input ] of inputs) {

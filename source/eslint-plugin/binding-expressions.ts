@@ -1,7 +1,7 @@
 import { AST_NODE_TYPES as NodeType, type TSESTree as Tree } from '@typescript-eslint/utils';
 import { match } from 'ts-pattern';
 import type { Allocation, State, Value, Variable } from './binding-state.ts';
-import type { OperandSlot } from './operand-identity.ts';
+import type { OperandIdentity, OperandSlot } from './operand-identity.ts';
 
 function literalKey(node: Readonly<Tree.Node>): string | undefined {
     if (node.type !== NodeType.Literal) {
@@ -33,10 +33,7 @@ export function fieldRead(state: State, receiver: Value | undefined, key: string
 export function recordFields(state: State, allocation: Allocation, fields: ReadonlyMap<string, Tree.Node>): void {
     const { operands } = state;
     if (operands !== null && state.objects.has(allocation)) {
-        for (const key of operands.keys.get(allocation) ?? []) {
-            operands.identity.forget(operands.field(allocation, key));
-        }
-        operands.keys.set(allocation, new Set(fields.keys()));
+        operands.replaceFields(allocation, new Set(fields.keys()));
         fields.forEach(function (expression, key) {
             operands.identity.assign(operands.field(allocation, key), expression);
         });
@@ -46,7 +43,9 @@ export function recordFields(state: State, allocation: Allocation, fields: Reado
 export function ownFields(state: State, node: Readonly<Tree.ObjectExpression>): ReadonlyMap<string, Tree.Node> {
     const fields = new Map<string, Tree.Node>();
     for (const property of node.properties) {
-        const key = property.type === NodeType.Property ? propertyKey(state, property.key, property.computed) : undefined;
+        const key = property.type === NodeType.Property
+            ? propertyKey(state, property.key, property.computed)
+            : undefined;
         if (property.type === NodeType.Property && key !== undefined) {
             fields.set(key, property.value);
         } else {
@@ -74,7 +73,10 @@ type OperandRead = {
     readonly stable: boolean;
 };
 
-function stableMemberKey(identity: NonNullable<State['operands']>['identity'], member: Readonly<Tree.MemberExpression>): boolean {
+function stableMemberKey(
+    identity: OperandIdentity,
+    member: Readonly<Tree.MemberExpression>
+): boolean {
     return !member.computed || member.property.type === NodeType.Literal || identity.isRead(member.property);
 }
 
@@ -84,7 +86,8 @@ function memberRead(state: State, member: Readonly<Tree.MemberExpression>): Oper
     const identity = state.operands?.identity;
     return {
         source,
-        stable: source !== null && identity !== undefined && stableMemberKey(identity, member) && identity.isRead(member.object)
+        stable: source !== null && identity !== undefined && stableMemberKey(identity, member) &&
+            identity.isRead(member.object)
     };
 }
 
@@ -134,7 +137,11 @@ export function recordOperand(state: State, variables: ReadonlyMap<Tree.Node, Va
         const { identity } = state.operands;
         const { source, stable } = operandRead(state, variables, node);
         identity.assign(node, source);
-        identity.recordRead(node, stable);
+        if (stable) {
+            identity.recordRead(node);
+        } else {
+            identity.forgetRead(node);
+        }
         const result = branchResult(node);
         if (result !== undefined) {
             identity.assign(result, node);
