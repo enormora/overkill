@@ -21,6 +21,7 @@ import {
     workload,
     type BenchmarkMeasureContext
 } from '../../../packages/bench/bench.entry-point.ts';
+import type { BenchmarkExecutionResult } from '../../../engine/benchmark-result.ts';
 import { benchmarkResultSchema } from '../../../run/benchmark-result-schema.ts';
 import { defineResource, withResource } from '../../../packages/test/resources.entry-point.ts';
 
@@ -78,11 +79,19 @@ const assertCompletedCooldown = defineCompositeAssertion({
     }
 });
 
+function measuredBenchmark(result: RunResult): BenchmarkExecutionResult {
+    const measured = result.perTest[0]?.benchmark;
+    if (measured === undefined || measured === null) {
+        throw new Error('Expected benchmark evidence.');
+    }
+    return measured;
+}
+
 const assertNativeCooldown = defineCompositeAssertion({
     name: 'native runtime cooldown',
     assert(check, result: RunResult) {
-        const measured = result.perTest[0]?.benchmark;
-        const cooldown = measured?.lifecycle?.cooldown;
+        const measured = measuredBenchmark(result);
+        const cooldown = measured.lifecycle?.cooldown;
         if (cooldown?.mode !== 'runtime') {
             throw new Error('Expected runtime cooldown evidence.');
         }
