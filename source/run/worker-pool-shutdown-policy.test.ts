@@ -60,11 +60,17 @@ export const testNode = suite('worker pool shutdown ownership', [
         }, { exact: failure });
         const shutdown = fixture.startShutdown();
         await scope.yieldToNextTurn();
-        scope.assert.equal(fixture.pool.threads.length, 0);
-        scope.assert.false(shutdown.settled());
+        scope.assert.deepEqual({
+            calls: fixture.calls,
+            settled: shutdown.settled(),
+            threads: fixture.pool.threads.length
+        }, {
+            calls: [ 'run:null:runTask', 'destroy' ],
+            settled: false,
+            threads: 0
+        });
         worker.emit('exit');
         await shutdown.finished;
-        scope.assert.deepEqual(fixture.calls, [ 'run:null:runTask', 'destroy' ]);
         return scope.assert.collect();
     }),
     test('preserves backend destruction failures for an idle pool', async function (scope) {
