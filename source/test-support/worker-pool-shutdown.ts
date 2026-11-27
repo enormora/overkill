@@ -23,7 +23,11 @@ type WorkerPoolShutdownFixture = {
     readonly startShutdown: () => ObservedWorkerShutdown;
     readonly addWorker: () => EventEmitter;
 };
-export function workerPoolShutdown(runFailure: Error | null, destroyFailure: Error | null): WorkerPoolShutdownFixture {
+export function workerPoolShutdown(
+    runFailure: Error | null,
+    destroyFailure: Error | null,
+    dispatchedWorker: EventEmitter | null
+): WorkerPoolShutdownFixture {
     const workers: EventEmitter[] = [];
     const calls: string[] = [];
     const original: TinypoolInstance = {
@@ -33,6 +37,11 @@ export function workerPoolShutdown(runFailure: Error | null, destroyFailure: Err
         },
         async run(task, options) {
             calls.push(`run:${String(task)}:${options.name}`);
+            if (dispatchedWorker !== null) {
+                workers.push(dispatchedWorker);
+                await Promise.resolve();
+                workers.pop();
+            }
             if (runFailure !== null) {
                 throw runFailure;
             }

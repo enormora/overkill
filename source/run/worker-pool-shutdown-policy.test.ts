@@ -1,10 +1,12 @@
+import { EventEmitter } from 'node:events';
+
 import { suite, test } from '@overkill-dev/test';
 
 import { workerPoolShutdown } from '../test-support/worker-pool-shutdown.ts';
 
 export const testNode = suite('worker pool shutdown ownership', [
     test('registers each worker exit once across repeated task dispatch', async function (scope) {
-        const fixture = workerPoolShutdown(null, null);
+        const fixture = workerPoolShutdown(null, null, null);
         const worker = fixture.addWorker();
         scope.assert.equal(
             await fixture.pool.run('first', { name: 'runTask', signal: scope.signal, transferList: [] }),
@@ -21,7 +23,7 @@ export const testNode = suite('worker pool shutdown ownership', [
         return scope.assert.collect();
     }),
     test('waits for worker exit after backend destruction completes', async function (scope) {
-        const fixture = workerPoolShutdown(null, null);
+        const fixture = workerPoolShutdown(null, null, null);
         const worker = fixture.addWorker();
         const shutdown = fixture.startShutdown();
         await Promise.resolve();
@@ -35,7 +37,7 @@ export const testNode = suite('worker pool shutdown ownership', [
         return scope.assert.collect();
     }),
     test('observes workers first discovered during shutdown', async function (scope) {
-        const fixture = workerPoolShutdown(null, null);
+        const fixture = workerPoolShutdown(null, null, null);
         const first = fixture.addWorker();
         const second = fixture.addWorker();
         const pending = fixture.pool.destroy();
@@ -49,21 +51,25 @@ export const testNode = suite('worker pool shutdown ownership', [
         });
         return scope.assert.collect();
     }),
-    test('preserves task failures and still observes exiting workers', async function (scope) {
+    test('awaits a worker spawned by a task that fails before shutdown', async function (scope) {
         const failure = new Error('worker task failed');
-        const fixture = workerPoolShutdown(failure, null);
-        const worker = fixture.addWorker();
+        const worker = new EventEmitter();
+        const fixture = workerPoolShutdown(failure, null, worker);
         await scope.assert.rejects(async function () {
             await fixture.pool.run(null, { name: 'runTask', signal: scope.signal, transferList: [] });
         }, { exact: failure });
+        const shutdown = fixture.startShutdown();
+        await scope.yieldToNextTurn();
+        scope.assert.equal(fixture.pool.threads.length, 0);
+        scope.assert.false(shutdown.settled());
         worker.emit('exit');
-        await fixture.pool.destroy();
+        await shutdown.finished;
         scope.assert.deepEqual(fixture.calls, [ 'run:null:runTask', 'destroy' ]);
         return scope.assert.collect();
     }),
     test('preserves backend destruction failures for an idle pool', async function (scope) {
         const failure = new Error('worker shutdown failed');
-        const fixture = workerPoolShutdown(null, failure);
+        const fixture = workerPoolShutdown(null, failure, null);
         await scope.assert.rejects(fixture.pool.destroy, { exact: failure });
         scope.assert.deepEqual(fixture.calls, [ 'destroy' ]);
         return scope.assert.collect();
