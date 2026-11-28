@@ -71,10 +71,27 @@ function isSingleKey(analysis: TypeAnalysis, key: Type): boolean {
 
 type Evidence = Pick<SiteEvidence, 'actual' | 'diagnostics' | 'expected' | 'result'>;
 
+type KeyOperands = {
+    readonly actual: Type;
+    readonly key: Type;
+    readonly keys: Type | undefined;
+};
+
+async function keyMembership(
+    analysis: TypeAnalysis,
+    relation: KeyReference['relation'],
+    key: Type,
+    keys: Type
+): Promise<Evidence['result']> {
+    const present = await analysis.checker.isTypeAssignableTo(key, keys);
+    const expected = relation === 'hasKey';
+    return { kind: 'established', holds: present === expected };
+}
+
 async function keyResult(
     analysis: TypeAnalysis,
     reference: KeyReference,
-    types: { readonly actual: Type; readonly key: Type; readonly keys: Type | undefined; }
+    types: KeyOperands
 ): Promise<Evidence['result']> {
     const { actual, key, keys } = types;
     if (!isSingleKey(analysis, key)) {
@@ -88,11 +105,7 @@ async function keyResult(
     }
     const problem = await invalidOperand(analysis, [ key, keys ]);
     return problem === null
-        ? {
-            kind: 'established',
-            holds: await analysis.checker.isTypeAssignableTo(key, keys) ===
-                (reference.relation === 'hasKey')
-        }
+        ? await keyMembership(analysis, reference.relation, key, keys)
         : { kind: 'inconclusive', reason: problem };
 }
 

@@ -1,7 +1,7 @@
 import type * as TypeScript from 'typescript-beta/ast';
 import type { Relation } from './relation-evidence.ts';
 import { UnsupportedEvidenceError } from './unsupported-evidence-error.ts';
-import type { SourceAnalysis } from './source-analysis-port.ts';
+import type { AnalyzedSymbol, SourceAnalysis } from './source-analysis-port.ts';
 import { sourceSymbol } from './source-analysis.ts';
 import type { CallRejection } from './assertion-reference.ts';
 
@@ -51,7 +51,10 @@ const comparisons: ReadonlyMap<string, Relation> = new Map([
 ]);
 const typeMembers = new Set([ ...comparisons.keys(), 'hasKey', 'lacksKey', 'acceptsCall', 'rejectsCall', 'table' ]);
 
-async function expressionSymbol(analysis: SourceAnalysis, expression: TypeScript.Expression) {
+async function expressionSymbol(
+    analysis: SourceAnalysis,
+    expression: TypeScript.Expression
+): Promise<AnalyzedSymbol | undefined> {
     const node = analysis.compiler.isPropertyAccessExpression(expression) ? expression.name : expression;
     return await sourceSymbol(analysis, node);
 }

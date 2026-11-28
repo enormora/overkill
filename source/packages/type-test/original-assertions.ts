@@ -169,11 +169,16 @@ type AssertionCollection = {
     readonly recordIssue: (issue: OriginalAssertionPlan['issues'][number]) => void;
 };
 
+type OwnedAssertion = {
+    readonly owner: WorkId;
+    readonly read: typeof assertionSite;
+};
+
 async function collectSite(
     analysis: SourceAnalysis,
     collection: AssertionCollection,
     call: TypeScript.CallExpression,
-    source: { readonly owner: WorkId; readonly read: typeof assertionSite; }
+    source: OwnedAssertion
 ): Promise<void> {
     const { owner, read } = source;
     const existing = collection.site(call);

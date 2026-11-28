@@ -321,10 +321,12 @@ function inlineList(
     return node.elements;
 }
 
+type PlannedRow = { readonly index: number; readonly title: string; };
+
 function rowAssertions(
     analysis: SourceAnalysis,
     cases: readonly TypeScript.Expression[],
-    row: { readonly index: number; readonly title: string; }
+    row: PlannedRow
 ): readonly TypeScript.Expression[] {
     const source = cases[row.index];
     const title = inlineField(analysis, source, 'title');

@@ -51,10 +51,10 @@ export const types: TypeAssertions = {
     notAssignableTo<Actual, Expected>() {
         return comparisonReference<Actual, Expected>('notAssignableTo');
     },
-    hasKey<Actual, Key extends PropertyKey>(..._: KeyArguments<Key>) {
+    hasKey<Actual, Key extends PropertyKey>() {
         return keyReference<Actual, Key>('hasKey');
     },
-    lacksKey<Actual, Key extends PropertyKey>(..._: KeyArguments<Key>) {
+    lacksKey<Actual, Key extends PropertyKey>() {
         return keyReference<Actual, Key>('lacksKey');
     },
     acceptsCall,
