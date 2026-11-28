@@ -56,7 +56,7 @@ const assertCaptureFailure = defineCompositeAssertion({
             });
         });
         return check.group([
-            check.equal(failure.message, captureFailureMessage(cause, closeOnOwner)),
+            check.equal(failure?.message, captureFailureMessage(cause, closeOnOwner)),
             check.equal(execution.takeErrors({ kind: 'case', work, attempt: { index: 0 } }).length, 1)
         ]);
     }

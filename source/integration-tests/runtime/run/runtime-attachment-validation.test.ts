@@ -46,9 +46,9 @@ const assertFailedWriter = defineCompositeAssertion({
         });
         const closing = await captureRejectedError(writer.close);
         return check.group([
-            check.equal(first.message, 'Binary attachment byte limit exceeded.'),
-            check.equal(later.message, 'Binary attachment byte limit exceeded.'),
-            check.equal(closing.message, 'Binary attachment byte limit exceeded.')
+            check.equal(first?.message, 'Binary attachment byte limit exceeded.'),
+            check.equal(later?.message, 'Binary attachment byte limit exceeded.'),
+            check.equal(closing?.message, 'Binary attachment byte limit exceeded.')
         ]);
     }
 });
@@ -98,8 +98,8 @@ const pendingWriteFailure = defineCompositeAssertion({
         pending.reject(new Error('transport write failed'));
         const [ writeError, closeError ] = await Promise.all([ rejectedWrite, rejectedClose ]);
         return check.group([
-            check.equal(writeError.message, 'transport write failed'),
-            check.equal(closeError.message, 'transport write failed')
+            check.equal(writeError?.message, 'transport write failed'),
+            check.equal(closeError?.message, 'transport write failed')
         ]);
     }
 });
@@ -118,7 +118,7 @@ const overlappingWrite = defineCompositeAssertion({
         pending.resolve(undefined);
         const [ , artifact ] = await Promise.all([ writing, closing ]);
         return check.group([
-            check.equal(rejected.message, 'Attachment writes require an open writer and an awaited previous write.'),
+            check.equal(rejected?.message, 'Attachment writes require an open writer and an awaited previous write.'),
             check.deepEqual(artifact.payload.content, {
                 kind: 'text',
                 text: 'one',
@@ -291,8 +291,8 @@ export const testNode = suite('Runtime attachment validation', [
             await writer.write(Uint8Array.of(2));
         });
         scope.assert.deepEqual({
-            invalidType: invalidType.message,
-            closed: closed.message,
+            invalidType: invalidType?.message,
+            closed: closed?.message,
             artifacts: store.artifacts().length
         }, {
             invalidType: 'Binary attachment writers require bytes.',
@@ -333,7 +333,7 @@ export const testNode = suite('Runtime attachment validation', [
             await scope.assert(assertFailedWriter, attachments);
             const errors = await execution.finish();
             scope.assert.deepEqual({
-                overflow: overflow.message,
+                overflow: overflow?.message,
                 artifacts: store.artifacts().length,
                 errors: errors.length
             }, {
@@ -384,13 +384,13 @@ export const testNode = suite('Runtime attachment validation', [
                 const failure = await captureRejectedError(async function invalidMetadata() {
                     await attachments.open({ name, mediaType: 'text/plain', kind: 'text' });
                 });
-                scope.assert.equal(failure.name, 'AttachmentOperationError');
+                scope.assert.equal(failure?.name, 'AttachmentOperationError');
             }
             for (let index = 0; index < 101; index += 1) {
                 const failure = await captureRejectedError(async function invalidJson() {
                     await attachments.json(metadata, undefined);
                 });
-                scope.assert.equal(failure.name, 'AttachmentOperationError');
+                scope.assert.equal(failure?.name, 'AttachmentOperationError');
             }
         });
         scope.assert(

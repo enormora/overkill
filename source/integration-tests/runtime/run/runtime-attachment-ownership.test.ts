@@ -14,7 +14,7 @@ export const testNode = test(
             const failure = await captureRejectedError(async function missingFile() {
                 await execution.context.forProducer({ kind: 'case' }).file(metadata, `${directory}/missing.log`);
             });
-            scope.assert.equal(failure.name, 'AttachmentOperationError');
+            scope.assert.equal(failure?.name, 'AttachmentOperationError');
         });
         scope.assert.equal(execution.takeErrors({ kind: 'case', work, attempt: { index: 0 } }).length, 1);
         const content = store.artifacts()[0]?.payload.content;

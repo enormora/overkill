@@ -131,7 +131,7 @@ export const testNode = suite('Runtime attachments', [
             const overflow = await captureRejectedError(async function overflowScreenshot() {
                 await binary.write(new Uint8Array([ 1, 2, 3, 4 ]));
             });
-            scope.assert.equal(overflow.message, 'Binary attachment byte limit exceeded.');
+            scope.assert.equal(overflow?.message, 'Binary attachment byte limit exceeded.');
         });
         await execution.finish();
         const artifact = store.artifacts()[1];

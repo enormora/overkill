@@ -254,10 +254,7 @@ export const testNode = suite('family preparation validation', [
         const collectionError = await captureRejectedError(async function () {
             await prepared.collect({ workIds: [ testPlan.cases[0].workId ], signal });
         });
-        scope.assert.match(
-            collectionError.message,
-            /collection kind/u
-        );
+        scope.assert.equal(collectionError?.message, 'Family collection kind does not match its definition.');
         return scope.assert.collect();
     }),
     test('rejects foreign collections and unsupported retry policy', async function (scope) {

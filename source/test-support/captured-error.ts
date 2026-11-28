@@ -1,24 +1,17 @@
-function requireError(error: unknown): Error {
-    if (error instanceof Error) {
-        return error;
-    }
-    throw new TypeError('Expected an Error.', { cause: error });
-}
-
-export function captureThrownError(operation: () => unknown): Error {
+export function captureThrownError(operation: () => unknown): Error | undefined {
     try {
         operation();
+        return undefined;
     } catch (error: unknown) {
-        return requireError(error);
+        return error instanceof Error ? error : undefined;
     }
-    throw new Error('Expected the operation to throw.');
 }
 
-export async function captureRejectedError(operation: () => PromiseLike<unknown>): Promise<Error> {
+export async function captureRejectedError(operation: () => PromiseLike<unknown>): Promise<Error | undefined> {
     try {
         await operation();
+        return undefined;
     } catch (error: unknown) {
-        return requireError(error);
+        return error instanceof Error ? error : undefined;
     }
-    throw new Error('Expected the operation to reject.');
 }

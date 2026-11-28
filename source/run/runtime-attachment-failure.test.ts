@@ -52,7 +52,7 @@ export const testNode = suite('Runtime attachment failure', [
                 await execution.context.forProducer({ kind: 'case' }).json(metadata, {});
             });
         });
-        scope.assert.equal(failure.message, 'Attachment escaped its integration run.');
+        scope.assert.equal(failure?.message, 'Attachment escaped its integration run.');
         const errors = execution.takeErrors({ kind: 'run' });
         scope.assert(
             defineCompositeAssertion({
@@ -82,7 +82,7 @@ export const testNode = suite('Runtime attachment failure', [
         const failure = await captureRejectedError(async function rejectHostileJson() {
             await execution.context.forProducer({ kind: 'case' }).json(metadata, value);
         });
-        scope.assert.equal(failure.message, 'Invalid JSON attachment.');
+        scope.assert.equal(failure?.message, 'Invalid JSON attachment.');
         const errors = await execution.finish();
         scope.assert(
             defineCompositeAssertion({
@@ -102,7 +102,7 @@ export const testNode = suite('Runtime attachment failure', [
         const openFailure = await captureRejectedError(async function rejectWrongOpenReply() {
             await execution.context.forProducer({ kind: 'case' }).open(metadata);
         });
-        scope.assert.equal(openFailure.message, 'Attachment open returned an invalid reply.');
+        scope.assert.equal(openFailure?.message, 'Attachment open returned an invalid reply.');
         const openErrors = await execution.finish();
         scope.assert.equal(openErrors.length, 1);
         return scope.assert.collect();
@@ -113,7 +113,7 @@ export const testNode = suite('Runtime attachment failure', [
         }, { ...defaultAttachmentLimits, maxInlineBytes: 1024 });
         const writer = await closing.context.forProducer({ kind: 'case' }).open(metadata);
         const closeFailure = await captureRejectedError(writer.close);
-        scope.assert.equal(closeFailure.message, 'Attachment close returned an invalid reply.');
+        scope.assert.equal(closeFailure?.message, 'Attachment close returned an invalid reply.');
         const errors = await closing.finish();
         scope.assert.equal(errors.length, 1);
 
@@ -136,7 +136,7 @@ export const testNode = suite('Runtime attachment failure', [
                     await transportFailureExecution.context.forProducer({ kind: 'case' }).open(metadata);
                 });
             });
-            scope.assert.equal(failure.message, message);
+            scope.assert.equal(failure?.message, message);
             const transportFailureErrors = transportFailureExecution.takeErrors({
                 kind: 'case',
                 work,

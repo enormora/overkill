@@ -338,7 +338,7 @@ export const testNode = suite('calibration sampling lifetimes', [
                 policy
             );
         });
-        scope.assert.equal(failure.message, 'reference cancelled');
+        scope.assert.equal(failure?.message, 'reference cancelled');
         scope.assert.deepEqual(
             retained.map(function (result) {
                 return { status: result.status, comparability: result.normalization?.comparability };
@@ -384,7 +384,7 @@ export const testNode = suite('calibration sampling lifetimes', [
                 );
             });
             scope.assert.equal(
-                failure.message,
+                failure?.message,
                 scope.parameters
                     ? 'Normalization requires a benchmark runner reference context.'
                     : 'Calibration requires a benchmark runner reference context.'

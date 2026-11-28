@@ -54,15 +54,13 @@ export const testNode = suite('runner managed runtime composition', [
         scope.assert.equal(
             captureThrownError(function () {
                 return combinedResourceEntries(steps, null);
-            })
-                .message,
+            })?.message,
             'Runtime matrix "transport-matrix" requires runner-managed execution.'
         );
         scope.assert.equal(
             captureThrownError(function () {
                 return combinedResourceEntries(steps, { ...selectedWork('first'), runtimes: [] });
-            })
-                .message,
+            })?.message,
             'Runtime matrix "transport-matrix" requires runner-managed execution.'
         );
         return scope.assert.collect();
@@ -71,15 +69,13 @@ export const testNode = suite('runner managed runtime composition', [
         scope.assert.equal(
             captureThrownError(function () {
                 return combinedResourceEntries(steps, selectedWork(null));
-            })
-                .message,
+            })?.message,
             'Runtime matrix "transport-matrix" has no selected variant for this work item.'
         );
         scope.assert.equal(
             captureThrownError(function () {
                 return combinedResourceEntries(steps, selectedWork('unknown'));
-            })
-                .message,
+            })?.message,
             'Runtime matrix "transport-matrix" has no variant "unknown".'
         );
         return scope.assert.collect();

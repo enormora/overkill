@@ -72,7 +72,7 @@ export const testNode = suite('managed resource acquisition policy', [
             }));
         });
         scope.assert.equal(
-            failure.message,
+            failure?.message,
             'Resource name "owner" is used by multiple descriptors in one lifecycle boundary.'
         );
         scope.assert.equal(fixture.stores.records().length, 1);

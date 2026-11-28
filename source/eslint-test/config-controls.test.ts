@@ -26,16 +26,14 @@ export const testNode = suite('config execution controls', [
         scope.assert.equal(
             captureThrownError(function control() {
                 propagateConfigControls(wrapped, scope.signal);
-            })
-                .message,
+            })?.message,
             'denied'
         );
         const ordinary = new Error('outer', { cause: denied });
         scope.assert.equal(
             captureThrownError(function cause() {
                 propagateConfigControls(ordinary, scope.signal);
-            })
-                .message,
+            })?.message,
             'denied'
         );
         return scope.assert.collect();

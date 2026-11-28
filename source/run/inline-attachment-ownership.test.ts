@@ -37,7 +37,7 @@ export const testNode = suite('inline attachment ownership', [
                     const error = await captureRejectedError(async function rejectUnknownAttempt() {
                         await attachments.json(metadata, { ready: true });
                     });
-                    scope.assert.equal(error.message, 'Failure artifact escaped its test attempt.');
+                    scope.assert.equal(error?.message, 'Failure artifact escaped its test attempt.');
                 });
             });
             const errors = await execution.finish();
@@ -146,7 +146,7 @@ export const testNode = suite('inline attachment ownership', [
         const error = await captureRejectedError(async function rejectLateRunAttachment() {
             await attachments.json(metadata, { late: true });
         });
-        scope.assert.equal(error.message, 'Attachment escaped its integration run.');
+        scope.assert.equal(error?.message, 'Attachment escaped its integration run.');
         scope.assert(
             defineCompositeAssertion({
                 name: 'captured resource attachment APIs reject writes after the integration run ends',
@@ -181,7 +181,7 @@ export const testNode = suite('inline attachment ownership', [
                     await rejectedTextBytesWriter.write(Uint8Array.of(byte));
                     await rejectedTextBytesWriter.close();
                 });
-                scope.assert.equal(error.name, 'AttachmentOperationError');
+                scope.assert.equal(error?.name, 'AttachmentOperationError');
             });
             scope.assert.equal(execution.takeErrors({ kind: 'case', work, attempt: { index: 0 } }).length, 1);
             const rejectedTextBytesContent = store.artifacts()[0]?.payload.content;
@@ -209,7 +209,7 @@ export const testNode = suite('inline attachment ownership', [
         });
         const expired = await deferred.promise;
         const expiredAttachmentError = await captureRejectedError(expired);
-        scope.assert.equal(expiredAttachmentError.message, 'Attachment escaped its test attempt.');
+        scope.assert.equal(expiredAttachmentError?.message, 'Attachment escaped its test attempt.');
         const errors = execution.takeErrors({ kind: 'run' });
         scope.assert(
             defineCompositeAssertion({
@@ -247,7 +247,7 @@ export const testNode = suite('inline attachment ownership', [
                 });
             });
             scope.assert.equal(
-                retryLimitError.message,
+                retryLimitError?.message,
                 'Attachment count limit exceeded.'
             );
         });
@@ -286,7 +286,7 @@ export const testNode = suite('inline attachment ownership', [
                     await attachments.json(metadata, Number.NaN);
                 });
                 scope.assert.equal(
-                    invalidJsonError.name,
+                    invalidJsonError?.name,
                     'AttachmentOperationError'
                 );
             });

@@ -41,7 +41,7 @@ export const testNode = suite('resource wrapper scope validation', [
                 const result: unknown = Reflect.apply(wrapped, undefined, [ supplied ]);
                 await result;
             });
-            scope.assert.equal(failure.message, 'Resource scope composition failed.');
+            scope.assert.equal(failure?.message, 'Resource scope composition failed.');
             return scope.assert.collect();
         }
     }),
@@ -53,7 +53,7 @@ export const testNode = suite('resource wrapper scope validation', [
             const result: unknown = Reflect.apply(wrapped, undefined, [ supplied ]);
             await result;
         });
-        scope.assert.equal(failure.message, 'Resource scope "value" already exists.');
+        scope.assert.equal(failure?.message, 'Resource scope "value" already exists.');
         scope.assert.deepEqual(resources, { value: 'existing' });
         return scope.assert.collect();
     }),

@@ -123,8 +123,7 @@ export const testNode = suite('property targeting', [
         scope.assert.match(
             captureThrownError(function expired() {
                 targets.target('distance', 0);
-            })
-                .message,
+            })?.message,
             /outlived/
         );
         return scope.assert.collect();
@@ -136,15 +135,13 @@ export const testNode = suite('property targeting', [
         scope.assert.match(
             captureThrownError(function invalid() {
                 targets.target('coverage', Number.NaN);
-            })
-                .message,
+            })?.message,
             /finite/
         );
         scope.assert.match(
             captureThrownError(function overflow() {
                 targets.target('score', 1);
-            })
-                .message,
+            })?.message,
             /limit/
         );
         return scope.assert.collect();

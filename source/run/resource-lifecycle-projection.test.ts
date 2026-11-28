@@ -66,8 +66,7 @@ export const testNode = suite({
                 scope.assert.equal(
                     captureThrownError(function deserializeLocalResource() {
                         deserializeProjectedHandle(databaseResource, 'handle', {});
-                    })
-                        .message,
+                    })?.message,
                     'Resource "database" requires a projection for worker-pool per-run ownership.'
                 );
 

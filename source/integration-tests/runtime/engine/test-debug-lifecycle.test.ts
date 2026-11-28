@@ -302,7 +302,10 @@ export const testNode = suite('debug lifecycle', [
             return await engine.execute(plan, options);
         });
         const encoded = JSON.stringify(artifactFrom(result));
-        scope.assert.match(captureThrownError(late).message, /assertion context settled/u);
+        scope.assert.equal(
+            captureThrownError(late)?.message,
+            'Cannot record an assertion after the assertion context settled.'
+        );
         scope.assert.deepEqual(
             lateErrors.map(function message(error) {
                 return error.message;

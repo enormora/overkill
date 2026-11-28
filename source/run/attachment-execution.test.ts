@@ -101,7 +101,7 @@ export const testNode = suite('attachment execution ownership', [
                 return await execution.context.forProducer(producer).json(metadata, Number.NaN);
             });
             scope.assert.equal(
-                invalidJsonError.name,
+                invalidJsonError?.name,
                 'AttachmentOperationError'
             );
         });
@@ -182,8 +182,8 @@ export const testNode = suite('attachment execution ownership', [
                 return await execution.context.forProducer(producer).json(metadata, 1);
             });
             scope.assert.deepEqual({
-                expiredAttempt: expiredAttemptError.message,
-                finishedRun: finishedRunError.message,
+                expiredAttempt: expiredAttemptError?.message,
+                finishedRun: finishedRunError?.message,
                 errors: errors.length,
                 lateErrors: execution.takeErrors({ kind: 'run' }).length
             }, {
@@ -214,8 +214,8 @@ export const testNode = suite('attachment execution ownership', [
             return await prepared.json(metadata, 1);
         });
         scope.assert.deepEqual({
-            unowned: unownedArtifactError.message,
-            expired: expiredArtifactError.message,
+            unowned: unownedArtifactError?.message,
+            expired: expiredArtifactError?.message,
             errors: execution.takeErrors({ kind: 'run' }).length
         }, {
             unowned: 'Failure artifact escaped its test attempt.',
@@ -258,7 +258,7 @@ export const testNode = suite('attachment execution ownership', [
                 return await execution.context.forProducer(producer).open({ ...metadata, kind: 'text' });
             });
             scope.assert.equal(
-                openError.message,
+                openError?.message,
                 expected.message
             );
             const errors = await execution.finish();
@@ -274,7 +274,7 @@ export const testNode = suite('attachment execution ownership', [
             return await execution.context.forProducer(producer).json(metadata, 1);
         });
         scope.assert.equal(
-            transportError.message,
+            transportError?.message,
             'transport unavailable'
         );
         const errors = await execution.finish();

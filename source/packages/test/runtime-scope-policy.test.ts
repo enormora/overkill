@@ -37,8 +37,7 @@ export const testNode = suite('runtime wrapper scope composition', [
         scope.assert.equal(
             captureThrownError(function () {
                 composeRuntimeScope({ ...scope, runtimes }, api, { value: 'replacement' });
-            })
-                .message,
+            })?.message,
             'Runtime scope "api" already exists.'
         );
         scope.assert.deepEqual(runtimes, { api: { value: 'existing' } });
@@ -59,8 +58,7 @@ export const testNode = suite('runtime wrapper scope composition', [
             scope.assert.equal(
                 captureThrownError(function () {
                     Reflect.apply(composeRuntimeScope, undefined, [ { ...scope, runtimes }, api, { value: 'api' } ]);
-                })
-                    .message,
+                })?.message,
                 'Runtime scope composition failed.'
             );
             return scope.assert.collect();
@@ -70,15 +68,13 @@ export const testNode = suite('runtime wrapper scope composition', [
         scope.assert.equal(
             captureThrownError(function () {
                 Reflect.apply(composeRuntimeScope, undefined, [ scope, api, undefined ]);
-            })
-                .message,
+            })?.message,
             'Runtime scope composition failed.'
         );
         scope.assert.equal(
             captureThrownError(function () {
                 Reflect.apply(composeRuntimeScope, undefined, [ scope, composed, { api: { value: 'api' } } ]);
-            })
-                .message,
+            })?.message,
             'Runtime scope composition failed.'
         );
         return scope.assert.collect();
