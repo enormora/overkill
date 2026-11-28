@@ -1,6 +1,6 @@
 import type { IsEqual } from 'type-fest';
-import { suite, test } from '../test/test.entry-point.ts';
-import { assignableFrom, rejectsCall, sameType } from '../type-test/type-test.entry-point.ts';
+import { suite, test } from '@overkill-dev/test';
+import { assignableFrom, rejectsCall, sameType } from '@overkill-dev/type-test';
 import * as standard from '../test/bench.entry-point.ts';
 import { defineResource, withResource } from '../test/resources.entry-point.ts';
 import { isAssignableTo, isEqualTo } from '../../test-support/type-relations.ts';

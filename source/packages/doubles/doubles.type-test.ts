@@ -1,11 +1,11 @@
-import { suite, test } from '../test/test.entry-point.ts';
+import { suite, test } from '@overkill-dev/test';
 import {
     acceptsCall,
     assignableFrom,
     assignableTo,
     rejectsCall,
     sameType
-} from '../type-test/type-test.entry-point.ts';
+} from '@overkill-dev/type-test';
 import type { AssertAssertionFacade } from '../engine/engine.entry-point.ts';
 import { isEqualTo, isAssignableTo } from '../../test-support/type-relations.ts';
 import {

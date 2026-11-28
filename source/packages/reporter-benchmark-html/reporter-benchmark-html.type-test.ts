@@ -1,5 +1,5 @@
-import { test } from '../test/test.entry-point.ts';
-import { rejectsCall, sameType } from '../type-test/type-test.entry-point.ts';
+import { test } from '@overkill-dev/test';
+import { rejectsCall, sameType } from '@overkill-dev/type-test';
 import type { DefinedReporter, FinalResultReporter } from '../engine/engine.entry-point.ts';
 import { isEqualTo } from '../../test-support/type-relations.ts';
 import { createBenchmarkHtmlReporter, type BenchmarkHtmlReporterSinks } from './reporter-benchmark-html.entry-point.ts';

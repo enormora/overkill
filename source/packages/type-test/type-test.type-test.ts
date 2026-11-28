@@ -1,12 +1,7 @@
-import { test } from '../test/test.entry-point.ts';
+import { test } from '@overkill-dev/test';
 import type { TestScope } from '../engine/engine.entry-point.ts';
-import {
-    acceptsCall,
-    rejectsCall,
-    type sameType,
-    type assignableTo,
-    type assignableFrom
-} from './type-test.entry-point.ts';
+import { acceptsCall, rejectsCall } from '@overkill-dev/type-test';
+import type { assignableFrom, assignableTo, sameType } from './type-test.entry-point.ts';
 
 declare const testScope: TestScope;
 declare const sameTypeUnderTest: typeof sameType;

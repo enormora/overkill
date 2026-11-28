@@ -1,5 +1,5 @@
 import type { IsEqual } from 'type-fest';
-import { acceptsCall, rejectsCall, sameType } from '../type-test/type-test.entry-point.ts';
+import { acceptsCall, rejectsCall, sameType } from '@overkill-dev/type-test';
 import type {
     Suite,
     Table,
@@ -11,6 +11,7 @@ import type {
     TestScope
 } from '../engine/engine.entry-point.ts';
 import { hasKey, isEqualTo, type IsAssignable } from '../../test-support/type-relations.ts';
+import { suite as typeSuite, test as typeTest } from '@overkill-dev/test';
 import {
     type AuthoringAnnotations,
     type AuthoringControls,
@@ -38,9 +39,9 @@ declare const tableBody: TableTestBody<{ readonly value: number; }>;
 
 declare const createTestFacadeUnderTest: typeof createTestFacade;
 
-export const testNode = suite('Test authoring and facade contracts', [
-    suite('Reusable bodies and facade nodes', [
-        test('defines reusable source-aware macros and parameterized bodies', function (scope) {
+export const testNode = typeSuite('Test authoring and facade contracts', [
+    typeSuite('Reusable bodies and facade nodes', [
+        typeTest('defines reusable source-aware macros and parameterized bodies', function (scope) {
             const macro = defineMacro(function reusableCase(title: string, value: number) {
                 scope.assert(sameType.withActual<string>(), title);
                 scope.assert(sameType.withActual<number>(), value);
@@ -61,7 +62,7 @@ export const testNode = suite('Test authoring and facade contracts', [
             scope.assert(sameType.withActual<true>(), isEqualTo<TestBody>()(parameterizedBody({ value: 1 })));
             return scope.assert.collect();
         }),
-        test('creates neutral test facade nodes', function (scope) {
+        typeTest('creates neutral test facade nodes', function (scope) {
             const facade = createTestFacade({
                 controls: authoringControls
             });
@@ -102,7 +103,7 @@ export const testNode = suite('Test authoring and facade contracts', [
             );
             return scope.assert.collect();
         }),
-        test('creates neutral facade macro forms', function (scope) {
+        typeTest('creates neutral facade macro forms', function (scope) {
             const facade = createTestFacade({
                 annotations
             });
@@ -125,7 +126,7 @@ export const testNode = suite('Test authoring and facade contracts', [
             scope.assert(sameType.withActual<true>(), isEqualTo<TestBody>()(parameterizedBody({ value: 1 })));
             return scope.assert.collect();
         }),
-        test('keeps neutral facades narrow', function (scope) {
+        typeTest('keeps neutral facades narrow', function (scope) {
             const facade = createTestFacade({
                 annotations
             });
@@ -136,8 +137,8 @@ export const testNode = suite('Test authoring and facade contracts', [
             scope.assert(sameType.withActual<false>(), hasKey<'defineCompositeAssertion'>()(facade));
             return scope.assert.collect();
         }),
-        suite('guards facade scope mapping against core scope keys', [
-            test('preserves explicit mapped scopes', function (scope) {
+        typeSuite('guards facade scope mapping against core scope keys', [
+            typeTest('preserves explicit mapped scopes', function (scope) {
                 const assertScopeOptions = {
                     mapScope(callbackScope: TestScope) {
                         return { assert: callbackScope.assert };
@@ -164,7 +165,7 @@ export const testNode = suite('Test authoring and facade contracts', [
                 });
                 return scope.assert.collect();
             }),
-            test('rejects shadowing core scope keys', function (scope) {
+            typeTest('rejects shadowing core scope keys', function (scope) {
                 const resourcesScopeOptions = {
                     mapScope() {
                         return { resources: {} };
@@ -191,8 +192,8 @@ export const testNode = suite('Test authoring and facade contracts', [
                 return scope.assert.collect();
             })
         ]),
-        suite('creates test, suite, and table nodes from default root authoring forms', [
-            test('exposes default test and suite forms', function (scope) {
+        typeSuite('creates test, suite, and table nodes from default root authoring forms', [
+            typeTest('exposes default test and suite forms', function (scope) {
                 scope.assert(sameType.withActual<true>(), isEqualTo<TestCase>()(test('passes', body)));
                 scope.assert(
                     sameType.withActual<true>(),
@@ -214,7 +215,7 @@ export const testNode = suite('Test authoring and facade contracts', [
                 scope.assert(sameType.withActual<true>(), isEqualTo<Suite>()(suite('group', [ node ])));
                 return scope.assert.collect();
             }),
-            test('exposes default table forms', function (scope) {
+            typeTest('exposes default table forms', function (scope) {
                 scope.assert(
                     sameType.withActual<true>(),
                     isEqualTo<Suite>()(
@@ -252,7 +253,7 @@ export const testNode = suite('Test authoring and facade contracts', [
                 return scope.assert.collect();
             })
         ]),
-        test('rejects unstaged root authoring forms', function (scope) {
+        typeTest('rejects unstaged root authoring forms', function (scope) {
             scope.assert(rejectsCall('argument-count'), function () {
                 return test('passes', annotations, body);
             });
@@ -293,7 +294,7 @@ export const testNode = suite('Test authoring and facade contracts', [
             );
             return scope.assert.collect();
         }),
-        test('defines narrow high-level authoring test data', function (scope) {
+        typeTest('defines narrow high-level authoring test data', function (scope) {
             scope.assert(sameType<
                 IsEqual<AuthoringAnnotations, {
                     readonly ownership?: readonly string[];
@@ -313,7 +314,7 @@ export const testNode = suite('Test authoring and facade contracts', [
             scope.assert(sameType<IsAssignable<AuthoringControls, TestControlsInput>, true>());
             return scope.assert.collect();
         }),
-        test('rejects removed high-level authoring metadata', function (scope) {
+        typeTest('rejects removed high-level authoring metadata', function (scope) {
             scope.assert(rejectsCall('no-matching-overload'), function () {
                 return createTestFacade({ metadata: annotations });
             });

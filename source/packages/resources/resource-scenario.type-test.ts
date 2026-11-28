@@ -1,5 +1,5 @@
-import { test } from '../test/test.entry-point.ts';
-import { acceptsCall, sameType } from '../type-test/type-test.entry-point.ts';
+import { test } from '@overkill-dev/test';
+import { acceptsCall, sameType } from '@overkill-dev/type-test';
 import { hasKey } from '../../test-support/type-relations.ts';
 import { defineResource, type RuntimeAttachments } from './resources.entry-point.ts';
 

@@ -1,5 +1,5 @@
 import type { IsEqual } from 'type-fest';
-import { acceptsCall, rejectsCall, sameType } from '../type-test/type-test.entry-point.ts';
+import { acceptsCall, rejectsCall, sameType } from '@overkill-dev/type-test';
 import type {
     Table,
     TestBody,
@@ -22,13 +22,13 @@ import {
     type RuntimeWrappedTestBody,
     type TemporaryDirectoryHandle
 } from './resources.entry-point.ts';
+import { suite, test } from '@overkill-dev/test';
 import {
     createTestFacade,
     table as rootTable,
-    suite,
-    test,
     type ParameterizedTestScope,
-    type TableTestBody
+    type TableTestBody,
+    test as rootTest
 } from './test.entry-point.ts';
 
 type Database = {
@@ -185,13 +185,13 @@ export const testNode = suite('Resource and runtime attachment wrappers', [
         const facade = createTestFacade();
 
         scope.assert(acceptsCall, function () {
-            return test('uses database', runtimeBody);
+            return rootTest('uses database', runtimeBody);
         });
         scope.assert(acceptsCall, function () {
-            return test('uses scratch', resourceBody);
+            return rootTest('uses scratch', resourceBody);
         });
         scope.assert(acceptsCall, function () {
-            return test({ body: runtimeBody, title: 'uses database' });
+            return rootTest({ body: runtimeBody, title: 'uses database' });
         });
         scope.assert(acceptsCall, function () {
             return facade.test('uses database', runtimeBody);

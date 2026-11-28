@@ -1,5 +1,5 @@
 import type { IsEqual } from 'type-fest';
-import { acceptsCall, rejectsCall, sameType } from '../type-test/type-test.entry-point.ts';
+import { acceptsCall, rejectsCall, sameType } from '@overkill-dev/type-test';
 import type {
     DefinedOutputRenderer,
     DefinedReporter,
@@ -12,8 +12,8 @@ import type {
     TestScope,
     TestScopeAssertContext
 } from '../engine/engine.entry-point.ts';
+import { suite, test as typeTest } from '@overkill-dev/test';
 import {
-    suite,
     type AuthoringAnnotations,
     type AuthoringControls,
     type createTestFacade,
@@ -42,7 +42,7 @@ declare const reporter: DefinedReporter;
 declare const createTestFacadeUnderTest: typeof createTestFacade;
 
 export const testNode = suite('Test capture and direct execution', [
-    test('types capture controls as selected-profile policy', function (scope) {
+    typeTest('types capture controls as selected-profile policy', function (scope) {
         scope.assert(acceptsCall, function () {
             return createTestFacadeUnderTest({
                 controls: authoringControls
@@ -65,7 +65,7 @@ export const testNode = suite('Test capture and direct execution', [
         return scope.assert.collect();
     }),
     suite('re-exports high-level authoring types from the engine', [
-        test('re-exports engine node and body types', function (scope) {
+        typeTest('re-exports engine node and body types', function (scope) {
             scope.assert(sameType<
                 IsEqual<RootRunIfMainOptions, {
                     readonly outputRenderer?: DefinedOutputRenderer;
@@ -87,7 +87,7 @@ export const testNode = suite('Test capture and direct execution', [
             scope.assert(sameType<IsEqual<RootTable, Table>, true>());
             return scope.assert.collect();
         }),
-        test('re-exports engine annotation and planning types', function (scope) {
+        typeTest('re-exports engine annotation and planning types', function (scope) {
             scope.assert(sameType<IsEqual<RootTestBody, TestBody>, true>());
             scope.assert(sameType<IsEqual<RootTestCase, TestCase>, true>());
             scope.assert(sameType<IsEqual<RootTestNode, TestNode>, true>());
@@ -96,7 +96,7 @@ export const testNode = suite('Test capture and direct execution', [
             return scope.assert.collect();
         })
     ]),
-    test('runs direct entrypoints with runner-owned options', function (scope) {
+    typeTest('runs direct entrypoints with runner-owned options', function (scope) {
         scope.assert(acceptsCall, async function () {
             return runIfMain(import.meta, node);
         });

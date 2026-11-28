@@ -1,5 +1,5 @@
 import type { IsEqual } from 'type-fest';
-import { acceptsCall, sameType } from '../type-test/type-test.entry-point.ts';
+import { acceptsCall, sameType } from '@overkill-dev/type-test';
 import type {
     DefinedOutputRenderer,
     DefinedReporter,
@@ -8,7 +8,7 @@ import type {
 } from '../engine/engine.entry-point.ts';
 import type { PerformanceBaselineAdapter } from '../baselines/baselines.entry-point.ts';
 import type { IsAssignable } from '../../test-support/type-relations.ts';
-import { suite, test } from './test.entry-point.ts';
+import { suite, test } from '@overkill-dev/test';
 import type {
     CompositeAssertionDefinition,
     CompositeCheckBuilder,

@@ -1,6 +1,6 @@
 import type { TSESLint } from '@typescript-eslint/utils';
-import { test } from '../test/test.entry-point.ts';
-import { sameType } from '../type-test/type-test.entry-point.ts';
+import { test } from '@overkill-dev/test';
+import { sameType } from '@overkill-dev/type-test';
 import type { Suite } from '../engine/engine.entry-point.ts';
 import { isEqualTo } from '../../test-support/type-relations.ts';
 import { defineRuleTests } from './eslint-test.entry-point.ts';

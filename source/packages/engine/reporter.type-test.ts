@@ -1,5 +1,5 @@
-import { suite, test } from '../test/test.entry-point.ts';
-import { sameType } from '../type-test/type-test.entry-point.ts';
+import { suite, test } from '@overkill-dev/test';
+import { sameType } from '@overkill-dev/type-test';
 import { isEqualTo } from '../../test-support/type-relations.ts';
 import { ReporterSinkConflictError } from './engine.entry-point.ts';
 

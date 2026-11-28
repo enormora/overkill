@@ -1,5 +1,5 @@
-import { test } from '../test/test.entry-point.ts';
-import { rejectsCall } from '../type-test/type-test.entry-point.ts';
+import { test } from '@overkill-dev/test';
+import { rejectsCall } from '@overkill-dev/type-test';
 import {
     defineResource,
     type defineRuntime

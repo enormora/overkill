@@ -1,5 +1,5 @@
 import type { IsEqual } from 'type-fest';
-import { acceptsCall, assignableFrom, sameType } from '../type-test/type-test.entry-point.ts';
+import { acceptsCall, assignableFrom, sameType } from '@overkill-dev/type-test';
 import type {
     AssertAssertionFacade,
     RequireAssertionFacade,
@@ -8,7 +8,7 @@ import type {
     TestRandom
 } from '../engine/engine.entry-point.ts';
 import { isEqualTo } from '../../test-support/type-relations.ts';
-import { test } from './test.entry-point.ts';
+import { test } from '@overkill-dev/test';
 import {
     throwingTest,
     type ThrowingTestAuthor,

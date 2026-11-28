@@ -1,6 +1,6 @@
 import type { IsEqual } from 'type-fest';
-import { suite, test } from '../test/test.entry-point.ts';
-import { acceptsCall, sameType } from '../type-test/type-test.entry-point.ts';
+import { suite, test } from '@overkill-dev/test';
+import { acceptsCall, sameType } from '@overkill-dev/type-test';
 import type {
     AnyResourceDefinition,
     ResourceContext,

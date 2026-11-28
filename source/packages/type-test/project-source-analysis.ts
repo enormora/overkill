@@ -8,16 +8,27 @@ import { createSourceAnalysis, type SourceAnalysis } from './source-analysis-por
 const entryExtension = import.meta.url.endsWith('.ts') ? '.ts' : '.d.ts';
 const relationEntry = fileURLToPath(new URL(`./type-test.entry-point${entryExtension}`, import.meta.url));
 
+function installedRelationEntry(): string {
+    try {
+        return fileURLToPath(import.meta.resolve('@overkill-dev/type-test')).replace(/\.js$/u, '.d.ts');
+    } catch (error: unknown) {
+        if (error instanceof Error && Reflect.get(error, 'code') === 'ERR_MODULE_NOT_FOUND') {
+            return relationEntry;
+        }
+        throw error;
+    }
+}
+
 async function relationModuleExports(project: FrozenProject): Promise<readonly CompilerSymbol[]> {
     const { checker } = project;
-    const direct = await checker.getSymbolOfSourceFile(relationEntry);
-    if (direct !== undefined) {
-        return await checker.getExportsOfModule(direct);
-    }
-    const realpath = compilerFileSystem.realpath(relationEntry);
+    const entries = [ relationEntry, installedRelationEntry() ];
+    const paths = new Set(entries.map(compilerFileSystem.realpath));
+    const basenames = new Set(entries.map(function entryName(path) {
+        return basename(path);
+    }));
     const names = await project.program.getSourceFileNames();
     const matchingFiles = names.filter(function sameEntry(name) {
-        return basename(name) === basename(relationEntry) && compilerFileSystem.realpath(name) === realpath;
+        return basenames.has(basename(name)) && paths.has(compilerFileSystem.realpath(name));
     });
     const modules = await checker.getSymbolOfSourceFile(matchingFiles);
     const exports = await Promise.all(modules.map(async function exported(symbol) {

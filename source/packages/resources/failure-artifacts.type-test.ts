@@ -1,5 +1,5 @@
-import { test } from '../test/test.entry-point.ts';
-import { acceptsCall, assignableFrom, sameType } from '../type-test/type-test.entry-point.ts';
+import { test } from '@overkill-dev/test';
+import { acceptsCall, assignableFrom, sameType } from '@overkill-dev/type-test';
 import { isEqualTo } from '../../test-support/type-relations.ts';
 import {
     defineResource,

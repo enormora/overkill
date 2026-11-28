@@ -1,6 +1,6 @@
 import type { Rule } from 'eslint';
-import { suite, test } from '../test/test.entry-point.ts';
-import { rejectsCall, sameType } from '../type-test/type-test.entry-point.ts';
+import { suite, test } from '@overkill-dev/test';
+import { rejectsCall, sameType } from '@overkill-dev/type-test';
 import type { Suite } from '../engine/engine.entry-point.ts';
 import { isEqualTo, isAssignableTo } from '../../test-support/type-relations.ts';
 import { defineRuleTests, type ConfigSelection } from './eslint-test.entry-point.ts';

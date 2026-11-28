@@ -1,7 +1,8 @@
 import { availableParallelism } from 'node:os';
-import { defineConfig } from './source/packages/test/config.entry-point.ts';
-import { createBenchmarkHtmlReporter, createLineReporter } from './source/packages/test/reporters.entry-point.ts';
-import { family as typeTestFamily } from './source/packages/type-test/type-test.entry-point.ts';
+import { defineConfig } from '@overkill-dev/test/config';
+import { createBenchmarkHtmlReporter, createLineReporter } from '@overkill-dev/test/reporters';
+import type { ProjectFamilyProfileConfig } from './source/packages/test/config.entry-point.ts';
+import { family as typeTestFamily } from './source/packages/type-test/profile.entry-point.ts';
 
 const concurrency = availableParallelism();
 
@@ -29,19 +30,20 @@ const mutationCampaignPolicy = {
     timeouts: { collectionMilliseconds: 30_000, softMilliseconds: 360_000, hardMilliseconds: 365_000 }
 };
 
-export const config = defineConfig({
+const types: ProjectFamilyProfileConfig<typeof typeTestFamily> = {
+    testFamily: typeTestFamily,
+    execution: { processModel: 'supervised-process', scheduling: 'concurrent', maxConcurrency: concurrency },
+    timeouts: { collectionMilliseconds: 240_000, softMilliseconds: 480_000, hardMilliseconds: 730_000 },
+    files: { include: [ 'source/**/*.type-test.ts' ] },
+    settings: {
+        projectConfigPath: './source/tsconfig.type-tests.json',
+        compiler: { kind: 'package', specifier: 'typescript-beta', version: '7.1.0-beta' }
+    }
+};
+
+const runtimeConfig = defineConfig({
     runtimeStateDir: 'target/overkill',
     profiles: {
-        types: {
-            testFamily: typeTestFamily,
-            execution: { processModel: 'supervised-process', scheduling: 'concurrent', maxConcurrency: concurrency },
-            timeouts: { collectionMilliseconds: 240_000, softMilliseconds: 480_000, hardMilliseconds: 730_000 },
-            files: { include: [ 'source/**/*.type-test.ts' ] },
-            settings: {
-                projectConfigPath: './source/tsconfig.type-tests.json',
-                compiler: { kind: 'package', specifier: 'typescript-beta', version: '7.1.0-beta' }
-            }
-        },
         'mutation-cost': {
             testFamily: 'benchmark',
             files: {
@@ -137,3 +139,8 @@ export const config = defineConfig({
         }
     }
 });
+
+export const config = {
+    ...runtimeConfig,
+    profiles: { ...runtimeConfig.profiles, types }
+};

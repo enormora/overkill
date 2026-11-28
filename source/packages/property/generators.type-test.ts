@@ -1,6 +1,6 @@
 import type { IsEqual, Writable } from 'type-fest';
-import { suite, test } from '../test/test.entry-point.ts';
-import { assignableFrom, rejectsCall, sameType } from '../type-test/type-test.entry-point.ts';
+import { suite, test } from '@overkill-dev/test';
+import { assignableFrom, rejectsCall, sameType } from '@overkill-dev/type-test';
 import type * as standard from '../test/property.entry-point.ts';
 import { isEqualTo } from '../../test-support/type-relations.ts';
 import * as leaf from './property.entry-point.ts';

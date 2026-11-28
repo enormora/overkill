@@ -1,6 +1,6 @@
 import type { IsEqual } from 'type-fest';
-import { suite, test } from '../test/test.entry-point.ts';
-import { sameType } from '../type-test/type-test.entry-point.ts';
+import { suite, test } from '@overkill-dev/test';
+import { sameType } from '@overkill-dev/type-test';
 import type { snapshot as standardSnapshot, BaselineEntry as StandardEntry } from '../test/baselines.entry-point.ts';
 import type { AssertReferenceArguments } from '../engine/assertion-protocol.entry-point.ts';
 import type { IsAssignable } from '../../test-support/type-relations.ts';

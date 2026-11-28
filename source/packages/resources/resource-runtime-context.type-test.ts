@@ -1,6 +1,6 @@
 import type { IsEqual } from 'type-fest';
-import { suite, test } from '../test/test.entry-point.ts';
-import { rejectsCall, sameType } from '../type-test/type-test.entry-point.ts';
+import { suite, test } from '@overkill-dev/test';
+import { rejectsCall, sameType } from '@overkill-dev/type-test';
 import { isEqualTo } from '../../test-support/type-relations.ts';
 import {
     composeRuntimeContext,

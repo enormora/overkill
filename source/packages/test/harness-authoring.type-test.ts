@@ -1,9 +1,8 @@
 import type { IsEqual } from 'type-fest';
-import { rejectsCall, sameType } from '../type-test/type-test.entry-point.ts';
+import { rejectsCall, sameType } from '@overkill-dev/type-test';
 import { type IsAssignable, isEqualTo } from '../../test-support/type-relations.ts';
+import { suite, test } from '@overkill-dev/test';
 import {
-    suite,
-    test,
     type DefinedHarness,
     type ExactHarnessOverrides,
     defineHarness,

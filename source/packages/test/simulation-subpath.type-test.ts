@@ -1,5 +1,5 @@
-import { acceptsCall, sameType } from '../type-test/type-test.entry-point.ts';
-import { suite, test } from './test.entry-point.ts';
+import { acceptsCall, sameType } from '@overkill-dev/type-test';
+import { suite, test } from '@overkill-dev/test';
 import {
     defineSimulatedHttpServer,
     defineSimulation,
