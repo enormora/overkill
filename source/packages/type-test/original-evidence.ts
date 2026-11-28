@@ -47,7 +47,8 @@ async function evaluateKey(
     const problem = !validKey ? 'Key comparisons require one literal or unique-symbol key.'
         : keys === undefined ? 'The compiler did not resolve the available key type.'
         : await hasAuthoredRecoveryType(analysis, [reference.actual, reference.key]) ? recoveryTypeReason
-        : await invalidOperand(analysis, [actual, key, keys]);
+        : actual.isErrorType() ? recoveryTypeReason
+        : await invalidOperand(analysis, [ key, keys ]);
     const actualType = await checker.typeToString(actual);
     const rendered = {
         actual: keys === undefined ? actualType : `${actualType} (keys: ${await checker.typeToString(keys)})`,

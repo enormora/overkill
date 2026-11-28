@@ -127,10 +127,11 @@ async function assertionSite(
     const member = await typesMember(analysis, expression);
     return {
         call,
-        reference: binding,
+        reference: orderedAssertion(binding, call.arguments.slice(1)),
         ...authoredPosition(binding.kind === 'call' ? binding.probe : call),
         owners: [ owner ],
-        message: await assertionAnnotation(analysis, call)
+        message: await assertionAnnotation(analysis, call),
+        label: member ?? (binding.negated ? `${binding.relation}.not` : binding.relation)
     };
 }
 function bodyAnchor(origin: TestBodyOrigin): string {
