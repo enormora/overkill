@@ -1,7 +1,7 @@
-import { rejects as assertRejects } from 'node:assert/strict';
 import { getEventListeners } from 'node:events';
 import { table, type TestScope, suite, test } from '@overkill-dev/test';
 
+import { captureRejectedError } from '../test-support/captured-error.ts';
 import type { BenchmarkScope } from '../engine/test-node.ts';
 import {
     availableMetric,
@@ -325,7 +325,7 @@ export const testNode = suite('calibration sampling lifetimes', [
             }
         };
         const retained: BenchmarkExecutionResult[] = [];
-        await assertRejects(async function () {
+        const failure = await captureRejectedError(async function () {
             return await collectBenchmarkNormalization(
                 {
                     ...calibrationScope(reference, scope.cleanup, scope.signal),
@@ -337,7 +337,8 @@ export const testNode = suite('calibration sampling lifetimes', [
                 rules,
                 policy
             );
-        }, { message: 'reference cancelled' });
+        });
+        scope.assert.equal(failure.message, 'reference cancelled');
         scope.assert.deepEqual(
             retained.map(function (result) {
                 return { status: result.status, comparability: result.normalization?.comparability };
@@ -366,26 +367,25 @@ export const testNode = suite('calibration sampling lifetimes', [
                 );
             }
             const retained: BenchmarkExecutionResult[] = [];
-            await assertRejects(
-                async function () {
-                    return await collectBenchmarkNormalization(
-                        {
-                            ...calibrationScope(reference, scope.cleanup, scope.signal),
-                            benchmarkEnvironment: null,
-                            async updateResult(result) {
-                                retained.push(result);
-                            }
-                        },
-                        handles,
-                        rules,
-                        policy
-                    );
-                },
-                {
-                    message: scope.parameters
-                        ? 'Normalization requires a benchmark runner reference context.'
-                        : 'Calibration requires a benchmark runner reference context.'
-                }
+            const failure = await captureRejectedError(async function () {
+                return await collectBenchmarkNormalization(
+                    {
+                        ...calibrationScope(reference, scope.cleanup, scope.signal),
+                        benchmarkEnvironment: null,
+                        async updateResult(result) {
+                            retained.push(result);
+                        }
+                    },
+                    handles,
+                    rules,
+                    policy
+                );
+            });
+            scope.assert.equal(
+                failure.message,
+                scope.parameters
+                    ? 'Normalization requires a benchmark runner reference context.'
+                    : 'Calibration requires a benchmark runner reference context.'
             );
             scope.assert.deepEqual(
                 retained.map(function (result) {
