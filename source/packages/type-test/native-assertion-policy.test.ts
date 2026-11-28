@@ -23,21 +23,20 @@ function matcher(declarationPath: string, exported: boolean): SourceFixture {
     const declaration = ast.factory.createFunctionDeclaration(
         undefined,
         undefined,
-        ast.factory.createIdentifier('sameType'),
+        ast.factory.createIdentifier('types'),
         undefined,
         []
     );
     sourceFile([ declaration ], declarationPath);
-    const symbol = sourceSymbol('sameType', [ declaration ]);
-    fixture.bindName('sameType', symbol);
+    const symbol = sourceSymbol('types', [ declaration ]);
+    fixture.bindName('types', symbol);
     if (exported) {
         fixture.addRelationExport(symbol);
     }
     return fixture;
 }
 function referenceCall(member: string, called: boolean): ast.Expression {
-    const base = ast.factory.createIdentifier('sameType');
-    const expression = member.length === 0 ? base : sourceMember(base, member);
+    const expression = sourceMember(ast.factory.createIdentifier('types'), member);
     const node = called
         ? ast.factory.createCallExpression(
             expression,
@@ -75,14 +74,14 @@ function annotatedCall(messages: readonly ast.Expression[]): ast.CallExpression 
 export const testNode = suite('native assertion boundary validation', [
     test('recognizes the symbol exported by the installed declaration module', async function (scope) {
         const fixture = matcher('/project/node_modules/@overkill-dev/type-test/index.d.ts', true);
-        const result = await nativeReference(fixture.analysis, referenceCall('', true));
-        scope.assert.equal(result.relation, 'sameType');
+        const result = await nativeReference(fixture.analysis, referenceCall('equal', true));
+        scope.assert.equal(result.relation, 'equal');
         return scope.assert.collect();
     }),
     test('rejects a same-name declaration at a matching path', async function (scope) {
         const fixture = matcher(adapterSource, false);
         await scope.assert.rejects(async function () {
-            return nativeReference(fixture.analysis, referenceCall('', true));
+            return nativeReference(fixture.analysis, referenceCall('equal', true));
         }, { message: /not an export of the type-test package/u });
         return scope.assert.collect();
     }),
@@ -126,12 +125,10 @@ export const testNode = suite('native assertion boundary validation', [
             return scope.assert.collect();
         }
     ),
-    test('accepts ordinary operands at direct native assertion boundaries', async function (scope) {
+    test('accepts comparisons at direct native assertion boundaries', async function (scope) {
         const fixture = matcher(adapterSource, true);
         const call = sourceCall(sourceMember(ast.factory.createIdentifier('scope'), 'assert'), [
-            sourceMember(ast.factory.createIdentifier('sameType'), 'expressions'),
-            ast.factory.createStringLiteral('actual', ast.TokenFlags.None),
-            ast.factory.createStringLiteral('expected', ast.TokenFlags.None)
+            referenceCall('equal', true)
         ]);
         const body = sourceBody([ ast.factory.createExpressionStatement(call) ]);
         scope.assert.deepEqual(
@@ -147,30 +144,29 @@ export const testNode = suite('native assertion boundary validation', [
     }),
     test('recognizes typed adapter references', async function (scope) {
         const fixture = matcher(adapterSource, true);
-        const result = await nativeReference(fixture.analysis, referenceCall('', true));
+        const result = await nativeReference(fixture.analysis, referenceCall('equal', true));
         if (result.kind !== 'relation') {
             throw new Error('Expected a type relation.');
         }
-        scope.assert.equal(result.form, 'typed');
-        scope.assert.equal(result.types.length, 2);
+        scope.assert.equal(result.actual.kind, ast.SyntaxKind.StringKeyword);
+        scope.assert.equal(result.expected.kind, ast.SyntaxKind.NumberKeyword);
         scope.assert.false(result.negated);
         return scope.assert.collect();
     }),
     test('retains negated typed references', async function (scope) {
         const fixture = matcher(adapterSource, true);
-        const result = await nativeReference(fixture.analysis, referenceCall('not', true));
+        const result = await nativeReference(fixture.analysis, referenceCall('notEqual', true));
         if (result.kind !== 'relation') {
             throw new Error('Expected a type relation.');
         }
         scope.assert.true(result.negated);
-        scope.assert.equal(result.form, 'typed');
         return scope.assert.collect();
     }),
     table({
         title: 'rejects uncalled reference factories',
-        cases: [ '', 'withActual', 'withExpected' ],
+        cases: [ 'equal', 'assignableTo', 'notEqual' ],
         caseTitle(member) {
-            return member.length === 0 ? 'typed' : member;
+            return member;
         },
         async test(scope) {
             const member = scope.parameters;
@@ -178,7 +174,7 @@ export const testNode = suite('native assertion boundary validation', [
             const fixture = matcher(adapterSource, true);
             await scope.assert.rejects(async function () {
                 return nativeReference(fixture.analysis, referenceCall(member, false));
-            }, { message: /Invalid native reference factory arguments/u });
+            }, { message: /require two type arguments and no runtime operands/u });
             return scope.assert.collect();
         }
     }),
@@ -186,25 +182,25 @@ export const testNode = suite('native assertion boundary validation', [
         const fixture = matcher(adapterSource, true);
         await scope.assert.rejects(async function () {
             return nativeReference(fixture.analysis, referenceCall('unknown', false));
-        }, { message: /Unsupported native assertion reference form/u });
-        const nested = sourceMember(referenceCall('withActual', false), 'extra');
+        }, { message: /not an export of the type-test package/u });
+        const nested = sourceMember(referenceCall('equal', false), 'extra');
         sourceTree(ast.factory.createExpressionStatement(nested));
         await scope.assert.rejects(async function () {
             return nativeReference(fixture.analysis, nested);
-        }, { message: /Unsupported native assertion reference form/u });
+        }, { message: /not an export of the type-test package/u });
         return scope.assert.collect();
     }),
     test('rejects runtime operands on reference factories', async function (scope) {
         const fixture = matcher(adapterSource, true);
         const reference = sourceTree(
-            sourceCall(ast.factory.createIdentifier('sameType'), [
+            sourceCall(sourceMember(ast.factory.createIdentifier('types'), 'equal'), [
                 ast.factory.createStringLiteral('value', ast.TokenFlags.None)
             ])
         );
         sourceTree(ast.factory.createExpressionStatement(reference));
         await scope.assert.rejects(async function () {
             return nativeReference(fixture.analysis, reference);
-        }, { message: /Invalid native reference factory arguments/u });
+        }, { message: /require two type arguments and no runtime operands/u });
         return scope.assert.collect();
     }),
     test(
@@ -212,7 +208,7 @@ export const testNode = suite('native assertion boundary validation', [
         async function (scope) {
             const fixture = matcher(adapterSource, true);
             const body = sourceBody([
-                ast.factory.createExpressionStatement(ast.factory.createIdentifier('sameType'))
+                ast.factory.createExpressionStatement(referenceCall('equal', true))
             ]);
             await scope.assert.rejects(async function () {
                 return scopeAssertions(

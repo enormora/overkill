@@ -162,7 +162,7 @@ const equalityChecks = async function (
 ): Promise<CompositeAssertionReturn<'assert'>> {
     const checks = await Promise.all([ ...equal, ...unequal ].map(async function compareOriginalTypes(name) {
         const [ actual, expected ] = operands(types, name);
-        return check.annotated(name).deepEqual(await compareRelation(analysis, 'sameType', actual, expected), {
+        return check.annotated(name).deepEqual(await compareRelation(analysis, 'equal', actual, expected), {
             kind: 'established',
             holds: equal.has(name)
         });
@@ -181,17 +181,10 @@ const assignabilityChecks = async function (
     const checks = await Promise.all(
         [ 'AnyUnknown', 'NeverString', 'Literal', 'LibraryMap' ].map(async function compareDirections(name) {
             const [ source, target ] = operands(types, name);
-            const annotated = check.annotated(name);
-            return annotated.group([
-                annotated.deepEqual(await compareRelation(analysis, 'assignableTo', source, target), {
-                    kind: 'established',
-                    holds: true
-                }),
-                annotated.deepEqual(await compareRelation(analysis, 'assignableFrom', target, source), {
-                    kind: 'established',
-                    holds: true
-                })
-            ]);
+            return check.annotated(name).deepEqual(await compareRelation(analysis, 'assignableTo', source, target), {
+                kind: 'established',
+                holds: true
+            });
         })
     );
     const [ first, ...remaining ] = checks;
@@ -208,7 +201,7 @@ const assertRelations = defineCompositeAssertion({
             await assignabilityChecks(check.annotated('assignability'), analysis, types)
         ]);
         const [ actual, expected ] = operands(types, 'Symbolic');
-        const unsupported = await compareRelation(analysis, 'sameType', actual, expected);
+        const unsupported = await compareRelation(analysis, 'equal', actual, expected);
         return check.group([ initialChecks, check.equal(unsupported.kind, 'inconclusive') ]);
     }
 });
@@ -236,12 +229,12 @@ const assertOriginalFiles = defineCompositeAssertion({
 const unsupportedCases = `
 function symbolic<T>(scope: engine.TestScope) {
     bodyCalls++;
-    scope.assert(same<T extends string ? T : never, T extends number ? T : never>());
+    scope.assert(types.equal<T extends string ? T : never, T extends number ? T : never>());
     return scope.assert.collect();
 }
 function negatedSymbolic<T>(scope: engine.TestScope) {
     bodyCalls++;
-    scope.assert(same.not<T extends string ? T : never, T extends number ? T : never>());
+    scope.assert(types.notEqual<T extends string ? T : never, T extends number ? T : never>());
     return scope.assert.collect();
 }
 const nodes=[test('symbolic',symbolic),test('negated symbolic',negatedSymbolic)];
@@ -250,11 +243,11 @@ const nodes=[test('symbolic',symbolic),test('negated symbolic',negatedSymbolic)]
 const staticBodyCases = `
 function generic<T extends string>() {
     return test('generic source',scope=>{
-        bodyCalls++;scope.assert(same<T,'literal'>());return scope.assert.collect();
+        bodyCalls++;scope.assert(types.equal<T,'literal'>());return scope.assert.collect();
     });
 }
 const nodes=[generic<'literal'>(),table({title:'static rows',cases:[1,2],test:scope=>{
-    bodyCalls++;scope.assert(same<typeof scope.parameters,1>());return scope.assert.collect();
+    bodyCalls++;scope.assert(types.equal<typeof scope.parameters,1>());return scope.assert.collect();
 }})];
 `;
 
@@ -273,27 +266,32 @@ class Other { private readonly identity = 1; }
 const nodes=[suite('composition',[
     test('authored inference',scope=>{
         bodyCalls++;
-        scope.assert(same.withActual<'literal'>(),identity('literal' as const));
-        scope.assert(same.withActual<Box<42>>(),new Box(42 as const));
-        scope.assert(same.withActual<string>(),contextual({name:'value'},value=>value.name));
+        const result = identity('literal' as const);
+        scope.assert(types.equal<typeof result,'literal'>());
+        const box = new Box(42 as const);
+        scope.assert(types.equal<typeof box,Box<42>>());
+        const name = contextual({name:'value'},value=>value.name);
+        scope.assert(types.equal<typeof name,string>());
         return scope.assert.collect();
     }),
     test('overload order',scope=>{
         bodyCalls++;
-        scope.assert(same.withActual<'wide'>(),wideFirst('text'));
-        scope.assert(same.withActual<'narrow'>(),narrowFirst('text'));
-        scope.assert(same.not<typeof wideFirst,typeof narrowFirst>());
+        const wide = wideFirst('text');
+        scope.assert(types.equal<typeof wide,'wide'>());
+        const narrow = narrowFirst('text');
+        scope.assert(types.equal<typeof narrow,'narrow'>());
+        scope.assert(types.notEqual<typeof wideFirst,typeof narrowFirst>());
         return scope.assert.collect();
     }),
     test('nominal identity',scope=>{
         bodyCalls++;
-        scope.assert(same<Nominal,import('./cases.ts').Nominal>());
-        scope.assert(same.not<Nominal,Other>());
+        scope.assert(types.equal<Nominal,import('./cases.ts').Nominal>());
+        scope.assert(types.notEqual<Nominal,Other>());
         return scope.assert.collect();
     }),
     test('assertion in a skipped branch',scope=>{
         bodyCalls++;
-        if(false)scope.assert(same<string,number>());
+        if(false)scope.assert(types.equal<string,number>());
         return scope.assert.collect();
     })
 ])];
@@ -338,31 +336,31 @@ export const testNode = suite('original-source relations', [
                 `const nodes = [
 test('assignable to', scope => {
     // @ts-expect-error fixture intentionally refers to a missing type
-    scope.assert(assignableTo<{ item: Missing }, { item: string }>());
+    scope.assert(types.assignableTo<{ item: Missing }, { item: string }>());
     return scope.assert.collect();
 }),
 test('assignable from', scope => {
     // @ts-expect-error fixture intentionally refers to a missing type
-    scope.assert(assignableFrom<{ item: string[] }, { item: Missing[] }>());
+    scope.assert(types.assignableTo<{ item: Missing[] }, { item: string[] }>());
     return scope.assert.collect();
 }),
 test('negated', scope => {
     // @ts-expect-error fixture intentionally refers to a missing type
-    scope.assert(assignableTo.not<{ item: Missing }, { item: string }>());
+    scope.assert(types.notAssignableTo<{ item: Missing }, { item: string }>());
     return scope.assert.collect();
 }),
 test('equality', scope => {
     // @ts-expect-error fixture intentionally refers to a missing type
-    scope.assert(same<{ item: Missing }, { item: any }>());
+    scope.assert(types.equal<{ item: Missing }, { item: any }>());
     return scope.assert.collect();
 }),
 test('erased missing type', scope => {
     // @ts-expect-error the union would otherwise erase the missing type
-    scope.assert(assignableTo<string | Missing | any, string>());
+    scope.assert(types.assignableTo<string | Missing | any, string>());
     return scope.assert.collect();
 }),
 test('explicit any', scope => {
-    scope.assert(assignableTo<{ item: any }, { item: string }>());
+    scope.assert(types.assignableTo<{ item: any }, { item: string }>());
     return scope.assert.collect();
 })
 ];`,

@@ -14,41 +14,41 @@ import {
 
 const basicCases = `const nodes=[
 engine.createTestCase({...metadata,title:'pass',body(scope){
-    bodyCalls++;scope.assert(same<string,string>());return scope.assert.collect();
+    bodyCalls++;scope.assert(types.equal<string,string>());return scope.assert.collect();
 }}),
 engine.createTestCase({...metadata,title:'fail',body(scope){
-    bodyCalls++;scope.assert.annotated('Wrong inferred type')(same<string,number>());return scope.assert.collect();
+    bodyCalls++;
+    scope.assert.annotated('Wrong inferred type')(types.equal<string,number>());
+    return scope.assert.collect();
 }})
 ];`;
 
 const sharedCases = `import {importedBody} from './dependency.ts';
 function generic<T extends string>() {
     return test('generic',scope=>{
-        bodyCalls++;scope.assert(assignableTo<T,string>());return scope.assert.collect();
+        bodyCalls++;scope.assert(types.assignableTo<T,string>());return scope.assert.collect();
     });
 }
 
 const parameterized=defineParameterizedTestBody((scope,data:number)=>{
-    bodyCalls++;scope.assert(same<typeof data,number>());return scope.assert.collect();
+    bodyCalls++;scope.assert(types.equal<typeof data,number>());return scope.assert.collect();
 });
 const macro=defineMacro(()=>test('macro',scope=>{
-    bodyCalls++;scope.assert(same<string,string>());return scope.assert.collect();
+    bodyCalls++;scope.assert(types.equal<string,string>());return scope.assert.collect();
 }));
 const nodes=[suite('outer',[suite('inner',[
     generic<'literal'>(),macro(),test('parameterized',parameterized(1)),test('imported',importedBody),
     table({title:'rows',cases:[1,2],test:scope=>{
-        bodyCalls++;scope.assert(same<typeof scope.parameters,number>());return scope.assert.collect();
+        bodyCalls++;scope.assert(types.equal<typeof scope.parameters,number>());return scope.assert.collect();
     }})
 ])])];`;
 
 const bindingCases = `const nodes=[test('bindings',scope=>{
     bodyCalls++;
     const value='literal' as const;
-    scope.assert(same.withActual<'literal'>(),value);
-    scope.assert(same.withExpected<'literal'>(),value);
-    scope.assert(same.expressions,value,value);
-    scope.assert(same.not<string,number>());
-    scope.assert(assignableFrom<string,'literal'>());
+    scope.assert(types.equal<typeof value,'literal'>());
+    scope.assert(types.notEqual<string,number>());
+    scope.assert(types.assignableTo<'literal',string>());
     return scope.assert.collect();
 })];`;
 
@@ -60,7 +60,7 @@ Program.prototype.getGlobalDiagnostics=async function readDiagnostics(this:impor
     return await diagnostics.call(this);
 };
 const nodes=[test('valid',scope=>{
-    scope.assert(same<Value,{readonly value:string}>());
+    scope.assert(types.equal<Value,{readonly value:string}>());
     return scope.assert.collect();
 })];`;
 
@@ -132,11 +132,11 @@ export const testNode = suite('native type-test adapter', [
             const referencePath = fileURLToPath(
                 new URL('../../../../packages/type-test/type-test.entry-point.ts', import.meta.url)
             );
-            const definitions = `import {sameType as onlyInline} from ${JSON.stringify(referencePath)};
-        void [same,assignableTo,assignableFrom,suite,table,defineMacro,defineParameterizedTestBody,
-            defineResource,withResource,family,prepareCompilerPlan,metadata,acceptsCall,rejectsCall];
+            const definitions = `import {types as onlyInline} from ${JSON.stringify(referencePath)};
+        void [types,suite,table,defineMacro,defineParameterizedTestBody,
+            defineResource,withResource,family,prepareCompilerPlan,metadata];
         const nodes=[test('unused imports',scope=>{
-            scope.assert(onlyInline<string,string>());return scope.assert.collect();
+            scope.assert(onlyInline.equal<string,string>());return scope.assert.collect();
         })];
         const {readFile,writeFile}=await import('node:fs/promises');
         const projectPath=import.meta.dirname+'/tsconfig.json';
@@ -154,7 +154,7 @@ export const testNode = suite('native type-test adapter', [
     test('rejects scope forwarding through shorthand properties', async function (scope) {
         const definitions = `const nodes=[test('forwarded scope',scope=>{
             const box={scope};box.scope.assert.true(false);
-            scope.assert(same<string,string>());return scope.assert.collect();
+            scope.assert(types.equal<string,string>());return scope.assert.collect();
         })];`;
         const result = await runNativeProject(scope.cleanup, definitions, null);
         scope.assert.equal(result.status, 'failed');
@@ -164,10 +164,10 @@ export const testNode = suite('native type-test adapter', [
     }),
     test('rejects reassigned function declarations', async function (scope) {
         const definitions = `function body(scope:engine.TestScope){
-            scope.assert(same<string,string>());return scope.assert.collect();
+            scope.assert(types.equal<string,string>());return scope.assert.collect();
         }
         // @ts-expect-error
-        ({body}={body:scope=>{scope.assert(same<string,number>());return scope.assert.collect();}});
+        ({body}={body:scope=>{scope.assert(types.equal<string,number>());return scope.assert.collect();}});
         const nodes=[test('reassigned',body)];`;
         const result = await runNativeProject(scope.cleanup, definitions, null);
         scope.assert.equal(result.status, 'failed');
@@ -178,12 +178,12 @@ export const testNode = suite('native type-test adapter', [
     }),
     test('rejects destructured aliases that can mutate table bodies', async function (scope) {
         const definitions = `const body:engine.TestBody=scope=>{
-            scope.assert(same<string,string>());return scope.assert.collect();
+            scope.assert(types.equal<string,string>());return scope.assert.collect();
         };
         const options={...metadata,title:'rows',cases:[{...metadata,title:'row',parameters:1,body},
             {...metadata,title:'other',parameters:2,body}]};
         const {cases}=options;
-        cases[0]!.body=scope=>{scope.assert(same<string,number>());return scope.assert.collect();};
+        cases[0]!.body=scope=>{scope.assert(types.equal<string,number>());return scope.assert.collect();};
         const nodes=[engine.createTable(options)];`;
         const result = await runNativeProject(scope.cleanup, definitions, null);
         scope.assert.equal(result.status, 'failed');
@@ -193,10 +193,10 @@ export const testNode = suite('native type-test adapter', [
     }),
     test('rejects named options mutated before construction', async function (scope) {
         const definitions = `const original:engine.TestBody=scope=>{
-            scope.assert(same<string,string>());return scope.assert.collect();
+            scope.assert(types.equal<string,string>());return scope.assert.collect();
         };
         const options={...metadata,title:'mutated',body:original};
-        options.body=scope=>{scope.assert(same<string,number>());return scope.assert.collect();};
+        options.body=scope=>{scope.assert(types.equal<string,number>());return scope.assert.collect();};
         const nodes=[engine.createTestCase(options)];`;
         const result = await runNativeProject(scope.cleanup, definitions, null);
         scope.assert.equal(result.status, 'failed');
@@ -206,7 +206,8 @@ export const testNode = suite('native type-test adapter', [
     test('preserves native errors in expression operands', async function (scope) {
         const definitions = `const nodes=[test('expression error',scope=>{
             const value={present:1};
-            scope.assert(same.withActual<number>(),value.missing);
+            const missing = value.missing;
+            scope.assert(types.equal<typeof missing,number>());
             return scope.assert.collect();
         })];`;
         const result = await runNativeProject(scope.cleanup, definitions, null);
@@ -218,7 +219,7 @@ export const testNode = suite('native type-test adapter', [
     }),
     test('resolves transparent syntax throughout callback aliases', async function (scope) {
         const definitions = `const original:engine.TestBody=scope=>{
-            scope.assert(same<string,string>());return scope.assert.collect();
+            scope.assert(types.equal<string,string>());return scope.assert.collect();
         };
         const alias=(original satisfies engine.TestBody);
         const wrapped=alias as engine.TestBody;
@@ -230,10 +231,10 @@ export const testNode = suite('native type-test adapter', [
     }),
     test('rejects options whose callback is overwritten by a spread', async function (scope) {
         const definitions = `const first:engine.TestBody=scope=>{
-            scope.assert(same<string,string>());return scope.assert.collect();
+            scope.assert(types.equal<string,string>());return scope.assert.collect();
         };
         const overrides:{body?:engine.TestBody}={body:((scope:engine.TestScope)=>{
-            scope.assert(same<string,number>());return scope.assert.collect();
+            scope.assert(types.equal<string,number>());return scope.assert.collect();
         })};
         const nodes=[engine.createTestCase({...metadata,title:'overridden',body:first,...overrides})];`;
         const result = await runNativeProject(scope.cleanup, definitions, null);
@@ -261,9 +262,9 @@ export const testNode = suite('native type-test adapter', [
     }),
     test('reports selected compiled rows in request order with one shared site', async function (scope) {
         const definitions = `const nodes=[
-test('excluded',scope=>{scope.assert(same<string,number>());return scope.assert.collect();}),
+test('excluded',scope=>{scope.assert(types.equal<string,number>());return scope.assert.collect();}),
 table({title:'rows',cases:['first','second'] as const,caseTitle:String,test:scope=>{
-    scope.assert(same<typeof scope.parameters,'first'|'second'>());return scope.assert.collect();
+    scope.assert(types.equal<typeof scope.parameters,'first'|'second'>());return scope.assert.collect();
 }})];`;
         const titles = [ 'second', 'first' ];
         const result = await runCompiledTypeProject(scope.cleanup, definitions, titles);
@@ -285,13 +286,13 @@ table({title:'rows',cases:['first','second'] as const,caseTitle:String,test:scop
     test('retains unsupported sites before a false relation', async function (scope) {
         const definitions = `const nodes=[test('mixed verdict',scope=>{
     scope.assert.true(true);
-    scope.assert(same.not<string,string>());
+    scope.assert(types.notEqual<string,string>());
     return scope.assert.collect();
 })];`;
         const result = await runNativeProject(scope.cleanup, definitions, null);
         scope.assert.deepEqual(result.completions, [ { title: 'mixed verdict', verdict: 'fail' } ]);
         scope.assert.deepEqual(result.errors, []);
-        scope.assert.includes(result.diagnostics.join('\n'), 'sameType.not');
+        scope.assert.includes(result.diagnostics.join('\n'), 'notEqual');
         const issues = result.checkerFacts?.compilers[0]?.issues ?? [];
         scope.assert.partialDeepEqual<unknown, unknown>(issues, [ {
             location: { kind: 'known' },
@@ -304,7 +305,7 @@ table({title:'rows',cases:['first','second'] as const,caseTitle:String,test:scop
 test('empty',scope=>scope.assert.collect()),
 test('excluded',scope=>{
     // @ts-expect-error
-    scope.assert(same<string,string>());return scope.assert.collect();
+    scope.assert(types.equal<string,string>());return scope.assert.collect();
 })];`;
         const result = await runNativeProject(scope.cleanup, definitions, [ 'empty' ]);
         scope.assert.deepEqual(result.completions, [ { title: 'empty', verdict: 'inconclusive' } ]);
@@ -354,7 +355,7 @@ test('excluded',scope=>{
         scope.assert.equal(evidence.length, 5);
         return scope.assert.collect();
     }),
-    test('supports type, expression, and negated relations', async function (scope) {
+    test('checks inferred types and negated relations', async function (scope) {
         const result = await runNativeProject(scope.cleanup, bindingCases, null);
         scope.assert.equal(result.status, 'passed', {
             message: [ ...result.errors, ...result.diagnostics ].join('\n')
@@ -366,10 +367,10 @@ test('excluded',scope=>{
     test('retains low-level table case ownership with unknown supplied locations', async function (scope) {
         const definitions = `const nodes=[engine.createTable({...metadata,title:'low rows',cases:[
     {...metadata,title:'first',parameters:1,body(scope){
-        scope.assert(same<string,string>());return scope.assert.collect();
+        scope.assert(types.equal<string,string>());return scope.assert.collect();
     }},
     {...metadata,title:'second',parameters:2,body(scope){
-        scope.assert(same<string,number>());return scope.assert.collect();
+        scope.assert(types.equal<string,number>());return scope.assert.collect();
     }}
 ]})];`;
         const result = await runNativeProject(scope.cleanup, definitions, null);
@@ -379,7 +380,7 @@ test('excluded',scope=>{
     }),
     test('resolves immutable options and shorthand callback declarations', async function (scope) {
         const definitions = `const body=(scope:engine.TestScope)=>{
-    scope.assert(same<string,string>());return scope.assert.collect();
+    scope.assert(types.equal<string,string>());return scope.assert.collect();
 };
 const options={...metadata,title:'named',body};
 const nodes=[engine.createTestCase(options)];`;
@@ -389,7 +390,7 @@ const nodes=[engine.createTestCase(options)];`;
     }),
     test('rejects runtime case controls for static execution', async function (scope) {
         const definitions = `const nodes=[test({title:'controlled',controls:{timeoutMilliseconds:1},body:scope=>{
-    scope.assert(same<string,string>());return scope.assert.collect();
+    scope.assert(types.equal<string,string>());return scope.assert.collect();
 }})];`;
         const result = await runNativeProject(scope.cleanup, definitions, null);
         scope.assert.equal(result.status, 'failed');
@@ -418,7 +419,7 @@ const nodes=[engine.createTestCase(options)];`;
     test('rejects detached runtime assertion methods', async function (scope) {
         const definitions = `const nodes=[test('detached',scope=>{
     const runtime=scope.assert;runtime.true(false);
-    scope.assert(same<string,string>());return scope.assert.collect();
+    scope.assert(types.equal<string,string>());return scope.assert.collect();
 })];`;
         const result = await runNativeProject(scope.cleanup, definitions, null);
         scope.assert.equal(result.status, 'failed');
@@ -429,7 +430,7 @@ const nodes=[engine.createTestCase(options)];`;
     test('distinguishes unrelated shadowed scope parameters', async function (scope) {
         const definitions = `const nodes=[test('shadowed',scope=>{
     function unrelated(scope:{assert(value:boolean):void}){scope.assert(true);}
-    scope.assert(same<string,string>());return scope.assert.collect();
+    scope.assert(types.equal<string,string>());return scope.assert.collect();
 })];`;
         const result = await runNativeProject(scope.cleanup, definitions, null);
         scope.assert.equal(result.status, 'passed', { message: result.errors.join('\n') });
@@ -440,7 +441,7 @@ const nodes=[engine.createTestCase(options)];`;
         const definitions = `const resource=defineResource({name:'never',scope:'per-case',requirements:[],
     acquire():{value:number}{throw new Error('Do not acquire');},dispose:null});
 const nodes=[test('wrapped',withResource(resource,scope=>{
-    bodyCalls++;scope.assert(same<typeof scope.resources.never.value,number>());return scope.assert.collect();
+    bodyCalls++;scope.assert(types.equal<typeof scope.resources.never.value,number>());return scope.assert.collect();
 }))];`;
         const result = await runNativeProject(scope.cleanup, definitions, null);
         scope.assert.equal(result.status, 'failed');
@@ -457,7 +458,7 @@ const nodes=[test('wrapped',withResource(resource,scope=>{
     }),
     test('rejects mixed runtime assertions', async function (scope) {
         const definitions = `const nodes=[test('mixed',scope=>{
-    scope.assert(same<string,string>());scope.assert.true(true);return scope.assert.collect();
+    scope.assert(types.equal<string,string>());scope.assert.true(true);return scope.assert.collect();
 })];`;
         const result = await runNativeProject(scope.cleanup, definitions, null);
         scope.assert.equal(result.status, 'failed');

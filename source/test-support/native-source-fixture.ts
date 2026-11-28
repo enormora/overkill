@@ -129,6 +129,7 @@ export function sourceFixture(): SourceFixture {
             signatures.set(node, signature);
         },
         analysis: createSourceAnalysis({
+            projectConfigPath: '/project/tsconfig.json',
             async getRelationModuleExports() {
                 return relationExports;
             },

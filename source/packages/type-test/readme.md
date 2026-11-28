@@ -19,7 +19,7 @@ Set `"type": "module"` in `package.json` for this example. Create
 
 ```ts
 import { test } from '@overkill-dev/test';
-import { sameType } from '@overkill-dev/type-test';
+import { types } from '@overkill-dev/type-test';
 
 function identity<Value>(value: Value): Value {
     return value;
@@ -27,7 +27,7 @@ function identity<Value>(value: Value): Value {
 
 export const testNode = test('preserves literal inference', (scope) => {
     const result = identity('hello' as const);
-    scope.assert(sameType<typeof result, 'hello'>());
+    scope.assert(types.equal<typeof result, 'hello'>());
     return scope.assert.collect();
 });
 ```
@@ -102,45 +102,54 @@ unsupported versions fail preparation. Install the compiler before running
 checks. After changing its implementation, restart the execution host so Node
 loads the new compiler modules.
 
+`npx overkill run --profile types --title "preserves literal inference"` runs the matching case.
+
 ## Write assertions
 
-The root exports `family`, `sameType`, `assignableTo`, `assignableFrom`,
-`acceptsCall`, and `rejectsCall`.
-Its type exports are `CompilerSelection`, `CompilerPolicy`,
-`TypeTestSettings`, `TypeAssertionReference`, `TypeRelationBindings`,
-`TypeRelation`, and `CallRejection`.
+Each comparison lists the actual type first. Assignability reads from left
+to right.
 
-Each relation supports the following forms inside a case body:
+- `types.equal<Actual, Expected>()` and `types.notEqual<Actual, Expected>()`
+- `types.assignableTo<Actual, Expected>()` and `types.notAssignableTo<Actual, Expected>()`
+- `types.hasKey<Actual, Key>()` and `types.lacksKey<Actual, Key>()`
 
-| Form                | Example                                                   |
-| ------------------- | --------------------------------------------------------- |
-| Two type arguments  | `scope.assert(sameType<Actual, Expected>())`              |
-| Actual expression   | `scope.assert(sameType.withActual<Expected>(), actual)`   |
-| Expected expression | `scope.assert(sameType.withExpected<Actual>(), expected)` |
-| Two expressions     | `scope.assert(sameType.expressions, actual, expected)`    |
+A key assertion checks one literal or unique symbol against TypeScript's
+`keyof Actual`. Bind expressions to a local and use `typeof` to check inference.
 
-Put `.not` immediately after the relation name in any form, as in
-`scope.assert(sameType.not.expressions, actual, expected)`. An inconclusive
-relation stays inconclusive under negation.
+Use a regular type-test table for two or more named groups of comparisons:
 
-`assignableTo` asks whether actual is assignable to expected under the project's
-compiler options. `assignableFrom` asks whether expected is assignable to actual.
-`sameType` compares structure while preserving distinctions such as literal
-types, optional and readonly members, and nominal declaration identity.
+```ts
+import { types } from '@overkill-dev/type-test';
+
+type User = { readonly id: string; };
+
+export const testNode = types.table({
+    title: 'public user type',
+    cases: [
+        { title: 'exposes the ID', assertions: [ types.hasKey<User, 'id'>() ] },
+        { title: 'hides secrets', assertions: [ types.lacksKey<User, 'secret'>() ] }
+    ]
+});
+```
+
+Write the cases and comparisons inline. Each case can be selected by title,
+and failures point to the comparison and print the actual and expected types.
+For example, adding a `secret` field fails `hides secrets` and shows the requested
+key and available keys. Use a regular callback for call probes and inference setup.
+
+Equality preserves literals, optional and readonly members, and nominal
+declaration identity. Assignability uses the project's compiler options.
 Equality is inconclusive when recursive expansion exceeds 256 comparison levels.
-Any relation is inconclusive when operand inspection exceeds 2,048 distinct
-compiler types.
-Expression operands use the types at their authored locations. For calls,
-constructors, and generic inference, write the TypeScript expression and assert
-its inferred type, as in the quickstart.
+Operand inspection is limited to 2,048 distinct compiler types. Negation preserves
+inconclusive outcomes.
 
 ### Check calls
 
 Pass an inline, parameterless arrow with a single TypeScript call:
 
 ```ts
-scope.assert(acceptsCall, () => greet('Ada'));
-scope.assert(rejectsCall('argument-count'), () => greet());
+scope.assert(types.acceptsCall, () => greet('Ada'));
+scope.assert(types.rejectsCall('argument-count'), () => greet());
 ```
 
 Import both assertions from `@overkill-dev/type-test`. The compiler checks the
@@ -189,7 +198,7 @@ Install `@types/node` as a development dependency and set
 
 ```ts
 import * as engine from '@overkill-dev/engine';
-import { family, sameType } from '@overkill-dev/type-test';
+import { family, types } from '@overkill-dev/type-test';
 
 const metadata = {
     annotations: {},
@@ -205,7 +214,7 @@ const root = engine.createRoot({
             title: 'preserves the literal type',
             body(scope) {
                 const value = 'hello' as const;
-                scope.assert(sameType<typeof value, 'hello'>());
+                scope.assert(types.equal<typeof value, 'hello'>());
                 return scope.assert.collect();
             }
         })

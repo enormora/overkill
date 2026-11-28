@@ -1,17 +1,25 @@
 import { test } from '../../../tools/type-tests/authoring.entry-point.ts';
 import { acceptsCall, rejectsCall } from '../../../tools/type-tests/relations.entry-point.ts';
 import type { TestScope } from '../engine/engine.entry-point.ts';
-import { sameType, assignableTo, assignableFrom } from './type-test.entry-point.ts';
+import { types } from './type-test.entry-point.ts';
 
 declare const scope: TestScope;
 
-export const testNode = test('relation references enforce assert-only operand tuples', function (typeScope) {
-    typeScope.assert(acceptsCall, () => scope.assert(sameType<string, number>()));
-    typeScope.assert(rejectsCall('argument-count'), () => scope.require(sameType<string, string>()));
-    typeScope.assert(acceptsCall, () => scope.assert(assignableTo.withActual<string>(), 'value'));
-    typeScope.assert(rejectsCall('argument-count'), async () => scope.assert(assignableTo.withActual<string>()));
-    typeScope.assert(acceptsCall, () => scope.assert(assignableFrom.not.withExpected<string>(), 'value'));
-    typeScope.assert(acceptsCall, () => scope.assert(sameType.not.expressions, true, false));
-    typeScope.assert(rejectsCall('argument-type'), async () => scope.assert(sameType.expressions, 1));
-    return typeScope.assert.collect();
-});
+export const testNode = test(
+    'comparison references are assert-only and take no runtime operands',
+    function (typeScope) {
+        typeScope.assert(acceptsCall, () => scope.assert(types.equal<string, number>()));
+        typeScope.assert(rejectsCall('argument-count'), () => scope.require(types.equal<string, string>()));
+        typeScope.assert(
+            rejectsCall('argument-type'),
+            async () => scope.assert(types.assignableTo<string, unknown>(), 'value')
+        );
+        typeScope
+            .assert(acceptsCall, () => scope.assert(types.hasKey<{ readonly value: string; }, 'value'>()));
+        typeScope.assert(
+            rejectsCall('argument-count'),
+            () => types.hasKey<{ readonly value: string; }, 'other' | 'value'>()
+        );
+        return typeScope.assert.collect();
+    }
+);

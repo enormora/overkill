@@ -117,9 +117,7 @@ function fixtureSource(request: ProjectRequest): string {
     const profileImport = JSON.stringify(join(packages, 'type-test/profile.entry-point.ts'));
     return `${request.prefix}import * as engine from ${engineImport};
 import { test, suite, table, defineMacro, defineParameterizedTestBody } from ${authoringImport};
-import {
-    sameType as same, assignableTo, assignableFrom, acceptsCall, rejectsCall
-} from ${assertionImport};
+import { types } from ${assertionImport};
 import { prepare as prepareCompilerPlan } from ${compilerImport};
 import { defineResource, withResource } from ${resourceImport};
 import { family } from ${profileImport};
@@ -228,11 +226,11 @@ async function writeProject(directory: string, request: ProjectRequest): Promise
         join(directory, 'dependency.ts'),
         `
 import type { TestScope } from ${JSON.stringify(join(packages, 'engine/engine.entry-point.ts'))};
-import { sameType } from ${JSON.stringify(join(packages, 'type-test/type-test.entry-point.ts'))};
+import { types } from ${JSON.stringify(join(packages, 'type-test/type-test.entry-point.ts'))};
 export type Value = { readonly value: string };
 export function importedBody(scope: TestScope) {
     throwIfExecuted();
-    scope.assert(sameType<Value, { readonly value: string }>());
+    scope.assert(types.equal<Value, { readonly value: string }>());
     return scope.assert.collect();
 }
 function throwIfExecuted(): void { throw new Error('Imported static body ran.'); }

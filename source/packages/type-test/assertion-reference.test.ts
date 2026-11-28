@@ -4,11 +4,11 @@ import {
     getCompositeAssertionReferenceRecord,
     unknownSourceLocation
 } from '../engine/assertion-protocol.entry-point.ts';
-import { sameType } from './type-test.entry-point.ts';
+import { types } from './type-test.entry-point.ts';
 
 export const testNode = suite('native type assertion references', [
     test('fails ordinary execution instead of reporting a successful erased check', function (scope) {
-        const reference = sameType<string, number>();
+        const reference = types.equal<string, number>();
         scope.assert.throws(function () {
             return getCompositeAssertionReferenceRecord(reference).run({
                 message: null,
@@ -19,19 +19,19 @@ export const testNode = suite('native type assertion references', [
         }, { message: /requires the type-test family/u });
         return scope.assert.collect();
     }),
-    test('keeps negation and expression forms checker-only', function (scope) {
+    test('keeps negation and key checks checker-only', function (scope) {
         scope.assert.throws(function () {
-            return getCompositeAssertionReferenceRecord(sameType.not.withActual<string>()).run({
+            return getCompositeAssertionReferenceRecord(types.notEqual<string, number>()).run({
                 message: null,
-                parameters: [ 42 ],
+                parameters: [],
                 source: 'assert',
                 sourceLocations: [ unknownSourceLocation ]
             });
-        }, { message: /not sameType/u });
+        }, { message: /notEqual/u });
         scope.assert.throws(function () {
-            return getCompositeAssertionReferenceRecord(sameType.expressions).run({
+            return getCompositeAssertionReferenceRecord(types.hasKey<{ readonly value: number; }, 'value'>()).run({
                 message: null,
-                parameters: [ 1, 1 ],
+                parameters: [],
                 source: 'assert',
                 sourceLocations: [ unknownSourceLocation ]
             });

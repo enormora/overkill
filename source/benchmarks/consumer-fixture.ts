@@ -45,7 +45,7 @@ const imports = {
     property: "import { gen, property } from '@overkill-dev/test/property';",
     resources: "import { defineResource, withResource } from '@overkill-dev/test/resources';",
     engine: "import { createTestCase, type TestScope } from '@overkill-dev/engine';",
-    typeTest: "import { sameType } from '@overkill-dev/type-test';",
+    typeTest: "import { types } from '@overkill-dev/type-test';",
     benchmark: "import * as bench from '@overkill-dev/test/bench';"
 };
 
@@ -53,7 +53,7 @@ const slowCaseMilliseconds = 80;
 const regularCaseMilliseconds = 1;
 const passingBody = 'scope.assert.equal(42, 42); return scope.assert.collect();';
 const runtimeBodies = {
-    compiler: 'scope.assert(sameType<number, number>()); return scope.assert.collect();',
+    compiler: 'scope.assert(types.equal<number, number>()); return scope.assert.collect();',
     resources: 'scope.assert.equal(scope.resources.fixture, 42); return scope.assert.collect();'
 };
 

@@ -28,8 +28,15 @@ function ownedSite(input: NativeCheckEvidence, message: string | null): NativeSi
         line: 1,
         column: 2,
         message,
+        label: 'equal',
         call: sourceCall(ast.factory.createIdentifier('assert'), []),
-        reference: { kind: 'relation', relation: 'sameType', form: 'typed', negated: false, types: [] }
+        reference: {
+            kind: 'relation',
+            relation: 'equal',
+            negated: false,
+            actual: ast.factory.createKeywordTypeNode(ast.SyntaxKind.StringKeyword),
+            expected: ast.factory.createKeywordTypeNode(ast.SyntaxKind.NumberKeyword)
+        }
     };
 }
 function checkedSite(site: NativeSite, result: SiteEvidence['result']): SiteEvidence {
@@ -82,6 +89,7 @@ export const testNode = suite('native checker completion policy', [
         caseTitle: String,
         test(scope) {
             const message = scope.parameters;
+            const annotation = message === null ? '' : `${message}. `;
 
             const input = selectedEvidence(message);
             const result = nativeCheckResult({
@@ -96,9 +104,9 @@ export const testNode = suite('native checker completion policy', [
                     checks: [ {
                         kind: 'foreign',
                         source: 'assert',
-                        summary: message ?? 'Type relation sameType does not hold (TypeScript 7.1.0-beta).',
+                        summary: `${annotation}Type relation equal failed. Actual string. Expected number.`,
                         sourceLocations: [ { kind: 'known', file: '/project/case.ts', line: 1, column: 2 } ],
-                        error: { name: 'TypeAssertionError', thrown: 'sameType' }
+                        error: { name: 'TypeAssertionError', thrown: 'equal' }
                     } ]
                 } ]
             });
@@ -165,7 +173,7 @@ export const testNode = suite('native checker completion policy', [
         });
         scope.assert.deepEqual<unknown, unknown>(result.perTest[0]?.outcome, {
             kind: 'inconclusive',
-            reason: 'Unknown relation'
+            reason: '/project/case.ts:1:2 Unknown relation'
         });
         return scope.assert.collect();
     }),

@@ -11,6 +11,8 @@ import {
     transparentExpression,
     validateFunctionBinding
 } from './source-analysis.ts';
+import { typesMember } from './native-reference.ts';
+import { ownsTypeTableBody } from './type-table.ts';
 import { validateCallbackStorage, supportedCall } from './source-options.ts';
 
 type ExpressionBody = TypeScript.ArrowFunction | TypeScript.FunctionExpression;
@@ -240,7 +242,7 @@ async function locatedCall(analysis: SourceAnalysis, origin: TestBodyOrigin): Pr
     const file = await originalSourceFile(analysis, location.file);
     if (file === undefined) {
         throw new UnsupportedEvidenceError(
-            `Callback source is outside the checker project: ${location.file}`,
+            `Callback source is outside the checker project: ${location.file}. Check ${analysis.projectConfigPath}.`,
             undefined
         );
     }
@@ -249,9 +251,6 @@ async function locatedCall(analysis: SourceAnalysis, origin: TestBodyOrigin): Pr
         file,
         file.getPositionOfLineAndCharacter(location.line - 1, location.column - 1)
     );
-    if (!await supportedCall(analysis, call)) {
-        throw new UnsupportedEvidenceError('Callback anchor does not identify a supported authoring API.', undefined);
-    }
     return call;
 }
 function preferredOrigin(origin: TestBodyOrigin): TestBodyOrigin {
@@ -262,7 +261,11 @@ function preferredOrigin(origin: TestBodyOrigin): TestBodyOrigin {
 }
 export async function resolveBodyOrigin(analysis: SourceAnalysis, supplied: TestBodyOrigin): Promise<SourceBody> {
     const origin = preferredOrigin(supplied);
-    return await declaredBody(analysis, await bodyExpression(analysis, await locatedCall(analysis, origin), origin));
+    const call = await locatedCall(analysis, origin);
+    if (!await supportedCall(analysis, call)) {
+        throw new UnsupportedEvidenceError('Callback anchor does not identify a supported authoring API.', undefined);
+    }
+    return await declaredBody(analysis, await bodyExpression(analysis, call, origin));
 }
 export function namedBodyParameter(analysis: SourceAnalysis, body: SourceBody): TypeScript.Identifier {
     const parameter = body.parameters[0];
@@ -270,4 +273,81 @@ export function namedBodyParameter(analysis: SourceAnalysis, body: SourceBody): 
         throw new UnsupportedEvidenceError('Checking requires a named first callback parameter.', undefined);
     }
     return parameter.name;
+}
+
+function inlineObject(analysis: SourceAnalysis, node: TypeScript.Node | undefined): TypeScript.ObjectLiteralExpression {
+    const { compiler } = analysis;
+    if (
+        node === undefined || !compiler.isObjectLiteralExpression(node) ||
+        node.properties.some(function dynamic(property) {
+            return compiler.isSpreadAssignment(property) || compiler.isComputedPropertyName(property.name);
+        })
+    ) {
+        throw new UnsupportedEvidenceError('Use an inline object without spreads or computed fields.', undefined);
+    }
+    return node;
+}
+
+function inlineField(
+    analysis: SourceAnalysis,
+    node: TypeScript.Node | undefined,
+    field: string
+): TypeScript.Expression {
+    const { compiler } = analysis;
+    const object = inlineObject(analysis, node);
+    const property = object.properties.findLast(function named(entry) {
+        return compiler.isPropertyAssignment(entry) &&
+            (compiler.isIdentifier(entry.name) || compiler.isStringLiteral(entry.name)) &&
+            entry.name.text === field;
+    });
+    if (property === undefined || !compiler.isPropertyAssignment(property)) {
+        throw new UnsupportedEvidenceError(`Expected an inline type-table ${field} field.`, undefined);
+    }
+    return property.initializer;
+}
+
+function inlineList(
+    analysis: SourceAnalysis,
+    node: TypeScript.Expression,
+    field: string
+): readonly TypeScript.Expression[] {
+    const { compiler } = analysis;
+    if (
+        !compiler.isArrayLiteralExpression(node) || node.elements.length === 0 ||
+        node.elements.some(compiler.isSpreadElement)
+    ) {
+        throw new UnsupportedEvidenceError(`Use a nonempty inline list of type-table ${field}.`, undefined);
+    }
+    return node.elements;
+}
+
+type PlannedRow = { readonly index: number; readonly title: string; };
+
+function rowAssertions(
+    analysis: SourceAnalysis,
+    cases: readonly TypeScript.Expression[],
+    row: PlannedRow
+): readonly TypeScript.Expression[] {
+    const source = cases[row.index];
+    const title = inlineField(analysis, source, 'title');
+    if (!analysis.compiler.isStringLiteralLike(title) || title.text !== row.title) {
+        throw new UnsupportedEvidenceError('Use a literal type-table case title matching the planned case.', undefined);
+    }
+    return inlineList(analysis, inlineField(analysis, source, 'assertions'), 'assertions');
+}
+
+export async function resolveTypeTableRow(
+    analysis: SourceAnalysis,
+    origin: TestBodyOrigin,
+    title: string
+): Promise<readonly TypeScript.Expression[] | null> {
+    if (!isTableBodyOrigin(origin) || !ownsTypeTableBody(origin.body)) {
+        return null;
+    }
+    const call = await locatedCall(analysis, preferredOrigin(origin));
+    if (await typesMember(analysis, call.expression) !== 'table') {
+        throw new UnsupportedEvidenceError('Cannot locate the authored types.table call.', undefined);
+    }
+    const cases = inlineList(analysis, inlineField(analysis, call.arguments[0], 'cases'), 'cases');
+    return rowAssertions(analysis, cases, { index: origin.tableIndex, title });
 }

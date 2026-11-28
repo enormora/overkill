@@ -10,11 +10,11 @@ import { packageConsumer } from './support/package-consumer.ts';
 import { serializedTypeTestRequest, writeParityProject } from './support/type-test-parity.ts';
 
 const engineCaseSource = `import * as engine from '@overkill-dev/engine';
-import { family, sameType } from '@overkill-dev/type-test';
+import { family, types } from '@overkill-dev/type-test';
 const metadata = { annotations: {}, controls: {}, definitionLocations: [{kind:'unknown'}] } as const;
 export const testNode = engine.createTestCase({...metadata, title:'native', body(scope) {
     throwIfExecuted();
-    scope.assert(sameType<string,string>());
+    scope.assert(types.equal<string,string>());
     return scope.assert.collect();
 }});
 function throwIfExecuted():void { throw new Error('Static bodies must not execute.'); }`;
@@ -197,17 +197,17 @@ async function copyConsumerPackages(source: string, destination: string, mode: C
 }
 
 const callContractSource = `import { test, suite } from '@overkill-dev/test';
-import { acceptsCall, rejectsCall, sameType } from '@overkill-dev/type-test';
+import { types } from '@overkill-dev/type-test';
 function greet(name: string): string { return name ?? 'guest'; }
 function supply(callback: (name: string) => void): void { callback('Ada'); }
 export const testNode = suite('type contracts', [
     test('requires a name', scope => {
-        scope.assert(acceptsCall, () => greet('Ada'));
-        scope.assert(rejectsCall('argument-count'), () => greet());
+        scope.assert(types.acceptsCall, () => greet('Ada'));
+        scope.assert(types.rejectsCall('argument-count'), () => greet());
         return scope.assert.collect();
     }),
     test('infers the callback parameter', scope => {
-        supply(name => { scope.assert(sameType<typeof name, string>()); });
+        supply(name => { scope.assert(types.equal<typeof name, string>()); });
         return scope.assert.collect();
     })
 ]);`;
@@ -244,6 +244,28 @@ const consumerFacade = packageConsumer('packaged native type tests', function co
 const { table, test } = consumerFacade;
 
 export const testNode = suite('packaged native type tests', [
+    test('checks a regular type table through the installed package', async function (scope) {
+        const directory = await scope.resources.consumer.isolatedConsumer('cli');
+        await writeRunnerProject(directory, 'supervised-process');
+        const result = await runCallContract(
+            directory,
+            `import { types as checks } from '@overkill-dev/type-test';
+declare const event: unique symbol;
+type Api = { readonly [event]?: string; [index: number]: string };
+export const testNode = checks.table({
+    title: 'packed key projections',
+    cases: [
+        { title: 'includes the event and index', assertions: [
+            checks.hasKey<Api, typeof event>(), checks.hasKey<Api, 0>()
+        ] },
+        { title: 'hides load', assertions: [checks.lacksKey<Api, 'load'>()] }
+    ]
+});`
+        );
+        scope.assert.equal(result.code, 0, { message: result.stdout + result.stderr });
+        scope.assert.includes(result.stdout, '2 pass');
+        return scope.assert.collect();
+    }),
     test('checks engine roots without the high-level distribution', async function (scope) {
         const { isolatedConsumer } = scope.resources.consumer;
 
@@ -283,7 +305,7 @@ export const testNode = suite('packaged native type tests', [
                 title: 'infers the callback parameter',
                 original: 'callback: (name: string)',
                 changed: 'callback: (name: string | number)',
-                diagnostic: 'Type relation sameType'
+                diagnostic: 'Type relation equal'
             }
         ],
         caseTitle({ title }) {
@@ -334,7 +356,7 @@ export const testNode = suite('packaged native type tests', [
 import {readdir,readFile,writeFile} from 'node:fs/promises';
 const cwd=process.cwd();
 const source=await readFile('runner.mts','utf8');
-await writeFile('runner.mts',source.replace('sameType<string,string>()','sameType<string,number>()'));
+await writeFile('runner.mts',source.replace('types.equal<string,string>()','types.equal<string,number>()'));
 const original=await commandLineRunner.runTests({cwd,configPath:null,
     runRequest:${request}});
 if(original.exitCode!==1||original.runResult?.summary.failed!==1) {
@@ -393,8 +415,10 @@ console.log('reproduced and rejected drift');`;
         );
         await readFile(backend);
         await rm(backend);
-        const script = `import {family,sameType,assignableTo,assignableFrom} from '@overkill-dev/type-test';
-sameType();assignableTo();assignableFrom();
+        const script = `import * as api from '@overkill-dev/type-test';
+const {family,types}=api;
+if(Object.keys(api).sort().join(',')!=='family,types')throw new Error('Unexpected type-test exports');
+types.equal();types.assignableTo();types.notAssignableTo();
 if(family.id!=='@overkill-dev/type-test')throw new Error('Missing family');
 for(const subpath of ['profile','check']) {
     try { await import('@overkill-dev/type-test/'+subpath); throw new Error('Unexpected public subpath'); }
