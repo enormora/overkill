@@ -1,3 +1,5 @@
+import { typesMember } from './native-reference.ts';
+import { ownsTypeTableBody } from './type-table.ts';
 import type * as TypeScript from 'typescript-beta/ast';
 import { resolveSourceLocation, isTableBodyOrigin, type TestBodyOrigin } from '../engine/engine.entry-point.ts';
 import type { SourceAnalysis } from './source-analysis-port.ts';
@@ -240,7 +242,7 @@ async function locatedCall(analysis: SourceAnalysis, origin: TestBodyOrigin): Pr
     const file = await originalSourceFile(analysis, location.file);
     if (file === undefined) {
         throw new UnsupportedEvidenceError(
-            `Callback source is outside the checker project: ${location.file}`,
+            `Callback source is outside the checker project: ${location.file}. Check ${analysis.projectConfigPath}.`,
             undefined
         );
     }
@@ -249,7 +251,7 @@ async function locatedCall(analysis: SourceAnalysis, origin: TestBodyOrigin): Pr
         file,
         file.getPositionOfLineAndCharacter(location.line - 1, location.column - 1)
     );
-    if (!await supportedCall(analysis, call)) {
+    if (!await supportedCall(analysis, call) && await typesMember(analysis, call.expression) !== 'table') {
         throw new UnsupportedEvidenceError('Callback anchor does not identify a supported authoring API.', undefined);
     }
     return call;
@@ -270,4 +272,52 @@ export function namedBodyParameter(analysis: SourceAnalysis, body: SourceBody): 
         throw new UnsupportedEvidenceError('Checking requires a named first callback parameter.', undefined);
     }
     return parameter.name;
+}
+
+function inlineField(analysis: SourceAnalysis, node: TypeScript.Node | undefined, field: string): TypeScript.Expression {
+    const { compiler } = analysis;
+    if (node !== undefined && compiler.isObjectLiteralExpression(node) &&
+        node.properties.every(property => !compiler.isSpreadAssignment(property) &&
+            !compiler.isComputedPropertyName(property.name))) {
+        const fields = node.properties.filter(property =>
+            compiler.isPropertyAssignment(property) &&
+            (compiler.isIdentifier(property.name) || compiler.isStringLiteral(property.name)) &&
+            property.name.text === field
+        );
+        const [ property ] = fields;
+        if (fields.length === 1 && property !== undefined && compiler.isPropertyAssignment(property)) {
+            return property.initializer;
+        }
+    }
+    throw new UnsupportedEvidenceError(`Expected an inline type-table ${field} field.`, undefined);
+}
+
+export async function resolveTypeTableRow(
+    analysis: SourceAnalysis,
+    origin: TestBodyOrigin,
+    title: string
+): Promise<readonly TypeScript.Expression[] | null> {
+    if (!isTableBodyOrigin(origin) || !ownsTypeTableBody(origin.body)) {
+        return null;
+    }
+    const call = await locatedCall(analysis, preferredOrigin(origin));
+    if (await typesMember(analysis, call.expression) !== 'table') {
+        throw new UnsupportedEvidenceError('Cannot locate the authored types.table call.', undefined);
+    }
+    const { compiler } = analysis;
+    const cases = inlineField(analysis, call.arguments[0], 'cases');
+    if (!compiler.isArrayLiteralExpression(cases) || cases.elements.some(compiler.isSpreadElement)) {
+        throw new UnsupportedEvidenceError('Use an inline list of type-table cases.', undefined);
+    }
+    const row = cases.elements[origin.tableIndex];
+    const rowTitle = inlineField(analysis, row, 'title');
+    if (!compiler.isStringLiteralLike(rowTitle) || rowTitle.text !== title) {
+        throw new UnsupportedEvidenceError('Use a literal type-table case title matching the planned case.', undefined);
+    }
+    const assertions = inlineField(analysis, row, 'assertions');
+    if (!compiler.isArrayLiteralExpression(assertions) || assertions.elements.length === 0 ||
+        assertions.elements.some(compiler.isSpreadElement)) {
+        throw new UnsupportedEvidenceError('Use a nonempty inline list of type comparisons.', undefined);
+    }
+    return assertions.elements;
 }

@@ -118,7 +118,7 @@ function fixtureSource(request: ProjectRequest): string {
     return `${request.prefix}import * as engine from ${engineImport};
 import { test, suite, table, defineMacro, defineParameterizedTestBody } from ${authoringImport};
 import {
-    sameType as same, assignableTo, assignableFrom, acceptsCall, rejectsCall
+    sameType as same, assignableTo, assignableFrom, acceptsCall, rejectsCall, types
 } from ${assertionImport};
 import { prepare as prepareCompilerPlan } from ${compilerImport};
 import { defineResource, withResource } from ${resourceImport};

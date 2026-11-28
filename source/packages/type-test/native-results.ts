@@ -25,12 +25,21 @@ export type SiteEvidence = {
     readonly diagnostics: readonly CallDiagnostic[];
 };
 
+function operandPreview(operand: string): string {
+    const singleLine = operand.replaceAll(/\s+/gu, ' ');
+    const maximum = 96;
+    return singleLine.length <= maximum ? singleLine : `${singleLine.slice(0, maximum)}…`;
+}
+
 function failedCheck(evidence: SiteEvidence, index: number): FailedCheck {
-    const { relation, negated } = evidence.site.reference;
-    const name = negated ? `${relation}.not` : relation;
+    const name = evidence.site.label;
     const message = evidence.site.reference.kind === 'call'
-        ? `${name}: expected ${evidence.expected}, observed ${evidence.actual}.`
+        ? `${name} expected ${evidence.expected}, observed ${evidence.actual}.`
         : `Type relation ${name} does not hold (TypeScript ${evidence.compilerVersion}).`;
+    const label = evidence.site.reference.kind === 'call' ? name : `Type relation ${name}`;
+    const preview = `${label} failed. Actual ${operandPreview(evidence.actual)}.` +
+        ` Expected ${operandPreview(evidence.expected)}.`;
+    const summary = evidence.site.message === null ? preview : `${evidence.site.message}. ${preview}`;
     return {
         kind: 'foreign',
         id: String(index + 1),
@@ -42,12 +51,17 @@ function failedCheck(evidence: SiteEvidence, index: number): FailedCheck {
             line: evidence.site.line,
             column: evidence.site.column
         } ],
-        summary: evidence.site.message ?? message,
+        summary,
         actual: serializeValue(evidence.actual),
         expected: serializeValue(evidence.expected),
         diff: null,
         path: [],
-        error: { name: 'TypeAssertionError', message, stack: null, thrown: name }
+        error: {
+            name: 'TypeAssertionError',
+            message: `${message}\nActual: ${evidence.actual}\nExpected: ${evidence.expected}`,
+            stack: null,
+            thrown: name
+        }
     };
 }
 
@@ -96,7 +110,7 @@ function evidenceOutcome(
         return entry.result.kind === 'inconclusive';
     });
     return uncertain?.result.kind === 'inconclusive'
-        ? { kind: 'inconclusive', reason: uncertain.result.reason }
+        ? { kind: 'inconclusive', reason: `${uncertain.site.path}:${uncertain.site.line}:${uncertain.site.column} ${uncertain.result.reason}` }
         : outcome;
 }
 
@@ -158,6 +172,14 @@ function sitesByOwner(assertionPlan: OriginalAssertionPlan): ReadonlyMap<string,
     return sites;
 }
 
+function describeIssue(issue: OriginalAssertionPlan['issues'][number] | undefined): string | undefined {
+    if (issue === undefined) {
+        return undefined;
+    }
+    const { location, reason } = issue;
+    return location.kind === 'known' ? `${location.file}:${location.line}:${location.column} ${reason}` : reason;
+}
+
 function caseResults(input: NativeCheckEvidence): readonly PerTestResult[] {
     const evidence = new Map((input.checked ?? []).map(function (entry) {
         return [ entry.site, entry ];
@@ -171,7 +193,7 @@ function caseResults(input: NativeCheckEvidence): readonly PerTestResult[] {
         const key = workIdentityKey(testCase.workId);
         const owned = sites.get(key) ?? [];
         const outcome = failure === null || testCase.execution.kind === 'skip'
-            ? caseOutcome(testCase, owned, evidence, issues.get(key)?.[0]?.reason)
+            ? caseOutcome(testCase, owned, evidence, describeIssue(issues.get(key)?.[0]))
             : { kind: 'inconclusive' as const, reason: failure };
         const durationMicroseconds = owned.reduce(function addSiteDuration(total, site) {
             return total + (evidence.get(site)?.durationMicroseconds ?? 0) / site.owners.length;
@@ -198,7 +220,7 @@ export function nativeCheckResult(input: NativeCheckEvidence): RunResult {
         })
     ) {
         const reasons = perTest.flatMap(function inconclusive(result) {
-            return result.outcome?.kind === 'inconclusive' ? [ result.outcome.reason ] : [];
+            return result.outcome?.kind === 'inconclusive' ? [ `${result.id.title}: ${result.outcome.reason}` ] : [];
         });
         errors.push(runError(`Type-test checks are inconclusive: ${reasons.join('; ')}`, null));
     }

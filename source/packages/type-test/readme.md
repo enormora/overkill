@@ -19,7 +19,7 @@ Set `"type": "module"` in `package.json` for this example. Create
 
 ```ts
 import { test } from '@overkill-dev/test';
-import { sameType } from '@overkill-dev/type-test';
+import { types } from '@overkill-dev/type-test';
 
 function identity<Value>(value: Value): Value {
     return value;
@@ -27,7 +27,7 @@ function identity<Value>(value: Value): Value {
 
 export const testNode = test('preserves literal inference', (scope) => {
     const result = identity('hello' as const);
-    scope.assert(sameType<typeof result, 'hello'>());
+    scope.assert(types.equal<typeof result, 'hello'>());
     return scope.assert.collect();
 });
 ```
@@ -102,7 +102,43 @@ unsupported versions fail preparation. Install the compiler before running
 checks. After changing its implementation, restart the execution host so Node
 loads the new compiler modules.
 
+`npx overkill run --profile types --title "preserves literal inference"` runs the matching case.
+
 ## Write assertions
+
+Each comparison lists the actual type first. Assignability reads from left
+to right.
+
+- `types.equal<Actual, Expected>()` and `types.notEqual<Actual, Expected>()`
+- `types.assignableTo<Actual, Expected>()` and `types.notAssignableTo<Actual, Expected>()`
+- `types.hasKey<Actual, Key>()` and `types.lacksKey<Actual, Key>()`
+
+A key assertion checks one literal or unique symbol against TypeScript's
+`keyof Actual`. Bind expressions to a local and use `typeof` to check inference.
+
+Use a regular type-test table for two or more named groups of comparisons:
+
+```ts
+import { types } from '@overkill-dev/type-test';
+
+type User = { readonly id: string; };
+
+export const testNode = types.table({
+    title: 'public user type',
+    cases: [
+        { title: 'exposes the ID', assertions: [ types.hasKey<User, 'id'>() ] },
+        { title: 'hides secrets', assertions: [ types.lacksKey<User, 'secret'>() ] }
+    ]
+});
+```
+
+Write the cases and comparisons inline. Each case can be selected by title,
+and failures point to the comparison and print the actual and expected types.
+For example, adding a `secret` field fails `hides secrets` and shows the requested
+key and available keys. Use a regular callback for call probes and inference setup.
+
+### Legacy references
+
 
 The root exports `family`, `sameType`, `assignableTo`, `assignableFrom`,
 `acceptsCall`, and `rejectsCall`.
@@ -139,8 +175,8 @@ its inferred type, as in the quickstart.
 Pass an inline, parameterless arrow with a single TypeScript call:
 
 ```ts
-scope.assert(acceptsCall, () => greet('Ada'));
-scope.assert(rejectsCall('argument-count'), () => greet());
+scope.assert(types.acceptsCall, () => greet('Ada'));
+scope.assert(types.rejectsCall('argument-count'), () => greet());
 ```
 
 Import both assertions from `@overkill-dev/type-test`. The compiler checks the

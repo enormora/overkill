@@ -228,9 +228,34 @@ caches are analysis data, not replacement source files.
 
 ### Public Package API
 
+The root exposes `types` for comparison references and declaration-only tables.
+Comparisons use actual-first type arguments. The key checks accept one literal
+or unique symbol against `keyof Actual`.
+
+```ts
+import { types } from '@overkill-dev/type-test';
+
+type PublicApi = { readonly run: () => void; };
+
+export const testNode = types.table({
+    title: 'public API',
+    cases: [
+        { title: 'exposes run', assertions: [ types.hasKey<PublicApi, 'run'>() ] },
+        { title: 'hides load', assertions: [ types.lacksKey<PublicApi, 'load'>() ] }
+    ]
+});
+```
+
+The helper delegates to the standard table builder. The checker maps planned
+rows to inline assertions in the original project by row index and title.
+Use a regular callback with `scope.assert(types.equal<typeof result, Expected>())`
+for inference setup or narrowing. Call probes also use ordinary callbacks.
+
+### Legacy Package API
+
 The root `@overkill-dev/type-test` export supplies `family`, `sameType`,
 `assignableTo`, and `assignableFrom`, plus the settings and reference types below.
-The initial catalog is deliberately these three relations. Existing ability
+These legacy references remain available for existing consumers. Existing ability
 bindings, the `_` placeholder, and the separate adapter/profile/check entry
 points are not part of this target API. Any migration compatibility exports must
 be temporary delegates to the same engine contract, not another checking path.

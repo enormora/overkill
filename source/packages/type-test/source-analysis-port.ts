@@ -23,6 +23,7 @@ export type SourceChecker<Symbol extends SourceSymbol> = {
     readonly staticString: (node: TypeScript.Node) => Promise<string | null>;
 };
 export type SourceAnalysis = {
+    readonly projectConfigPath: string;
     readonly getRelationModuleExports: () => Promise<readonly AnalyzedSymbol[]>;
     readonly realpath: (path: string) => string;
     readonly compiler: CompilerSyntax;
@@ -33,6 +34,7 @@ export type SourceAnalysis = {
     };
 };
 type SourceInput<Symbol extends SourceSymbol> = {
+    readonly projectConfigPath: string;
     readonly getRelationModuleExports: () => Promise<readonly Symbol[]>;
     readonly realpath: (path: string) => string;
     readonly compiler: CompilerSyntax;

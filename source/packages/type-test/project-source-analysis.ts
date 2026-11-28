@@ -29,6 +29,7 @@ async function relationModuleExports(project: FrozenProject): Promise<readonly C
 export function projectSourceAnalysis(project: FrozenProject): SourceAnalysis {
     const { checker } = project;
     return createSourceAnalysis({
+        projectConfigPath: project.projectConfigPath,
         getRelationModuleExports: async function readExports() {
             return await relationModuleExports(project);
         },

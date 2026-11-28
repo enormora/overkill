@@ -33,8 +33,45 @@ export type CallProbe = CallBinding & {
     readonly reason: CallRejection | null;
     readonly probe: TypeScript.CallExpression;
 };
-export type NativeReference = CallProbe | NativeRelationReference;
-export async function nativeRelationBinding(
+export type KeyReference = {
+    readonly kind: 'key';
+    readonly relation: 'hasKey' | 'lacksKey';
+    readonly negated: false;
+    readonly actual: TypeScript.TypeNode;
+    readonly key: TypeScript.TypeNode;
+    readonly expression: TypeScript.CallExpression;
+};
+export type NativeReference = CallProbe | NativeRelationReference | KeyReference;
+
+const comparisons: ReadonlyMap<string, Relation> = new Map([
+    [ 'equal', 'sameType' ],
+    [ 'notEqual', 'sameType' ],
+    [ 'assignableTo', 'assignableTo' ],
+    [ 'notAssignableTo', 'assignableTo' ]
+]);
+const typeMembers = new Set([ ...comparisons.keys(), 'hasKey', 'lacksKey', 'acceptsCall', 'rejectsCall', 'table' ]);
+
+export async function typesMember(
+    analysis: SourceAnalysis,
+    expression: TypeScript.Expression
+): Promise<string | null> {
+    if (!analysis.compiler.isPropertyAccessExpression(expression) || !typeMembers.has(expression.name.text)) {
+        return null;
+    }
+    const receiver = expression.expression;
+    const location = analysis.compiler.isPropertyAccessExpression(receiver) ? receiver.name : receiver;
+    const symbol = await sourceSymbol(analysis, location);
+    return symbol?.name === 'types' && (await analysis.getRelationModuleExports()).includes(symbol)
+        ? expression.name.text
+        : null;
+}
+
+export async function isNativeReference(analysis: SourceAnalysis, expression: TypeScript.Expression): Promise<boolean> {
+    const member = await typesMember(analysis, expression);
+    return member !== null || await legacyBinding(analysis, expression) !== null;
+}
+
+async function legacyBinding(
     analysis: SourceAnalysis,
     expression: TypeScript.Expression
 ): Promise<Binding | null> {
@@ -53,11 +90,11 @@ type ReferenceBinding = {
 async function referenceBinding(analysis: SourceAnalysis, original: TypeScript.Expression): Promise<ReferenceBinding> {
     let expression = original;
     let members: readonly string[] = [];
-    let binding = await nativeRelationBinding(analysis, expression);
+    let binding = await legacyBinding(analysis, expression);
     while (binding === null && analysis.compiler.isPropertyAccessExpression(expression)) {
         members = [ expression.name.text, ...members ];
         expression = expression.expression;
-        binding = await nativeRelationBinding(analysis, expression);
+        binding = await legacyBinding(analysis, expression);
     }
     if (binding === null) {
         throw new UnsupportedEvidenceError('Assertion reference is not an export of the type-test package.', undefined);
@@ -170,12 +207,40 @@ export async function nativeReference(
     operands: readonly TypeScript.Expression[] = []
 ): Promise<NativeReference> {
     const syntax = referenceSyntax(analysis, node);
+    const member = await typesMember(analysis, syntax.expression);
+    if (member === 'hasKey' || member === 'lacksKey') {
+        validateReferenceSyntax('typed', syntax);
+        const [ actual, key ] = syntax.types;
+        if (!analysis.compiler.isCallExpression(node) || actual === undefined || key === undefined ||
+            operands.length !== 0) {
+            throw new UnsupportedEvidenceError('Key comparisons require a type and one key.', undefined);
+        }
+        return { kind: 'key', relation: member, negated: false, actual, key, expression: node };
+    }
+    if (member === 'acceptsCall' || member === 'rejectsCall') {
+        const binding: CallBinding = { kind: 'call', relation: member };
+        return callProbe(analysis, { binding, members: [] }, syntax, operands);
+    }
+    if (member !== null) {
+        const relation = comparisons.get(member);
+        if (relation === undefined) {
+            throw new UnsupportedEvidenceError('Unknown comparison on types.', undefined);
+        }
+        validateReferenceSyntax('typed', syntax);
+        return {
+            kind: 'relation',
+            relation,
+            negated: member === 'notEqual' || member === 'notAssignableTo',
+            form: 'typed',
+            types: syntax.types
+        };
+    }
     const { binding, members } = await referenceBinding(analysis, syntax.expression);
     if (binding.kind === 'call') {
         return callProbe(analysis, { binding, members }, syntax, operands);
     }
     const negated = members[0] === 'not';
-    const form = referenceForm(negated ? members.slice(1) : members);
+    const form = referenceForm(members[0] === 'not' ? members.slice(1) : members);
     validateReferenceSyntax(form, syntax);
     return { ...binding, negated, form, types: syntax.types };
 }

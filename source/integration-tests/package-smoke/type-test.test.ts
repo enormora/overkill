@@ -244,6 +244,25 @@ const consumerFacade = packageConsumer('packaged native type tests', function co
 const { table, test } = consumerFacade;
 
 export const testNode = suite('packaged native type tests', [
+    test('checks a regular type table through the installed package', async function (scope) {
+        const directory = await scope.resources.consumer.isolatedConsumer('cli');
+        await writeRunnerProject(directory, 'supervised-process');
+        const result = await runCallContract(directory, `import { types as checks } from '@overkill-dev/type-test';
+declare const event: unique symbol;
+type Api = { readonly [event]?: string; [index: number]: string };
+export const testNode = checks.table({
+    title: 'packed key projections',
+    cases: [
+        { title: 'includes the event and index', assertions: [
+            checks.hasKey<Api, typeof event>(), checks.hasKey<Api, 0>()
+        ] },
+        { title: 'hides load', assertions: [checks.lacksKey<Api, 'load'>()] }
+    ]
+});`);
+        scope.assert.equal(result.code, 0, { message: result.stdout + result.stderr });
+        scope.assert.includes(result.stdout, '2 pass');
+        return scope.assert.collect();
+    }),
     test('checks engine roots without the high-level distribution', async function (scope) {
         const { isolatedConsumer } = scope.resources.consumer;
 

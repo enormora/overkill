@@ -2,6 +2,29 @@ import { suite, test } from '@overkill-dev/test';
 import { runNativeProject } from '../../../../test-support/native-type-project.ts';
 
 export const testNode = suite('authored type assertions', [
+    test('selects regular type-table rows and reports the key evidence', async function (scope) {
+        const definitions = `type PublicApi = { readonly run?: () => void };
+const describe = types.table({
+    title: 'public API',
+    cases: [
+        { title: 'exposes run', assertions: [types.hasKey<PublicApi, 'run'>()] },
+        { title: 'hides run', assertions: [types.equal<1, 1>(), types.lacksKey<PublicApi, 'run'>()] }
+    ]
+});
+const nodes = [describe];`;
+        const result = await runNativeProject(scope.cleanup, definitions, null);
+        scope.assert.deepEqual(result.errors, []);
+        scope.assert.deepEqual(result.completions, [
+            { title: 'exposes run', verdict: 'pass' },
+            { title: 'hides run', verdict: 'fail' }
+        ]);
+        scope.assert.includes(result.diagnostics.join(' '), 'lacksKey');
+        scope.assert.includes(result.diagnostics.join(' '), 'keys: "run"');
+        const selected = await runNativeProject(scope.cleanup, definitions, [ 'exposes run' ]);
+        scope.assert.deepEqual(selected.errors, []);
+        scope.assert.deepEqual(selected.completions, [ { title: 'exposes run', verdict: 'pass' } ]);
+        return scope.assert.collect();
+    }),
     test('reports inferred callback types under the owning test', async function (scope) {
         const definitions = `function supply(callback: (value: string) => void): void { callback('Ada'); }
 const nodes=[test('nested',scope=>{

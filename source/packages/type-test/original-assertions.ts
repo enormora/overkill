@@ -8,14 +8,25 @@ import {
 } from '../engine/engine.entry-point.ts';
 import { UnsupportedEvidenceError } from './unsupported-evidence-error.ts';
 import type { SourceAnalysis } from './source-analysis-port.ts';
-import { resolveBodyOrigin, namedBodyParameter, type SourceBody } from './source-ownership.ts';
-import { nativeReference, type NativeReference } from './native-reference.ts';
+import { resolveBodyOrigin, resolveTypeTableRow, namedBodyParameter, type SourceBody } from './source-ownership.ts';
+import { nativeReference, typesMember, type NativeReference, type NativeRelationReference } from './native-reference.ts';
 import { scopeAssertions, assertionAnnotation } from './scope-assertions.ts';
 
 type SourceRange = {
     readonly start: number;
     readonly end: number;
 };
+export type Operand =
+    | { readonly kind: 'type'; readonly node: TypeScript.TypeNode; }
+    | { readonly kind: 'expression'; readonly node: TypeScript.Expression; };
+
+type RelationAssertion = Pick<NativeRelationReference, 'kind' | 'relation' | 'negated'> & {
+    readonly actual: Operand;
+    readonly expected: Operand;
+};
+
+type Assertion = Exclude<NativeReference, NativeRelationReference> | RelationAssertion;
+
 export type NativeSite = {
     readonly path: string;
     readonly range: SourceRange;
@@ -23,8 +34,9 @@ export type NativeSite = {
     readonly line: number;
     readonly column: number;
     readonly message: string | null;
+    readonly label: string;
     readonly call: TypeScript.CallExpression;
-    readonly reference: NativeReference;
+    readonly reference: Assertion;
 };
 export type OriginalAssertionPlan = {
     readonly modules: readonly {
@@ -56,11 +68,48 @@ function validateAssertionSyntax(analysis: SourceAnalysis, call: TypeScript.Call
         );
     }
 }
-function validateOperandCount(call: TypeScript.CallExpression, binding: NativeReference): void {
-    const operandCounts = { typed: 0, withActual: 1, withExpected: 1, expressions: 2 };
-    if (binding.kind === 'relation' && call.arguments.length - 1 !== operandCounts[binding.form]) {
+function orderedAssertion(binding: NativeReference, expressions: readonly TypeScript.Expression[]): Assertion {
+    if (binding.kind !== 'relation') {
+        return binding;
+    }
+    const typed = binding.types.map(function operand(node): Operand {
+        return { kind: 'type', node };
+    });
+    const authored = expressions.map(function operand(node): Operand {
+        return { kind: 'expression', node };
+    });
+    const pairs = {
+        typed: typed,
+        withActual: [ ...authored, ...typed ],
+        withExpected: [ ...typed, ...authored ],
+        expressions: authored
+    };
+    const counts = { typed: 0, withActual: 1, withExpected: 1, expressions: 2 };
+    const [ actual, expected ] = pairs[binding.form];
+    if (actual === undefined || expected === undefined || expressions.length !== counts[binding.form]) {
         throw new UnsupportedEvidenceError('Invalid native relation operand count.', undefined);
     }
+    return { kind: 'relation', relation: binding.relation, negated: binding.negated, actual, expected };
+}
+
+async function tableSite(
+    analysis: SourceAnalysis,
+    node: TypeScript.CallExpression,
+    owner: WorkId
+): Promise<NativeSite> {
+    const member = await typesMember(analysis, node.expression);
+    const binding = await nativeReference(analysis, node);
+    if (member === null || binding.kind === 'call') {
+        throw new UnsupportedEvidenceError('Type-table rows require direct comparisons from types.', undefined);
+    }
+    return {
+        ...authoredPosition(node),
+        call: node,
+        owners: [ owner ],
+        message: null,
+        label: member,
+        reference: orderedAssertion(binding, [])
+    };
 }
 
 async function assertionSite(
@@ -74,7 +123,8 @@ async function assertionSite(
         throw new UnsupportedEvidenceError('Native assertion is missing its reference.', undefined);
     }
     const binding = await nativeReference(analysis, reference, call.arguments.slice(1));
-    validateOperandCount(call, binding);
+    const expression = analysis.compiler.isCallExpression(reference) ? reference.expression : reference;
+    const member = await typesMember(analysis, expression);
     return {
         call,
         reference: binding,
@@ -117,7 +167,8 @@ async function collectSite(
     analysis: SourceAnalysis,
     collection: AssertionCollection,
     call: TypeScript.CallExpression,
-    owner: WorkId
+    owner: WorkId,
+    read: typeof assertionSite
 ): Promise<void> {
     const existing = collection.site(call);
     if (existing !== undefined) {
@@ -125,7 +176,7 @@ async function collectSite(
         return;
     }
     try {
-        collection.recordSite(await assertionSite(analysis, call, owner));
+        collection.recordSite(await read(analysis, call, owner));
     } catch (error: unknown) {
         if (!(error instanceof UnsupportedEvidenceError)) {
             throw error;
@@ -146,7 +197,7 @@ async function collectBody(
         collection.recordIssue({ owner, location: authoredLocation(node), reason: error.message });
     });
     for (const call of calls) {
-        await collectSite(analysis, collection, call, owner);
+        await collectSite(analysis, collection, call, owner, assertionSite);
     }
 }
 
@@ -156,7 +207,27 @@ async function collectCase(
     testCase: TestPlan['cases'][number]
 ): Promise<void> {
     try {
-        await collectBody(analysis, collection, await ownedBody(analysis, testCase), testCase.workId);
+        const row = testCase.bodyOrigin === null ? null : await resolveTypeTableRow(
+            analysis,
+            testCase.bodyOrigin,
+            testCase.id.title
+        );
+        if (row === null) {
+            await collectBody(analysis, collection, await ownedBody(analysis, testCase), testCase.workId);
+            return;
+        }
+        for (const node of row) {
+            collection.recordModule(node.getSourceFile());
+            if (analysis.compiler.isCallExpression(node)) {
+                await collectSite(analysis, collection, node, testCase.workId, tableSite);
+            } else {
+                collection.recordIssue({
+                    owner: testCase.workId,
+                    location: authoredLocation(node),
+                    reason: 'Author each type comparison directly inside the row.'
+                });
+            }
+        }
     } catch (error: unknown) {
         if (!(error instanceof UnsupportedEvidenceError)) {
             throw error;

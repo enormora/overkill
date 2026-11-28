@@ -1,3 +1,4 @@
+import type { IsLiteral, IsUnion } from 'type-fest';
 import {
     createCompositeAssertionReferenceRecord,
     type CompositeAssertionReference,
@@ -63,3 +64,31 @@ export type TypeRelation = TypeRelationBindings & { readonly not: TypeRelationBi
 export type CallRejection = 'argument-count' | 'argument-type' | 'no-matching-overload';
 
 export type CallReference = TypeAssertionReference<readonly [call: () => unknown], readonly []>;
+
+const comparisonBrand = Symbol('TypeComparison');
+const keyProjection = Symbol('keyProjection');
+
+export type ComparisonReference<Actual, Expected> =
+    TypeAssertionReference<readonly [], readonly [Actual, Expected]> & { readonly [comparisonBrand]: true; };
+
+export type KeyReference<Actual, Key extends PropertyKey> = ComparisonReference<Actual, Key> & {
+    readonly [keyProjection]: readonly [keyof Actual] | null;
+};
+
+export type KeyArguments<Key extends PropertyKey> = IsLiteral<Key> extends true
+    ? IsUnion<Key> extends false ? readonly [] : readonly [singleKeyRequired: never]
+    : readonly [singleKeyRequired: never];
+
+export function isComparisonReference(value: unknown): boolean {
+    return typeof value === 'object' && value !== null && Reflect.get(value, comparisonBrand) === true;
+}
+
+export function comparisonReference<Actual, Expected>(name: string): ComparisonReference<Actual, Expected> {
+    return Object.assign(typeAssertionReference<readonly [], readonly [Actual, Expected]>(name, false), {
+        [comparisonBrand]: true as const
+    });
+}
+
+export function keyReference<Actual, Key extends PropertyKey>(name: string): KeyReference<Actual, Key> {
+    return Object.assign(comparisonReference<Actual, Key>(name), { [keyProjection]: null });
+}

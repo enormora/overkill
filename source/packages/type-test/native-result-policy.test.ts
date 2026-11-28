@@ -28,8 +28,15 @@ function ownedSite(input: NativeCheckEvidence, message: string | null): NativeSi
         line: 1,
         column: 2,
         message,
+        label: 'sameType',
         call: sourceCall(ast.factory.createIdentifier('assert'), []),
-        reference: { kind: 'relation', relation: 'sameType', form: 'typed', negated: false, types: [] }
+        reference: {
+            kind: 'relation',
+            relation: 'sameType',
+            negated: false,
+            actual: { kind: 'type', node: ast.factory.createKeywordTypeNode(ast.SyntaxKind.StringKeyword) },
+            expected: { kind: 'type', node: ast.factory.createKeywordTypeNode(ast.SyntaxKind.NumberKeyword) }
+        }
     };
 }
 function checkedSite(site: NativeSite, result: SiteEvidence['result']): SiteEvidence {
@@ -96,7 +103,8 @@ export const testNode = suite('native checker completion policy', [
                     checks: [ {
                         kind: 'foreign',
                         source: 'assert',
-                        summary: message ?? 'Type relation sameType does not hold (TypeScript 7.1.0-beta).',
+                        summary: (message === null ? '' : `${message}. `) +
+                            'Type relation sameType failed. Actual string. Expected number.',
                         sourceLocations: [ { kind: 'known', file: '/project/case.ts', line: 1, column: 2 } ],
                         error: { name: 'TypeAssertionError', thrown: 'sameType' }
                     } ]
@@ -165,7 +173,7 @@ export const testNode = suite('native checker completion policy', [
         });
         scope.assert.deepEqual<unknown, unknown>(result.perTest[0]?.outcome, {
             kind: 'inconclusive',
-            reason: 'Unknown relation'
+            reason: '/project/case.ts:1:2 Unknown relation'
         });
         return scope.assert.collect();
     }),
