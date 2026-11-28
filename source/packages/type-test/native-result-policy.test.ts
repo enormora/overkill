@@ -89,6 +89,7 @@ export const testNode = suite('native checker completion policy', [
         caseTitle: String,
         test(scope) {
             const message = scope.parameters;
+            const annotation = message === null ? '' : `${message}. `;
 
             const input = selectedEvidence(message);
             const result = nativeCheckResult({
@@ -103,8 +104,7 @@ export const testNode = suite('native checker completion policy', [
                     checks: [ {
                         kind: 'foreign',
                         source: 'assert',
-                        summary: (message === null ? '' : `${message}. `) +
-                            'Type relation sameType failed. Actual string. Expected number.',
+                        summary: `${annotation}Type relation sameType failed. Actual string. Expected number.`,
                         sourceLocations: [ { kind: 'known', file: '/project/case.ts', line: 1, column: 2 } ],
                         error: { name: 'TypeAssertionError', thrown: 'sameType' }
                     } ]

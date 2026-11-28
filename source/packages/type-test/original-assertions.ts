@@ -9,18 +9,23 @@ import {
 import { UnsupportedEvidenceError } from './unsupported-evidence-error.ts';
 import type { SourceAnalysis } from './source-analysis-port.ts';
 import { resolveBodyOrigin, resolveTypeTableRow, namedBodyParameter, type SourceBody } from './source-ownership.ts';
-import { nativeReference, typesMember, type NativeReference, type NativeRelationReference } from './native-reference.ts';
+import {
+    nativeReference,
+    typesMember,
+    type NativeReference,
+    type NativeRelationReference
+} from './native-reference.ts';
 import { scopeAssertions, assertionAnnotation } from './scope-assertions.ts';
 
 type SourceRange = {
     readonly start: number;
     readonly end: number;
 };
-export type Operand =
-    | { readonly kind: 'type'; readonly node: TypeScript.TypeNode; }
-    | { readonly kind: 'expression'; readonly node: TypeScript.Expression; };
+type ExpressionOperand = { readonly kind: 'expression'; readonly node: TypeScript.Expression; };
+type TypeOperand = { readonly kind: 'type'; readonly node: TypeScript.TypeNode; };
+export type Operand = ExpressionOperand | TypeOperand;
 
-type RelationAssertion = Pick<NativeRelationReference, 'kind' | 'relation' | 'negated'> & {
+type RelationAssertion = Pick<NativeRelationReference, 'kind' | 'negated' | 'relation'> & {
     readonly actual: Operand;
     readonly expected: Operand;
 };
@@ -79,7 +84,7 @@ function orderedAssertion(binding: NativeReference, expressions: readonly TypeSc
         return { kind: 'expression', node };
     });
     const pairs = {
-        typed: typed,
+        typed,
         withActual: [ ...authored, ...typed ],
         withExpected: [ ...typed, ...authored ],
         expressions: authored
@@ -168,9 +173,9 @@ async function collectSite(
     analysis: SourceAnalysis,
     collection: AssertionCollection,
     call: TypeScript.CallExpression,
-    owner: WorkId,
-    read: typeof assertionSite
+    source: { readonly owner: WorkId; readonly read: typeof assertionSite; }
 ): Promise<void> {
+    const { owner, read } = source;
     const existing = collection.site(call);
     if (existing !== undefined) {
         collection.recordSite({ ...existing, owners: [ ...existing.owners, owner ] });
@@ -198,8 +203,42 @@ async function collectBody(
         collection.recordIssue({ owner, location: authoredLocation(node), reason: error.message });
     });
     for (const call of calls) {
-        await collectSite(analysis, collection, call, owner, assertionSite);
+        await collectSite(analysis, collection, call, { owner, read: assertionSite });
     }
+}
+
+async function collectTableRow(
+    analysis: SourceAnalysis,
+    collection: AssertionCollection,
+    row: readonly TypeScript.Expression[],
+    owner: WorkId
+): Promise<void> {
+    for (const node of row) {
+        collection.recordModule(node.getSourceFile());
+        if (analysis.compiler.isCallExpression(node)) {
+            await collectSite(analysis, collection, node, { owner, read: tableSite });
+        } else {
+            collection.recordIssue({
+                owner,
+                location: authoredLocation(node),
+                reason: 'Author each type comparison directly inside the row.'
+            });
+        }
+    }
+}
+
+async function collectOwnedCase(
+    analysis: SourceAnalysis,
+    collection: AssertionCollection,
+    testCase: TestPlan['cases'][number]
+): Promise<void> {
+    const { bodyOrigin, workId } = testCase;
+    const row = bodyOrigin === null ? null : await resolveTypeTableRow(analysis, bodyOrigin, testCase.id.title);
+    if (row === null) {
+        await collectBody(analysis, collection, await ownedBody(analysis, testCase), workId);
+        return;
+    }
+    await collectTableRow(analysis, collection, row, workId);
 }
 
 async function collectCase(
@@ -208,27 +247,7 @@ async function collectCase(
     testCase: TestPlan['cases'][number]
 ): Promise<void> {
     try {
-        const row = testCase.bodyOrigin === null ? null : await resolveTypeTableRow(
-            analysis,
-            testCase.bodyOrigin,
-            testCase.id.title
-        );
-        if (row === null) {
-            await collectBody(analysis, collection, await ownedBody(analysis, testCase), testCase.workId);
-            return;
-        }
-        for (const node of row) {
-            collection.recordModule(node.getSourceFile());
-            if (analysis.compiler.isCallExpression(node)) {
-                await collectSite(analysis, collection, node, testCase.workId, tableSite);
-            } else {
-                collection.recordIssue({
-                    owner: testCase.workId,
-                    location: authoredLocation(node),
-                    reason: 'Author each type comparison directly inside the row.'
-                });
-            }
-        }
+        await collectOwnedCase(analysis, collection, testCase);
     } catch (error: unknown) {
         if (!(error instanceof UnsupportedEvidenceError)) {
             throw error;

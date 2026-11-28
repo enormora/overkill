@@ -14,53 +14,6 @@ async function operandType(analysis: TypeAnalysis, operand: Operand): Promise<Ty
         : await analysis.checker.getTypeAtLocation(operand.node);
 }
 
-async function availableKeys(analysis: TypeAnalysis, reference: KeyReference): Promise<Type | undefined> {
-    const { checker } = analysis;
-    const referenceType = await checker.getTypeAtLocation(reference.expression);
-    const properties = await referenceType.getProperties();
-    const projection = properties.find(property => property.name.startsWith('__@keyProjection@'));
-    if (projection === undefined) {
-        return undefined;
-    }
-    const wrapped = await checker.getTypeOfSymbol(projection);
-    const members = wrapped.isUnionType() ? await wrapped.getTypes() : [ wrapped ];
-    const tuple = members.find(member => member.isTupleType());
-    if (tuple === undefined || !tuple.isTypeReference()) {
-        return undefined;
-    }
-    const [ keys ] = await checker.getTypeArguments(tuple);
-    return keys;
-}
-
-async function evaluateKey(
-    analysis: TypeAnalysis,
-    reference: KeyReference
-): Promise<Pick<SiteEvidence, 'actual' | 'expected' | 'result'>> {
-    const { compiler, checker } = analysis;
-    const [actual, key, keys] = await Promise.all([
-        checker.getTypeFromTypeNode(reference.actual),
-        checker.getTypeFromTypeNode(reference.key),
-        availableKeys(analysis, reference)
-    ]);
-    const validKey = key.isStringLiteralType() || key.isNumberLiteralType() ||
-        key.flags === compiler.TypeFlags.UniqueESSymbol;
-    const problem = !validKey ? 'Key comparisons require one literal or unique-symbol key.'
-        : keys === undefined ? 'The compiler did not resolve the available key type.'
-        : await hasAuthoredRecoveryType(analysis, [reference.actual, reference.key]) ? recoveryTypeReason
-        : actual.isErrorType() ? recoveryTypeReason
-        : await invalidOperand(analysis, [ key, keys ]);
-    const actualType = await checker.typeToString(actual);
-    const rendered = {
-        actual: keys === undefined ? actualType : `${actualType} (keys: ${await checker.typeToString(keys)})`,
-        expected: await checker.typeToString(key)
-    };
-    if (problem !== null || keys === undefined) {
-        return { ...rendered, result: { kind: 'inconclusive', reason: problem ?? 'Missing key type.' } };
-    }
-    const present = await checker.isTypeAssignableTo(key, keys);
-    return { ...rendered, result: { kind: 'established', holds: present === (reference.relation === 'hasKey') } };
-}
-
 async function hasAuthoredRecoveryType(
     analysis: TypeAnalysis,
     operands: readonly Node[]
@@ -85,15 +38,81 @@ async function hasAuthoredRecoveryType(
     return false;
 }
 
-const microsecondsPerMillisecond = 1000;
+async function projectedKeyType(checker: TypeAnalysis['checker'], wrapped: Type): Promise<Type | undefined> {
+    const members = wrapped.isUnionType() ? await wrapped.getTypes() : [ wrapped ];
+    const tuple = members.find(function projection(member) {
+        return member.isTupleType();
+    });
+    if (tuple === undefined) {
+        return undefined;
+    }
+    const [ keys ] = await checker.getTypeArguments(tuple);
+    return keys;
+}
 
-function evaluateCall(
-    site: NativeSite,
-    compilerVersion: string,
-    reason: CallProbe['reason'],
-    diagnostics: readonly CallDiagnostic[]
-): SiteEvidence {
-    const started = performance.now();
+async function availableKeys(analysis: TypeAnalysis, reference: KeyReference): Promise<Type | undefined> {
+    const { checker } = analysis;
+    const referenceType = await checker.getTypeAtLocation(reference.expression);
+    const properties = await referenceType.getProperties();
+    const projection = properties.find(function projected(property) {
+        return property.name.startsWith('__@keyProjection@');
+    });
+    if (projection === undefined) {
+        return undefined;
+    }
+    const wrapped = await checker.getTypeOfSymbol(projection);
+    return await projectedKeyType(checker, wrapped);
+}
+
+function isSingleKey(analysis: TypeAnalysis, key: Type): boolean {
+    return key.isStringLiteralType() || key.isNumberLiteralType() ||
+        key.flags === analysis.compiler.TypeFlags.UniqueESSymbol;
+}
+
+type Evidence = Pick<SiteEvidence, 'actual' | 'diagnostics' | 'expected' | 'result'>;
+
+async function keyResult(
+    analysis: TypeAnalysis,
+    reference: KeyReference,
+    types: { readonly actual: Type; readonly key: Type; readonly keys: Type | undefined; }
+): Promise<Evidence['result']> {
+    const { actual, key, keys } = types;
+    if (!isSingleKey(analysis, key)) {
+        return { kind: 'inconclusive', reason: 'Key comparisons require one literal or unique-symbol key.' };
+    }
+    if (keys === undefined) {
+        return { kind: 'inconclusive', reason: 'The compiler did not resolve the available key type.' };
+    }
+    if (actual.isErrorType() || await hasAuthoredRecoveryType(analysis, [ reference.actual, reference.key ])) {
+        return { kind: 'inconclusive', reason: recoveryTypeReason };
+    }
+    const problem = await invalidOperand(analysis, [ key, keys ]);
+    return problem === null
+        ? {
+            kind: 'established',
+            holds: await analysis.checker.isTypeAssignableTo(key, keys) ===
+                (reference.relation === 'hasKey')
+        }
+        : { kind: 'inconclusive', reason: problem };
+}
+
+async function evaluateKey(analysis: TypeAnalysis, reference: KeyReference): Promise<Evidence> {
+    const { checker } = analysis;
+    const [ actual, key, keys ] = await Promise.all([
+        checker.getTypeFromTypeNode(reference.actual),
+        checker.getTypeFromTypeNode(reference.key),
+        availableKeys(analysis, reference)
+    ]);
+    const actualType = await checker.typeToString(actual);
+    return {
+        diagnostics: [],
+        actual: keys === undefined ? actualType : `${actualType} (keys: ${await checker.typeToString(keys)})`,
+        expected: await checker.typeToString(key),
+        result: await keyResult(analysis, reference, { actual, key, keys })
+    };
+}
+
+function evaluateCall(reason: CallProbe['reason'], diagnostics: readonly CallDiagnostic[]): Evidence {
     const holds = reason === null
         ? diagnostics.length === 0
         : diagnostics.length > 0 && diagnostics.every(function expected(diagnostic) {
@@ -104,16 +123,50 @@ function evaluateCall(
             return `TS${diagnostic.code} (${diagnostic.reason}): ${diagnostic.text}`;
         })
         .join('\n');
+    return { actual, expected: reason ?? 'Call accepted', diagnostics, result: { kind: 'established', holds } };
+}
+
+function negateResult(result: Evidence['result'], negated: boolean): Evidence['result'] {
+    return result.kind === 'inconclusive' ? result : { kind: 'established', holds: result.holds !== negated };
+}
+
+async function evaluateRelation(
+    analysis: TypeAnalysis,
+    reference: Extract<NativeSite['reference'], { readonly kind: 'relation'; }>
+): Promise<Evidence> {
+    const [ actual, expected ] = await Promise.all([
+        operandType(analysis, reference.actual),
+        operandType(analysis, reference.expected)
+    ]);
+    const result = await hasAuthoredRecoveryType(analysis, [ reference.actual.node, reference.expected.node ])
+        ? { kind: 'inconclusive' as const, reason: recoveryTypeReason }
+        : await compareRelation(analysis, reference.relation, actual, expected);
+    const actualText = await analysis.checker.typeToString(actual);
+    const expectedText = await analysis.checker.typeToString(expected);
+    const failure = result.kind === 'established' && result.holds === reference.negated;
+    const showSources = actualText === expectedText && failure;
     return {
-        site,
-        compilerVersion,
-        actual,
-        expected: reason ?? 'Call accepted',
-        diagnostics,
-        durationMicroseconds: (performance.now() - started) * microsecondsPerMillisecond,
-        result: { kind: 'established', holds }
+        diagnostics: [],
+        actual: showSources ? `${actualText} (${reference.actual.node.getText()})` : actualText,
+        expected: showSources ? `${expectedText} (${reference.expected.node.getText()})` : expectedText,
+        result: negateResult(result, reference.negated)
     };
 }
+
+async function assertionEvidence(
+    analysis: TypeAnalysis,
+    reference: NativeSite['reference'],
+    diagnostics: readonly CallDiagnostic[]
+): Promise<Evidence> {
+    if (reference.kind === 'call') {
+        return evaluateCall(reference.reason, diagnostics);
+    }
+    return reference.kind === 'key'
+        ? await evaluateKey(analysis, reference)
+        : await evaluateRelation(analysis, reference);
+}
+
+const microsecondsPerMillisecond = 1000;
 
 export async function evaluateSite(
     analysis: TypeAnalysis,
@@ -122,36 +175,11 @@ export async function evaluateSite(
     diagnostics: readonly CallDiagnostic[]
 ): Promise<SiteEvidence> {
     const started = performance.now();
-    const { reference } = site;
-    if (reference.kind === 'call') {
-        return evaluateCall(site, compilerVersion, reference.reason, diagnostics);
-    }
-    if (reference.kind === 'key') {
-        const evidence = await evaluateKey(analysis, reference);
-        return { ...evidence, site, compilerVersion, diagnostics: [],
-            durationMicroseconds: (performance.now() - started) * microsecondsPerMillisecond };
-    }
-    const [ actual, expected ] = await Promise.all([
-        operandType(analysis, reference.actual),
-        operandType(analysis, reference.expected)
-    ]);
-    const result = await hasAuthoredRecoveryType(analysis, [reference.actual.node, reference.expected.node])
-        ? { kind: 'inconclusive' as const, reason: recoveryTypeReason }
-        : await compareRelation(analysis, reference.relation, actual, expected);
-    const actualText = await analysis.checker.typeToString(actual);
-    const expectedText = await analysis.checker.typeToString(expected);
-    const sameDisplay = actualText === expectedText && result.kind === 'established' &&
-        result.holds === reference.negated;
+    const evidence = await assertionEvidence(analysis, site.reference, diagnostics);
     return {
+        ...evidence,
         site,
         compilerVersion,
-        diagnostics: [],
-        actual: sameDisplay ? `${actualText} (${reference.actual.node.getText()})` : actualText,
-        expected: sameDisplay ? `${expectedText} (${reference.expected.node.getText()})` : expectedText,
-        durationMicroseconds: (performance.now() - started) * microsecondsPerMillisecond,
-        result: result.kind === 'inconclusive' ? result : {
-            kind: 'established',
-            holds: site.reference.negated ? !result.holds : result.holds
-        }
+        durationMicroseconds: (performance.now() - started) * microsecondsPerMillisecond
     };
 }

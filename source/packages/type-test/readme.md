@@ -139,7 +139,6 @@ key and available keys. Use a regular callback for call probes and inference set
 
 ### Legacy references
 
-
 The root exports `family`, `sameType`, `assignableTo`, `assignableFrom`,
 `acceptsCall`, and `rejectsCall`.
 Its type exports are `CompilerSelection`, `CompilerPolicy`,

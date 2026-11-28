@@ -91,6 +91,11 @@ function noAssertions(): TestOutcome {
     };
 }
 
+function inconclusiveAt(site: NativeSite, reason: string): TestOutcome {
+    const { path, line, column } = site;
+    return { kind: 'inconclusive', reason: `${path}:${line}:${column} ${reason}` };
+}
+
 function evidenceOutcome(
     sites: readonly NativeSite[],
     results: readonly SiteEvidence[],
@@ -110,7 +115,7 @@ function evidenceOutcome(
         return entry.result.kind === 'inconclusive';
     });
     return uncertain?.result.kind === 'inconclusive'
-        ? { kind: 'inconclusive', reason: `${uncertain.site.path}:${uncertain.site.line}:${uncertain.site.column} ${uncertain.result.reason}` }
+        ? inconclusiveAt(uncertain.site, uncertain.result.reason)
         : outcome;
 }
 

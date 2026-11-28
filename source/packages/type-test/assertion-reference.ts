@@ -68,8 +68,9 @@ export type CallReference = TypeAssertionReference<readonly [call: () => unknown
 const comparisonBrand = Symbol('TypeComparison');
 const keyProjection = Symbol('keyProjection');
 
-export type ComparisonReference<Actual, Expected> =
-    TypeAssertionReference<readonly [], readonly [Actual, Expected]> & { readonly [comparisonBrand]: true; };
+export type ComparisonReference<Actual, Expected> = TypeAssertionReference<readonly [], readonly [Actual, Expected]> & {
+    readonly [comparisonBrand]: true;
+};
 
 export type KeyReference<Actual, Key extends PropertyKey> = ComparisonReference<Actual, Key> & {
     readonly [keyProjection]: readonly [keyof Actual] | null;
