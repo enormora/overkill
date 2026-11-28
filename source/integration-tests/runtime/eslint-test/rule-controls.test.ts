@@ -7,6 +7,7 @@ import { createRoot, createTestPlan, execute } from '../../../packages/engine/en
 import { gen } from '../../../packages/property/property.entry-point.ts';
 
 import { defineRuleTests } from '../../../packages/eslint-test/eslint-test.entry-point.ts';
+import { captureThrownError } from '../../../test-support/captured-error.ts';
 import { executePropertyNode, propertyExecutionDefaults } from '../../../test-support/property-execution.ts';
 import { observeRule } from '../../../eslint-test/rule-observation.ts';
 import type { RuleInput } from '../../../eslint-test/rule-definition.ts';
@@ -110,11 +111,14 @@ export const testNode = suite('ESLint control and fixer contracts', [
     test('propagates permission failures without turning them into assertions', function (scope) {
         const error = Object.assign(new Error('denied'), { code: 'ERR_ACCESS_DENIED' });
         const controller = new AbortController();
-        scope.assert.throws(function permission() {
-            observeRule(function denied() {
-                throw error;
-            }, controller.signal);
-        }, { message: 'denied' });
+        scope.assert.equal(
+            captureThrownError(function permission() {
+                observeRule(function denied() {
+                    throw error;
+                }, controller.signal);
+            }),
+            error
+        );
         return scope.assert.collect();
     }),
     test('does not admit a cancelled rule invocation', function (scope) {
