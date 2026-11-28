@@ -1,5 +1,5 @@
-import { rejects as assertRejects } from 'node:assert/strict';
 import { table, suite, test } from '@overkill-dev/test';
+import { captureRejectedError } from '../test-support/captured-error.ts';
 
 import { createTestEngine } from '../test-support/create-test-engine.ts';
 import {
@@ -251,9 +251,13 @@ export const testNode = suite('family preparation validation', [
             projectRoot,
             signal
         });
-        await assertRejects(async function () {
-            await prepared.collect({ workIds: [ testPlan.cases[0].workId ], signal });
-        }, { message: /collection kind/u });
+        const collectionError = await captureRejectedError(async function () {
+                await prepared.collect({ workIds: [ testPlan.cases[0].workId ], signal });
+            });
+        scope.assert.match(
+            collectionError.message,
+            /collection kind/u
+        );
         return scope.assert.collect();
     }),
     test('rejects foreign collections and unsupported retry policy', async function (scope) {

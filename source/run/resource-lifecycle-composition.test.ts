@@ -1,5 +1,5 @@
-import { throws as assertThrows } from 'node:assert/strict';
 import { suite, test } from '@overkill-dev/test';
+import { captureThrownError } from '../test-support/captured-error.ts';
 
 import { CaseRunnerError } from '../engine/run-result.ts';
 
@@ -205,12 +205,20 @@ export const testNode = suite('Resource lifecycle composition', [
             runtimeContexts: new Map([ [ runtime, emptyContext ] ])
         });
 
-        assertThrows(function readMissingRuntimeContext() {
-            runtimeContextForStep(runtime, session);
-        }, { message: 'Runtime scope composition failed.' });
-        assertThrows(function readIncompleteRuntimeContext() {
-            runtimeContextForStep(runtime, incompleteSession);
-        }, { message: 'Runtime scope composition failed.' });
+        scope.assert.equal(
+            captureThrownError(function readMissingRuntimeContext() {
+                runtimeContextForStep(runtime, session);
+            })
+                .message,
+            'Runtime scope composition failed.'
+        );
+        scope.assert.equal(
+            captureThrownError(function readIncompleteRuntimeContext() {
+                runtimeContextForStep(runtime, incompleteSession);
+            })
+                .message,
+            'Runtime scope composition failed.'
+        );
 
         return scope.assert.collect();
     }),
@@ -229,11 +237,15 @@ export const testNode = suite('Resource lifecycle composition', [
         });
 
         try {
-            assertThrows(function createInvalidManagedSession() {
-                managedResourceSession(resources, new Map(), function () {
-                    return [];
-                });
-            }, { message: 'Runtime does not provide Symbol.asyncDispose.' });
+            scope.assert.equal(
+                captureThrownError(function createInvalidManagedSession() {
+                    managedResourceSession(resources, new Map(), function () {
+                        return [];
+                    });
+                })
+                    .message,
+                'Runtime does not provide Symbol.asyncDispose.'
+            );
         } finally {
             restore();
         }
@@ -255,11 +267,15 @@ export const testNode = suite('Resource lifecycle composition', [
         });
 
         try {
-            assertThrows(function createInvalidManagedSession() {
-                managedResourceSession(resources, new Map(), function () {
-                    return [];
-                });
-            }, { message: 'Resource scope composition failed.' });
+            scope.assert.equal(
+                captureThrownError(function createInvalidManagedSession() {
+                    managedResourceSession(resources, new Map(), function () {
+                        return [];
+                    });
+                })
+                    .message,
+                'Resource scope composition failed.'
+            );
         } finally {
             restore();
         }

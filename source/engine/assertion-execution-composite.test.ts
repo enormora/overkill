@@ -472,6 +472,12 @@ export const testNode = suite('Composite assertion execution', [
         const outcome = firstFailOutcome(result);
 
         scope.require.notNull(outcome);
+        const origin = {
+            case: result.perTest[0]?.id,
+            work: result.perTest[0]?.workId,
+            attempt: { index: 0 },
+            trial: null
+        };
         scope.assert.deepEqual(outcome.failures, [
             {
                 actual: 'pending async assertion',
@@ -480,23 +486,20 @@ export const testNode = suite('Composite assertion execution', [
                 kind: 'test-contract',
                 summary: 'Async assertion must be awaited before scope.assert.collect().'
             },
-            {
-                actual: {
-                    kind: 'late-assertion-activity',
-                    closure: 'settled',
-                    operation: 'finish an asynchronous assertion',
-                    origin: {
-                        case: result.perTest[0]?.id,
-                        work: result.perTest[0]?.workId,
-                        attempt: { index: 0 },
-                        trial: null
-                    }
-                },
-                code: 'late-assertion-activity',
-                expected: 'an open assertion recording context',
-                kind: 'test-contract',
-                summary: 'Cannot finish an asynchronous assertion after the assertion context settled.'
-            }
+            ...[ 'record a composite assertion child', 'discard an asynchronous assertion' ].map(function (operation) {
+                return {
+                    actual: {
+                        kind: 'late-assertion-activity',
+                        closure: 'settled',
+                        operation,
+                        origin
+                    },
+                    code: 'late-assertion-activity',
+                    expected: 'an open assertion recording context',
+                    kind: 'test-contract',
+                    summary: `Cannot ${operation} after the assertion context settled.`
+                };
+            })
         ]);
 
         return scope.assert.collect();

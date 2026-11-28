@@ -199,8 +199,7 @@ export const testNode = suite('differential lifecycle', [
                 propertyExecutionDefaults
             );
             scope.assert.equal(controlFlow.continued, 0);
-            scope.assert.true(controlFlow.propagated > 0);
-            scope.assert.equal(controlFlow.original, controlFlow.propagated);
+            scope.assert.true(controlFlow.propagated > 0 && controlFlow.original === controlFlow.propagated);
             scope.assert.equal(result.summary.inconclusive, kind === 'inconclusive' ? 1 : 0);
             if (kind === 'permission') {
                 scope.assert.true(result.runnerErrors.some(function permission(error) {

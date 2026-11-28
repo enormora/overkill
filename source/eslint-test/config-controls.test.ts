@@ -1,4 +1,5 @@
 import { suite, test } from '@overkill-dev/test';
+import { captureThrownError } from '../test-support/captured-error.ts';
 
 import { ResourceLifecycleError } from '../packages/resources/resources.entry-point.ts';
 import { emptyConfigProject } from '../test-support/eslint-config.ts';
@@ -22,13 +23,21 @@ export const testNode = suite('config execution controls', [
             cause: denied,
             failures: [ { cause: denied, phase: 'acquire', resourceName: 'project' } ]
         });
-        scope.assert.throws(function control() {
-            propagateConfigControls(wrapped, scope.signal);
-        }, { message: 'denied' });
+        scope.assert.equal(
+            captureThrownError(function control() {
+                propagateConfigControls(wrapped, scope.signal);
+            })
+                .message,
+            'denied'
+        );
         const ordinary = new Error('outer', { cause: denied });
-        scope.assert.throws(function cause() {
-            propagateConfigControls(ordinary, scope.signal);
-        }, { message: 'denied' });
+        scope.assert.equal(
+            captureThrownError(function cause() {
+                propagateConfigControls(ordinary, scope.signal);
+            })
+                .message,
+            'denied'
+        );
         return scope.assert.collect();
     }),
     test(

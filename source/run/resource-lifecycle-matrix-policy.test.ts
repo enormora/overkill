@@ -1,5 +1,5 @@
-import { throws as assertThrows } from 'node:assert/strict';
 import { type TestScope, suite, test } from '@overkill-dev/test';
+import { captureThrownError } from '../test-support/captured-error.ts';
 
 import { defineResource, defineRuntime } from '../resources/resources.ts';
 import { runtimeMatrixDefinitionApi } from '../resources/runtime-matrix-definition.ts';
@@ -51,29 +51,37 @@ function selectedWork(variantId: string | null): WorkId {
 }
 export const testNode = suite('runner managed runtime composition', [
     test('requires runner selection before composing runtime matrix resources', function (scope) {
-        assertThrows(function () {
-            return combinedResourceEntries(steps, null);
-        }, {
-            message: 'Runtime matrix "transport-matrix" requires runner-managed execution.'
-        });
-        assertThrows(function () {
-            return combinedResourceEntries(steps, { ...selectedWork('first'), runtimes: [] });
-        }, {
-            message: 'Runtime matrix "transport-matrix" requires runner-managed execution.'
-        });
+        scope.assert.equal(
+            captureThrownError(function () {
+                return combinedResourceEntries(steps, null);
+            })
+                .message,
+            'Runtime matrix "transport-matrix" requires runner-managed execution.'
+        );
+        scope.assert.equal(
+            captureThrownError(function () {
+                return combinedResourceEntries(steps, { ...selectedWork('first'), runtimes: [] });
+            })
+                .message,
+            'Runtime matrix "transport-matrix" requires runner-managed execution.'
+        );
         return scope.assert.collect();
     }),
     test('rejects missing and unknown matrix variant selections', function (scope) {
-        assertThrows(function () {
-            return combinedResourceEntries(steps, selectedWork(null));
-        }, {
-            message: 'Runtime matrix "transport-matrix" has no selected variant for this work item.'
-        });
-        assertThrows(function () {
-            return combinedResourceEntries(steps, selectedWork('unknown'));
-        }, {
-            message: 'Runtime matrix "transport-matrix" has no variant "unknown".'
-        });
+        scope.assert.equal(
+            captureThrownError(function () {
+                return combinedResourceEntries(steps, selectedWork(null));
+            })
+                .message,
+            'Runtime matrix "transport-matrix" has no selected variant for this work item.'
+        );
+        scope.assert.equal(
+            captureThrownError(function () {
+                return combinedResourceEntries(steps, selectedWork('unknown'));
+            })
+                .message,
+            'Runtime matrix "transport-matrix" has no variant "unknown".'
+        );
         return scope.assert.collect();
     }),
     test('scopes dependencies and acquisition scenario bindings to the selected runtime', function (scope: TestScope) {

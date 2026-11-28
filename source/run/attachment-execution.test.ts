@@ -1,5 +1,6 @@
 import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { table, suite, test } from '@overkill-dev/test';
+import { captureRejectedError } from '../test-support/captured-error.ts';
 
 import { defaultAttachmentLimits } from '../engine/runtime-attachment.ts';
 import { createDefaultWorkId } from '../engine/identity.ts';
@@ -96,11 +97,13 @@ export const testNode = suite('attachment execution ownership', [
         const recorded = recordAttachmentExchange();
         const execution = createAttachmentExecution(recorded.exchange, defaultAttachmentLimits);
         await execution.runAttempt(work, attempt, async function captureInvalidJson() {
-            await scope.assert.rejects(async function () {
-                return await execution.context.forProducer(producer).json(metadata, Number.NaN);
-            }, {
-                name: 'AttachmentOperationError'
-            });
+            const invalidJsonError = await captureRejectedError(async function () {
+                    return await execution.context.forProducer(producer).json(metadata, Number.NaN);
+                });
+            scope.assert.equal(
+                invalidJsonError.name,
+                'AttachmentOperationError'
+            );
         });
         const errors = execution.takeErrors(owner);
         scope.assert.equal(errors.length, 1);
@@ -173,14 +176,17 @@ export const testNode = suite('attachment execution ownership', [
                 };
                 await writer.close();
             });
-            await scope.assert.rejects(escaped, { message: 'Attachment escaped its test attempt.' });
+            const expiredAttemptError = await captureRejectedError(escaped);
+            scope.assert.equal(expiredAttemptError.message, 'Attachment escaped its test attempt.');
             const errors = await execution.finish();
             scope.assert.equal(errors.length, 1);
-            await scope.assert.rejects(async function () {
-                return await execution.context.forProducer(producer).json(metadata, 1);
-            }, {
-                message: 'Attachment escaped its integration run.'
-            });
+            const finishedRunError = await captureRejectedError(async function () {
+                    return await execution.context.forProducer(producer).json(metadata, 1);
+                });
+            scope.assert.equal(
+                finishedRunError.message,
+                'Attachment escaped its integration run.'
+            );
             scope.assert.equal(execution.takeErrors({ kind: 'run' }).length, 1);
             return scope.assert.collect();
         }
@@ -194,19 +200,23 @@ export const testNode = suite('attachment execution ownership', [
             'native',
             'attachment'
         );
-        await scope.assert.rejects(async function () {
-            return await prepared.json(metadata, 1);
-        }, {
-            message: 'Failure artifact escaped its test attempt.'
-        });
+        const unownedArtifactError = await captureRejectedError(async function () {
+                return await prepared.json(metadata, 1);
+            });
+        scope.assert.equal(
+            unownedArtifactError.message,
+            'Failure artifact escaped its test attempt.'
+        );
         await execution.runAttempt(work, attempt, async function () {
             return await prepared.json(metadata, 1);
         });
-        await scope.assert.rejects(async function () {
-            return await prepared.json(metadata, 1);
-        }, {
-            message: 'Attachment escaped its test attempt.'
-        });
+        const expiredArtifactError = await captureRejectedError(async function () {
+                return await prepared.json(metadata, 1);
+            });
+        scope.assert.equal(
+            expiredArtifactError.message,
+            'Attachment escaped its test attempt.'
+        );
         scope.assert.equal(execution.takeErrors({ kind: 'run' }).length, 2);
         scope.assert(assertPreparedOwner, recorded.operations[0]);
         return scope.assert.collect();
@@ -240,11 +250,12 @@ export const testNode = suite('attachment execution ownership', [
             const execution = createAttachmentExecution(async function () {
                 return response;
             }, defaultAttachmentLimits);
-            await scope.assert.rejects(
-                async function () {
+            const openError = await captureRejectedError(async function () {
                     return await execution.context.forProducer(producer).open({ ...metadata, kind: 'text' });
-                },
-                { message: expected.message }
+                });
+            scope.assert.equal(
+                openError.message,
+                expected.message
             );
             const errors = await execution.finish();
             scope.assert.equal(errors.length, 1);
@@ -255,9 +266,13 @@ export const testNode = suite('attachment execution ownership', [
         const execution = createAttachmentExecution(async function unavailable(): Promise<AttachmentResponse> {
             throw new Error('transport unavailable');
         }, defaultAttachmentLimits);
-        await scope.assert.rejects(async function captureEvidence() {
-            return await execution.context.forProducer(producer).json(metadata, 1);
-        }, { message: 'transport unavailable' });
+        const transportError = await captureRejectedError(async function captureEvidence() {
+                return await execution.context.forProducer(producer).json(metadata, 1);
+            });
+        scope.assert.equal(
+            transportError.message,
+            'transport unavailable'
+        );
         const errors = await execution.finish();
         scope.assert.equal(errors.length, 1);
         return scope.assert.collect();
