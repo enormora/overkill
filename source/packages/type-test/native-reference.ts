@@ -128,18 +128,46 @@ function callReason(
     return rejectionReason(reason.text);
 }
 
+function blockProbe(
+    compiler: SourceAnalysis['compiler'],
+    body: TypeScript.Block
+): TypeScript.Expression | undefined {
+    const [ statement ] = body.statements;
+    if (body.statements.length !== 1 || statement === undefined) {
+        return undefined;
+    }
+    if (compiler.isExpressionStatement(statement) || compiler.isReturnStatement(statement)) {
+        return statement.expression;
+    }
+    return undefined;
+}
+
+function callbackProbe(
+    compiler: SourceAnalysis['compiler'],
+    callback: TypeScript.Expression
+): TypeScript.Expression | undefined {
+    if (
+        !compiler.isArrowFunction(callback) && !compiler.isFunctionExpression(callback) ||
+        callback.parameters.length > 0 || callback.asteriskToken !== undefined
+    ) {
+        return undefined;
+    }
+    const { body } = callback;
+    return compiler.isBlock(body) ? blockProbe(compiler, body) : body;
+}
+
 function probeExpression(
     compiler: SourceAnalysis['compiler'],
     operands: readonly TypeScript.Expression[]
 ): TypeScript.CallExpression {
     const [ callback ] = operands;
-    if (
-        operands.length !== 1 || callback === undefined || !compiler.isArrowFunction(callback) ||
-        callback.parameters.length > 0 || !compiler.isCallExpression(callback.body)
-    ) {
-        throw new UnsupportedEvidenceError('A call assertion requires an inline arrow containing one call.', undefined);
+    if (operands.length === 1 && callback !== undefined) {
+        const call = callbackProbe(compiler, callback);
+        if (call !== undefined && compiler.isCallExpression(call)) {
+            return call;
+        }
     }
-    return callback.body;
+    throw new UnsupportedEvidenceError('A call assertion requires an inline function containing one call.', undefined);
 }
 
 type CallReferenceBinding = ReferenceBinding & { readonly binding: CallBinding; };

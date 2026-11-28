@@ -203,7 +203,7 @@ function supply(callback: (name: string) => void): void { callback('Ada'); }
 export const testNode = suite('type contracts', [
     test('requires a name', scope => {
         scope.assert(acceptsCall, () => greet('Ada'));
-        scope.assert(rejectsCall('argument-count'), () => greet());
+        scope.assert(rejectsCall('argument-count'), function () { greet(); });
         return scope.assert.collect();
     }),
     test('infers the callback parameter', scope => {
