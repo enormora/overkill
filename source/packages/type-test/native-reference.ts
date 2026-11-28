@@ -78,9 +78,9 @@ function referenceSyntax(analysis: SourceAnalysis, node: TypeScript.Expression):
 type TypeOperands = readonly [actual: TypeScript.TypeNode, expected: TypeScript.TypeNode];
 
 function typeOperands(syntax: ReferenceSyntax, operands: readonly TypeScript.Expression[]): TypeOperands {
-    const [ actual, expected ] = syntax.types;
+    const [ actual, expected, ...extra ] = syntax.types;
     if (
-        actual === undefined || expected === undefined || syntax.types.length > 2 ||
+        actual === undefined || expected === undefined || extra.length > 0 ||
         syntax.operands.length > 0 || operands.length > 0
     ) {
         throw new UnsupportedEvidenceError(

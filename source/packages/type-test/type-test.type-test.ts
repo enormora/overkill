@@ -10,13 +10,15 @@ export const testNode = test(
     function (typeScope) {
         typeScope.assert(acceptsCall, () => scope.assert(types.equal<string, number>()));
         typeScope.assert(rejectsCall('argument-count'), () => scope.require(types.equal<string, string>()));
-        typeScope.assert(rejectsCall('argument-count'), () =>
-            scope.assert(types.assignableTo<string, unknown>(), 'value'));
+        typeScope.assert(
+            rejectsCall('argument-type'),
+            async () => scope.assert(types.assignableTo<string, unknown>(), 'value')
+        );
         typeScope
             .assert(acceptsCall, () => scope.assert(types.hasKey<{ readonly value: string; }, 'value'>()));
         typeScope.assert(
             rejectsCall('argument-count'),
-            () => types.hasKey<{ readonly value: string; }, 'value' | 'other'>()
+            () => types.hasKey<{ readonly value: string; }, 'other' | 'value'>()
         );
         return typeScope.assert.collect();
     }

@@ -180,8 +180,6 @@ export const testNode = suite('isolated callback source ownership', [
             return name;
         },
         async test(scope) {
-            const name = scope.parameters;
-
             const fixture = sourceFixture();
             const symbol = sourceSymbol('types', []);
             fixture.bindName('alias', symbol);
@@ -189,7 +187,7 @@ export const testNode = suite('isolated callback source ownership', [
             const actual = ast.factory.createKeywordTypeNode(ast.SyntaxKind.StringKeyword);
             const expected = ast.factory.createKeywordTypeNode(ast.SyntaxKind.StringKeyword);
             const reference = sourceTree(ast.factory.createCallExpression(
-                sourceMember(ast.factory.createIdentifier('alias'), name),
+                sourceMember(ast.factory.createIdentifier('alias'), scope.parameters),
                 undefined,
                 [ actual, expected ],
                 [],
@@ -198,7 +196,7 @@ export const testNode = suite('isolated callback source ownership', [
             const result = await nativeReference(fixture.analysis, reference);
             scope.assert.deepEqual(result, {
                 kind: 'relation',
-                relation: name,
+                relation: scope.parameters,
                 negated: false,
                 actual,
                 expected

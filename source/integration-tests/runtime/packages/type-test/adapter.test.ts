@@ -17,7 +17,9 @@ engine.createTestCase({...metadata,title:'pass',body(scope){
     bodyCalls++;scope.assert(types.equal<string,string>());return scope.assert.collect();
 }}),
 engine.createTestCase({...metadata,title:'fail',body(scope){
-    bodyCalls++;scope.assert.annotated('Wrong inferred type')(types.equal<string,number>());return scope.assert.collect();
+    bodyCalls++;
+    scope.assert.annotated('Wrong inferred type')(types.equal<string,number>());
+    return scope.assert.collect();
 }})
 ];`;
 
