@@ -7,21 +7,23 @@ import { createSourceAnalysis, type SourceAnalysis } from './source-analysis-por
 
 const entryExtension = import.meta.url.endsWith('.ts') ? '.ts' : '.d.ts';
 const relationEntry = fileURLToPath(new URL(`./type-test.entry-point${entryExtension}`, import.meta.url));
+const relationPackage = '@overkill-dev/type-test';
 
-function installedRelationEntry(): string {
-    try {
-        return fileURLToPath(import.meta.resolve('@overkill-dev/type-test')).replace(/\.js$/u, '.d.ts');
-    } catch (error: unknown) {
-        if (error instanceof Error && Reflect.get(error, 'code') === 'ERR_MODULE_NOT_FOUND') {
-            return relationEntry;
-        }
-        throw error;
+async function relationEntries(project: FrozenProject): Promise<readonly string[]> {
+    if (entryExtension === '.d.ts') {
+        return [ relationEntry ];
     }
+    const resolutions = await Promise.all(project.project.fileNames.map(async function resolveAuthoring(file) {
+        return await project.program.getResolvedModule(file, relationPackage, project.compiler.syntax.ModuleKind.ESNext);
+    }));
+    return [ relationEntry, ...resolutions.flatMap(function publishedEntry(resolution) {
+        return resolution?.packageId?.name === relationPackage ? [ resolution.resolvedFileName ] : [];
+    }) ];
 }
 
 async function relationModuleExports(project: FrozenProject): Promise<readonly CompilerSymbol[]> {
     const { checker } = project;
-    const entries = [ relationEntry, installedRelationEntry() ];
+    const entries = await relationEntries(project);
     const paths = new Set(entries.map(compilerFileSystem.realpath));
     const basenames = new Set(entries.map(function entryName(path) {
         return basename(path);
