@@ -124,7 +124,7 @@ function captureManagedSessionError(reflectGet: PatchedReflectGet): Error | unde
             configurable: true,
             value: originalReflectGet
         });
-    };
+    }
 }
 
 function captureThrown(run: () => void): unknown {
