@@ -120,11 +120,11 @@ export const testNode = suite('property targeting', [
         targets.target('distance', -5);
         targets.target('distance', -10);
         scope.assert.equal(targets.finish().get('distance'), -5);
-        scope.assert.match(
+        scope.assert.equal(
             captureThrownError(function expired() {
                 targets.target('distance', 0);
             })?.message,
-            /outlived/
+            'Property targeting observation outlived its trial.'
         );
         return scope.assert.collect();
     }),
@@ -132,17 +132,17 @@ export const testNode = suite('property targeting', [
         const labels = propertyLabels(1);
         labels('coverage');
         const targets = trialTargets(labels);
-        scope.assert.match(
+        scope.assert.equal(
             captureThrownError(function invalid() {
                 targets.target('coverage', Number.NaN);
             })?.message,
-            /finite/
+            'Property target scores must be finite numbers.'
         );
-        scope.assert.match(
+        scope.assert.equal(
             captureThrownError(function overflow() {
                 targets.target('score', 1);
             })?.message,
-            /limit/
+            'Property observation label limit exceeded.'
         );
         return scope.assert.collect();
     }),
