@@ -1,5 +1,6 @@
 import type { IsEqual } from 'type-fest';
 import { acceptsCall, rejectsCall, sameType } from '@overkill-dev/type-test';
+import { suite, test } from '@overkill-dev/test';
 import type {
     Table,
     TestBody,
@@ -22,7 +23,6 @@ import {
     type RuntimeWrappedTestBody,
     type TemporaryDirectoryHandle
 } from './resources.entry-point.ts';
-import { suite, test } from '@overkill-dev/test';
 import {
     createTestFacade,
     table as rootTable,

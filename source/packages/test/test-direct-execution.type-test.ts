@@ -1,5 +1,6 @@
 import type { IsEqual } from 'type-fest';
 import { acceptsCall, rejectsCall, sameType } from '@overkill-dev/type-test';
+import { suite, test as typeTest } from '@overkill-dev/test';
 import type {
     DefinedOutputRenderer,
     DefinedReporter,
@@ -12,7 +13,6 @@ import type {
     TestScope,
     TestScopeAssertContext
 } from '../engine/engine.entry-point.ts';
-import { suite, test as typeTest } from '@overkill-dev/test';
 import {
     type AuthoringAnnotations,
     type AuthoringControls,

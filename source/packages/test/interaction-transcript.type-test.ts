@@ -1,8 +1,8 @@
 import type { IsEqual } from 'type-fest';
 import { acceptsCall, rejectsCall, sameType } from '@overkill-dev/type-test';
+import { suite, test } from '@overkill-dev/test';
 import type { TestScopeAssertContext } from '../engine/engine.entry-point.ts';
 import { isEqualTo } from '../../test-support/type-relations.ts';
-import { suite, test } from '@overkill-dev/test';
 import {
     createTranscript,
     recordAsyncSink,

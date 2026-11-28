@@ -1,5 +1,6 @@
 import type { IsEqual } from 'type-fest';
 import { acceptsCall, sameType } from '@overkill-dev/type-test';
+import { suite as typeSuite, test as typeTest } from '@overkill-dev/test';
 import type {
     TestFamilyId as EngineTestFamily
 } from '../engine/engine.entry-point.ts';
@@ -51,7 +52,6 @@ import type {
     TestIterator as LeafTestIterator,
     TestIteratorFactory as LeafTestIteratorFactory
 } from '../doubles/doubles.entry-point.ts';
-import { suite as typeSuite, test as typeTest } from '@overkill-dev/test';
 import type {
     createTestFacade,
     createTranscript,

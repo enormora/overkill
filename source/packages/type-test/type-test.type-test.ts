@@ -1,6 +1,6 @@
 import { test } from '@overkill-dev/test';
-import type { TestScope } from '../engine/engine.entry-point.ts';
 import { acceptsCall, rejectsCall } from '@overkill-dev/type-test';
+import type { TestScope } from '../engine/engine.entry-point.ts';
 import type { assignableFrom, assignableTo, sameType } from './type-test.entry-point.ts';
 
 declare const testScope: TestScope;

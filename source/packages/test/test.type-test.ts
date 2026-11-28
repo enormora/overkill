@@ -1,5 +1,6 @@
 import type { IsEqual } from 'type-fest';
 import { acceptsCall, rejectsCall, sameType } from '@overkill-dev/type-test';
+import { suite as typeSuite, test as typeTest } from '@overkill-dev/test';
 import type {
     Suite,
     Table,
@@ -11,7 +12,6 @@ import type {
     TestScope
 } from '../engine/engine.entry-point.ts';
 import { hasKey, isEqualTo, type IsAssignable } from '../../test-support/type-relations.ts';
-import { suite as typeSuite, test as typeTest } from '@overkill-dev/test';
 import {
     type AuthoringAnnotations,
     type AuthoringControls,
