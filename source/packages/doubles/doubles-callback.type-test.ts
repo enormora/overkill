@@ -1,5 +1,5 @@
-import { suite, test } from '../../../tools/type-tests/authoring.entry-point.ts';
-import { acceptsCall, rejectsCall, sameType } from '../../../tools/type-tests/relations.entry-point.ts';
+import { suite, test } from '../test/test.entry-point.ts';
+import { acceptsCall, rejectsCall, sameType } from '../type-test/type-test.entry-point.ts';
 import { hasKey } from '../../test-support/type-relations.ts';
 import {
     rule,
@@ -25,59 +25,69 @@ type ReadScopedUser = (
 
 const user: User = { id: '1', name: 'Ada' };
 
-export const testNode = suite('@overkill-dev/doubles callback behavior', [
-    test('accepts callback behavior from double signatures', function (typeScope) {
+export const testNode = suite('Double callbacks and invocation inference', [
+    test('accepts callback behavior from double signatures', function (scope) {
         const callbackIndex = 1 as const;
         const receiver: CallbackReceiver = { scope: 'test' };
 
-        typeScope.assert(acceptsCall, () =>
-            testDouble<ReadUser>({
+        scope.assert(acceptsCall, function () {
+            return testDouble<ReadUser>({
                 fallback: rule.callsCallback(1, [ null, user ], undefined)
-            }));
-        typeScope.assert(acceptsCall, () =>
-            testDouble<ReadUser>({
+            });
+        });
+        scope.assert(acceptsCall, function () {
+            return testDouble<ReadUser>({
                 fallback: rule.callsCallbackAsync(callbackIndex, [ null, user ], undefined)
-            }));
-        typeScope.assert(acceptsCall, () =>
-            testDouble<MaybeReadUser>({
+            });
+        });
+        scope.assert(acceptsCall, function () {
+            return testDouble<MaybeReadUser>({
                 fallback: rule.callsCallback(1, [ null, user ], undefined)
-            }));
-        typeScope.assert(acceptsCall, () =>
-            testDouble<ReadScopedUser>({
+            });
+        });
+        scope.assert(acceptsCall, function () {
+            return testDouble<ReadScopedUser>({
                 fallback: rule.callsCallback(1, [ null, user ], 'read', receiver)
-            }));
-        typeScope.assert(acceptsCall, () =>
-            testDouble<(callback: (value: string) => void) => void>({
+            });
+        });
+        scope.assert(acceptsCall, function () {
+            return testDouble<(callback: (value: string) => void) => void>({
                 fallback: rule.callsCallback(0, [ 'value' ], undefined)
-            }));
-        return typeScope.assert.collect();
+            });
+        });
+        return scope.assert.collect();
     }),
-    test('rejects callback behavior that does not match double signatures', function (typeScope) {
-        typeScope.assert(rejectsCall('argument-type'), () =>
-            testDouble<ReadUser>({
+    test('rejects callback behavior that does not match double signatures', function (scope) {
+        scope.assert(rejectsCall('argument-type'), function () {
+            return testDouble<ReadUser>({
                 fallback: rule.callsCallback(0, [ null, user ], undefined)
-            }));
-        typeScope.assert(rejectsCall('argument-type'), () =>
-            testDouble<ReadUser>({
+            });
+        });
+        scope.assert(rejectsCall('argument-type'), function () {
+            return testDouble<ReadUser>({
                 fallback: rule.callsCallback(1, [ 'error', user ], undefined)
-            }));
-        typeScope.assert(rejectsCall('argument-type'), () =>
-            testDouble<ReadUser>({
+            });
+        });
+        scope.assert(rejectsCall('argument-type'), function () {
+            return testDouble<ReadUser>({
                 fallback: rule.callsCallback(1, [ null, user ], 'unexpected')
-            }));
-        typeScope.assert(rejectsCall('argument-type'), () =>
-            testDouble<ReadScopedUser>({
+            });
+        });
+        scope.assert(rejectsCall('argument-type'), function () {
+            return testDouble<ReadScopedUser>({
                 fallback: rule.callsCallback(1, [ null, user ], 'read')
-            }));
-        typeScope.assert(rejectsCall('argument-type'), () =>
-            testDouble<ReadScopedUser>({
+            });
+        });
+        scope.assert(rejectsCall('argument-type'), function () {
+            return testDouble<ReadScopedUser>({
                 fallback: rule.callsCallback(1, [ null, user ], 'read', { missing: true })
-            }));
-        return typeScope.assert.collect();
+            });
+        });
+        return scope.assert.collect();
     }),
-    test('type-checks callback rule terminators and sequences', function (typeScope) {
-        typeScope.assert(acceptsCall, () =>
-            testDouble<ReadUser>({
+    test('type-checks callback rule terminators and sequences', function (scope) {
+        scope.assert(acceptsCall, function () {
+            return testDouble<ReadUser>({
                 rules: [
                     rule.when('1').callsCallback(1, [ null, user ], undefined),
                     rule.onCall(1).callsCallbackAsync(1, [ null, user ], undefined)
@@ -86,21 +96,24 @@ export const testNode = suite('@overkill-dev/doubles callback behavior', [
                     rule.callsCallback(1, [ null, user ], undefined),
                     rule.callsCallbackAsync(1, [ null, user ], undefined)
                 ])
-            }));
-        typeScope.assert(rejectsCall('argument-type'), () =>
-            testDouble<ReadUser>({
+            });
+        });
+        scope.assert(rejectsCall('argument-type'), function () {
+            return testDouble<ReadUser>({
                 rules: [ rule.when('1').callsCallback(0, [ null, user ], undefined) ]
-            }));
-        typeScope.assert(rejectsCall('argument-type'), () =>
-            testDouble<ReadUser>({
+            });
+        });
+        scope.assert(rejectsCall('argument-type'), function () {
+            return testDouble<ReadUser>({
                 fallback: rule.sequence([
                     rule.callsCallback(1, [ null, user ], undefined),
                     rule.callsCallback(0, [ null, user ], undefined)
                 ])
-            }));
+            });
+        });
         const constructorRule = rule.whenConstructedWith('https://api.example.test');
-        typeScope.assert(sameType.withActual<false>(), hasKey<'callsCallback'>()(constructorRule));
-        typeScope.assert(sameType.withActual<false>(), hasKey<'callsCallbackAsync'>()(constructorRule));
-        return typeScope.assert.collect();
+        scope.assert(sameType.withActual<false>(), hasKey<'callsCallback'>()(constructorRule));
+        scope.assert(sameType.withActual<false>(), hasKey<'callsCallbackAsync'>()(constructorRule));
+        return scope.assert.collect();
     })
 ]);

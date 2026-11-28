@@ -1,6 +1,6 @@
 import type { IsEqual, Simplify } from 'type-fest';
-import { suite, test } from '../../../tools/type-tests/authoring.entry-point.ts';
-import { rejectsCall, sameType } from '../../../tools/type-tests/relations.entry-point.ts';
+import { suite, test } from '../test/test.entry-point.ts';
+import { rejectsCall, sameType } from '../type-test/type-test.entry-point.ts';
 import {
     createTestPlanFromTestFiles,
     type Engine,
@@ -30,11 +30,11 @@ type ExpectedFilePlanOptions = {
 
 declare const userTest: TestNode;
 
-export const testNode = suite('TestRoot', [
-    test('is separate from TestNode planning paths', function (typeScope) {
-        typeScope.assert(sameType<TestRoot['kind'], 'root'>());
-        typeScope.assert(sameType<[TestRoot] extends [TestNode] ? true : false, false>());
-        typeScope.assert(sameType<
+export const testNode = suite('Test roots and runtime scenario bounds', [
+    test('is separate from TestNode planning paths', function (scope) {
+        scope.assert(sameType<TestRoot['kind'], 'root'>());
+        scope.assert(sameType<[TestRoot] extends [TestNode] ? true : false, false>());
+        scope.assert(sameType<
             IsEqual<TestPlan['root'], {
                 readonly annotations: TestAnnotations;
                 readonly controls: TestControls;
@@ -42,11 +42,11 @@ export const testNode = suite('TestRoot', [
             }>,
             true
         >());
-        return typeScope.assert.collect();
+        return scope.assert.collect();
     }),
-    test('exposes file-backed planning for explicit run inputs', function (typeScope) {
-        typeScope.assert(sameType<IsEqual<Simplify<TestPlanFromTestFilesOptions>, ExpectedFilePlanOptions>, true>());
-        typeScope.assert(sameType<
+    test('exposes file-backed planning for explicit run inputs', function (scope) {
+        scope.assert(sameType<IsEqual<Simplify<TestPlanFromTestFilesOptions>, ExpectedFilePlanOptions>, true>());
+        scope.assert(sameType<
             IsEqual<
                 Engine['createTestPlanFromTestFiles'],
                 (
@@ -56,19 +56,20 @@ export const testNode = suite('TestRoot', [
             >,
             true
         >());
-        typeScope.assert(sameType<IsEqual<Engine['ownsTestNode'], (value: unknown) => value is TestNode>, true>());
-        return typeScope.assert.collect();
+        scope.assert(sameType<IsEqual<Engine['ownsTestNode'], (value: unknown) => value is TestNode>, true>());
+        return scope.assert.collect();
     }),
-    test('rejects metadata on file-backed planning entries', function (typeScope) {
-        typeScope.assert(rejectsCall('argument-type'), () =>
-            createTestPlanFromTestFiles({
+    test('rejects metadata on file-backed planning entries', function (scope) {
+        scope.assert(rejectsCall('argument-type'), function () {
+            return createTestPlanFromTestFiles({
                 files: [ { file: 'source/users.test.ts', metadata: {}, testNode: userTest } ],
                 root: {
                     annotations: {},
                     controls: {},
                     title: 'root'
                 }
-            }));
-        return typeScope.assert.collect();
+            });
+        });
+        return scope.assert.collect();
     })
 ]);

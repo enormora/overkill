@@ -1,6 +1,5 @@
 import type { IsEqual } from 'type-fest';
-import { suite as typeSuite, test as typeTest } from '../../../tools/type-tests/authoring.entry-point.ts';
-import { acceptsCall, rejectsCall, sameType } from '../../../tools/type-tests/relations.entry-point.ts';
+import { acceptsCall, rejectsCall, sameType } from '../type-test/type-test.entry-point.ts';
 import type {
     Suite,
     Table,
@@ -39,40 +38,40 @@ declare const tableBody: TableTestBody<{ readonly value: number; }>;
 
 declare const createTestFacadeUnderTest: typeof createTestFacade;
 
-export const testNode = typeSuite('test', [
-    typeSuite('@overkill-dev/test authoring', [
-        typeTest('defines reusable source-aware macros and parameterized bodies', function (typeScope) {
+export const testNode = suite('Test authoring and facade contracts', [
+    suite('Reusable bodies and facade nodes', [
+        test('defines reusable source-aware macros and parameterized bodies', function (scope) {
             const macro = defineMacro(function reusableCase(title: string, value: number) {
-                typeScope.assert(sameType.withActual<string>(), title);
-                typeScope.assert(sameType.withActual<number>(), value);
+                scope.assert(sameType.withActual<string>(), title);
+                scope.assert(sameType.withActual<number>(), value);
 
                 return test(title, body);
             });
             const parameterizedBody = defineParameterizedTestBody<{ readonly value: number; }>(function bodyForData(
-                scope,
+                callbackScope,
                 data
             ) {
-                typeScope.assert(sameType<IsEqual<typeof scope, TestScope>, true>());
-                typeScope.assert(sameType.withActual<number>(), data.value);
+                scope.assert(sameType<IsEqual<typeof callbackScope, TestScope>, true>());
+                scope.assert(sameType.withActual<number>(), data.value);
 
-                return scope.assert.collect();
+                return callbackScope.assert.collect();
             });
 
-            typeScope.assert(sameType.withActual<true>(), isEqualTo<TestCase>()(macro('value case', 1)));
-            typeScope.assert(sameType.withActual<true>(), isEqualTo<TestBody>()(parameterizedBody({ value: 1 })));
-            return typeScope.assert.collect();
+            scope.assert(sameType.withActual<true>(), isEqualTo<TestCase>()(macro('value case', 1)));
+            scope.assert(sameType.withActual<true>(), isEqualTo<TestBody>()(parameterizedBody({ value: 1 })));
+            return scope.assert.collect();
         }),
-        typeTest('creates neutral test facade nodes', function (typeScope) {
+        test('creates neutral test facade nodes', function (scope) {
             const facade = createTestFacade({
                 controls: authoringControls
             });
 
-            typeScope.assert(sameType<IsEqual<typeof facade, TestFacade>, true>());
-            typeScope.assert(
+            scope.assert(sameType<IsEqual<typeof facade, TestFacade>, true>());
+            scope.assert(
                 sameType.withActual<true>(),
                 isEqualTo<TestCase>()(facade.skippedTest('skips', 'unsupported platform'))
             );
-            typeScope.assert(
+            scope.assert(
                 sameType.withActual<true>(),
                 isEqualTo<TestCase>()(facade.skippedTest({
                     controls: { capture: 'live' },
@@ -80,19 +79,19 @@ export const testNode = typeSuite('test', [
                     title: 'skips'
                 }))
             );
-            typeScope.assert(sameType.withActual<true>(), isEqualTo<TestCase>()(facade.test('passes', body)));
-            typeScope.assert(
+            scope.assert(sameType.withActual<true>(), isEqualTo<TestCase>()(facade.test('passes', body)));
+            scope.assert(
                 sameType.withActual<true>(),
                 isEqualTo<TestCase>()(facade.test({ body, controls: { capture: 'live' }, title: 'passes' }))
             );
-            typeScope.assert(sameType.withActual<true>(), isEqualTo<Suite>()(facade.suite('group', [ node ])));
-            typeScope.assert(
+            scope.assert(sameType.withActual<true>(), isEqualTo<Suite>()(facade.suite('group', [ node ])));
+            scope.assert(
                 sameType.withActual<true>(),
                 isEqualTo<Suite>()(
                     facade.suite({ children: [ node ], controls: { capture: 'buffered' }, title: 'group' })
                 )
             );
-            typeScope.assert(
+            scope.assert(
                 sameType.withActual<true>(),
                 isEqualTo<Table>()(facade.table({
                     cases: [ { value: 1 } ],
@@ -101,9 +100,9 @@ export const testNode = typeSuite('test', [
                     title: 'rows'
                 }))
             );
-            return typeScope.assert.collect();
+            return scope.assert.collect();
         }),
-        typeTest('creates neutral facade macro forms', function (typeScope) {
+        test('creates neutral facade macro forms', function (scope) {
             const facade = createTestFacade({
                 annotations
             });
@@ -112,87 +111,98 @@ export const testNode = typeSuite('test', [
             });
             const parameterizedBody = facade.defineParameterizedTestBody<{ readonly value: number; }>(
                 function bodyForData(
-                    scope,
+                    callbackScope,
                     data
                 ) {
-                    typeScope.assert(sameType<IsEqual<typeof scope, TestScope>, true>());
-                    typeScope.assert(sameType.withActual<number>(), data.value);
+                    scope.assert(sameType<IsEqual<typeof callbackScope, TestScope>, true>());
+                    scope.assert(sameType.withActual<number>(), data.value);
 
-                    return scope.assert.collect();
+                    return callbackScope.assert.collect();
                 }
             );
 
-            typeScope.assert(sameType.withActual<true>(), isEqualTo<TestCase>()(macro('value case')));
-            typeScope.assert(sameType.withActual<true>(), isEqualTo<TestBody>()(parameterizedBody({ value: 1 })));
-            return typeScope.assert.collect();
+            scope.assert(sameType.withActual<true>(), isEqualTo<TestCase>()(macro('value case')));
+            scope.assert(sameType.withActual<true>(), isEqualTo<TestBody>()(parameterizedBody({ value: 1 })));
+            return scope.assert.collect();
         }),
-        typeTest('keeps neutral facades narrow', function (typeScope) {
+        test('keeps neutral facades narrow', function (scope) {
             const facade = createTestFacade({
                 annotations
             });
 
-            typeScope.assert(sameType.withActual<false>(), hasKey<'doubleUsage'>()(facade));
-            typeScope.assert(sameType.withActual<false>(), hasKey<'testDouble'>()(facade));
-            typeScope.assert(sameType.withActual<false>(), hasKey<'defineHarness'>()(facade));
-            typeScope.assert(sameType.withActual<false>(), hasKey<'defineCompositeAssertion'>()(facade));
-            return typeScope.assert.collect();
+            scope.assert(sameType.withActual<false>(), hasKey<'doubleUsage'>()(facade));
+            scope.assert(sameType.withActual<false>(), hasKey<'testDouble'>()(facade));
+            scope.assert(sameType.withActual<false>(), hasKey<'defineHarness'>()(facade));
+            scope.assert(sameType.withActual<false>(), hasKey<'defineCompositeAssertion'>()(facade));
+            return scope.assert.collect();
         }),
-        typeSuite('guards facade scope mapping against core scope keys', [
-            typeTest('preserves explicit mapped scopes', function (typeScope) {
+        suite('guards facade scope mapping against core scope keys', [
+            test('preserves explicit mapped scopes', function (scope) {
                 const assertScopeOptions = {
-                    mapScope(scope: TestScope) {
-                        return { assert: scope.assert };
+                    mapScope(callbackScope: TestScope) {
+                        return { assert: callbackScope.assert };
                     }
                 };
-                typeScope.assert(rejectsCall('no-matching-overload'), () => createTestFacade(assertScopeOptions));
+                scope.assert(rejectsCall('no-matching-overload'), function () {
+                    return createTestFacade(assertScopeOptions);
+                });
                 const collectScopeOptions = {
                     mapScope() {
                         return { collect: true };
                     }
                 };
-                typeScope.assert(rejectsCall('no-matching-overload'), () => createTestFacade(collectScopeOptions));
+                scope.assert(rejectsCall('no-matching-overload'), function () {
+                    return createTestFacade(collectScopeOptions);
+                });
                 const parametersScopeOptions = {
                     mapScope() {
                         return { parameters: { value: 1 } };
                     }
                 };
-                typeScope.assert(rejectsCall('no-matching-overload'), () => createTestFacade(parametersScopeOptions));
-                return typeScope.assert.collect();
+                scope.assert(rejectsCall('no-matching-overload'), function () {
+                    return createTestFacade(parametersScopeOptions);
+                });
+                return scope.assert.collect();
             }),
-            typeTest('rejects shadowing core scope keys', function (typeScope) {
+            test('rejects shadowing core scope keys', function (scope) {
                 const resourcesScopeOptions = {
                     mapScope() {
                         return { resources: {} };
                     }
                 };
-                typeScope.assert(rejectsCall('no-matching-overload'), () => createTestFacade(resourcesScopeOptions));
+                scope.assert(rejectsCall('no-matching-overload'), function () {
+                    return createTestFacade(resourcesScopeOptions);
+                });
                 const runtimesScopeOptions = {
                     mapScope() {
                         return { runtimes: {} };
                     }
                 };
-                typeScope.assert(rejectsCall('no-matching-overload'), () => createTestFacade(runtimesScopeOptions));
-                typeScope.assert(acceptsCall, () =>
-                    createTestFacadeUnderTest({
+                scope.assert(rejectsCall('no-matching-overload'), function () {
+                    return createTestFacade(runtimesScopeOptions);
+                });
+                scope.assert(acceptsCall, function () {
+                    return createTestFacadeUnderTest({
                         mapScope() {
                             return dynamicScopeMap;
                         }
-                    }));
-                return typeScope.assert.collect();
+                    });
+                });
+                return scope.assert.collect();
             })
         ]),
-        typeSuite('creates test, suite, and table nodes from default root authoring forms', [
-            typeTest('exposes default test and suite forms', function (typeScope) {
-                typeScope.assert(sameType.withActual<true>(), isEqualTo<TestCase>()(test('passes', body)));
-                typeScope.assert(
+        suite('creates test, suite, and table nodes from default root authoring forms', [
+            test('exposes default test and suite forms', function (scope) {
+                scope.assert(sameType.withActual<true>(), isEqualTo<TestCase>()(test('passes', body)));
+                scope.assert(
                     sameType.withActual<true>(),
                     isEqualTo<TestCase>()(test({ annotations, body, controls: authoringControls, title: 'passes' }))
                 );
-                typeScope.assert(
+                scope.assert(
                     sameType.withActual<true>(),
                     isEqualTo<TestCase>()(skippedTest('skips', 'unsupported platform'))
                 );
-                typeScope.assert(
+                scope.assert(
                     sameType.withActual<true>(),
                     isEqualTo<TestCase>()(skippedTest({
                         annotations,
@@ -201,11 +211,11 @@ export const testNode = typeSuite('test', [
                         title: 'skips'
                     }))
                 );
-                typeScope.assert(sameType.withActual<true>(), isEqualTo<Suite>()(suite('group', [ node ])));
-                return typeScope.assert.collect();
+                scope.assert(sameType.withActual<true>(), isEqualTo<Suite>()(suite('group', [ node ])));
+                return scope.assert.collect();
             }),
-            typeTest('exposes default table forms', function (typeScope) {
-                typeScope.assert(
+            test('exposes default table forms', function (scope) {
+                scope.assert(
                     sameType.withActual<true>(),
                     isEqualTo<Suite>()(
                         suite({ annotations, children: [ node ], controls: authoringControls, title: 'group' })
@@ -215,8 +225,8 @@ export const testNode = typeSuite('test', [
                     annotations,
                     cases: [ { value: 1 } ],
                     caseTitle(parameters, index) {
-                        typeScope.assert(sameType.withActual<number>(), parameters.value);
-                        typeScope.assert(sameType.withActual<number>(), index);
+                        scope.assert(sameType.withActual<number>(), parameters.value);
+                        scope.assert(sameType.withActual<number>(), index);
 
                         return String(parameters.value);
                     },
@@ -224,8 +234,8 @@ export const testNode = typeSuite('test', [
                     test: tableBody,
                     title: 'rows'
                 });
-                typeScope.assert(sameType.withActual<true>(), isEqualTo<Table>()(authoredTable));
-                typeScope.assert(sameType<
+                scope.assert(sameType.withActual<true>(), isEqualTo<Table>()(authoredTable));
+                scope.assert(sameType<
                     [{
                         readonly cases: readonly [{ readonly value: number; }, { readonly value: number; }];
                         readonly test: TableTestBody<{ readonly value: number; }>;
@@ -233,51 +243,66 @@ export const testNode = typeSuite('test', [
                     }] extends [TableDefinition<{ readonly value: number; }>] ? true : false,
                     true
                 >());
-                typeScope.assert(
+                scope.assert(
                     sameType<
                         [ParameterizedTestScope<{ readonly value: number; }>] extends [TestScope] ? true : false,
                         true
                     >()
                 );
-                return typeScope.assert.collect();
+                return scope.assert.collect();
             })
         ]),
-        typeTest('rejects unstaged root authoring forms', function (typeScope) {
-            typeScope.assert(rejectsCall('argument-count'), () => test('passes', annotations, body));
-            typeScope.assert(rejectsCall('argument-type'), () => test({ body, name: 'passes' }));
-            typeScope.assert(
+        test('rejects unstaged root authoring forms', function (scope) {
+            scope.assert(rejectsCall('argument-count'), function () {
+                return test('passes', annotations, body);
+            });
+            scope.assert(rejectsCall('argument-type'), function () {
+                return test({ body, name: 'passes' });
+            });
+            scope.assert(
                 rejectsCall('argument-count'),
-                () => skippedTest('skips', annotations, 'unsupported platform')
+                function () {
+                    return skippedTest('skips', annotations, 'unsupported platform');
+                }
             );
-            typeScope.assert(
+            scope.assert(
                 rejectsCall('argument-type'),
-                () => skippedTest({ name: 'skips', reason: 'unsupported platform' })
+                function () {
+                    return skippedTest({ name: 'skips', reason: 'unsupported platform' });
+                }
             );
-            typeScope.assert(rejectsCall('argument-count'), () => suite('group', annotations, [ node ]));
-            typeScope.assert(rejectsCall('argument-type'), () => suite({ children: [ node ], name: 'group' }));
-            typeScope.assert(rejectsCall('argument-type'), () =>
-                suite('group', [ {
+            scope.assert(rejectsCall('argument-count'), function () {
+                return suite('group', annotations, [ node ]);
+            });
+            scope.assert(rejectsCall('argument-type'), function () {
+                return suite({ children: [ node ], name: 'group' });
+            });
+            scope.assert(rejectsCall('argument-type'), function () {
+                return suite('group', [ {
                     annotations: {},
                     controls: {},
                     kind: 'test',
                     title: 'plain'
-                } ]));
-            typeScope.assert(
+                } ]);
+            });
+            scope.assert(
                 rejectsCall('argument-type'),
-                () => table({ cases: [ { value: 1 } ], name: 'rows', test: tableBody })
+                function () {
+                    return table({ cases: [ { value: 1 } ], name: 'rows', test: tableBody });
+                }
             );
-            return typeScope.assert.collect();
+            return scope.assert.collect();
         }),
-        typeTest('defines narrow high-level authoring test data', function (typeScope) {
-            typeScope.assert(sameType<
+        test('defines narrow high-level authoring test data', function (scope) {
+            scope.assert(sameType<
                 IsEqual<AuthoringAnnotations, {
                     readonly ownership?: readonly string[];
                     readonly tags?: readonly string[];
                 }>,
                 true
             >());
-            typeScope.assert(sameType<IsAssignable<AuthoringAnnotations, TestAnnotationsInput>, true>());
-            typeScope.assert(sameType<
+            scope.assert(sameType<IsAssignable<AuthoringAnnotations, TestAnnotationsInput>, true>());
+            scope.assert(sameType<
                 IsEqual<AuthoringControls, {
                     readonly capture?: 'buffered' | 'live';
                     readonly duplicateExecution?: 'forbidden' | 'idempotent';
@@ -285,40 +310,48 @@ export const testNode = typeSuite('test', [
                 }>,
                 true
             >());
-            typeScope.assert(sameType<IsAssignable<AuthoringControls, TestControlsInput>, true>());
-            return typeScope.assert.collect();
+            scope.assert(sameType<IsAssignable<AuthoringControls, TestControlsInput>, true>());
+            return scope.assert.collect();
         }),
-        typeTest('rejects removed high-level authoring metadata', function (typeScope) {
-            typeScope.assert(rejectsCall('no-matching-overload'), () => createTestFacade({ metadata: annotations }));
-            typeScope.assert(rejectsCall('no-matching-overload'), () =>
-                createTestFacade({
+        test('rejects removed high-level authoring metadata', function (scope) {
+            scope.assert(rejectsCall('no-matching-overload'), function () {
+                return createTestFacade({ metadata: annotations });
+            });
+            scope.assert(rejectsCall('no-matching-overload'), function () {
+                return createTestFacade({
                     testFamily: 'microtest'
-                }));
-            typeScope.assert(
+                });
+            });
+            scope.assert(
                 rejectsCall('argument-type'),
-                () => test({ body, metadata: { kind: 'microtest' }, title: 'passes' })
+                function () {
+                    return test({ body, metadata: { kind: 'microtest' }, title: 'passes' });
+                }
             );
-            typeScope.assert(rejectsCall('argument-type'), () =>
-                suite({
+            scope.assert(rejectsCall('argument-type'), function () {
+                return suite({
                     children: [ node ],
                     metadata: { ownership: [ '@runtime' ] },
                     title: 'group'
-                }));
-            typeScope.assert(acceptsCall, () =>
-                table({
+                });
+            });
+            scope.assert(acceptsCall, function () {
+                return table({
                     cases: [ { value: 1 } ],
                     controls: { capture: 'live' },
                     test: tableBody,
                     title: 'rows'
-                }));
-            typeScope.assert(acceptsCall, async () =>
-                runIfMain(import.meta, node, {
+                });
+            });
+            scope.assert(acceptsCall, async function () {
+                return runIfMain(import.meta, node, {
                     root: {
                         controls: engineControls,
                         title: 'root'
                     }
-                }));
-            return typeScope.assert.collect();
+                });
+            });
+            return scope.assert.collect();
         })
     ])
 ]);

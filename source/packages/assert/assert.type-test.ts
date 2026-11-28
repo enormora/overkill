@@ -1,6 +1,6 @@
 import type { IsEqual } from 'type-fest';
-import { suite, test } from '../../../tools/type-tests/authoring.entry-point.ts';
-import { acceptsCall, rejectsCall, sameType } from '../../../tools/type-tests/relations.entry-point.ts';
+import { suite, test } from '../test/test.entry-point.ts';
+import { acceptsCall, rejectsCall, sameType } from '../type-test/type-test.entry-point.ts';
 import type { AssertAssertionFacade, RequireAssertionFacade } from '../engine/engine.entry-point.ts';
 import { isEqualTo } from '../../test-support/type-relations.ts';
 import {
@@ -42,50 +42,58 @@ declare const assertFacade: AssertAssertionFacade;
 declare const requireFacade: RequireAssertionFacade;
 declare const check: CompositeCheckBuilder<'assert'>;
 
-export const testNode = suite('./assert.entry-point.ts', [
-    test('exports typed composite assertion references', function (typeScope) {
-        typeScope.assert(
+export const testNode = suite('Composite and narrowing assertions', [
+    test('exports typed composite assertion references', function (scope) {
+        scope.assert(
             sameType.withActual<true>(),
             isEqualTo<CompositeAssertionReference<[value: boolean], TrueCompositeChild>>()(syncAssertion)
         );
-        typeScope.assert(
+        scope.assert(
             sameType.withActual<true>(),
             isEqualTo<CompositeAssertionReference<[value: boolean], Promise<TrueCompositeChild>>>()(asyncAssertion)
         );
-        typeScope.assert(
+        scope.assert(
             sameType<IsEqual<AssertReferenceArguments<typeof syncAssertion>, readonly [value: boolean]>, true>()
         );
-        typeScope.assert(sameType<IsEqual<AssertReferenceReturn<typeof syncAssertion>, SyncAssertionReturn>, true>());
-        typeScope.assert(sameType<IsEqual<AssertReferenceReturn<typeof asyncAssertion>, Promise<void>>, true>());
-        return typeScope.assert.collect();
+        scope.assert(sameType<IsEqual<AssertReferenceReturn<typeof syncAssertion>, SyncAssertionReturn>, true>());
+        scope.assert(sameType<IsEqual<AssertReferenceReturn<typeof asyncAssertion>, Promise<void>>, true>());
+        return scope.assert.collect();
     }),
-    test('exports typed narrowing assertion references', function (typeScope) {
+    test('exports typed narrowing assertion references', function (scope) {
         const value: unknown = null;
 
-        typeScope.assert(
+        scope.assert(
             sameType.withActual<true>(),
             isEqualTo<NarrowingCompositeAssertionReference<unknown, string, readonly []>>()(narrowingAssertion)
         );
-        typeScope.assert(
+        scope.assert(
             sameType<IsEqual<AssertReferenceReturn<typeof narrowingAssertion>, SyncAssertionReturn>, true>()
         );
         assertFacade(narrowingAssertion, value);
         requireFacade(narrowingAssertion, value);
-        typeScope.assert(sameType.withActual<string>(), value);
-        return typeScope.assert.collect();
+        scope.assert(sameType.withActual<string>(), value);
+        return scope.assert.collect();
     }),
-    test('exposes composite check methods only as an injected builder type', function (typeScope) {
-        typeScope.assert(acceptsCall, () =>
-            check.fromThrowable('foreign', function assertForeign() {
+    test('exposes composite check methods only as an injected builder type', function (scope) {
+        scope.assert(acceptsCall, function () {
+            return check.fromThrowable('foreign', function assertForeign() {
                 return undefined;
-            }));
-        typeScope.assert(acceptsCall, async () =>
-            check.fromRejectable('foreign', async function assertForeign() {
+            });
+        });
+        scope.assert(acceptsCall, async function () {
+            return check.fromRejectable('foreign', async function assertForeign() {
                 await Promise.resolve();
-            }));
-        typeScope.assert(acceptsCall, () => check.group([ check.true(true) ]));
-        typeScope.assert(acceptsCall, () => check.deepEqual({ id: 1 }, { id: 1 }));
-        typeScope.assert(rejectsCall('argument-type'), () => check.deepEqual(1, 1));
-        return typeScope.assert.collect();
+            });
+        });
+        scope.assert(acceptsCall, function () {
+            return check.group([ check.true(true) ]);
+        });
+        scope.assert(acceptsCall, function () {
+            return check.deepEqual({ id: 1 }, { id: 1 });
+        });
+        scope.assert(rejectsCall('argument-type'), function () {
+            return check.deepEqual(1, 1);
+        });
+        return scope.assert.collect();
     })
 ]);

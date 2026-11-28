@@ -1,5 +1,5 @@
-import { suite, test } from '../../../tools/type-tests/authoring.entry-point.ts';
-import { sameType } from '../../../tools/type-tests/relations.entry-point.ts';
+import { suite, test } from '../test/test.entry-point.ts';
+import { sameType } from '../type-test/type-test.entry-point.ts';
 import { gen, type PropertyInvocation, type PropertySampleScope } from '../property/property.entry-point.ts';
 import type { TestCase } from '../engine/engine.entry-point.ts';
 import { isEqualTo } from '../../test-support/type-relations.ts';
@@ -8,7 +8,7 @@ import { model, modelScenario } from './model.entry-point.ts';
 type Counter = { readonly count: number; };
 
 export const testNode = suite('model authoring', [
-    test('infers state, operation, system and reconstruction', function (typeScope) {
+    test('infers state, operation, system and reconstruction', function (scope) {
         const definition = {
             initial() {
                 return 0;
@@ -30,21 +30,21 @@ export const testNode = suite('model authoring', [
                 Object.assign(system, { count: system.count + operation });
             },
             check(state: number, system: Counter, sample: PropertySampleScope<readonly number[]>) {
-                typeScope.assert(
+                scope.assert(
                     sameType.withActual<true>(),
                     isEqualTo<readonly number[]>()(sample.reconstructInput())
                 );
                 sample.assert.equal(system.count, state);
             }
         };
-        typeScope.assert(
+        scope.assert(
             sameType.withActual<true>(),
             isEqualTo<PropertyInvocation<readonly number[]>>()(modelScenario(definition))
         );
-        typeScope.assert(
+        scope.assert(
             sameType.withActual<true>(),
             isEqualTo<TestCase>()(model({ ...definition, title: 'counter', settings: {} }))
         );
-        return typeScope.assert.collect();
+        return scope.assert.collect();
     })
 ]);

@@ -1,6 +1,7 @@
 import { availableParallelism } from 'node:os';
-import { defineConfig } from '@overkill-dev/test/config';
-import { createBenchmarkHtmlReporter, createLineReporter } from '@overkill-dev/test/reporters';
+import { defineConfig } from './source/packages/test/config.entry-point.ts';
+import { createBenchmarkHtmlReporter, createLineReporter } from './source/packages/test/reporters.entry-point.ts';
+import { family as typeTestFamily } from './source/packages/type-test/type-test.entry-point.ts';
 
 const concurrency = availableParallelism();
 
@@ -31,6 +32,16 @@ const mutationCampaignPolicy = {
 export const config = defineConfig({
     runtimeStateDir: 'target/overkill',
     profiles: {
+        types: {
+            testFamily: typeTestFamily,
+            execution: { processModel: 'supervised-process', scheduling: 'concurrent', maxConcurrency: concurrency },
+            timeouts: { collectionMilliseconds: 240_000, softMilliseconds: 480_000, hardMilliseconds: 730_000 },
+            files: { include: [ 'source/**/*.type-test.ts' ] },
+            settings: {
+                projectConfigPath: './source/tsconfig.type-tests.json',
+                compiler: { kind: 'package', specifier: 'typescript-beta', version: '7.1.0-beta' }
+            }
+        },
         'mutation-cost': {
             testFamily: 'benchmark',
             files: {

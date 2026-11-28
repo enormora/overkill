@@ -1,6 +1,6 @@
 import type { IsEqual } from 'type-fest';
-import { suite, test } from '../../../tools/type-tests/authoring.entry-point.ts';
-import { sameType } from '../../../tools/type-tests/relations.entry-point.ts';
+import { suite, test } from '../test/test.entry-point.ts';
+import { sameType } from '../type-test/type-test.entry-point.ts';
 import type { DefinedReporter, FinalResultReporter, RealTimeReporter } from '../engine/engine.entry-point.ts';
 import type {
     BriefReporterSinks,
@@ -8,9 +8,9 @@ import type {
     createBriefReporter
 } from './reporter-brief.entry-point.ts';
 
-export const testNode = suite('@overkill-dev/reporter-brief', [
-    test('returns the public reporter lifecycle contracts', function (typeScope) {
-        typeScope.assert(
+export const testNode = suite('Brief run reporter options', [
+    test('returns the public reporter lifecycle contracts', function (scope) {
+        scope.assert(
             sameType<
                 IsEqual<
                     typeof createBriefFinalResultReporter,
@@ -19,12 +19,12 @@ export const testNode = suite('@overkill-dev/reporter-brief', [
                 true
             >()
         );
-        typeScope.assert(
+        scope.assert(
             sameType<
                 IsEqual<typeof createBriefReporter, () => DefinedReporter<RealTimeReporter<BriefReporterSinks>>>,
                 true
             >()
         );
-        return typeScope.assert.collect();
+        return scope.assert.collect();
     })
 ]);

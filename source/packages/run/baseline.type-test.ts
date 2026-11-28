@@ -1,6 +1,6 @@
 import type { IsEqual } from 'type-fest';
-import { suite, test } from '../../../tools/type-tests/authoring.entry-point.ts';
-import { sameType } from '../../../tools/type-tests/relations.entry-point.ts';
+import { suite, test } from '../test/test.entry-point.ts';
+import { sameType } from '../type-test/type-test.entry-point.ts';
 import type { BaselineEntry } from '../baselines/baselines.entry-point.ts';
 import type {
     orchestrator,
@@ -28,13 +28,13 @@ type BaselineListOperation = (
 type AdapterFactory = (definition: BaselineAdapterDefinition<Observation, number, Proposal>) => OrdinaryBaselineAdapter;
 
 export const testNode = suite('ordinary baseline API', [
-    test('uses explicit verbs and disk-only list commands', function (typeScope) {
-        typeScope.assert(sameType<IsEqual<typeof orchestrator.baseline.update, BaselineOperation>, true>());
-        typeScope.assert(
+    test('uses explicit verbs and disk-only list commands', function (scope) {
+        scope.assert(sameType<IsEqual<typeof orchestrator.baseline.update, BaselineOperation>, true>());
+        scope.assert(
             sameType<IsEqual<ReturnType<typeof orchestrator.baseline.update>, Promise<BaselineRunResult>>, true>()
         );
-        typeScope.assert(sameType<IsEqual<typeof orchestrator.baseline.list, BaselineListOperation>, true>());
-        typeScope.assert(
+        scope.assert(sameType<IsEqual<typeof orchestrator.baseline.list, BaselineListOperation>, true>());
+        scope.assert(
             sameType<
                 IsEqual<
                     Awaited<ReturnType<typeof orchestrator.baseline.list>>,
@@ -43,11 +43,11 @@ export const testNode = suite('ordinary baseline API', [
                 true
             >()
         );
-        typeScope.assert(sameType<Extract<keyof BaselineCommand['request'], 'baselineUpdateMode'>, never>());
-        return typeScope.assert.collect();
+        scope.assert(sameType<Extract<keyof BaselineCommand['request'], 'baselineUpdateMode'>, never>());
+        return scope.assert.collect();
     }),
-    test('preserves typed observation, comparison, proposal, and codec boundaries', function (typeScope) {
-        typeScope.assert(
+    test('preserves typed observation, comparison, proposal, and codec boundaries', function (scope) {
+        scope.assert(
             sameType<
                 IsEqual<
                     Parameters<BaselineAdapterDefinition<Observation, number, Proposal>['toComparisonValue']>[0],
@@ -56,13 +56,13 @@ export const testNode = suite('ordinary baseline API', [
                 true
             >()
         );
-        typeScope.assert(
+        scope.assert(
             sameType<
                 IsEqual<Parameters<BaselineAdapterDefinition<Observation, number, Proposal>['encode']>[0], Proposal>,
                 true
             >()
         );
-        typeScope.assert(
+        scope.assert(
             sameType<
                 IsEqual<
                     Parameters<BaselineAdapterDefinition<Observation, number, Proposal>['decode']>[0],
@@ -71,9 +71,9 @@ export const testNode = suite('ordinary baseline API', [
                 true
             >()
         );
-        typeScope.assert(
+        scope.assert(
             sameType<IsEqual<typeof defineBaselineAdapter<Observation, number, Proposal>, AdapterFactory>, true>()
         );
-        return typeScope.assert.collect();
+        return scope.assert.collect();
     })
 ]);

@@ -1,12 +1,12 @@
 import type { IsEqual } from 'type-fest';
-import { suite, test } from '../../../tools/type-tests/authoring.entry-point.ts';
-import { sameType } from '../../../tools/type-tests/relations.entry-point.ts';
+import { suite, test } from '../test/test.entry-point.ts';
+import { sameType } from '../type-test/type-test.entry-point.ts';
 import type { createHistory, History, HistoryOptions, HistoryClearRequest } from './run.entry-point.ts';
 import type { Config } from './config.entry-point.ts';
 
-export const testNode = suite('@overkill-dev/run history', [
-    test('accepts project history retention settings', function (typeScope) {
-        typeScope.assert(sameType<
+export const testNode = suite('Run history records', [
+    test('accepts project history retention settings', function (scope) {
+        scope.assert(sameType<
             [{
                 readonly history: {
                     readonly detailedRunLimit: number;
@@ -16,12 +16,12 @@ export const testNode = suite('@overkill-dev/run history', [
             }] extends [Config] ? true : false,
             true
         >());
-        return typeScope.assert.collect();
+        return scope.assert.collect();
     }),
-    test('exports a typed service requiring explicit confirmation for clear', function (typeScope) {
-        typeScope.assert(sameType<IsEqual<typeof createHistory, (options: HistoryOptions) => History>, true>());
-        typeScope.assert(sameType<IsEqual<HistoryClearRequest, { readonly confirmed: true; }>, true>());
-        typeScope.assert(sameType<IsEqual<Parameters<History['prune']>[0], { readonly dryRun: boolean; }>, true>());
-        return typeScope.assert.collect();
+    test('exports a typed service requiring explicit confirmation for clear', function (scope) {
+        scope.assert(sameType<IsEqual<typeof createHistory, (options: HistoryOptions) => History>, true>());
+        scope.assert(sameType<IsEqual<HistoryClearRequest, { readonly confirmed: true; }>, true>());
+        scope.assert(sameType<IsEqual<Parameters<History['prune']>[0], { readonly dryRun: boolean; }>, true>());
+        return scope.assert.collect();
     })
 ]);

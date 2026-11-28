@@ -1,6 +1,5 @@
 import type { IsEqual } from 'type-fest';
-import { suite as typeSuite, test as typeTest } from '../../../tools/type-tests/authoring.entry-point.ts';
-import { acceptsCall, sameType } from '../../../tools/type-tests/relations.entry-point.ts';
+import { acceptsCall, sameType } from '../type-test/type-test.entry-point.ts';
 import type {
     TestFamilyId as EngineTestFamily
 } from '../engine/engine.entry-point.ts';
@@ -52,66 +51,66 @@ import type {
     TestIterator as LeafTestIterator,
     TestIteratorFactory as LeafTestIteratorFactory
 } from '../doubles/doubles.entry-point.ts';
-import type {
-    createTestFacade,
-    createTranscript,
-    defineHarness,
-    defineMacro,
-    defineParameterizedTestBody,
-    doubleUsage,
-    recordAsyncSink,
-    recordSink,
-    AsyncDisposableConfiguration as RootAsyncDisposableConfiguration,
-    AsyncIterableConfiguration as RootAsyncIterableConfiguration,
-    AsyncIteratorConfiguration as RootAsyncIteratorConfiguration,
-    AsyncIteratorSource as RootAsyncIteratorSource,
-    DisposableConfiguration as RootDisposableConfiguration,
-    DoubleCall as RootDoubleCall,
-    DoubleConstruction as RootDoubleConstruction,
-    DoubleHistory as RootDoubleHistory,
-    DoubleInteraction as RootDoubleInteraction,
-    DoubleInvocation as RootDoubleInvocation,
-    DoubleIteratorEvent as RootDoubleIteratorEvent,
-    DoubleIteratorReturnEvent as RootDoubleIteratorReturnEvent,
-    DoubleIteratorThrowEvent as RootDoubleIteratorThrowEvent,
-    DoubleIteratorYieldEvent as RootDoubleIteratorYieldEvent,
-    DoubleResult as RootDoubleResult,
-    DoubleReturnedResult as RootDoubleReturnedResult,
-    DoubleThrownResult as RootDoubleThrownResult,
-    DoubleUsageAssertions as RootDoubleUsageAssertions,
-    ProtocolMethodConfiguration as RootProtocolMethodConfiguration,
-    rule,
-    RuleFactory as RootRuleFactory,
-    runIfMain,
-    RunIfMain,
-    SyncIterableConfiguration as RootSyncIterableConfiguration,
-    SyncIteratorConfiguration as RootSyncIteratorConfiguration,
-    SyncIteratorSource as RootSyncIteratorSource,
-    skippedTest,
-    table,
-    testAsyncDisposable,
-    TestAsyncDisposable as RootTestAsyncDisposable,
-    TestAsyncDisposableFactory as RootTestAsyncDisposableFactory,
-    testAsyncIterable,
-    TestAsyncIterable as RootTestAsyncIterable,
-    TestAsyncIterableFactory as RootTestAsyncIterableFactory,
-    testAsyncIterator,
-    TestAsyncIterator as RootTestAsyncIterator,
-    TestAsyncIteratorFactory as RootTestAsyncIteratorFactory,
-    testDisposable,
-    TestDisposable as RootTestDisposable,
-    TestDisposableFactory as RootTestDisposableFactory,
-    testDouble,
-    TestDouble as RootTestDouble,
-    TestDoubleFactory as RootTestDoubleFactory,
-    TestFamilyId,
-    testIterable,
-    TestIterable as RootTestIterable,
-    TestIterableFactory as RootTestIterableFactory,
-    testIterator,
-    TestIterator as RootTestIterator,
-    TestIteratorFactory as RootTestIteratorFactory,
-    transcriptUsage,
+import {
+    type createTestFacade,
+    type createTranscript,
+    type defineHarness,
+    type defineMacro,
+    type defineParameterizedTestBody,
+    type doubleUsage,
+    type recordAsyncSink,
+    type recordSink,
+    type AsyncDisposableConfiguration as RootAsyncDisposableConfiguration,
+    type AsyncIterableConfiguration as RootAsyncIterableConfiguration,
+    type AsyncIteratorConfiguration as RootAsyncIteratorConfiguration,
+    type AsyncIteratorSource as RootAsyncIteratorSource,
+    type DisposableConfiguration as RootDisposableConfiguration,
+    type DoubleCall as RootDoubleCall,
+    type DoubleConstruction as RootDoubleConstruction,
+    type DoubleHistory as RootDoubleHistory,
+    type DoubleInteraction as RootDoubleInteraction,
+    type DoubleInvocation as RootDoubleInvocation,
+    type DoubleIteratorEvent as RootDoubleIteratorEvent,
+    type DoubleIteratorReturnEvent as RootDoubleIteratorReturnEvent,
+    type DoubleIteratorThrowEvent as RootDoubleIteratorThrowEvent,
+    type DoubleIteratorYieldEvent as RootDoubleIteratorYieldEvent,
+    type DoubleResult as RootDoubleResult,
+    type DoubleReturnedResult as RootDoubleReturnedResult,
+    type DoubleThrownResult as RootDoubleThrownResult,
+    type DoubleUsageAssertions as RootDoubleUsageAssertions,
+    type ProtocolMethodConfiguration as RootProtocolMethodConfiguration,
+    type rule,
+    type RuleFactory as RootRuleFactory,
+    type runIfMain,
+    type RunIfMain,
+    type SyncIterableConfiguration as RootSyncIterableConfiguration,
+    type SyncIteratorConfiguration as RootSyncIteratorConfiguration,
+    type SyncIteratorSource as RootSyncIteratorSource,
+    type skippedTest,
+    type table,
+    type testAsyncDisposable,
+    type TestAsyncDisposable as RootTestAsyncDisposable,
+    type TestAsyncDisposableFactory as RootTestAsyncDisposableFactory,
+    type testAsyncIterable,
+    type TestAsyncIterable as RootTestAsyncIterable,
+    type TestAsyncIterableFactory as RootTestAsyncIterableFactory,
+    type testAsyncIterator,
+    type TestAsyncIterator as RootTestAsyncIterator,
+    type TestAsyncIteratorFactory as RootTestAsyncIteratorFactory,
+    type testDisposable,
+    type TestDisposable as RootTestDisposable,
+    type TestDisposableFactory as RootTestDisposableFactory,
+    type testDouble,
+    type TestDouble as RootTestDouble,
+    type TestDoubleFactory as RootTestDoubleFactory,
+    type TestFamilyId,
+    type testIterable,
+    type TestIterable as RootTestIterable,
+    type TestIterableFactory as RootTestIterableFactory,
+    type testIterator,
+    type TestIterator as RootTestIterator,
+    type TestIteratorFactory as RootTestIteratorFactory,
+    type transcriptUsage,
     suite,
     test
 } from './test.entry-point.ts';
@@ -221,9 +220,9 @@ type LeafDoublesTypes = {
 
 declare const createTestFacadeUnderTest: typeof createTestFacade;
 
-export const testNode = typeSuite('@overkill-dev/test', [
-    typeTest('exposes root authoring names', function (typeScope) {
-        typeScope.assert(sameType<
+export const testNode = suite('Root test authoring exports', [
+    test('exposes root authoring names', function (scope) {
+        scope.assert(sameType<
             RootRuntimeExport,
             keyof {
                 readonly createTestFacade: true;
@@ -250,26 +249,30 @@ export const testNode = typeSuite('@overkill-dev/test', [
                 readonly transcriptUsage: true;
             }
         >());
-        typeScope.assert(acceptsCall, () => createTestFacadeUnderTest());
-        typeScope.assert(acceptsCall, () => createTestFacadeUnderTest({}));
-        typeScope.assert(sameType<IsEqual<typeof runIfMain, RunIfMain>, true>());
-        typeScope.assert(sameType<IsEqual<TestFamilyId, EngineTestFamily>, true>());
-        return typeScope.assert.collect();
+        scope.assert(acceptsCall, function () {
+            return createTestFacadeUnderTest();
+        });
+        scope.assert(acceptsCall, function () {
+            return createTestFacadeUnderTest({});
+        });
+        scope.assert(sameType<IsEqual<typeof runIfMain, RunIfMain>, true>());
+        scope.assert(sameType<IsEqual<TestFamilyId, EngineTestFamily>, true>());
+        return scope.assert.collect();
     }),
-    typeTest('re-exports doubles values from the root facade', function (typeScope) {
-        typeScope.assert(sameType<IsEqual<typeof doubleUsage, typeof leafDoubleUsage>, true>());
-        typeScope.assert(sameType<IsEqual<typeof rule, typeof leafRule>, true>());
-        typeScope.assert(sameType<IsEqual<typeof testAsyncDisposable, typeof leafTestAsyncDisposable>, true>());
-        typeScope.assert(sameType<IsEqual<typeof testAsyncIterable, typeof leafTestAsyncIterable>, true>());
-        typeScope.assert(sameType<IsEqual<typeof testAsyncIterator, typeof leafTestAsyncIterator>, true>());
-        typeScope.assert(sameType<IsEqual<typeof testDisposable, typeof leafTestDisposable>, true>());
-        typeScope.assert(sameType<IsEqual<typeof testDouble, typeof leafTestDouble>, true>());
-        typeScope.assert(sameType<IsEqual<typeof testIterable, typeof leafTestIterable>, true>());
-        typeScope.assert(sameType<IsEqual<typeof testIterator, typeof leafTestIterator>, true>());
-        return typeScope.assert.collect();
+    test('re-exports doubles values from the root facade', function (scope) {
+        scope.assert(sameType<IsEqual<typeof doubleUsage, typeof leafDoubleUsage>, true>());
+        scope.assert(sameType<IsEqual<typeof rule, typeof leafRule>, true>());
+        scope.assert(sameType<IsEqual<typeof testAsyncDisposable, typeof leafTestAsyncDisposable>, true>());
+        scope.assert(sameType<IsEqual<typeof testAsyncIterable, typeof leafTestAsyncIterable>, true>());
+        scope.assert(sameType<IsEqual<typeof testAsyncIterator, typeof leafTestAsyncIterator>, true>());
+        scope.assert(sameType<IsEqual<typeof testDisposable, typeof leafTestDisposable>, true>());
+        scope.assert(sameType<IsEqual<typeof testDouble, typeof leafTestDouble>, true>());
+        scope.assert(sameType<IsEqual<typeof testIterable, typeof leafTestIterable>, true>());
+        scope.assert(sameType<IsEqual<typeof testIterator, typeof leafTestIterator>, true>());
+        return scope.assert.collect();
     }),
-    typeTest('re-exports doubles types from the root facade', function (typeScope) {
-        typeScope.assert(sameType<IsEqual<RootDoublesTypes, LeafDoublesTypes>, true>());
-        return typeScope.assert.collect();
+    test('re-exports doubles types from the root facade', function (scope) {
+        scope.assert(sameType<IsEqual<RootDoublesTypes, LeafDoublesTypes>, true>());
+        return scope.assert.collect();
     })
 ]);

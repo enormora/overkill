@@ -1,6 +1,6 @@
 import type { IsEqual } from 'type-fest';
-import { suite, test } from '../../../tools/type-tests/authoring.entry-point.ts';
-import { acceptsCall, assignableFrom, sameType } from '../../../tools/type-tests/relations.entry-point.ts';
+import { suite, test } from '../test/test.entry-point.ts';
+import { acceptsCall, assignableFrom, sameType } from '../type-test/type-test.entry-point.ts';
 import type { IsAssignable } from '../../test-support/type-relations.ts';
 import type {
     RuntimeAttachmentArtifact,
@@ -102,22 +102,22 @@ type TestEndReporterEvent = Extract<ReporterEvent, { readonly kind: 'test-end'; 
 
 declare const callUnderTest: RuntimeAttachments['json'];
 
-export const testNode = suite('run result', [
+export const testNode = suite('Run verdicts, summaries, and artifacts', [
     suite('run result verdicts', [
-        test('attempt history and completion are required and attribution is nullable', function (typeScope) {
-            typeScope.assert(
+        test('attempt history and completion are required and attribution is nullable', function (scope) {
+            scope.assert(
                 sameType<
                     IsEqual<PerTestResult['attempts'], readonly [TestAttemptResult, ...TestAttemptResult[]]>,
                     true
                 >()
             );
-            typeScope.assert(sameType<IsEqual<PerTestResult['retried'], RetrySummary | null>, true>());
-            typeScope.assert(sameType<IsEqual<RunnerError['attributedToAttempt'], AttemptId | null>, true>());
-            typeScope.assert(sameType<TestEndReporterEvent['completion'], 'final' | 'retry'>());
-            return typeScope.assert.collect();
+            scope.assert(sameType<IsEqual<PerTestResult['retried'], RetrySummary | null>, true>());
+            scope.assert(sameType<IsEqual<RunnerError['attributedToAttempt'], AttemptId | null>, true>());
+            scope.assert(sameType<TestEndReporterEvent['completion'], 'final' | 'retry'>());
+            return scope.assert.collect();
         }),
-        test('artifact attempt identity follows its scope', function (typeScope) {
-            typeScope.assert(sameType<
+        test('artifact attempt identity follows its scope', function (scope) {
+            scope.assert(sameType<
                 IsAssignable<{
                     readonly attempt: AttemptId;
                     readonly familyVariant: null;
@@ -134,7 +134,7 @@ export const testNode = suite('run result', [
                 }, RunArtifactId>,
                 true
             >());
-            typeScope.assert(sameType<
+            scope.assert(sameType<
                 IsAssignable<{
                     readonly attempt: null;
                     readonly familyVariant: null;
@@ -151,16 +151,16 @@ export const testNode = suite('run result', [
                 }, RunArtifactId>,
                 false
             >());
-            return typeScope.assert.collect();
+            return scope.assert.collect();
         }),
-        test('per-test and reporter verdicts accept outcomes and terminal runner verdicts', function (typeScope) {
-            typeScope.assert(
+        test('per-test and reporter verdicts accept outcomes and terminal runner verdicts', function (scope) {
+            scope.assert(
                 sameType<
                     IsEqual<PerTestResult['verdict'], OutcomeKind | 'crashed' | 'process-exhausted' | 'runtime-policy'>,
                     true
                 >()
             );
-            typeScope.assert(
+            scope.assert(
                 sameType<
                     IsEqual<
                         TestEndReporterEvent['verdict'],
@@ -169,45 +169,45 @@ export const testNode = suite('run result', [
                     true
                 >()
             );
-            return typeScope.assert.collect();
+            return scope.assert.collect();
         })
     ]),
     suite('RunSummary', [
-        test('includes terminal runner verdict counts', function (typeScope) {
-            typeScope.assert(sameType<IsEqual<keyof RunSummary, ExpectedRunSummaryKey>, true>());
-            return typeScope.assert.collect();
+        test('includes terminal runner verdict counts', function (scope) {
+            scope.assert(sameType<IsEqual<keyof RunSummary, ExpectedRunSummaryKey>, true>());
+            return scope.assert.collect();
         })
     ]),
     suite('RunResult', [
         suite('includes process usage as nullable measured data', [
-            test('types measured process usage', function (typeScope) {
-                typeScope.assert(sameType<IsEqual<keyof RunResult, ExpectedRunResultKey>, true>());
-                typeScope.assert(sameType<RunResult['status'], 'failed' | 'passed'>());
-                typeScope.assert(sameType<IsEqual<RunResult['planStatus'], RunPlanStatus>, true>());
-                typeScope.assert(sameType<IsEqual<RunResult['processUsage'], RunProcessUsage | null>, true>());
-                typeScope.assert(
+            test('types measured process usage', function (scope) {
+                scope.assert(sameType<IsEqual<keyof RunResult, ExpectedRunResultKey>, true>());
+                scope.assert(sameType<RunResult['status'], 'failed' | 'passed'>());
+                scope.assert(sameType<IsEqual<RunResult['planStatus'], RunPlanStatus>, true>());
+                scope.assert(sameType<IsEqual<RunResult['processUsage'], RunProcessUsage | null>, true>());
+                scope.assert(
                     sameType<IsEqual<RunResult['resourceChecks'], readonly ResourceCheckSnapshot[]>, true>()
                 );
-                return typeScope.assert.collect();
+                return scope.assert.collect();
             }),
-            test('types process usage on execution outcomes', function (typeScope) {
-                typeScope.assert(sameType<IsEqual<RunResult['timings'], RunTimings>, true>());
-                typeScope.assert(sameType<IsEqual<RunTimings['precise'], RunPreciseTimingReport | null>, true>());
-                typeScope.assert(sameType<IsEqual<keyof RunPreciseTimingReport, ExpectedPreciseTimingKey>, true>());
-                typeScope.assert(sameType<IsEqual<RunProcessUsage['start'], ProcessUsageSnapshot>, true>());
-                typeScope.assert(sameType<IsEqual<RunProcessUsageTracker['finish'], () => RunProcessUsage>, true>());
-                return typeScope.assert.collect();
+            test('types process usage on execution outcomes', function (scope) {
+                scope.assert(sameType<IsEqual<RunResult['timings'], RunTimings>, true>());
+                scope.assert(sameType<IsEqual<RunTimings['precise'], RunPreciseTimingReport | null>, true>());
+                scope.assert(sameType<IsEqual<keyof RunPreciseTimingReport, ExpectedPreciseTimingKey>, true>());
+                scope.assert(sameType<IsEqual<RunProcessUsage['start'], ProcessUsageSnapshot>, true>());
+                scope.assert(sameType<IsEqual<RunProcessUsageTracker['finish'], () => RunProcessUsage>, true>());
+                return scope.assert.collect();
             })
         ]),
-        test('artifacts carry runtime and workload identity', function (typeScope) {
-            typeScope.assert(sameType<IsEqual<RunArtifactId['runtimes'], readonly RuntimeId[]>, true>());
-            typeScope.assert(sameType<IsEqual<RunArtifactId['workload'], WorkloadId | null>, true>());
-            return typeScope.assert.collect();
+        test('artifacts carry runtime and workload identity', function (scope) {
+            scope.assert(sameType<IsEqual<RunArtifactId['runtimes'], readonly RuntimeId[]>, true>());
+            scope.assert(sameType<IsEqual<RunArtifactId['workload'], WorkloadId | null>, true>());
+            return scope.assert.collect();
         })
     ]),
     suite('coverage artifacts', [
-        test('are run-scoped V8-native artifacts', function (typeScope) {
-            typeScope.assert(
+        test('are run-scoped V8-native artifacts', function (scope) {
+            scope.assert(
                 sameType<
                     IsEqual<
                         Extract<RunArtifact, { readonly payload: { readonly kind: 'coverage'; }; }>,
@@ -216,26 +216,26 @@ export const testNode = suite('run result', [
                     true
                 >()
             );
-            typeScope.assert(sameType<IsEqual<CoverageArtifact['id']['scope'], { readonly kind: 'run'; }>, true>());
-            typeScope.assert(sameType<CoverageArtifact['id']['subtype'], 'coverage'>());
-            typeScope.assert(sameType<CoverageArtifact['source'], 'v8-native'>());
-            typeScope.assert(sameType<IsEqual<CoverageArtifact['payload'], CoverageArtifactPayload>, true>());
-            typeScope.assert(sameType<IsEqual<CoverageArtifactPayload['reports'][number], CoverageReportFile>, true>());
-            typeScope.assert(sameType<IsEqual<CoverageArtifactPayload['summary']['lines'], CoverageMetric>, true>());
-            return typeScope.assert.collect();
+            scope.assert(sameType<IsEqual<CoverageArtifact['id']['scope'], { readonly kind: 'run'; }>, true>());
+            scope.assert(sameType<CoverageArtifact['id']['subtype'], 'coverage'>());
+            scope.assert(sameType<CoverageArtifact['source'], 'v8-native'>());
+            scope.assert(sameType<IsEqual<CoverageArtifact['payload'], CoverageArtifactPayload>, true>());
+            scope.assert(sameType<IsEqual<CoverageArtifactPayload['reports'][number], CoverageReportFile>, true>());
+            scope.assert(sameType<IsEqual<CoverageArtifactPayload['summary']['lines'], CoverageMetric>, true>());
+            return scope.assert.collect();
         })
     ]),
     suite('RunnerError', [
-        test('subtype is the documented union', function (typeScope) {
-            typeScope.assert(sameType<IsEqual<RunnerError['subtype'], ExpectedRunnerErrorSubtype>, true>());
-            return typeScope.assert.collect();
+        test('subtype is the documented union', function (scope) {
+            scope.assert(sameType<IsEqual<RunnerError['subtype'], ExpectedRunnerErrorSubtype>, true>());
+            return scope.assert.collect();
         }),
-        test('permission denial runner error cause is public', function (typeScope) {
-            typeScope.assert(sameType<PermissionDeniedRunnerError['subtype'], 'permission'>());
-            typeScope.assert(
+        test('permission denial runner error cause is public', function (scope) {
+            scope.assert(sameType<PermissionDeniedRunnerError['subtype'], 'permission'>());
+            scope.assert(
                 sameType<IsEqual<PermissionDeniedRunnerError['cause'], PermissionDeniedRunnerErrorCause>, true>()
             );
-            typeScope.assert(
+            scope.assert(
                 sameType<
                     IsEqual<
                         typeof isPermissionDeniedRunnerError,
@@ -244,24 +244,25 @@ export const testNode = suite('run result', [
                     true
                 >()
             );
-            return typeScope.assert.collect();
+            return scope.assert.collect();
         }),
-        test('coverage runner error cause is public', function (typeScope) {
-            typeScope.assert(sameType<CoverageRunnerError['subtype'], 'coverage'>());
-            typeScope.assert(sameType<IsEqual<CoverageRunnerError['cause'], CoverageRunnerErrorCause>, true>());
-            return typeScope.assert.collect();
+        test('coverage runner error cause is public', function (scope) {
+            scope.assert(sameType<CoverageRunnerError['subtype'], 'coverage'>());
+            scope.assert(sameType<IsEqual<CoverageRunnerError['cause'], CoverageRunnerErrorCause>, true>());
+            return scope.assert.collect();
         })
     ]),
     suite('runtime attachment contracts', [
-        test('extends artifacts without extending the base test scope', function (typeScope) {
-            typeScope.assert(sameType<[RuntimeAttachmentArtifact] extends [RunArtifact] ? true : false, true>());
-            typeScope.assert(assignableFrom.not<keyof TestScope, 'attachments'>());
-            typeScope.assert(acceptsCall, async () =>
-                callUnderTest({
+        test('extends artifacts without extending the base test scope', function (scope) {
+            scope.assert(sameType<[RuntimeAttachmentArtifact] extends [RunArtifact] ? true : false, true>());
+            scope.assert(assignableFrom.not<keyof TestScope, 'attachments'>());
+            scope.assert(acceptsCall, async function () {
+                return callUnderTest({
                     name: 'accessibility',
                     mediaType: 'application/json'
-                }, { violations: [] }));
-            return typeScope.assert.collect();
+                }, { violations: [] });
+            });
+            return scope.assert.collect();
         })
     ])
 ]);

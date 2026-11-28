@@ -1,5 +1,5 @@
-import { test } from '../../../tools/type-tests/authoring.entry-point.ts';
-import { acceptsCall, assignableFrom, sameType } from '../../../tools/type-tests/relations.entry-point.ts';
+import { test } from '../test/test.entry-point.ts';
+import { acceptsCall, assignableFrom, sameType } from '../type-test/type-test.entry-point.ts';
 import { isEqualTo } from '../../test-support/type-relations.ts';
 import {
     defineResource,
@@ -26,30 +26,31 @@ const owner = defineResource({
 
 export const testNode = test(
     'failure preparation receives the owner handle and attempt-only witnesses',
-    function (typeScope) {
+    function (scope) {
         const decorated = withFailureArtifacts(owner, function (capture) {
-            typeScope.assert(sameType.withActual<string>(), capture.handle.secret);
-            typeScope.assert(assignableFrom.not<keyof typeof capture.handle, 'url'>());
+            scope.assert(sameType.withActual<string>(), capture.handle.secret);
+            scope.assert(assignableFrom.not<keyof typeof capture.handle, 'url'>());
             if (capture.kind === 'attempt') {
-                typeScope.assert(
+                scope.assert(
                     sameType.withActual<true>(),
                     isEqualTo<FailureArtifactAttachments>()(capture.attachments)
                 );
-                typeScope.assert(acceptsCall, async () =>
-                    capture.attachments.witness({
+                scope.assert(acceptsCall, async function () {
+                    return capture.attachments.witness({
                         producedBy: { library: 'simulation', libraryVersion: '1.0.0' },
                         simulation: { name: 'service', payload: { version: 1 } },
                         scenario: 'default',
                         seed: null,
                         runtimeSnapshot: null,
                         faultConfiguration: null
-                    }));
+                    });
+                });
             } else {
-                typeScope.assert(sameType.withActual<true>(), isEqualTo<RuntimeAttachments>()(capture.attachments));
-                typeScope.assert(assignableFrom.not<keyof typeof capture.attachments, 'witness'>());
+                scope.assert(sameType.withActual<true>(), isEqualTo<RuntimeAttachments>()(capture.attachments));
+                scope.assert(assignableFrom.not<keyof typeof capture.attachments, 'witness'>());
             }
         });
-        typeScope.assert(sameType.withActual<true>(), isEqualTo<typeof owner>()(decorated));
-        return typeScope.assert.collect();
+        scope.assert(sameType.withActual<true>(), isEqualTo<typeof owner>()(decorated));
+        return scope.assert.collect();
     }
 );

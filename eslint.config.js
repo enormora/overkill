@@ -47,15 +47,6 @@ export default [
         languageOptions: { parserOptions: { project: './source/tsconfig.eslint-browser.json' } }
     },
     {
-        files: [ '**/*.type-test.ts' ],
-        rules: {
-            'arrow-body-style': 'off',
-            'functional/prefer-tacit': 'off',
-            'restricted-syntax/no-unnecessary-arrow-function': 'off',
-            '@typescript-eslint/no-confusing-void-expression': [ 'error', { ignoreArrowShorthand: true } ]
-        }
-    },
-    {
         ...testSupportConfig,
         files: [ '**/*.test.ts', 'source/test-support/**/*.ts', 'source/integration-tests/*/support/**/*.ts' ]
     },
@@ -102,7 +93,7 @@ export default [
     },
     {
         ...nodeConfigFileConfig,
-        files: [ 'dependency-cruiser.config.js', 'eslint.config.js', 'overkill.config.ts', 'overkill.types.config.ts' ]
+        files: [ 'dependency-cruiser.config.js', 'eslint.config.js', 'overkill.config.ts' ]
     },
     {
         ...nodeEntryPointFileConfig,
@@ -114,7 +105,7 @@ export default [
     },
     {
         ...nodeEntryPointFileConfig,
-        files: [ 'source/packages/**/*.entry-point.ts', 'tools/type-tests/*.entry-point.ts' ],
+        files: [ 'source/packages/**/*.entry-point.ts' ],
         rules: {
             ...nodeEntryPointFileConfig.rules,
             'no-barrel-files/no-barrel-files': 'off'

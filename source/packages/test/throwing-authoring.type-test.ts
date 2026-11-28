@@ -1,6 +1,5 @@
 import type { IsEqual } from 'type-fest';
-import { test } from '../../../tools/type-tests/authoring.entry-point.ts';
-import { acceptsCall, assignableFrom, sameType } from '../../../tools/type-tests/relations.entry-point.ts';
+import { acceptsCall, assignableFrom, sameType } from '../type-test/type-test.entry-point.ts';
 import type {
     AssertAssertionFacade,
     RequireAssertionFacade,
@@ -9,6 +8,7 @@ import type {
     TestRandom
 } from '../engine/engine.entry-point.ts';
 import { isEqualTo } from '../../test-support/type-relations.ts';
+import { test } from './test.entry-point.ts';
 import {
     throwingTest,
     type ThrowingTestAuthor,
@@ -17,10 +17,10 @@ import {
     type ThrowingTestScope
 } from './compatibility.entry-point.ts';
 
-export const testNode = test('exposes throwing test authoring through the compatibility subpath', function (typeScope) {
-    typeScope.assert(sameType<IsEqual<typeof throwingTest, ThrowingTestAuthor>, true>());
-    typeScope.assert(sameType<IsEqual<ThrowingTestBody, (scope: ThrowingTestScope) => Promise<void> | void>, true>());
-    typeScope.assert(sameType<
+export const testNode = test('exposes throwing test authoring through the compatibility subpath', function (scope) {
+    scope.assert(sameType<IsEqual<typeof throwingTest, ThrowingTestAuthor>, true>());
+    scope.assert(sameType<IsEqual<ThrowingTestBody, (scope: ThrowingTestScope) => Promise<void> | void>, true>());
+    scope.assert(sameType<
         IsEqual<ThrowingTestScope, {
             readonly debug: TestDebugScope;
             readonly seed: bigint;
@@ -31,15 +31,15 @@ export const testNode = test('exposes throwing test authoring through the compat
         }>,
         true
     >());
-    typeScope.assert(assignableFrom.not<keyof ThrowingTestScope, 'plan'>());
-    typeScope.assert(assignableFrom.not<keyof ThrowingTestScope['assert'], 'collect'>());
-    typeScope.assert(
+    scope.assert(assignableFrom.not<keyof ThrowingTestScope, 'plan'>());
+    scope.assert(assignableFrom.not<keyof ThrowingTestScope['assert'], 'collect'>());
+    scope.assert(
         sameType.withActual<true>(),
         isEqualTo<TestCase>()(throwingTest('passes', function body() {
             return undefined;
         }))
     );
-    typeScope.assert(
+    scope.assert(
         sameType.withActual<true>(),
         isEqualTo<TestCase>()(throwingTest({
             body() {
@@ -49,20 +49,21 @@ export const testNode = test('exposes throwing test authoring through the compat
             title: 'passes'
         }))
     );
-    typeScope.assert(sameType<
+    scope.assert(sameType<
         [{
             readonly body: ThrowingTestBody;
             readonly title: string;
         }] extends [ThrowingTestDefinition] ? true : false,
         true
     >());
-    typeScope.assert(acceptsCall, () =>
-        throwingTest({
+    scope.assert(acceptsCall, function () {
+        return throwingTest({
             body() {
                 return undefined;
             },
             controls: { capture: 'live' },
             title: 'captures'
-        }));
-    return typeScope.assert.collect();
+        });
+    });
+    return scope.assert.collect();
 });

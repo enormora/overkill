@@ -1,5 +1,5 @@
-import { suite, test } from '../../../tools/type-tests/authoring.entry-point.ts';
-import { acceptsCall, rejectsCall, sameType } from '../../../tools/type-tests/relations.entry-point.ts';
+import { suite, test } from '../test/test.entry-point.ts';
+import { acceptsCall, rejectsCall, sameType } from '../type-test/type-test.entry-point.ts';
 import { hasKey } from '../../test-support/type-relations.ts';
 import {
     rule,
@@ -9,10 +9,10 @@ import {
 type LoadEvents = (id: string) => Generator<string, number, boolean>;
 type LoadAsyncEvents = (id: string) => AsyncGenerator<string, number, boolean>;
 
-export const testNode = suite('@overkill-dev/doubles generator rules', [
-    test('type-checks sync generator rules and fallback behavior', function (typeScope) {
-        typeScope.assert(acceptsCall, () =>
-            testDouble<LoadEvents>({
+export const testNode = suite('Generator rules and yield inference', [
+    test('type-checks sync generator rules and fallback behavior', function (scope) {
+        scope.assert(acceptsCall, function () {
+            return testDouble<LoadEvents>({
                 rules: [
                     rule.when('1').yields<LoadEvents>([ 'event' ], 1),
                     rule.onCall(1).yieldsFrom<LoadEvents>(function* loadEvents(id) {
@@ -21,12 +21,13 @@ export const testNode = suite('@overkill-dev/doubles generator rules', [
                     })
                 ],
                 fallback: rule.yields<LoadEvents>([ 'fallback' ], 1)
-            }));
-        return typeScope.assert.collect();
+            });
+        });
+        return scope.assert.collect();
     }),
-    test('type-checks async generator rules and fallback behavior', function (typeScope) {
-        typeScope.assert(acceptsCall, () =>
-            testDouble<LoadAsyncEvents>({
+    test('type-checks async generator rules and fallback behavior', function (scope) {
+        scope.assert(acceptsCall, function () {
+            return testDouble<LoadAsyncEvents>({
                 rules: [
                     rule.when('1').yieldsAsync<LoadAsyncEvents>([ 'event' ], 1),
                     rule.onCall(1).yieldsAsyncFrom<LoadAsyncEvents>(function* loadEvents(id) {
@@ -35,21 +36,24 @@ export const testNode = suite('@overkill-dev/doubles generator rules', [
                     })
                 ],
                 fallback: rule.yieldsAsync<LoadAsyncEvents>([ 'fallback' ], 1)
-            }));
-        return typeScope.assert.collect();
+            });
+        });
+        return scope.assert.collect();
     }),
-    test('rejects mismatched generator rules and construction terminators', function (typeScope) {
-        typeScope.assert(rejectsCall('argument-type'), () =>
-            testDouble<LoadEvents>({
+    test('rejects mismatched generator rules and construction terminators', function (scope) {
+        scope.assert(rejectsCall('argument-type'), function () {
+            return testDouble<LoadEvents>({
                 rules: [ rule.when('1').yieldsAsync([ 'event' ]) ]
-            }));
-        typeScope.assert(rejectsCall('argument-type'), () =>
-            testDouble<LoadAsyncEvents>({
+            });
+        });
+        scope.assert(rejectsCall('argument-type'), function () {
+            return testDouble<LoadAsyncEvents>({
                 rules: [ rule.when('1').yields([ 'event' ]) ]
-            }));
+            });
+        });
         const constructorRule = rule.whenConstructedWith('https://api.example.test');
-        typeScope.assert(sameType.withActual<false>(), hasKey<'yields'>()(constructorRule));
-        typeScope.assert(sameType.withActual<false>(), hasKey<'yieldsAsync'>()(constructorRule));
-        return typeScope.assert.collect();
+        scope.assert(sameType.withActual<false>(), hasKey<'yields'>()(constructorRule));
+        scope.assert(sameType.withActual<false>(), hasKey<'yieldsAsync'>()(constructorRule));
+        return scope.assert.collect();
     })
 ]);

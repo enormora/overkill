@@ -1,5 +1,5 @@
-import { test } from '../../../tools/type-tests/authoring.entry-point.ts';
-import { rejectsCall } from '../../../tools/type-tests/relations.entry-point.ts';
+import { test } from '../test/test.entry-point.ts';
+import { rejectsCall } from '../type-test/type-test.entry-point.ts';
 import {
     defineResource,
     type defineRuntime
@@ -39,46 +39,51 @@ function createInvalidDatabase(): Database {
 declare const defineResourceUnderTest: typeof defineResource;
 declare const defineRuntimeUnderTest: typeof defineRuntime;
 
-export const testNode = test('keeps invalid shapes out of typed descriptors', function (typeScope) {
-    typeScope.assert(rejectsCall('no-matching-overload'), () =>
-        defineResourceUnderTest({
+export const testNode = test('keeps invalid shapes out of typed descriptors', function (scope) {
+    scope.assert(rejectsCall('no-matching-overload'), function () {
+        return defineResourceUnderTest({
             name: 'database',
             scope: 'case',
             requirements: [],
             acquire: createInvalidDatabase,
             dispose: null
-        }));
-    typeScope.assert(rejectsCall('no-matching-overload'), () =>
-        defineResourceUnderTest({
+        });
+    });
+    scope.assert(rejectsCall('no-matching-overload'), function () {
+        return defineResourceUnderTest({
             name: 'database',
             scope: 'per-case',
             requirements: [ { kind: 'startup-budget-milliseconds', milliseconds: 1000 } ],
             acquire: createInvalidDatabase,
             dispose: null
-        }));
-    typeScope.assert(rejectsCall('argument-type'), () =>
-        defineRuntimeUnderTest({
+        });
+    });
+    scope.assert(rejectsCall('argument-type'), function () {
+        return defineRuntimeUnderTest({
             name: 'api',
             dimensions: { node: 26 },
             resources: { database },
             requirements: []
-        }));
-    typeScope.assert(rejectsCall('no-matching-overload'), () =>
-        defineResourceUnderTest({
+        });
+    });
+    scope.assert(rejectsCall('no-matching-overload'), function () {
+        return defineResourceUnderTest({
             name: 'projected-database',
             scope: 'per-run',
             requirements: [],
             acquire: createInvalidDatabase,
             dispose: null
-        }));
-    typeScope.assert(rejectsCall('no-matching-overload'), () =>
-        defineResourceUnderTest({
+        });
+    });
+    scope.assert(rejectsCall('no-matching-overload'), function () {
+        return defineResourceUnderTest({
             name: 'server',
             scope: 'per-case',
             requirements: [],
             dependencies: { database: createInvalidDatabase() },
             acquire: createInvalidDatabase,
             dispose: null
-        }));
-    return typeScope.assert.collect();
+        });
+    });
+    return scope.assert.collect();
 });

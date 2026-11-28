@@ -1,6 +1,6 @@
 import type { IsEqual } from 'type-fest';
-import { suite, test } from '../../../tools/type-tests/authoring.entry-point.ts';
-import { rejectsCall, sameType } from '../../../tools/type-tests/relations.entry-point.ts';
+import { suite, test } from '../test/test.entry-point.ts';
+import { rejectsCall, sameType } from '../type-test/type-test.entry-point.ts';
 import { isEqualTo } from '../../test-support/type-relations.ts';
 import {
     composeRuntimeContext,
@@ -80,7 +80,7 @@ const serverHandle = { url: 'http://localhost' };
 declare const composeRuntimeContextUnderTest: typeof composeRuntimeContext;
 
 export const testNode = suite('resource runtime composition', [
-    test('composes runtime handles into a typed context', function (typeScope) {
+    test('composes runtime handles into a typed context', function (scope) {
         const context = composeRuntimeContext({ test: true }, runtime, {
             database: databaseHandle,
             server: serverHandle
@@ -89,36 +89,39 @@ export const testNode = suite('resource runtime composition', [
             database: databaseHandle
         });
 
-        typeScope.assert(sameType<IsEqual<typeof context.runtimes.api, ExpectedRuntimeContext>, true>());
-        typeScope.assert(sameType.withActual<boolean>(), context.test);
-        typeScope.assert(sameType<IsEqual<typeof nestedContext.runtimes.api, ExpectedRuntimeContext>, true>());
-        typeScope.assert(
+        scope.assert(sameType<IsEqual<typeof context.runtimes.api, ExpectedRuntimeContext>, true>());
+        scope.assert(sameType.withActual<boolean>(), context.test);
+        scope.assert(sameType<IsEqual<typeof nestedContext.runtimes.api, ExpectedRuntimeContext>, true>());
+        scope.assert(
             sameType.withActual<true>(),
             isEqualTo<{ readonly database: Database; }>()(nestedContext.runtimes['secondary-api'])
         );
-        typeScope.assert(
+        scope.assert(
             rejectsCall('argument-type'),
-            () =>
-                composeRuntimeContextUnderTest({ test: true }, runtime, {
+            function () {
+                return composeRuntimeContextUnderTest({ test: true }, runtime, {
                     database: databaseHandle
-                })
+                });
+            }
         );
-        typeScope.assert(
+        scope.assert(
             rejectsCall('argument-type'),
-            () =>
-                composeRuntimeContextUnderTest({ test: true }, runtime, {
+            function () {
+                return composeRuntimeContextUnderTest({ test: true }, runtime, {
                     database: databaseHandle,
                     server: { port: 80 }
-                })
+                });
+            }
         );
-        typeScope.assert(rejectsCall('argument-type'), () =>
-            composeRuntimeContextUnderTest(context, runtime, {
+        scope.assert(rejectsCall('argument-type'), function () {
+            return composeRuntimeContextUnderTest(context, runtime, {
                 database: databaseHandle,
                 server: serverHandle
-            }));
-        return typeScope.assert.collect();
+            });
+        });
+        return scope.assert.collect();
     }),
-    test('composes runtime graphs into typed scopes', function (typeScope) {
+    test('composes runtime graphs into typed scopes', function (scope) {
         const context = composeRuntimeContext({ test: true }, composedRuntime, {
             api: {
                 database: databaseHandle,
@@ -129,14 +132,14 @@ export const testNode = suite('resource runtime composition', [
             }
         });
 
-        typeScope.assert(sameType.withActual<'composed-runtimes'>(), composedRuntime.kind);
-        typeScope.assert(sameType<IsEqual<typeof context.runtimes.api, ExpectedRuntimeContext>, true>());
-        typeScope.assert(
+        scope.assert(sameType.withActual<'composed-runtimes'>(), composedRuntime.kind);
+        scope.assert(sameType<IsEqual<typeof context.runtimes.api, ExpectedRuntimeContext>, true>());
+        scope.assert(
             sameType.withActual<true>(),
             isEqualTo<{ readonly database: Database; }>()(context.runtimes['secondary-api'])
         );
-        typeScope.assert(rejectsCall('argument-type'), () =>
-            composeRuntimeContextUnderTest(
+        scope.assert(rejectsCall('argument-type'), function () {
+            return composeRuntimeContextUnderTest(
                 {
                     runtimes: {
                         api: {
@@ -155,14 +158,16 @@ export const testNode = suite('resource runtime composition', [
                         database: databaseHandle
                     }
                 }
-            ));
-        typeScope.assert(
+            );
+        });
+        scope.assert(
             rejectsCall('argument-type'),
-            () =>
-                composeRuntimeContextUnderTest({ test: true }, composedRuntime, {
+            function () {
+                return composeRuntimeContextUnderTest({ test: true }, composedRuntime, {
                     api: { database: databaseHandle }
-                })
+                });
+            }
         );
-        return typeScope.assert.collect();
+        return scope.assert.collect();
     })
 ]);

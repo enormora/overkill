@@ -1,11 +1,11 @@
-import { suite, test } from '../../../tools/type-tests/authoring.entry-point.ts';
+import { suite, test } from '../test/test.entry-point.ts';
 import {
     acceptsCall,
     assignableFrom,
     assignableTo,
     rejectsCall,
     sameType
-} from '../../../tools/type-tests/relations.entry-point.ts';
+} from '../type-test/type-test.entry-point.ts';
 import type { AssertAssertionFacade } from '../engine/engine.entry-point.ts';
 import { isEqualTo, isAssignableTo } from '../../test-support/type-relations.ts';
 import {
@@ -31,6 +31,7 @@ type Client = {
 
 type LoadUser = (id: string, includeDeleted: boolean) => User;
 type SaveUser = (user: User) => Promise<User>;
+type UntypedDouble<Result> = TestDouble<(...arguments_: readonly unknown[]) => Result>;
 type LoadEvents = (id: string) => Generator<string, number, boolean>;
 type LoadEventProtocolArguments = readonly [] | readonly [boolean] | readonly [number] | readonly [unknown];
 type LoadAsyncEvents = (id: string) => AsyncGenerator<string, number, boolean>;
@@ -101,158 +102,171 @@ const client: Client = { baseUrl: 'https://api.example.test' };
 const clientWithTimeout: ClientWithTimeout = { baseUrl: 'https://api.example.test', timeout: 500 };
 declare const assertFacade: AssertAssertionFacade;
 
-export const testNode = suite('./doubles.entry-point.ts', [
+export const testNode = suite('Test doubles, call history, and usage assertions', [
     suite('fixed doubles', [
-        test('creates an untyped default double', function (typeScope) {
+        test('creates an untyped default double', function (scope) {
             const value = testDouble();
 
-            typeScope.assert(
-                sameType.withActual<true>(),
-                isEqualTo<TestDouble<(...arguments_: readonly unknown[]) => unknown>>()(value)
-            );
-            typeScope.assert(sameType.withActual<unknown>(), value('id'));
-            return typeScope.assert.collect();
+            scope.assert(sameType.withActual<true>(), isEqualTo<UntypedDouble<unknown>>()(value));
+            scope.assert(sameType.withActual<unknown>(), value('id'));
+            return scope.assert.collect();
         }),
-        test('preserves explicit default double signatures', function (typeScope) {
+        test('preserves explicit default double signatures', function (scope) {
             const typed = testDouble<LoadUser>();
 
-            typeScope.assert(sameType.withActual<true>(), isEqualTo<TestDouble<LoadUser>>()(typed));
-            return typeScope.assert.collect();
+            scope.assert(sameType.withActual<true>(), isEqualTo<TestDouble<LoadUser>>()(typed));
+            return scope.assert.collect();
         }),
-        test('allows calls matching explicit default double signatures', function (typeScope) {
+        test('allows calls matching explicit default double signatures', function (scope) {
             const typed = testDouble<LoadUser>();
 
-            typeScope.assert(acceptsCall, () => typed('1', false));
-            return typeScope.assert.collect();
+            scope.assert(acceptsCall, function () {
+                return typed('1', false);
+            });
+            return scope.assert.collect();
         }),
-        test('creates fixed-return doubles', function (typeScope) {
+        test('creates fixed-return doubles', function (scope) {
             const untyped = testDouble.returns(user);
             const typed = testDouble.returns<LoadUser>(user);
 
-            typeScope.assert(
-                sameType.withActual<true>(),
-                isEqualTo<TestDouble<(...arguments_: readonly unknown[]) => User>>()(untyped)
-            );
-            typeScope.assert(sameType.withActual<true>(), isEqualTo<TestDouble<LoadUser>>()(typed));
-            typeScope.assert(acceptsCall, () => typed('1', false));
-            typeScope.assert(rejectsCall('argument-type'), () => typed(1, false));
-            typeScope.assert(sameType.withActual<true>(), isEqualTo<User>()(typed('1', false)));
-            return typeScope.assert.collect();
+            scope.assert(sameType.withActual<true>(), isEqualTo<UntypedDouble<User>>()(untyped));
+            scope.assert(sameType.withActual<true>(), isEqualTo<TestDouble<LoadUser>>()(typed));
+            scope.assert(acceptsCall, function () {
+                return typed('1', false);
+            });
+            scope.assert(rejectsCall('argument-type'), function () {
+                return typed(1, false);
+            });
+            scope.assert(sameType.withActual<true>(), isEqualTo<User>()(typed('1', false)));
+            return scope.assert.collect();
         }),
-        test('creates fixed void-return doubles', function (typeScope) {
+        test('creates fixed void-return doubles', function (scope) {
             const voidCallback = testDouble.returns<() => void>();
 
-            typeScope.assert(sameType.withActual<true>(), isEqualTo<TestDouble<() => void>>()(voidCallback));
-            return typeScope.assert.collect();
+            scope.assert(sameType.withActual<true>(), isEqualTo<TestDouble<() => void>>()(voidCallback));
+            return scope.assert.collect();
         }),
-        test('creates fixed-resolution doubles', function (typeScope) {
+        test('creates fixed-resolution doubles', function (scope) {
             const untyped = testDouble.resolves(user);
             const typed = testDouble.resolves<SaveUser>(user);
 
-            typeScope.assert(
-                sameType.withActual<true>(),
-                isEqualTo<TestDouble<(...arguments_: readonly unknown[]) => Promise<User>>>()(untyped)
-            );
-            typeScope.assert(sameType.withActual<true>(), isEqualTo<TestDouble<SaveUser>>()(typed));
-            typeScope.assert(acceptsCall, async () => typed(user));
-            typeScope.assert(rejectsCall('argument-type'), async () => typed('user'));
-            typeScope.assert(sameType.withActual<true>(), isEqualTo<Promise<User>>()(typed(user)));
-            typeScope.assert(rejectsCall('argument-type'), () => testDouble.resolves<LoadUser>(user));
-            return typeScope.assert.collect();
+            scope.assert(sameType.withActual<true>(), isEqualTo<UntypedDouble<Promise<User>>>()(untyped));
+            scope.assert(sameType.withActual<true>(), isEqualTo<TestDouble<SaveUser>>()(typed));
+            scope.assert(acceptsCall, async function () {
+                return typed(user);
+            });
+            scope.assert(rejectsCall('argument-type'), async function () {
+                return typed('user');
+            });
+            scope.assert(sameType.withActual<true>(), isEqualTo<Promise<User>>()(typed(user)));
+            scope.assert(rejectsCall('argument-type'), function () {
+                return testDouble.resolves<LoadUser>(user);
+            });
+            return scope.assert.collect();
         }),
-        test('creates fixed-rejection doubles', function (typeScope) {
+        test('creates fixed-rejection doubles', function (scope) {
             const untyped = testDouble.rejects(new Error('expected'));
             const typed = testDouble.rejects<SaveUser>(new Error('expected'));
 
-            typeScope.assert(
-                sameType.withActual<true>(),
-                isEqualTo<TestDouble<(...arguments_: readonly unknown[]) => Promise<never>>>()(untyped)
-            );
-            typeScope.assert(sameType.withActual<true>(), isEqualTo<TestDouble<SaveUser>>()(typed));
-            typeScope.assert(acceptsCall, async () => typed(user));
-            typeScope.assert(sameType.withActual<true>(), isEqualTo<Promise<User>>()(typed(user)));
-            typeScope.assert(rejectsCall('argument-type'), () => testDouble.rejects<LoadUser>(new Error('expected')));
-            return typeScope.assert.collect();
+            scope.assert(sameType.withActual<true>(), isEqualTo<UntypedDouble<Promise<never>>>()(untyped));
+            scope.assert(sameType.withActual<true>(), isEqualTo<TestDouble<SaveUser>>()(typed));
+            scope.assert(acceptsCall, async function () {
+                return typed(user);
+            });
+            scope.assert(sameType.withActual<true>(), isEqualTo<Promise<User>>()(typed(user)));
+            scope.assert(rejectsCall('argument-type'), function () {
+                return testDouble.rejects<LoadUser>(new Error('expected'));
+            });
+            return scope.assert.collect();
         }),
-        test('creates fixed-throw doubles', function (typeScope) {
+        test('creates fixed-throw doubles', function (scope) {
             const untyped = testDouble.throws(new Error('expected'));
             const typed = testDouble.throws<LoadUser>(new Error('expected'));
 
-            typeScope.assert(
-                sameType.withActual<true>(),
-                isEqualTo<TestDouble<(...arguments_: readonly unknown[]) => never>>()(untyped)
-            );
-            typeScope.assert(sameType.withActual<true>(), isEqualTo<TestDouble<LoadUser>>()(typed));
-            typeScope.assert(acceptsCall, () => typed('1', false));
-            typeScope.assert(sameType.withActual<true>(), isEqualTo<User>()(typed('1', false)));
-            typeScope.assert(rejectsCall('argument-type'), () => testDouble.throws<SaveUser>(new Error('expected')));
-            return typeScope.assert.collect();
+            scope.assert(sameType.withActual<true>(), isEqualTo<UntypedDouble<never>>()(untyped));
+            scope.assert(sameType.withActual<true>(), isEqualTo<TestDouble<LoadUser>>()(typed));
+            scope.assert(acceptsCall, function () {
+                return typed('1', false);
+            });
+            scope.assert(sameType.withActual<true>(), isEqualTo<User>()(typed('1', false)));
+            scope.assert(rejectsCall('argument-type'), function () {
+                return testDouble.throws<SaveUser>(new Error('expected'));
+            });
+            return scope.assert.collect();
         }),
-        test('creates fixed-construction doubles', function (typeScope) {
+        test('creates fixed-construction doubles', function (scope) {
             const untyped = testDouble.constructs(client);
             const TypedClient = testDouble.constructs<ClientConstructor>(client);
 
-            typeScope.assert(
+            scope.assert(
                 sameType.withActual<true>(),
                 isEqualTo<TestDouble<new (...arguments_: readonly unknown[]) => Client>>()(untyped)
             );
-            typeScope.assert(sameType.withActual<true>(), isEqualTo<TestDouble<ClientConstructor>>()(TypedClient));
-            typeScope.assert(
+            scope.assert(sameType.withActual<true>(), isEqualTo<TestDouble<ClientConstructor>>()(TypedClient));
+            scope.assert(
                 sameType.withActual<true>(),
                 isEqualTo<Client>()(new TypedClient('https://api.example.test'))
             );
-            return typeScope.assert.collect();
+            return scope.assert.collect();
         })
     ]),
     suite('fixed generator doubles', [
-        test('creates fixed sync generator doubles', function (typeScope) {
+        test('creates fixed sync generator doubles', function (scope) {
             const untyped = testDouble.yields([ 'created' ]);
             const typed = testDouble.yields<LoadEvents>([ 'created' ], 1);
 
-            typeScope.assert(
+            scope.assert(
                 sameType.withActual<true>(),
                 isEqualTo<TestDouble<(...arguments_: readonly unknown[]) => Generator<string, undefined, unknown>>>()(
                     untyped
                 )
             );
-            typeScope.assert(sameType.withActual<true>(), isEqualTo<TestDouble<LoadEvents>>()(typed));
-            typeScope.assert(acceptsCall, () => typed('1'));
-            typeScope.assert(sameType.withActual<true>(), isEqualTo<Generator<string, number, boolean>>()(typed('1')));
-            return typeScope.assert.collect();
+            scope.assert(sameType.withActual<true>(), isEqualTo<TestDouble<LoadEvents>>()(typed));
+            scope.assert(acceptsCall, function () {
+                return typed('1');
+            });
+            scope.assert(sameType.withActual<true>(), isEqualTo<Generator<string, number, boolean>>()(typed('1')));
+            return scope.assert.collect();
         }),
-        test('creates fixed sync generator doubles from sources', function (typeScope) {
+        test('creates fixed sync generator doubles from sources', function (scope) {
             const fromSource = testDouble.yieldsFrom<LoadEvents>(function* loadEvents(id) {
                 yield id;
                 return 1;
             });
 
-            typeScope.assert(sameType.withActual<true>(), isEqualTo<TestDouble<LoadEvents>>()(fromSource));
-            return typeScope.assert.collect();
+            scope.assert(sameType.withActual<true>(), isEqualTo<TestDouble<LoadEvents>>()(fromSource));
+            return scope.assert.collect();
         }),
-        test('rejects non-generator fixed sync generator doubles', function (typeScope) {
-            typeScope.assert(rejectsCall('no-matching-overload'), () => testDouble.yields<LoadUser>([ 'event' ]));
-            typeScope.assert(rejectsCall('argument-type'), () => testDouble.yields<LoadEvents>([ 'event' ], 'done'));
-            return typeScope.assert.collect();
+        test('rejects non-generator fixed sync generator doubles', function (scope) {
+            scope.assert(rejectsCall('no-matching-overload'), function () {
+                return testDouble.yields<LoadUser>([ 'event' ]);
+            });
+            scope.assert(rejectsCall('argument-type'), function () {
+                return testDouble.yields<LoadEvents>([ 'event' ], 'done');
+            });
+            return scope.assert.collect();
         }),
-        test('creates fixed async generator doubles', function (typeScope) {
+        test('creates fixed async generator doubles', function (scope) {
             const untyped = testDouble.yieldsAsync([ 'created' ]);
             const typed = testDouble.yieldsAsync<LoadAsyncEvents>([ 'created' ], 1);
 
-            typeScope.assert(
+            scope.assert(
                 sameType.withActual<true>(),
                 isEqualTo<
                     TestDouble<(...arguments_: readonly unknown[]) => AsyncGenerator<string, undefined, unknown>>
                 >()(untyped)
             );
-            typeScope.assert(sameType.withActual<true>(), isEqualTo<TestDouble<LoadAsyncEvents>>()(typed));
-            typeScope.assert(acceptsCall, () => typed('1'));
-            typeScope.assert(
+            scope.assert(sameType.withActual<true>(), isEqualTo<TestDouble<LoadAsyncEvents>>()(typed));
+            scope.assert(acceptsCall, function () {
+                return typed('1');
+            });
+            scope.assert(
                 sameType.withActual<true>(),
                 isEqualTo<AsyncGenerator<string, number, boolean>>()(typed('1'))
             );
-            return typeScope.assert.collect();
+            return scope.assert.collect();
         }),
-        test('creates fixed async generator doubles from sources', function (typeScope) {
+        test('creates fixed async generator doubles from sources', function (scope) {
             const fromAsyncSource = testDouble.yieldsAsyncFrom<LoadAsyncEvents>(async function* loadEvents(id) {
                 yield id;
                 return 1;
@@ -262,93 +276,99 @@ export const testNode = suite('./doubles.entry-point.ts', [
                 return 1;
             });
 
-            typeScope.assert(sameType.withActual<true>(), isEqualTo<TestDouble<LoadAsyncEvents>>()(fromAsyncSource));
-            typeScope.assert(sameType.withActual<true>(), isEqualTo<TestDouble<LoadAsyncEvents>>()(fromSyncSource));
-            return typeScope.assert.collect();
+            scope.assert(sameType.withActual<true>(), isEqualTo<TestDouble<LoadAsyncEvents>>()(fromAsyncSource));
+            scope.assert(sameType.withActual<true>(), isEqualTo<TestDouble<LoadAsyncEvents>>()(fromSyncSource));
+            return scope.assert.collect();
         }),
-        test('rejects non-generator fixed async generator doubles', function (typeScope) {
-            typeScope.assert(rejectsCall('no-matching-overload'), () => testDouble.yieldsAsync<LoadUser>([ 'event' ]));
-            typeScope.assert(
+        test('rejects non-generator fixed async generator doubles', function (scope) {
+            scope.assert(rejectsCall('no-matching-overload'), function () {
+                return testDouble.yieldsAsync<LoadUser>([ 'event' ]);
+            });
+            scope.assert(
                 rejectsCall('argument-type'),
-                () => testDouble.yieldsAsync<LoadAsyncEvents>([ 'event' ], 'done')
+                function () {
+                    return testDouble.yieldsAsync<LoadAsyncEvents>([ 'event' ], 'done');
+                }
             );
-            return typeScope.assert.collect();
+            return scope.assert.collect();
         })
     ]),
     suite('history types', [
-        test('exposes typed history counts and reset on callable doubles', function (typeScope) {
+        test('exposes typed history counts and reset on callable doubles', function (scope) {
             const loadUser = testDouble<LoadUser>();
 
-            typeScope.assert(sameType.withActual<true>(), isAssignableTo<DoubleHistory<LoadUser>>()(loadUser));
-            typeScope.assert(sameType.withActual<number>(), loadUser.callCount);
-            typeScope.assert(sameType.withActual<number>(), loadUser.interactionCount);
-            typeScope.assert(sameType.withActual<true>(), isEqualTo<() => void>()(loadUser.reset));
-            typeScope.assert(rejectsCall('argument-count'), () => loadUser.reset('history'));
-            return typeScope.assert.collect();
+            scope.assert(sameType.withActual<true>(), isAssignableTo<DoubleHistory<LoadUser>>()(loadUser));
+            scope.assert(sameType.withActual<number>(), loadUser.callCount);
+            scope.assert(sameType.withActual<number>(), loadUser.interactionCount);
+            scope.assert(sameType.withActual<true>(), isEqualTo<() => void>()(loadUser.reset));
+            scope.assert(rejectsCall('argument-count'), function () {
+                loadUser.reset('history');
+            });
+            return scope.assert.collect();
         }),
-        test('exposes typed call history records', function (typeScope) {
+        test('exposes typed call history records', function (scope) {
             const loadUser = testDouble<LoadUser>();
             const scopedLoadUser = testDouble<ScopedLoadUser>();
             const saveUser = testDouble<SaveUser>();
 
-            typeScope.assert(
+            scope.assert(
                 sameType.withActual<true>(),
                 isEqualTo<readonly DoubleCall<Parameters<LoadUser>, User>[]>()(loadUser.calls)
             );
-            typeScope.assert(
+            scope.assert(
                 sameType.withActual<true>(),
                 isEqualTo<DoubleCall<Parameters<LoadUser>, User> | null>()(loadUser.firstCall)
             );
-            typeScope.assert(
+            scope.assert(
                 sameType.withActual<true>(),
                 isEqualTo<DoubleCall<Parameters<LoadUser>, User> | null>()(loadUser.lastCall)
             );
-            typeScope.assert(
+            scope.assert(
                 sameType.withActual<true>(),
                 isEqualTo<DoubleCall<Parameters<LoadUser>, User> | null>()(loadUser.nthCall(0))
             );
-            typeScope.assert(
+            scope.assert(
                 sameType.withActual<true>(),
                 isEqualTo<DoubleCall<Parameters<ScopedLoadUser>, User, ScopeReceiver> | null>()(
                     scopedLoadUser.firstCall
                 )
             );
-            typeScope.assert(
+            scope.assert(
                 sameType.withActual<true>(),
                 isEqualTo<DoubleResult<Promise<User>> | null>()(saveUser.firstResult)
             );
-            return typeScope.assert.collect();
+            return scope.assert.collect();
         }),
-        test('exposes typed iterator history records', function (typeScope) {
+        test('exposes typed iterator history records', function (scope) {
             const loadEvents = testDouble.yields<LoadEvents>([ 'created' ], 1);
             const plain = testDouble.returns<LoadUser>(user);
 
-            typeScope.assert(sameType.withActual<number>(), loadEvents.iteratorEventCount);
-            typeScope.assert(
+            scope.assert(sameType.withActual<number>(), loadEvents.iteratorEventCount);
+            scope.assert(
                 sameType.withActual<true>(),
                 isEqualTo<readonly DoubleIteratorEvent<string, number, LoadEventProtocolArguments>[]>()(
                     loadEvents.iteratorEvents
                 )
             );
-            typeScope.assert(
+            scope.assert(
                 sameType.withActual<true>(),
                 isEqualTo<DoubleIteratorEvent<string, number, LoadEventProtocolArguments> | null>()(
                     loadEvents.firstIteratorEvent
                 )
             );
-            typeScope.assert(
+            scope.assert(
                 sameType.withActual<true>(),
                 isEqualTo<DoubleIteratorEvent<string, number, LoadEventProtocolArguments> | null>()(
                     loadEvents.nthIteratorEvent(0)
                 )
             );
-            typeScope.assert(
+            scope.assert(
                 sameType.withActual<true>(),
                 isEqualTo<DoubleIteratorEvent | null>()(plain.firstIteratorEvent)
             );
-            return typeScope.assert.collect();
+            return scope.assert.collect();
         }),
-        test('exposes typed construction and aggregate interaction history', function (typeScope) {
+        test('exposes typed construction and aggregate interaction history', function (scope) {
             const Client = testDouble<ClientConstructor>({
                 fallback: rule.constructs(client)
             });
@@ -359,108 +379,134 @@ export const testNode = suite('./doubles.entry-point.ts', [
                 }
             });
 
-            typeScope.assert(
+            scope.assert(
                 sameType.withActual<true>(),
                 isEqualTo<readonly DoubleConstruction<ConstructorParameters<ClientConstructor>, Client>[]>()(
                     Client.constructions
                 )
             );
-            typeScope.assert(
+            scope.assert(
                 sameType.withActual<true>(),
                 isEqualTo<DoubleConstruction<ConstructorParameters<ClientConstructor>, Client> | null>()(
                     Client.firstConstruction
                 )
             );
-            typeScope.assert(
+            scope.assert(
                 sameType.withActual<true>(),
                 isEqualTo<ExpectedClientFactoryInteraction>()(ClientFactoryDouble.firstInteraction)
             );
-            typeScope.assert(
+            scope.assert(
                 sameType.withActual<true>(),
                 isEqualTo<ExpectedClientFactoryInteraction>()(ClientFactoryDouble.nthInteraction(0))
             );
-            return typeScope.assert.collect();
+            return scope.assert.collect();
         }),
-        test('preserves overloads in history records up to the supported cap', function (typeScope) {
+        test('preserves overloads in history records up to the supported cap', function (scope) {
             const loadValue = testDouble<OverloadedLoad>();
             const Client = testDouble<OverloadedClientConstructor>({
                 fallback: rule.constructs(clientWithTimeout)
             });
 
-            typeScope.assert(sameType.withActual<true>(), isEqualTo<ExpectedOverloadedCall>()(loadValue.firstCall));
-            typeScope.assert(
+            scope.assert(sameType.withActual<true>(), isEqualTo<ExpectedOverloadedCall>()(loadValue.firstCall));
+            scope.assert(
                 sameType.withActual<true>(),
                 isEqualTo<ExpectedOverloadedConstruction>()(Client.firstConstruction)
             );
-            return typeScope.assert.collect();
+            return scope.assert.collect();
         })
     ]),
     suite('double usage assertions', [
-        test('exports assertion references under one namespace', function (typeScope) {
-            typeScope.assert(assignableTo.withActual<unknown>(), doubleUsage.calledOnceWith);
-            typeScope.assert(assignableFrom<keyof typeof doubleUsage, 'calledWithExactly'>());
-            typeScope.assert(assignableFrom<keyof typeof doubleUsage, 'yieldedExactly'>());
-            typeScope.assert(assignableFrom<keyof typeof doubleUsage, 'interactionOrder'>());
-            typeScope.assert(assignableFrom.not<keyof typeof doubleUsage, 'returnedWith'>());
-            return typeScope.assert.collect();
+        test('exports assertion references under one namespace', function (scope) {
+            scope.assert(assignableTo.withActual<unknown>(), doubleUsage.calledOnceWith);
+            scope.assert(assignableFrom<keyof typeof doubleUsage, 'calledWithExactly'>());
+            scope.assert(assignableFrom<keyof typeof doubleUsage, 'yieldedExactly'>());
+            scope.assert(assignableFrom<keyof typeof doubleUsage, 'interactionOrder'>());
+            scope.assert(assignableFrom.not<keyof typeof doubleUsage, 'returnedWith'>());
+            return scope.assert.collect();
         }),
         suite('accepts doubles through the engine assert facade', [
-            test('counts interactions and matches calls', function (typeScope) {
+            test('counts interactions and matches calls', function (scope) {
                 const loadUser = testDouble<LoadUser>();
                 const Client = testDouble<ClientConstructor>({
                     fallback: rule.constructs(client)
                 });
-                typeScope.assert(acceptsCall, () => assertFacade(doubleUsage.called, loadUser));
-                typeScope.assert(acceptsCall, () => assertFacade(doubleUsage.calledWith, loadUser, [ '1', false ]));
-                typeScope.assert(
+                scope.assert(acceptsCall, function () {
+                    assertFacade(doubleUsage.called, loadUser);
+                });
+                scope.assert(acceptsCall, function () {
+                    assertFacade(doubleUsage.calledWith, loadUser, [ '1', false ]);
+                });
+                scope.assert(
                     acceptsCall,
-                    () => assertFacade(doubleUsage.calledWithExactly, loadUser, [ '1', false ])
+                    function () {
+                        assertFacade(doubleUsage.calledWithExactly, loadUser, [ '1', false ]);
+                    }
                 );
-                typeScope.assert(acceptsCall, () => assertFacade(doubleUsage.calledWithPrefix, loadUser, [ '1' ]));
-                typeScope.assert(acceptsCall, () => assertFacade(doubleUsage.nthCallWith, loadUser, 0, [ '1', false ]));
-                typeScope.assert(
+                scope.assert(acceptsCall, function () {
+                    assertFacade(doubleUsage.calledWithPrefix, loadUser, [ '1' ]);
+                });
+                scope.assert(acceptsCall, function () {
+                    assertFacade(doubleUsage.nthCallWith, loadUser, 0, [ '1', false ]);
+                });
+                scope.assert(
                     acceptsCall,
-                    () => assertFacade(doubleUsage.constructedWith, Client, [ 'https://api.example.test' ])
+                    function () {
+                        assertFacade(doubleUsage.constructedWith, Client, [ 'https://api.example.test' ]);
+                    }
                 );
-                return typeScope.assert.collect();
+                return scope.assert.collect();
             }),
-            test('matches invocation and result evidence', function (typeScope) {
+            test('matches invocation and result evidence', function (scope) {
                 const loadUser = testDouble<LoadUser>();
-                typeScope.assert(acceptsCall, () => assertFacade(doubleUsage.callCount, loadUser, 1));
-                typeScope.assert(
+                scope.assert(acceptsCall, function () {
+                    assertFacade(doubleUsage.callCount, loadUser, 1);
+                });
+                scope.assert(
                     acceptsCall,
-                    () => assertFacade(doubleUsage.callOrder, [ loadUser, testDouble<LoadUser>() ])
+                    function () {
+                        assertFacade(doubleUsage.callOrder, [ loadUser, testDouble<LoadUser>() ]);
+                    }
                 );
-                return typeScope.assert.collect();
+                return scope.assert.collect();
             })
         ]),
-        test('accepts generator doubles through the engine assert facade', function (typeScope) {
-            typeScope.assert(
+        test('accepts generator doubles through the engine assert facade', function (scope) {
+            scope.assert(
                 acceptsCall,
-                () => assertFacade(doubleUsage.yieldedExactly, testDouble.yields([ 'event' ]), [ 'event' ])
+                function () {
+                    assertFacade(doubleUsage.yieldedExactly, testDouble.yields([ 'event' ]), [ 'event' ]);
+                }
             );
-            return typeScope.assert.collect();
+            return scope.assert.collect();
         }),
-        test('rejects empty prefix and short order arguments at compile time', function (typeScope) {
+        test('rejects empty prefix and short order arguments at compile time', function (scope) {
             const loadUser = testDouble<LoadUser>();
 
-            typeScope.assert(
+            scope.assert(
                 rejectsCall('no-matching-overload'),
-                async () => assertFacade(doubleUsage.calledWithPrefix, loadUser, [])
+                async function () {
+                    return assertFacade(doubleUsage.calledWithPrefix, loadUser, []);
+                }
             );
-            typeScope.assert(
+            scope.assert(
                 rejectsCall('no-matching-overload'),
-                async () => assertFacade(doubleUsage.callOrder, [ loadUser ])
+                async function () {
+                    return assertFacade(doubleUsage.callOrder, [ loadUser ]);
+                }
             );
-            typeScope.assert(
+            scope.assert(
                 rejectsCall('no-matching-overload'),
-                async () => assertFacade(doubleUsage.callCount, loadUser, '1')
+                async function () {
+                    return assertFacade(doubleUsage.callCount, loadUser, '1');
+                }
             );
-            typeScope.assert(
+            scope.assert(
                 rejectsCall('no-matching-overload'),
-                async () => assertFacade(doubleUsage.yieldedExactly, loadUser, 'event')
+                async function () {
+                    return assertFacade(doubleUsage.yieldedExactly, loadUser, 'event');
+                }
             );
-            return typeScope.assert.collect();
+            return scope.assert.collect();
         })
     ])
 ]);

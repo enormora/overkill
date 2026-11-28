@@ -1,5 +1,5 @@
-import { suite, test } from '../../../tools/type-tests/authoring.entry-point.ts';
-import { assignableFrom, sameType } from '../../../tools/type-tests/relations.entry-point.ts';
+import { suite, test } from '../test/test.entry-point.ts';
+import { assignableFrom, sameType } from '../type-test/type-test.entry-point.ts';
 import { isEqualTo } from '../../test-support/type-relations.ts';
 import {
     defineResource,
@@ -24,13 +24,13 @@ const owner = defineResource({
     }
 });
 
-export const testNode = suite('resource checks', [
-    test('resource checks retain descriptor inference and receive the owner handle', function (typeScope) {
+export const testNode = suite('Resource check scopes and verdicts', [
+    test('resource checks retain descriptor inference and receive the owner handle', function (scope) {
         const observed = withResourceChecks(owner, function (context) {
-            typeScope.assert(sameType.withActual<string>(), context.handle.secret);
-            typeScope.assert(assignableFrom.not<keyof typeof context.handle, 'url'>());
+            scope.assert(sameType.withActual<string>(), context.handle.secret);
+            scope.assert(assignableFrom.not<keyof typeof context.handle, 'url'>());
             context.cleanup.defer(function (signal) {
-                typeScope.assert(sameType.withActual<true>(), isEqualTo<AbortSignal>()(signal));
+                scope.assert(sameType.withActual<true>(), isEqualTo<AbortSignal>()(signal));
             });
             return {
                 prepare() {
@@ -41,21 +41,21 @@ export const testNode = suite('resource checks', [
                 }
             };
         });
-        typeScope.assert(sameType.withActual<true>(), isEqualTo<typeof owner>()(observed));
-        return typeScope.assert.collect();
+        scope.assert(sameType.withActual<true>(), isEqualTo<typeof owner>()(observed));
+        return scope.assert.collect();
     }),
-    test('standalone errors retain owner and interval evidence', function (typeScope) {
+    test('standalone errors retain owner and interval evidence', function (scope) {
         const error = new ResourceCheckError('Resource checks failed.', { resourceChecks: [], errors: [] });
-        typeScope.assert(
+        scope.assert(
             sameType.withActual<true>(),
             isEqualTo<readonly ResourceCheckSnapshot[]>()(error.resourceChecks())
         );
-        typeScope.assert(
+        scope.assert(
             sameType<
                 ResourceCheckSnapshot['owner']['scope'],
                 'per-case' | 'per-file' | 'per-run' | 'per-suite' | 'shared-per-worker'
             >()
         );
-        return typeScope.assert.collect();
+        return scope.assert.collect();
     })
 ]);

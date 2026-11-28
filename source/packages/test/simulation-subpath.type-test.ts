@@ -1,5 +1,5 @@
-import { suite, test } from '../../../tools/type-tests/authoring.entry-point.ts';
-import { acceptsCall, sameType } from '../../../tools/type-tests/relations.entry-point.ts';
+import { acceptsCall, sameType } from '../type-test/type-test.entry-point.ts';
+import { suite, test } from './test.entry-point.ts';
 import {
     defineSimulatedHttpServer,
     defineSimulation,
@@ -26,16 +26,17 @@ const httpSimulation = defineSimulatedHttpServer({
     }
 });
 
-export const testNode = suite('@overkill-dev/test/simulation', [
-    test('exposes simulation definitions through the standard distribution', function (typeScope) {
-        typeScope.assert(sameType<ScenarioKeyOf<typeof apiSimulation>, 'default' | 'outage'>());
-        typeScope.assert(sameType<ScenarioKeyOf<typeof httpSimulation>, 'default' | 'outage'>());
-        typeScope.assert(sameType.withActual<'api'>(), apiSimulation.name);
-        typeScope.assert(acceptsCall, async () =>
-            httpSimulation.handle(new Request('https://example.test'), {
+export const testNode = suite('Simulation authoring exports', [
+    test('exposes simulation definitions through the standard distribution', function (scope) {
+        scope.assert(sameType<ScenarioKeyOf<typeof apiSimulation>, 'default' | 'outage'>());
+        scope.assert(sameType<ScenarioKeyOf<typeof httpSimulation>, 'default' | 'outage'>());
+        scope.assert(sameType.withActual<'api'>(), apiSimulation.name);
+        scope.assert(acceptsCall, async function () {
+            return httpSimulation.handle(new Request('https://example.test'), {
                 descriptor: httpSimulation.scenarios.outage,
                 key: 'outage'
-            }));
-        return typeScope.assert.collect();
+            });
+        });
+        return scope.assert.collect();
     })
 ]);

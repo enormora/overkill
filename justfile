@@ -1,7 +1,6 @@
 export PATH := './node_modules/.bin:' + env_var('PATH')
 packtory-node-options := '--max-old-space-size-percentage=75'
 eslint-node-options := '--max-old-space-size-percentage=75'
-type-overkill := './tools/type-tests/node_modules/@overkill-dev/test/packages/test/overkill.entry-point.js'
 
 default:
     @just --list
@@ -53,10 +52,7 @@ test-microtests-with-coverage: benchmark-html-browser
     overkill run --profile microtests --coverage
 
 test-types:
-    for shard in 1 2 3 4 5 6 7 8; do just test-type-shard "$shard/8" || exit; done
-
-test-type-shard shard:
-    NODE_OPTIONS="${NODE_OPTIONS:-} --max-old-space-size-percentage=50" {{type-overkill}} run --config overkill.types.config.ts --profile types --shard {{quote(shard)}}
+    overkill run --profile types
 
 test-package-smoke: _build-packages
     NODE_OPTIONS="${NODE_OPTIONS:-} {{packtory-node-options}}" node source/integration-tests/package-smoke/support/pack-packages.ts

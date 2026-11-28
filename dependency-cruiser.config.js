@@ -1,7 +1,7 @@
 const configFiles = [
     '^dependency-cruiser\\.config\\.js$',
     '^eslint\\.config\\.js$',
-    '^overkill(?:\\.types)?\\.config\\.ts$',
+    '^overkill\\.config\\.ts$',
     '^packtory\\.config\\.js$'
 ];
 
@@ -11,11 +11,7 @@ const entryPointFiles = [
     '^source/reporters/',
     '^source/run/supervised-child\\.entry-point\\.ts$'
 ];
-const testSupportFiles = [
-    '^source/test-support/',
-    '^source/integration-tests/[^/]+/support/',
-    '^tools/type-tests/[^/]+\\.entry-point\\.ts$'
-];
+const testSupportFiles = [ '^source/test-support/', '^source/integration-tests/[^/]+/support/' ];
 const testFiles = [ '\\.(test|type-test)\\.ts$' ];
 const testFixtureFiles = [ '^source/integration-tests/runtime/fixtures/' ];
 const excludedFiles = [ '^(\\./)?target/', ...testFixtureFiles ];

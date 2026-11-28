@@ -1,7 +1,7 @@
 import { z } from 'zod/v4';
 import type { IsEqual } from 'type-fest';
-import { suite, test } from '../../../tools/type-tests/authoring.entry-point.ts';
-import { acceptsCall, rejectsCall, sameType } from '../../../tools/type-tests/relations.entry-point.ts';
+import { suite, test } from '../test/test.entry-point.ts';
+import { acceptsCall, rejectsCall, sameType } from '../type-test/type-test.entry-point.ts';
 import { defineTestFamily } from '../engine/engine.entry-point.ts';
 import { isEqualTo } from '../../test-support/type-relations.ts';
 import { orchestrator, type ConfiguredRunCommand } from './run.entry-point.ts';
@@ -38,9 +38,9 @@ declare const configuredCommand: ConfiguredRunCommand;
 
 declare const defineConfigUnderTest: typeof defineConfig;
 
-export const testNode = suite('family profile', [
+export const testNode = suite('Test family registration and profile settings', [
     suite('family profile settings', [
-        test('infers heterogeneous definitions independently', function (typeScope) {
+        test('infers heterogeneous definitions independently', function (scope) {
             const config = defineConfig({
                 profiles: {
                     numbers: { testFamily: numeric, settings: { iterations: 3 }, files },
@@ -48,42 +48,51 @@ export const testNode = suite('family profile', [
                     unit: { testFamily: 'microtest' }
                 }
             });
-            typeScope.assert(
+            scope.assert(
                 sameType.withActual<true>(),
                 isEqualTo<typeof numeric>()(config.profiles.numbers.testFamily)
             );
-            typeScope.assert(sameType.withActual<true>(), isEqualTo<typeof textual>()(config.profiles.text.testFamily));
-            typeScope.assert(
+            scope.assert(sameType.withActual<true>(), isEqualTo<typeof textual>()(config.profiles.text.testFamily));
+            scope.assert(
                 sameType<IsEqual<FamilySettingsOf<typeof numeric>, z.output<typeof numericSettings>>, true>()
             );
-            return typeScope.assert.collect();
+            return scope.assert.collect();
         }),
-        test('rejects swapped settings and optional family strings', function (typeScope) {
-            typeScope.assert(rejectsCall('no-matching-overload'), () =>
-                defineConfigUnderTest({
+        test('rejects swapped settings and optional family strings', function (scope) {
+            scope.assert(rejectsCall('no-matching-overload'), function () {
+                return defineConfigUnderTest({
                     profiles: {
                         numbers: { testFamily: numeric, settings: { project: './tsconfig.json' }, files }
                     }
-                }));
-            typeScope.assert(rejectsCall('no-matching-overload'), () =>
-                defineConfigUnderTest({
+                });
+            });
+            scope.assert(rejectsCall('no-matching-overload'), function () {
+                return defineConfigUnderTest({
                     profiles: {
                         text: { testFamily: textual, settings: {}, files }
                     }
-                }));
-            typeScope.assert(rejectsCall('no-matching-overload'), () =>
-                defineConfigUnderTest({
+                });
+            });
+            scope.assert(rejectsCall('no-matching-overload'), function () {
+                return defineConfigUnderTest({
                     profiles: {
                         text: { testFamily: 'type-test', settings: {}, files }
                     }
-                }));
-            return typeScope.assert.collect();
+                });
+            });
+            return scope.assert.collect();
         })
     ]),
-    test('explicit configuration sources are accepted by ordinary operations', function (typeScope) {
-        typeScope.assert(acceptsCall, async () => orchestrator.run(configuredCommand));
-        typeScope.assert(acceptsCall, async () => orchestrator.resolve(configuredCommand));
-        typeScope.assert(acceptsCall, async () => orchestrator.initialize(configuredCommand));
-        return typeScope.assert.collect();
+    test('explicit configuration sources are accepted by ordinary operations', function (scope) {
+        scope.assert(acceptsCall, async function () {
+            return orchestrator.run(configuredCommand);
+        });
+        scope.assert(acceptsCall, async function () {
+            return orchestrator.resolve(configuredCommand);
+        });
+        scope.assert(acceptsCall, async function () {
+            return orchestrator.initialize(configuredCommand);
+        });
+        return scope.assert.collect();
     })
 ]);

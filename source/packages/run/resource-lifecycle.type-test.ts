@@ -1,6 +1,6 @@
 import type { IsEqual } from 'type-fest';
-import { suite, test } from '../../../tools/type-tests/authoring.entry-point.ts';
-import { acceptsCall, sameType } from '../../../tools/type-tests/relations.entry-point.ts';
+import { suite, test } from '../test/test.entry-point.ts';
+import { acceptsCall, sameType } from '../type-test/type-test.entry-point.ts';
 import type {
     AnyResourceDefinition,
     ResourceContext,
@@ -42,20 +42,22 @@ declare const composedResourceSessionUnderTest: typeof composedResourceSession;
 declare const resourceWrapperLifecycleErrorUnderTest: typeof resourceWrapperLifecycleError;
 declare const resourceWrapperErrorFromUnknownUnderTest: typeof resourceWrapperErrorFromUnknown;
 
-export const testNode = suite('@overkill-dev/run/resource-lifecycle', [
-    test('exposes lifecycle state coordination', function (typeScope) {
-        typeScope.assert(acceptsCall, () => activeManagedLifecycleUnderTest());
-        return typeScope.assert.collect();
+export const testNode = suite('Runner resource lifecycle events', [
+    test('exposes lifecycle state coordination', function (scope) {
+        scope.assert(acceptsCall, function () {
+            activeManagedLifecycleUnderTest();
+        });
+        return scope.assert.collect();
     }),
-    test('exposes wrapper session composition contracts', function (typeScope) {
-        typeScope.assert(sameType<
+    test('exposes wrapper session composition contracts', function (scope) {
+        scope.assert(sameType<
             IsEqual<LifecycleMessages, {
                 readonly acquisitionFailure: string;
                 readonly disposalFailure: string;
             }>,
             true
         >());
-        typeScope.assert(
+        scope.assert(
             sameType<
                 IsAssignable<
                     { readonly kind: 'resources'; readonly resources: RuntimeResourceMap; },
@@ -64,37 +66,50 @@ export const testNode = suite('@overkill-dev/run/resource-lifecycle', [
                 true
             >()
         );
-        typeScope.assert(
+        scope.assert(
             sameType<
                 IsAssignable<{ readonly kind: 'runtime'; readonly runtime: RuntimeGraph; }, ResourceWrapperStep>,
                 true
             >()
         );
-        typeScope.assert(acceptsCall, () => directResourceEntriesUnderTest([ { kind: 'resources', resources } ]));
-        typeScope.assert(acceptsCall, () => stepRuntimeGraphsUnderTest([ { kind: 'runtime', runtime } ]));
-        typeScope.assert(acceptsCall, () =>
-            combinedResourceEntriesUnderTest([
+        scope.assert(acceptsCall, function () {
+            return directResourceEntriesUnderTest([ { kind: 'resources', resources } ]);
+        });
+        scope.assert(acceptsCall, function () {
+            return stepRuntimeGraphsUnderTest([ { kind: 'runtime', runtime } ]);
+        });
+        scope.assert(acceptsCall, function () {
+            return combinedResourceEntriesUnderTest([
                 { kind: 'resources', resources },
                 { kind: 'runtime', runtime }
-            ]));
-        typeScope.assert(acceptsCall, () => resourceMapFromEntriesUnderTest([ { key: 'resource', resource } ]));
-        typeScope.assert(acceptsCall, () => composedResourceSessionUnderTest(resources, [ runtime ], resourceSession));
-        return typeScope.assert.collect();
+            ]);
+        });
+        scope.assert(acceptsCall, function () {
+            return resourceMapFromEntriesUnderTest([ { key: 'resource', resource } ]);
+        });
+        scope.assert(acceptsCall, function () {
+            return composedResourceSessionUnderTest(resources, [ runtime ], resourceSession);
+        });
+        return scope.assert.collect();
     }),
-    test('exposes scoped context projection', function (typeScope) {
-        typeScope.assert(
+    test('exposes scoped context projection', function (scope) {
+        scope.assert(
             sameType.withActual<true>(),
             isEqualTo<ResourceContext<RuntimeResourceMap>>()(resourceContextForStep(resources, resourceHandles))
         );
-        typeScope.assert(
+        scope.assert(
             sameType.withActual<true>(),
             isEqualTo<RuntimeGraphContext<RuntimeGraph>>()(runtimeContextForStep(runtime, session))
         );
-        return typeScope.assert.collect();
+        return scope.assert.collect();
     }),
-    test('exposes lifecycle error wrapping', function (typeScope) {
-        typeScope.assert(acceptsCall, () => resourceWrapperLifecycleErrorUnderTest('Failed.', resource));
-        typeScope.assert(acceptsCall, () => resourceWrapperErrorFromUnknownUnderTest('Failed.', resource));
-        return typeScope.assert.collect();
+    test('exposes lifecycle error wrapping', function (scope) {
+        scope.assert(acceptsCall, function () {
+            return resourceWrapperLifecycleErrorUnderTest('Failed.', resource);
+        });
+        scope.assert(acceptsCall, function () {
+            return resourceWrapperErrorFromUnknownUnderTest('Failed.', resource);
+        });
+        return scope.assert.collect();
     })
 ]);

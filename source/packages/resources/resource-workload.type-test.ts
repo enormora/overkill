@@ -1,5 +1,5 @@
-import { suite, test } from '../../../tools/type-tests/authoring.entry-point.ts';
-import { rejectsCall, sameType } from '../../../tools/type-tests/relations.entry-point.ts';
+import { suite, test } from '../test/test.entry-point.ts';
+import { rejectsCall, sameType } from '../type-test/type-test.entry-point.ts';
 import { isEqualTo } from '../../test-support/type-relations.ts';
 import {
     defineResource,
@@ -21,8 +21,8 @@ function parsePackages(parameters: WorkloadParameters): PackageParameters {
     return { packages: parameters.packages };
 }
 
-export const testNode = suite('resource workload', [
-    test('infers workload parameters alongside dependency handles', function (typeScope) {
+export const testNode = suite('Resource workload inputs and runtime bindings', [
+    test('infers workload parameters alongside dependency handles', function (scope) {
         const dependency = defineResource({
             name: 'registry',
             scope: 'per-case',
@@ -39,22 +39,22 @@ export const testNode = suite('resource workload', [
             dependencies: { dependency },
             workload: parsePackages,
             acquire({ workload, dependencies }) {
-                typeScope.assert(sameType.withActual<true>(), isEqualTo<PackageParameters>()(workload.parameters));
-                typeScope.assert(sameType.withActual<string>(), dependencies.dependency);
+                scope.assert(sameType.withActual<true>(), isEqualTo<PackageParameters>()(workload.parameters));
+                scope.assert(sameType.withActual<string>(), dependencies.dependency);
                 return workload.parameters.packages;
             },
             dispose(handle, { workload }) {
-                typeScope.assert(sameType.withActual<number>(), handle);
-                typeScope.assert(sameType.withActual<true>(), isEqualTo<PackageParameters>()(workload.parameters));
+                scope.assert(sameType.withActual<number>(), handle);
+                scope.assert(sameType.withActual<true>(), isEqualTo<PackageParameters>()(workload.parameters));
             }
         });
-        typeScope.assert(
+        scope.assert(
             sameType.withActual<true>(),
             isEqualTo<(parameters: WorkloadParameters) => PackageParameters>()(resource.workload)
         );
-        return typeScope.assert.collect();
+        return scope.assert.collect();
     }),
-    test('infers workload parameters in local service callbacks', function (typeScope) {
+    test('infers workload parameters in local service callbacks', function (scope) {
         defineLocalServiceResource({
             name: 'registry',
             scope: 'per-case',
@@ -63,35 +63,35 @@ export const testNode = suite('resource workload', [
             workload: parsePackages,
             address: { kind: 'loopback', port: 0 },
             start({ workload }) {
-                typeScope.assert(sameType.withActual<true>(), isEqualTo<PackageParameters>()(workload.parameters));
+                scope.assert(sameType.withActual<true>(), isEqualTo<PackageParameters>()(workload.parameters));
                 return workload.parameters.packages;
             },
             ready(handle, { workload }) {
-                typeScope.assert(sameType.withActual<number>(), handle);
-                typeScope.assert(sameType.withActual<true>(), isEqualTo<PackageParameters>()(workload.parameters));
+                scope.assert(sameType.withActual<number>(), handle);
+                scope.assert(sameType.withActual<true>(), isEqualTo<PackageParameters>()(workload.parameters));
                 return { url: 'http://localhost', packages: handle };
             },
             dispose(handle, { workload }) {
-                typeScope.assert(sameType.withActual<number>(), handle);
-                typeScope.assert(sameType.withActual<true>(), isEqualTo<PackageParameters>()(workload.parameters));
+                scope.assert(sameType.withActual<number>(), handle);
+                scope.assert(sameType.withActual<true>(), isEqualTo<PackageParameters>()(workload.parameters));
             }
         });
-        return typeScope.assert.collect();
+        return scope.assert.collect();
     }),
-    test('independent resources expose a null workload', function (typeScope) {
+    test('independent resources expose a null workload', function (scope) {
         defineResource({
             name: 'registry',
             scope: 'per-case',
             requirements: [],
             dispose: null,
             acquire({ workload }) {
-                typeScope.assert(sameType.withActual<null>(), workload);
+                scope.assert(sameType.withActual<null>(), workload);
                 return 'registry';
             }
         });
-        return typeScope.assert.collect();
+        return scope.assert.collect();
     }),
-    test('infers workload parameters with projections and acquisition scenarios', function (typeScope) {
+    test('infers workload parameters with projections and acquisition scenarios', function (scope) {
         const fixture = defineResource({
             name: 'fixture',
             scope: 'per-run',
@@ -99,14 +99,14 @@ export const testNode = suite('resource workload', [
             workload: parsePackages,
             scenarios: { registry: { default: 'ready', timing: 'acquire', values: [ 'ready', 'failure' ] } },
             acquire({ workload, scenarios }) {
-                typeScope.assert(sameType.withActual<true>(), isEqualTo<PackageParameters>()(workload.parameters));
-                typeScope.assert(sameType.withActual<'failure' | 'ready'>(), scenarios.registry);
+                scope.assert(sameType.withActual<true>(), isEqualTo<PackageParameters>()(workload.parameters));
+                scope.assert(sameType.withActual<'failure' | 'ready'>(), scenarios.registry);
                 return workload.parameters.packages;
             },
             dispose(handle, { workload, scenarios }) {
-                typeScope.assert(sameType.withActual<number>(), handle);
-                typeScope.assert(sameType.withActual<true>(), isEqualTo<PackageParameters>()(workload.parameters));
-                typeScope.assert(sameType.withActual<'failure' | 'ready'>(), scenarios.registry);
+                scope.assert(sameType.withActual<number>(), handle);
+                scope.assert(sameType.withActual<true>(), isEqualTo<PackageParameters>()(workload.parameters));
+                scope.assert(sameType.withActual<'failure' | 'ready'>(), scenarios.registry);
             },
             serializeHandle(handle) {
                 return { packages: handle };
@@ -115,18 +115,18 @@ export const testNode = suite('resource workload', [
                 return String(payload.packages);
             }
         });
-        typeScope.assert(sameType<ResourceHandle<typeof fixture>, string>());
-        typeScope.assert(
+        scope.assert(sameType<ResourceHandle<typeof fixture>, string>());
+        scope.assert(
             sameType.withActual<true>(),
             isEqualTo<
                 ((payload: ResourceProjectionPayload, context: ResourceProjectionContext) => string) | undefined
             >()(fixture.deserializeHandle)
         );
-        return typeScope.assert.collect();
+        return scope.assert.collect();
     }),
-    test('rejects asynchronous workload parsers', function (typeScope) {
-        typeScope.assert(rejectsCall('no-matching-overload'), () =>
-            defineResource({
+    test('rejects asynchronous workload parsers', function (scope) {
+        scope.assert(rejectsCall('no-matching-overload'), function () {
+            return defineResource({
                 name: 'fixture',
                 scope: 'per-case',
                 requirements: [],
@@ -137,7 +137,8 @@ export const testNode = suite('resource workload', [
                 acquire() {
                     return packageCount;
                 }
-            }));
-        return typeScope.assert.collect();
+            });
+        });
+        return scope.assert.collect();
     })
 ]);

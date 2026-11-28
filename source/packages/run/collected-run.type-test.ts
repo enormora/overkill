@@ -1,6 +1,6 @@
 import type { IsEqual } from 'type-fest';
-import { suite, test } from '../../../tools/type-tests/authoring.entry-point.ts';
-import { rejectsCall, sameType } from '../../../tools/type-tests/relations.entry-point.ts';
+import { suite, test } from '../test/test.entry-point.ts';
+import { rejectsCall, sameType } from '../type-test/type-test.entry-point.ts';
 import type { RunReport, RunResult } from '../engine/engine.entry-point.ts';
 import type {
     orchestrator,
@@ -24,10 +24,10 @@ import type {
 declare const callUnderTest: CollectedRun['run'];
 
 export const testNode = suite('public runner lifecycle', [
-    test('exposes typed transport parsers and seed generation', function (typeScope) {
-        typeScope.assert(sameType<IsEqual<typeof parseRunResult, (value: unknown) => RunResult>, true>());
-        typeScope.assert(sameType<IsEqual<typeof parseRunnerResult, (value: unknown) => RunnerResult>, true>());
-        typeScope.assert(sameType<
+    test('exposes typed transport parsers and seed generation', function (scope) {
+        scope.assert(sameType<IsEqual<typeof parseRunResult, (value: unknown) => RunResult>, true>());
+        scope.assert(sameType<IsEqual<typeof parseRunnerResult, (value: unknown) => RunnerResult>, true>());
+        scope.assert(sameType<
             IsEqual<
                 RunnerResult,
                 RunResult & {
@@ -37,15 +37,15 @@ export const testNode = suite('public runner lifecycle', [
             >,
             true
         >());
-        typeScope.assert(sameType<IsEqual<typeof parseRunSelection, (value: unknown) => RunSelection>, true>());
-        typeScope.assert(
+        scope.assert(sameType<IsEqual<typeof parseRunSelection, (value: unknown) => RunSelection>, true>());
+        scope.assert(
             sameType<IsEqual<typeof parseRunnerError, (value: unknown) => RunResult['runnerErrors'][number]>, true>()
         );
-        typeScope.assert(sameType<IsEqual<typeof createRandomRunSeed, () => bigint>, true>());
-        return typeScope.assert.collect();
+        scope.assert(sameType<IsEqual<typeof createRandomRunSeed, () => bigint>, true>());
+        return scope.assert.collect();
     }),
-    test('exposes initialization and collected execution', function (typeScope) {
-        typeScope.assert(
+    test('exposes initialization and collected execution', function (scope) {
+        scope.assert(
             sameType<
                 IsEqual<
                     typeof orchestrator.initialize,
@@ -54,15 +54,15 @@ export const testNode = suite('public runner lifecycle', [
                 true
             >()
         );
-        typeScope.assert(sameType<IsEqual<InitializedRun['collect'], () => Promise<CollectedRun>>, true>());
-        typeScope.assert(sameType<IsEqual<CollectedRunInvocation, { readonly selection: RunSelection; }>, true>());
-        typeScope.assert(
+        scope.assert(sameType<IsEqual<InitializedRun['collect'], () => Promise<CollectedRun>>, true>());
+        scope.assert(sameType<IsEqual<CollectedRunInvocation, { readonly selection: RunSelection; }>, true>());
+        scope.assert(
             sameType<
                 IsEqual<CollectedRun['run'], (invocation: CollectedRunInvocation) => Promise<RunnerResult>>,
                 true
             >()
         );
-        typeScope.assert(
+        scope.assert(
             sameType<
                 IsEqual<
                     CollectedRun['runWithReporterDelivery'],
@@ -71,23 +71,27 @@ export const testNode = suite('public runner lifecycle', [
                 true
             >()
         );
-        typeScope.assert(
+        scope.assert(
             sameType<
                 IsEqual<RunCollectionError['runnerErrors'], () => readonly RunResult['runnerErrors'][number][]>,
                 true
             >()
         );
-        return typeScope.assert.collect();
+        return scope.assert.collect();
     }),
-    test('rejects invocation policy overrides', function (typeScope) {
-        typeScope.assert(
+    test('rejects invocation policy overrides', function (scope) {
+        scope.assert(
             rejectsCall('argument-type'),
-            async () => callUnderTest({ selection: { kind: 'all' }, runtimePolicy: null })
+            async function () {
+                return callUnderTest({ selection: { kind: 'all' }, runtimePolicy: null });
+            }
         );
-        typeScope.assert(
+        scope.assert(
             rejectsCall('argument-type'),
-            async () => callUnderTest({ selection: { kind: 'all' }, coverage: true })
+            async function () {
+                return callUnderTest({ selection: { kind: 'all' }, coverage: true });
+            }
         );
-        return typeScope.assert.collect();
+        return scope.assert.collect();
     })
 ]);

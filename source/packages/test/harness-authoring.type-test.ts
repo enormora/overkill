@@ -1,8 +1,9 @@
 import type { IsEqual } from 'type-fest';
-import { suite, test } from '../../../tools/type-tests/authoring.entry-point.ts';
-import { rejectsCall, sameType } from '../../../tools/type-tests/relations.entry-point.ts';
+import { rejectsCall, sameType } from '../type-test/type-test.entry-point.ts';
 import { type IsAssignable, isEqualTo } from '../../test-support/type-relations.ts';
 import {
+    suite,
+    test,
     type DefinedHarness,
     type ExactHarnessOverrides,
     defineHarness,
@@ -88,11 +89,11 @@ function createInvalidHarness(overrides: TypeHarnessWithRequiredOverrides): stri
     return overrides.label;
 }
 
-export const testNode = suite('@overkill-dev/test defineHarness()', [
+export const testNode = suite('Harness composition and sparse overrides', [
     suite('defines object-form harnesses with exact sparse overrides', [
-        test('types the harness and its creation forms', function (typeScope) {
+        test('types the harness and its creation forms', function (scope) {
             const objectHarness = defineHarness(partFactories, createSubject);
-            typeScope.assert(
+            scope.assert(
                 sameType<
                     IsAssignable<
                         typeof objectHarness,
@@ -101,9 +102,9 @@ export const testNode = suite('@overkill-dev/test defineHarness()', [
                     true
                 >()
             );
-            typeScope.assert(sameType.withActual<true>(), isEqualTo<TypeHarnessCreated>()(objectHarness.create()));
-            typeScope.assert(sameType.withActual<true>(), isEqualTo<TypeHarnessCreated>()(objectHarness.create({})));
-            typeScope.assert(
+            scope.assert(sameType.withActual<true>(), isEqualTo<TypeHarnessCreated>()(objectHarness.create()));
+            scope.assert(sameType.withActual<true>(), isEqualTo<TypeHarnessCreated>()(objectHarness.create({})));
+            scope.assert(
                 sameType.withActual<true>(),
                 isEqualTo<TypeHarnessCreated>()(objectHarness.create({
                     loadValue(id) {
@@ -117,16 +118,20 @@ export const testNode = suite('@overkill-dev/test defineHarness()', [
                 },
                 missing: true
             };
-            typeScope.assert(rejectsCall('argument-type'), () => objectHarness.create({ missing: true }));
-            typeScope.assert(rejectsCall('argument-type'), () => objectHarness.create(badVariableOverride));
-            return typeScope.assert.collect();
+            scope.assert(rejectsCall('argument-type'), function () {
+                return objectHarness.create({ missing: true });
+            });
+            scope.assert(rejectsCall('argument-type'), function () {
+                return objectHarness.create(badVariableOverride);
+            });
+            return scope.assert.collect();
         }),
-        test('rejects unknown overrides', function (typeScope) {
-            typeScope.assert(sameType<IsAssignable<typeof partFactories, HarnessPartFactories>, true>());
-            typeScope.assert(sameType<IsEqual<HarnessPartFactory<string>, () => string>, true>());
-            typeScope.assert(sameType<IsEqual<HarnessParts<typeof partFactories>, TypeHarnessParts>, true>());
-            typeScope.assert(sameType<IsEqual<HarnessOverrides<TypeHarnessParts>, TypeObjectHarnessOverrides>, true>());
-            typeScope.assert(
+        test('rejects unknown overrides', function (scope) {
+            scope.assert(sameType<IsAssignable<typeof partFactories, HarnessPartFactories>, true>());
+            scope.assert(sameType<IsEqual<HarnessPartFactory<string>, () => string>, true>());
+            scope.assert(sameType<IsEqual<HarnessParts<typeof partFactories>, TypeHarnessParts>, true>());
+            scope.assert(sameType<IsEqual<HarnessOverrides<TypeHarnessParts>, TypeObjectHarnessOverrides>, true>());
+            scope.assert(
                 sameType<
                     IsAssignable<
                         { readonly missing: true; },
@@ -135,23 +140,29 @@ export const testNode = suite('@overkill-dev/test defineHarness()', [
                     false
                 >()
             );
-            return typeScope.assert.collect();
+            return scope.assert.collect();
         })
     ]),
-    test('defines function-form harnesses with sparse typed overrides', function (typeScope) {
+    test('defines function-form harnesses with sparse typed overrides', function (scope) {
         const syncHarness = defineHarness(createLabel);
         const asyncHarness = defineHarness(createAsyncLabel);
         const badVariableOverride = { label: 'bad', missing: true };
 
-        typeScope.assert(sameType.withActual<true>(), isEqualTo<TypeLabelHarness>()(syncHarness.create()));
-        typeScope.assert(
+        scope.assert(sameType.withActual<true>(), isEqualTo<TypeLabelHarness>()(syncHarness.create()));
+        scope.assert(
             sameType.withActual<true>(),
             isEqualTo<TypeLabelHarness>()(syncHarness.create({ label: 'custom' }))
         );
-        typeScope.assert(rejectsCall('argument-type'), () => syncHarness.create({ missing: true }));
-        typeScope.assert(rejectsCall('argument-type'), () => syncHarness.create(badVariableOverride));
-        typeScope.assert(sameType.withActual<true>(), isEqualTo<Promise<TypeLabelHarness>>()(asyncHarness.create()));
-        typeScope.assert(rejectsCall('argument-count'), () => defineHarness(createInvalidHarness));
-        return typeScope.assert.collect();
+        scope.assert(rejectsCall('argument-type'), function () {
+            return syncHarness.create({ missing: true });
+        });
+        scope.assert(rejectsCall('argument-type'), function () {
+            return syncHarness.create(badVariableOverride);
+        });
+        scope.assert(sameType.withActual<true>(), isEqualTo<Promise<TypeLabelHarness>>()(asyncHarness.create()));
+        scope.assert(rejectsCall('argument-count'), function () {
+            return defineHarness(createInvalidHarness);
+        });
+        return scope.assert.collect();
     })
 ]);

@@ -1,6 +1,6 @@
 import type { IsEqual } from 'type-fest';
-import { suite, test } from '../../../tools/type-tests/authoring.entry-point.ts';
-import { acceptsCall, assignableFrom, rejectsCall, sameType } from '../../../tools/type-tests/relations.entry-point.ts';
+import { suite, test } from '../test/test.entry-point.ts';
+import { acceptsCall, assignableFrom, rejectsCall, sameType } from '../type-test/type-test.entry-point.ts';
 import { isEqualTo } from '../../test-support/type-relations.ts';
 import {
     defineTestFamily,
@@ -25,8 +25,8 @@ type ProjectSettings = { readonly project: string; };
 
 declare const projectSettingsUnderTest: typeof prepareFamily<ProjectSettings>;
 
-export const testNode = suite('test family', [
-    test('family settings retain the parser result type', function (typeScope) {
+export const testNode = suite('Family definitions and execution contracts', [
+    test('family settings retain the parser result type', function (scope) {
         const family = defineTestFamily({
             id: '@example/checks',
             version: '1',
@@ -39,30 +39,30 @@ export const testNode = suite('test family', [
                 throw new Error('Not loaded');
             }
         });
-        typeScope.assert(sameType<IsEqual<typeof family, TestFamily<ProjectSettings>>, true>());
-        typeScope.assert(sameType.withActual<true>(), isEqualTo<ProjectSettings>()(family.parseSettings(null)));
-        return typeScope.assert.collect();
+        scope.assert(sameType<IsEqual<typeof family, TestFamily<ProjectSettings>>, true>());
+        scope.assert(sameType.withActual<true>(), isEqualTo<ProjectSettings>()(family.parseSettings(null)));
+        return scope.assert.collect();
     }),
-    test('metadata views retain branding without erasing callable settings', function (typeScope) {
-        typeScope.assert(assignableFrom.not<keyof DefinedTestFamily, 'load' | 'parseSettings'>());
-        typeScope.assert(sameType<[TestFamilyDefinition<null>] extends [DefinedTestFamily] ? true : false, false>());
-        typeScope.assert(
+    test('metadata views retain branding without erasing callable settings', function (scope) {
+        scope.assert(assignableFrom.not<keyof DefinedTestFamily, 'load' | 'parseSettings'>());
+        scope.assert(sameType<[TestFamilyDefinition<null>] extends [DefinedTestFamily] ? true : false, false>());
+        scope.assert(
             sameType<
                 [TestFamily<ProjectSettings>] extends [TestFamily<{ readonly iterations: number; }>] ? true : false,
                 false
             >()
         );
-        return typeScope.assert.collect();
+        return scope.assert.collect();
     }),
-    test('direct family execution requires branded values and exact settings', function (typeScope) {
-        typeScope.assert(
+    test('direct family execution requires branded values and exact settings', function (scope) {
+        scope.assert(
             sameType<
                 [{ readonly testPlan: TestPlan; readonly facts: FamilyRunFacts; }] extends [CollectedFamilyRun] ? true
                     : false,
                 false
             >()
         );
-        typeScope.assert(
+        scope.assert(
             sameType<
                 [Pick<PreparedFamilyRun, keyof AsyncDisposable | 'collect' | 'testPlan'>] extends [PreparedFamilyRun]
                     ? true
@@ -70,9 +70,9 @@ export const testNode = suite('test family', [
                 false
             >()
         );
-        return typeScope.assert.collect();
+        return scope.assert.collect();
     }),
-    test('preparation infers the settings contract from the definition', function (typeScope) {
+    test('preparation infers the settings contract from the definition', function (scope) {
         const family = defineTestFamily({
             id: '@example/settings',
             version: '1',
@@ -85,32 +85,38 @@ export const testNode = suite('test family', [
                 throw new Error('Not loaded');
             }
         });
-        typeScope.assert(acceptsCall, async () =>
-            projectSettingsUnderTest({
+        scope.assert(acceptsCall, async function () {
+            return projectSettingsUnderTest({
                 testPlan: plan,
                 projectRoot: '/project',
                 signal: executeOptions.signal,
                 testFamily: family,
                 settings: { project: 'tsconfig.json' }
-            }));
-        typeScope.assert(rejectsCall('argument-type'), async () =>
-            projectSettingsUnderTest({
+            });
+        });
+        scope.assert(rejectsCall('argument-type'), async function () {
+            return projectSettingsUnderTest({
                 testPlan: plan,
                 projectRoot: '/project',
                 signal: executeOptions.signal,
                 testFamily: family,
                 settings: { project: 123 }
-            }));
-        return typeScope.assert.collect();
+            });
+        });
+        return scope.assert.collect();
     }),
-    test('collected execution requires a signal', function (typeScope) {
-        typeScope.assert(acceptsCall, async () => execute(collectedRun, executeOptions));
-        typeScope.assert(rejectsCall('argument-type'), async () => execute(collectedRun));
-        return typeScope.assert.collect();
+    test('collected execution requires a signal', function (scope) {
+        scope.assert(acceptsCall, async function () {
+            return execute(collectedRun, executeOptions);
+        });
+        scope.assert(rejectsCall('argument-type'), async function () {
+            return execute(collectedRun);
+        });
+        return scope.assert.collect();
     }),
-    test('prepared facts are available without collection evidence', function (typeScope) {
-        typeScope.assert(sameType<IsEqual<PreparedFamilyRun['facts'], FamilyPreparationFacts>, true>());
-        typeScope.assert(assignableFrom.not<keyof FamilyPreparationFacts, 'collection'>());
-        return typeScope.assert.collect();
+    test('prepared facts are available without collection evidence', function (scope) {
+        scope.assert(sameType<IsEqual<PreparedFamilyRun['facts'], FamilyPreparationFacts>, true>());
+        scope.assert(assignableFrom.not<keyof FamilyPreparationFacts, 'collection'>());
+        return scope.assert.collect();
     })
 ]);
