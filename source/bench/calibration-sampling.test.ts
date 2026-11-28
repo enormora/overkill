@@ -354,9 +354,11 @@ export const testNode = suite('calibration sampling lifetimes', [
             return cached ? 'cached' : 'new';
         },
         async test(scope) {
-            const calibration = referenceResource();
-            const rules = { value: { calibration, scaling: 'proportional' as const } };
-            await using resources = await startResources({ resources: { calibration }, signal: scope.signal });
+            const rules = { value: { calibration: referenceResource(), scaling: 'proportional' as const } };
+            await using resources = await startResources({
+                resources: { calibration: rules.value.calibration },
+                signal: scope.signal
+            });
             const handles = { [calibrationResourceKey(rules.value)]: resources.context.calibration };
             if (scope.parameters) {
                 await collectBenchmarkNormalization(

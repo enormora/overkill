@@ -31,7 +31,8 @@ export const testNode = suite('garbage collection capability policy', [
             lifecycle
         }, target);
         scope.assert.equal(captureThrownError(collection.validate).message, 'not available');
-        scope.assert.equal((await captureRejectedError(collection.collect)).message, 'not available');
+        const failure = await captureRejectedError(collection.collect);
+        scope.assert.equal(failure.message, 'not available');
         scope.assert.deepEqual(collection.snapshot(), { mode: 'after-sample', completed: 0, failures: 0 });
         return scope.assert.collect();
     }),

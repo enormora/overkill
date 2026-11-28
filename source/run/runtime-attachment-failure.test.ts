@@ -95,7 +95,7 @@ export const testNode = suite('Runtime attachment failure', [
 
         return scope.assert.collect();
     }),
-    test('invalid protocol replies fail instead of accepting missing artifacts', async function (scope) {
+    test('rejects an invalid attachment open reply', async function (scope) {
         const execution = createAttachmentExecution(async function invalidReply() {
             return { kind: 'written' };
         }, { ...defaultAttachmentLimits, maxInlineBytes: 1024 });
@@ -105,6 +105,9 @@ export const testNode = suite('Runtime attachment failure', [
         scope.assert.equal(openFailure.message, 'Attachment open returned an invalid reply.');
         const openErrors = await execution.finish();
         scope.assert.equal(openErrors.length, 1);
+        return scope.assert.collect();
+    }),
+    test('rejects an invalid attachment close reply', async function (scope) {
         const closing = createAttachmentExecution(async function invalidCloseReply(operation) {
             return operation.kind === 'open' ? { kind: 'opened', writer: 0 } : { kind: 'written' };
         }, { ...defaultAttachmentLimits, maxInlineBytes: 1024 });
