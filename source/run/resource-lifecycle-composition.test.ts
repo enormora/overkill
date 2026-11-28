@@ -1,4 +1,5 @@
 import { suite, test } from '@overkill-dev/test';
+import { captureThrownError } from '../test-support/captured-error.ts';
 
 import { CaseRunnerError } from '../engine/run-result.ts';
 
@@ -104,7 +105,7 @@ function replaceObjectHasOwn(hasOwn: typeof Object.hasOwn): RestoreGlobal {
     };
 }
 
-function replaceReflectGet(reflectGet: PatchedReflectGet): RestoreGlobal {
+function captureManagedSessionError(reflectGet: PatchedReflectGet): Error | undefined {
     const originalReflectGet = Reflect.get;
 
     Object.defineProperty(Reflect, 'get', {
@@ -112,12 +113,18 @@ function replaceReflectGet(reflectGet: PatchedReflectGet): RestoreGlobal {
         value: reflectGet
     });
 
-    return function restoreReflectGet() {
+    try {
+        return captureThrownError(function createInvalidManagedSession() {
+            managedResourceSession(resources, new Map(), function () {
+                return [];
+            });
+        });
+    } finally {
         Object.defineProperty(Reflect, 'get', {
             configurable: true,
             value: originalReflectGet
         });
-    };
+    }
 }
 
 function captureThrown(run: () => void): unknown {
@@ -204,18 +211,26 @@ export const testNode = suite('Resource lifecycle composition', [
             runtimeContexts: new Map([ [ runtime, emptyContext ] ])
         });
 
-        scope.assert.throws(function readMissingRuntimeContext() {
-            runtimeContextForStep(runtime, session);
-        }, { message: 'Runtime scope composition failed.' });
-        scope.assert.throws(function readIncompleteRuntimeContext() {
-            runtimeContextForStep(runtime, incompleteSession);
-        }, { message: 'Runtime scope composition failed.' });
+        scope.assert.equal(
+            captureThrownError(function readMissingRuntimeContext() {
+                runtimeContextForStep(runtime, session);
+            })
+                ?.message,
+            'Runtime scope composition failed.'
+        );
+        scope.assert.equal(
+            captureThrownError(function readIncompleteRuntimeContext() {
+                runtimeContextForStep(runtime, incompleteSession);
+            })
+                ?.message,
+            'Runtime scope composition failed.'
+        );
 
         return scope.assert.collect();
     }),
     test('managed resource sessions reject invalid async disposal support', function (scope) {
         const originalReflectGet = Reflect.get;
-        const restore = replaceReflectGet(function hideAsyncDisposeSymbol(...parameters) {
+        const failure = captureManagedSessionError(function hideAsyncDisposeSymbol(...parameters) {
             const [ target, propertyKey, receiver ] = parameters;
 
             if (target === Symbol && propertyKey === 'asyncDispose') {
@@ -227,21 +242,13 @@ export const testNode = suite('Resource lifecycle composition', [
                 : originalReflectGet(target, propertyKey, receiver);
         });
 
-        try {
-            scope.assert.throws(function createInvalidManagedSession() {
-                managedResourceSession(resources, new Map(), function () {
-                    return [];
-                });
-            }, { message: 'Runtime does not provide Symbol.asyncDispose.' });
-        } finally {
-            restore();
-        }
+        scope.assert.equal(failure?.message, 'Runtime does not provide Symbol.asyncDispose.');
 
         return scope.assert.collect();
     }),
     test('managed resource sessions reject invalid session construction', function (scope) {
         const originalReflectGet = Reflect.get;
-        const restore = replaceReflectGet(function hideSessionDisposeOnce(...parameters) {
+        const failure = captureManagedSessionError(function hideSessionDisposeOnce(...parameters) {
             const [ target, propertyKey, receiver ] = parameters;
 
             if (target !== Symbol && propertyKey === 'disposeOnce') {
@@ -253,15 +260,7 @@ export const testNode = suite('Resource lifecycle composition', [
                 : originalReflectGet(target, propertyKey, receiver);
         });
 
-        try {
-            scope.assert.throws(function createInvalidManagedSession() {
-                managedResourceSession(resources, new Map(), function () {
-                    return [];
-                });
-            }, { message: 'Resource scope composition failed.' });
-        } finally {
-            restore();
-        }
+        scope.assert.equal(failure?.message, 'Resource scope composition failed.');
 
         return scope.assert.collect();
     }),

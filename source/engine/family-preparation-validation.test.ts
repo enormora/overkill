@@ -1,5 +1,5 @@
-import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { table, suite, test } from '@overkill-dev/test';
+import { captureRejectedError } from '../test-support/captured-error.ts';
 
 import { createTestEngine } from '../test-support/create-test-engine.ts';
 import {
@@ -92,22 +92,6 @@ function defineAnalysis(prepare: FamilyBackend<null>['prepare']): TestFamily<nul
         }
     });
 }
-
-const collectExecutable = defineCompositeAssertion({
-    name: 'collect executable',
-    async assert(check, engine: Engine, testFamily: TestFamily<null>, testPlan: TestPlan) {
-        await using prepared = await engine.prepareFamily({
-            testPlan,
-            testFamily,
-            settings: null,
-            projectRoot,
-            signal
-        });
-        return await check.rejects(async function () {
-            await prepared.collect({ workIds: [ testPlan.cases[0].workId ], signal });
-        }, { message: /collection kind/u });
-    }
-});
 
 function runtimeFamily(): TestFamily<null> {
     return defineTestFamily({
@@ -259,7 +243,18 @@ export const testNode = suite('family preparation validation', [
     }),
     test('rejects a collection with a different execution kind', async function (scope) {
         const engine = createTestEngine();
-        await scope.assert(collectExecutable, engine, defineAnalysis(prepareRuntime), plan(engine, 'ordinary'));
+        const testPlan = plan(engine, 'ordinary');
+        await using prepared = await engine.prepareFamily({
+            testPlan,
+            testFamily: defineAnalysis(prepareRuntime),
+            settings: null,
+            projectRoot,
+            signal
+        });
+        const collectionError = await captureRejectedError(async function () {
+            await prepared.collect({ workIds: [ testPlan.cases[0].workId ], signal });
+        });
+        scope.assert.equal(collectionError?.message, 'Family collection kind does not match its definition.');
         return scope.assert.collect();
     }),
     test('rejects foreign collections and unsupported retry policy', async function (scope) {

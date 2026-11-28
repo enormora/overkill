@@ -1,6 +1,6 @@
 import type { IsEqual } from 'type-fest';
-import { suite, test } from '../../../tools/type-tests/authoring.entry-point.ts';
-import { acceptsCall, sameType } from '../../../tools/type-tests/relations.entry-point.ts';
+import { acceptsCall, sameType } from '@overkill-dev/type-test';
+import { suite, test } from '@overkill-dev/test';
 import type {
     DefinedOutputRenderer,
     DefinedReporter,
@@ -66,19 +66,21 @@ type ProjectProfileFileSets = {
 
 declare const defineConfigUnderTest: typeof defineConfig;
 
-export const testNode = suite('@overkill-dev/test standard subpaths', [
-    test('exposes config authoring types', function (typeScope) {
-        typeScope.assert(acceptsCall, () => defineConfigUnderTest({ profiles: { unit: { testFamily: 'microtest' } } }));
-        typeScope.assert(
+export const testNode = suite('Public authoring subpath contracts', [
+    test('exposes config authoring types', function (scope) {
+        scope.assert(acceptsCall, function () {
+            return defineConfigUnderTest({ profiles: { unit: { testFamily: 'microtest' } } });
+        });
+        scope.assert(
             sameType<[ProjectIntegrationProfileConfig] extends [ProjectProfileConfig] ? true : false, true>()
         );
-        typeScope.assert(
+        scope.assert(
             sameType<[ProjectMicrotestProfileConfig] extends [ProjectProfileConfig] ? true : false, true>()
         );
-        typeScope.assert(
+        scope.assert(
             sameType<[ProjectBenchmarkProfileConfig] extends [ProjectProfileConfig] ? true : false, true>()
         );
-        typeScope.assert(
+        scope.assert(
             sameType<
                 IsEqual<
                     Extract<ProjectProfileConfig, { readonly testFamily: 'property'; }>,
@@ -87,9 +89,9 @@ export const testNode = suite('@overkill-dev/test standard subpaths', [
                 true
             >()
         );
-        typeScope.assert(sameType<IsAssignable<ProjectProfileFilePatterns, ProjectProfileFiles>, true>());
-        typeScope.assert(sameType<IsAssignable<ProjectProfileFileSets, ProjectProfileFiles>, true>());
-        typeScope.assert(sameType<
+        scope.assert(sameType<IsAssignable<ProjectProfileFilePatterns, ProjectProfileFiles>, true>());
+        scope.assert(sameType<IsAssignable<ProjectProfileFileSets, ProjectProfileFiles>, true>());
+        scope.assert(sameType<
             IsEqual<
                 keyof ProjectProcessBudgets,
                 [
@@ -101,13 +103,13 @@ export const testNode = suite('@overkill-dev/test standard subpaths', [
             >,
             true
         >());
-        return typeScope.assert.collect();
+        return scope.assert.collect();
     }),
-    test('exposes reporter factories through the standard distribution', function (typeScope) {
-        typeScope.assert(sameType<IsEqual<typeof createLineReporter, LineReporterFactory>, true>());
-        typeScope.assert(sameType<IsEqual<typeof createLineProgressReporter, LineProgressReporterFactory>, true>());
-        typeScope.assert(sameType<IsEqual<typeof createLineTreeReporter, LineTreeReporterFactory>, true>());
-        typeScope.assert(
+    test('exposes reporter factories through the standard distribution', function (scope) {
+        scope.assert(sameType<IsEqual<typeof createLineReporter, LineReporterFactory>, true>());
+        scope.assert(sameType<IsEqual<typeof createLineProgressReporter, LineProgressReporterFactory>, true>());
+        scope.assert(sameType<IsEqual<typeof createLineTreeReporter, LineTreeReporterFactory>, true>());
+        scope.assert(
             sameType<
                 IsEqual<
                     typeof createBriefFinalResultReporter,
@@ -116,24 +118,24 @@ export const testNode = suite('@overkill-dev/test standard subpaths', [
                 true
             >()
         );
-        typeScope.assert(
+        scope.assert(
             sameType<
                 IsEqual<typeof createBriefReporter, () => DefinedReporter<RealTimeReporter<BriefReporterSinks>>>,
                 true
             >()
         );
-        typeScope.assert(sameType<IsEqual<typeof createDotReporter, () => DefinedReporter<RealTimeReporter>>, true>());
-        typeScope.assert(
+        scope.assert(sameType<IsEqual<typeof createDotReporter, () => DefinedReporter<RealTimeReporter>>, true>());
+        scope.assert(
             sameType<IsEqual<typeof createGithubActionsOutputRenderer, () => DefinedOutputRenderer>, true>()
         );
-        return typeScope.assert.collect();
+        return scope.assert.collect();
     }),
-    test('exposes assertion extension types from the assert package', function (typeScope) {
-        typeScope.assert(sameType<CompositeBooleanDefinition['name'], string>());
-        typeScope.assert(
+    test('exposes assertion extension types from the assert package', function (scope) {
+        scope.assert(sameType<CompositeBooleanDefinition['name'], string>());
+        scope.assert(
             sameType<IsEqual<NarrowingStringDefinition['narrows'], (actual: unknown) => actual is string>, true>()
         );
-        typeScope.assert(
+        scope.assert(
             sameType<
                 IsEqual<
                     CompositeCheckBuilder<'assert'>['true'],
@@ -142,10 +144,10 @@ export const testNode = suite('@overkill-dev/test standard subpaths', [
                 true
             >()
         );
-        return typeScope.assert.collect();
+        return scope.assert.collect();
     }),
-    test('reexports the leaf performance baseline contract', function (typeScope) {
-        typeScope.assert(sameType<IsEqual<StandardBaselineAdapter, PerformanceBaselineAdapter>, true>());
-        return typeScope.assert.collect();
+    test('reexports the leaf performance baseline contract', function (scope) {
+        scope.assert(sameType<IsEqual<StandardBaselineAdapter, PerformanceBaselineAdapter>, true>());
+        return scope.assert.collect();
     })
 ]);

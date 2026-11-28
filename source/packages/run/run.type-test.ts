@@ -1,6 +1,6 @@
 import type { IsEqual } from 'type-fest';
-import { suite, test } from '../../../tools/type-tests/authoring.entry-point.ts';
-import { acceptsCall, rejectsCall, sameType } from '../../../tools/type-tests/relations.entry-point.ts';
+import { suite, test } from '@overkill-dev/test';
+import { acceptsCall, rejectsCall, sameType } from '@overkill-dev/type-test';
 import type {
     DefinedOutputRenderer,
     DefinedReporter,
@@ -129,19 +129,19 @@ type ExpectedRunHostProcessFacts = {
 
 declare const runIfMainUnderTest: typeof runIfMain;
 
-export const testNode = suite('run', [
-    suite('@overkill-dev/run', [
-        test('exposes the typed run command surface', function (typeScope) {
-            typeScope.assert(sameType<keyof RunCommand, 'config' | 'cwd' | 'engine' | 'request'>());
-            typeScope.assert(sameType<IsEqual<RunCommand['config'], NormalizedConfig>, true>());
-            typeScope.assert(sameType<RunCommand['cwd'], string>());
-            typeScope.assert(sameType<IsEqual<RunCommand['engine'], RunEngineSelection>, true>());
-            typeScope.assert(sameType<IsEqual<RunCommand['request'], RunRequest>, true>());
-            return typeScope.assert.collect();
+export const testNode = suite('Run requests, execution facts, and worker placement', [
+    suite('Run invocation and execution facts', [
+        test('exposes the typed run command surface', function (scope) {
+            scope.assert(sameType<keyof RunCommand, 'config' | 'cwd' | 'engine' | 'request'>());
+            scope.assert(sameType<IsEqual<RunCommand['config'], NormalizedConfig>, true>());
+            scope.assert(sameType<RunCommand['cwd'], string>());
+            scope.assert(sameType<IsEqual<RunCommand['engine'], RunEngineSelection>, true>());
+            scope.assert(sameType<IsEqual<RunCommand['request'], RunRequest>, true>());
+            return scope.assert.collect();
         }),
-        test('exposes the direct-file execution companion', function (typeScope) {
-            typeScope.assert(sameType<IsEqual<typeof runIfMain, RunIfMain>, true>());
-            typeScope.assert(sameType<
+        test('exposes the direct-file execution companion', function (scope) {
+            scope.assert(sameType<IsEqual<typeof runIfMain, RunIfMain>, true>());
+            scope.assert(sameType<
                 IsEqual<RunIfMainOptions, {
                     readonly outputRenderer?: DefinedOutputRenderer;
                     readonly reporters?: readonly DefinedReporter[];
@@ -149,7 +149,7 @@ export const testNode = suite('run', [
                 }>,
                 true
             >());
-            typeScope.assert(sameType<
+            scope.assert(sameType<
                 IsEqual<RunIfMainRootOptions, {
                     readonly annotations?: TestAnnotationsInput;
                     readonly controls?: TestControlsInput;
@@ -157,9 +157,11 @@ export const testNode = suite('run', [
                 }>,
                 true
             >());
-            typeScope.assert(acceptsCall, async () => runIfMainUnderTest(import.meta, mainTest));
-            typeScope.assert(acceptsCall, async () =>
-                runIfMainUnderTest(import.meta, mainTest, {
+            scope.assert(acceptsCall, async function () {
+                return runIfMainUnderTest(import.meta, mainTest);
+            });
+            scope.assert(acceptsCall, async function () {
+                return runIfMainUnderTest(import.meta, mainTest, {
                     outputRenderer,
                     reporters: [ reporter ],
                     root: {
@@ -167,36 +169,43 @@ export const testNode = suite('run', [
                         controls: {},
                         title: 'root'
                     }
-                }));
-            typeScope.assert(
+                });
+            });
+            scope.assert(
                 rejectsCall('argument-type'),
-                async () => runIfMainUnderTest(import.meta, mainTest, { runFacts: {} })
+                async function () {
+                    return runIfMainUnderTest(import.meta, mainTest, { runFacts: {} });
+                }
             );
-            typeScope.assert(
+            scope.assert(
                 rejectsCall('argument-type'),
-                async () => runIfMainUnderTest(import.meta, mainTest, { profile: 'microtest' })
+                async function () {
+                    return runIfMainUnderTest(import.meta, mainTest, { profile: 'microtest' });
+                }
             );
-            typeScope.assert(
+            scope.assert(
                 rejectsCall('argument-type'),
-                async () => runIfMainUnderTest(import.meta, mainTest, { cwd: 'project' })
+                async function () {
+                    return runIfMainUnderTest(import.meta, mainTest, { cwd: 'project' });
+                }
             );
-            return typeScope.assert.collect();
+            return scope.assert.collect();
         }),
         suite('keeps request fields explicit for the implemented runner slice', [
-            test('types run request selection', function (typeScope) {
-                typeScope.assert(sameType<IsEqual<keyof RunRequest, ExpectedRunRequestKey>, true>());
-                typeScope.assert(sameType<RunRequest['capabilityRestrictions']['mode'], 'disabled' | 'enabled'>());
-                typeScope.assert(sameType<RunRequest['execution']['mode'], 'profile-default' | 'serial'>());
-                typeScope.assert(sameType<RunRequest['measureProcessUsage'], boolean | null>());
-                typeScope.assert(sameType<RunRequest['profile'], string>());
-                return typeScope.assert.collect();
+            test('types run request selection', function (scope) {
+                scope.assert(sameType<IsEqual<keyof RunRequest, ExpectedRunRequestKey>, true>());
+                scope.assert(sameType<RunRequest['capabilityRestrictions']['mode'], 'disabled' | 'enabled'>());
+                scope.assert(sameType<RunRequest['execution']['mode'], 'profile-default' | 'serial'>());
+                scope.assert(sameType<RunRequest['measureProcessUsage'], boolean | null>());
+                scope.assert(sameType<RunRequest['profile'], string>());
+                return scope.assert.collect();
             }),
-            test('types run request execution and recording', function (typeScope) {
-                typeScope.assert(
+            test('types run request execution and recording', function (scope) {
+                scope.assert(
                     sameType<IsEqual<RunRequest['processBudgetOverrides'], ProcessBudgets | null>, true>()
                 );
-                typeScope.assert(sameType<IsEqual<RunRequest['timingCollection'], TimingCollectionOverride>, true>());
-                typeScope.assert(sameType<
+                scope.assert(sameType<IsEqual<RunRequest['timingCollection'], TimingCollectionOverride>, true>());
+                scope.assert(sameType<
                     IsEqual<Pick<RunRequest, 'capture' | 'coverage' | 'order'>, {
                         readonly capture: 'buffered' | 'live';
                         readonly coverage: boolean;
@@ -204,41 +213,41 @@ export const testNode = suite('run', [
                     }>,
                     true
                 >());
-                typeScope.assert(sameType<RunOrder, 'lexical' | 'plan' | 'seeded'>());
-                typeScope.assert(sameType<IsEqual<RunRequest['selection'], RunSelection>, true>());
-                return typeScope.assert.collect();
+                scope.assert(sameType<RunOrder, 'lexical' | 'plan' | 'seeded'>());
+                scope.assert(sameType<IsEqual<RunRequest['selection'], RunSelection>, true>());
+                return scope.assert.collect();
             })
         ]),
-        test('exposes serializable run execution facts', function (typeScope) {
-            typeScope.assert(sameType<RunExecutionFacts['engine']['kind'], 'default' | 'instance' | 'module'>());
-            typeScope.assert(sameType<RunExecutionFacts['capture'], 'buffered' | 'live'>());
-            typeScope.assert(sameType<RunExecutionFacts['coverage'], boolean>());
-            typeScope.assert(sameType<IsEqual<RunExecutionFacts['maxConcurrency'], MaxConcurrency>, true>());
-            typeScope.assert(sameType<IsEqual<RunExecutionFacts['processModel'], ProcessModel>, true>());
-            typeScope.assert(sameType<IsEqual<RunExecutionFacts['placementPlan'], PlacementPlan | null>, true>());
-            typeScope.assert(sameType<RunExecutionFacts['profile'], string>());
-            typeScope.assert(sameType<IsEqual<RunExecutionFacts['processUsagePolicy'], ProcessUsagePolicy>, true>());
-            typeScope.assert(sameType<IsEqual<RunExecutionFacts['timingCollection'], TimingCollectionMode>, true>());
-            return typeScope.assert.collect();
+        test('exposes serializable run execution facts', function (scope) {
+            scope.assert(sameType<RunExecutionFacts['engine']['kind'], 'default' | 'instance' | 'module'>());
+            scope.assert(sameType<RunExecutionFacts['capture'], 'buffered' | 'live'>());
+            scope.assert(sameType<RunExecutionFacts['coverage'], boolean>());
+            scope.assert(sameType<IsEqual<RunExecutionFacts['maxConcurrency'], MaxConcurrency>, true>());
+            scope.assert(sameType<IsEqual<RunExecutionFacts['processModel'], ProcessModel>, true>());
+            scope.assert(sameType<IsEqual<RunExecutionFacts['placementPlan'], PlacementPlan | null>, true>());
+            scope.assert(sameType<RunExecutionFacts['profile'], string>());
+            scope.assert(sameType<IsEqual<RunExecutionFacts['processUsagePolicy'], ProcessUsagePolicy>, true>());
+            scope.assert(sameType<IsEqual<RunExecutionFacts['timingCollection'], TimingCollectionMode>, true>());
+            return scope.assert.collect();
         }),
-        test('exposes case file set facts', function (typeScope) {
-            typeScope.assert(sameType<RunFacts['cases'][number]['fileSet'], string | null>());
-            return typeScope.assert.collect();
+        test('exposes case file set facts', function (scope) {
+            scope.assert(sameType<RunFacts['cases'][number]['fileSet'], string | null>());
+            return scope.assert.collect();
         }),
-        test('only exposes profile-default and serial execution requests', function (typeScope) {
-            typeScope.assert(
+        test('only exposes profile-default and serial execution requests', function (scope) {
+            scope.assert(
                 sameType<IsAssignable<{ readonly mode: 'concurrent'; }, RunRequest['execution']>, false>()
             );
-            typeScope.assert(
+            scope.assert(
                 sameType<IsAssignable<{ readonly mode: 'supervised-process'; }, RunRequest['execution']>, false>()
             );
-            return typeScope.assert.collect();
+            return scope.assert.collect();
         }),
         suite('exposes run scheduling and family facts', [
-            test('types scheduling and family identity', function (typeScope) {
-                typeScope.assert(sameType<IsEqual<RunExecutionFacts['scheduling'], Scheduling>, true>());
-                typeScope.assert(sameType<IsEqual<RunExecutionFacts['testFamily'], RunTestFamily>, true>());
-                typeScope.assert(
+            test('types scheduling and family identity', function (scope) {
+                scope.assert(sameType<IsEqual<RunExecutionFacts['scheduling'], Scheduling>, true>());
+                scope.assert(sameType<IsEqual<RunExecutionFacts['testFamily'], RunTestFamily>, true>());
+                scope.assert(
                     sameType<
                         IsEqual<
                             Extract<RunExecutionFacts, { readonly processModel: 'worker-pool'; }>['workerLifecycle'],
@@ -247,7 +256,7 @@ export const testNode = suite('run', [
                         true
                     >()
                 );
-                typeScope.assert(
+                scope.assert(
                     sameType<
                         IsEqual<
                             Extract<RunExecutionFacts, { readonly processModel: 'worker-pool'; }>['workDistribution'],
@@ -256,7 +265,7 @@ export const testNode = suite('run', [
                         true
                     >()
                 );
-                typeScope.assert(
+                scope.assert(
                     sameType<
                         IsEqual<
                             Extract<RunExecutionFacts, { readonly processModel: 'worker-pool'; }>['hostProcess'],
@@ -265,12 +274,12 @@ export const testNode = suite('run', [
                         true
                     >()
                 );
-                return typeScope.assert.collect();
+                return scope.assert.collect();
             }),
-            test('types work distribution and identity', function (typeScope) {
-                typeScope.assert(sameType<IsEqual<HostProcess, ExpectedRunHostProcess>, true>());
-                typeScope.assert(sameType<IsEqual<RunHostProcessFacts, ExpectedRunHostProcessFacts>, true>());
-                typeScope.assert(sameType<
+            test('types work distribution and identity', function (scope) {
+                scope.assert(sameType<IsEqual<HostProcess, ExpectedRunHostProcess>, true>());
+                scope.assert(sameType<IsEqual<RunHostProcessFacts, ExpectedRunHostProcessFacts>, true>());
+                scope.assert(sameType<
                     RunHostProcessReason,
                     keyof {
                         readonly 'benchmark-isolation': true;
@@ -281,8 +290,8 @@ export const testNode = suite('run', [
                         readonly profiling: true;
                     }
                 >());
-                typeScope.assert(sameType<IsEqual<WorkDistribution, ExpectedRunWorkDistribution>, true>());
-                typeScope.assert(sameType<
+                scope.assert(sameType<IsEqual<WorkDistribution, ExpectedRunWorkDistribution>, true>());
+                scope.assert(sameType<
                     IsEqual<WorkGroup, {
                         readonly fileSets: readonly [string, ...readonly string[]];
                         readonly granularity: WorkGroupGranularity;
@@ -293,11 +302,11 @@ export const testNode = suite('run', [
                     }>,
                     true
                 >());
-                return typeScope.assert.collect();
+                return scope.assert.collect();
             })
         ]),
-        test('exposes worker-pool placement facts', function (typeScope) {
-            typeScope.assert(
+        test('exposes worker-pool placement facts', function (scope) {
+            scope.assert(
                 sameType<
                     IsEqual<
                         Extract<RunExecutionFacts, { readonly processModel: 'worker-pool'; }>['placementPlan'],
@@ -306,7 +315,7 @@ export const testNode = suite('run', [
                     true
                 >()
             );
-            typeScope.assert(
+            scope.assert(
                 sameType<
                     IsEqual<
                         Extract<RunExecutionFacts, { readonly processModel: 'worker-pool'; }>['dispatchPolicy'],
@@ -315,36 +324,36 @@ export const testNode = suite('run', [
                     true
                 >()
             );
-            return typeScope.assert.collect();
+            return scope.assert.collect();
         }),
         suite('exposes work-unit planning types', [
-            test('types work-unit identity', function (typeScope) {
-                typeScope.assert(sameType<IsEqual<RuntimeId['scenarios'], Readonly<Record<string, string>>>, true>());
-                typeScope.assert(sameType<IsEqual<WorkId['runtimes'], readonly RuntimeId[]>, true>());
-                typeScope.assert(sameType<IsEqual<WorkId['workload'], WorkloadId | null>, true>());
-                typeScope.assert(sameType<IsEqual<WorkUnit['work'], readonly [WorkId, ...readonly WorkId[]]>, true>());
-                typeScope.assert(sameType<IsEqual<WorkUnit['id']['mode'], WorkUnitMode>, true>());
-                return typeScope.assert.collect();
+            test('types work-unit identity', function (scope) {
+                scope.assert(sameType<IsEqual<RuntimeId['scenarios'], Readonly<Record<string, string>>>, true>());
+                scope.assert(sameType<IsEqual<WorkId['runtimes'], readonly RuntimeId[]>, true>());
+                scope.assert(sameType<IsEqual<WorkId['workload'], WorkloadId | null>, true>());
+                scope.assert(sameType<IsEqual<WorkUnit['work'], readonly [WorkId, ...readonly WorkId[]]>, true>());
+                scope.assert(sameType<IsEqual<WorkUnit['id']['mode'], WorkUnitMode>, true>());
+                return scope.assert.collect();
             }),
-            test('types worker placement and dispatch', function (typeScope) {
-                typeScope.assert(sameType<IsEqual<WorkUnit['order'], RunOrder>, true>());
-                typeScope.assert(sameType<IsEqual<WorkUnit['scheduling'], Scheduling>, true>());
-                typeScope.assert(sameType<IsEqual<WorkUnit['workerLifecycle'], WorkerLifecycle>, true>());
-                typeScope.assert(
+            test('types worker placement and dispatch', function (scope) {
+                scope.assert(sameType<IsEqual<WorkUnit['order'], RunOrder>, true>());
+                scope.assert(sameType<IsEqual<WorkUnit['scheduling'], Scheduling>, true>());
+                scope.assert(sameType<IsEqual<WorkUnit['workerLifecycle'], WorkerLifecycle>, true>());
+                scope.assert(
                     sameType<
                         PlacementPlan['lanes'][number]['executor']['kind'],
                         'browser' | 'local-process' | 'local-worker' | 'remote'
                     >()
                 );
-                typeScope.assert(
+                scope.assert(
                     sameType<IsEqual<PlacementPlan['assignments'][number]['unit'], WorkUnit['id']>, true>()
                 );
-                typeScope.assert(sameType<IsEqual<PlacementPlan['resourceOwnership'], ResourceOwnershipPlan>, true>());
-                return typeScope.assert.collect();
+                scope.assert(sameType<IsEqual<PlacementPlan['resourceOwnership'], ResourceOwnershipPlan>, true>());
+                return scope.assert.collect();
             })
         ]),
-        test('exposes placement trace entry kinds', function (typeScope) {
-            typeScope.assert(
+        test('exposes placement trace entry kinds', function (scope) {
+            scope.assert(
                 sameType<
                     IsEqual<
                         Readonly<Record<PlacementTrace['entries'][number]['kind'], true>>,
@@ -353,29 +362,29 @@ export const testNode = suite('run', [
                     true
                 >()
             );
-            typeScope.assert(sameType<
+            scope.assert(sameType<
                 IsEqual<DynamicWorkUnitId, {
                     readonly child: string;
                     readonly parent: WorkUnitId;
                 }>,
                 true
             >());
-            typeScope.assert(sameType<IsEqual<TraceWorkUnitId, DynamicWorkUnitId | WorkUnitId>, true>());
-            return typeScope.assert.collect();
+            scope.assert(sameType<IsEqual<TraceWorkUnitId, DynamicWorkUnitId | WorkUnitId>, true>());
+            return scope.assert.collect();
         })
     ]),
-    test('exposes timing collection request types', function (typeScope) {
-        typeScope.assert(sameType<TimingCollectionOverride, 'precise' | 'profile-default'>());
-        typeScope.assert(sameType<TimingCollectionMode, 'precise' | 'summary'>());
-        return typeScope.assert.collect();
+    test('exposes timing collection request types', function (scope) {
+        scope.assert(sameType<TimingCollectionOverride, 'precise' | 'profile-default'>());
+        scope.assert(sameType<TimingCollectionMode, 'precise' | 'summary'>());
+        return scope.assert.collect();
     }),
-    suite('@overkill-dev/run worker-pool placement', [
-        test('exposes worker-count requests', function (typeScope) {
-            typeScope.assert(sameType<RunRequest['workers'], number | null>());
-            return typeScope.assert.collect();
+    suite('Worker-pool placement and leases', [
+        test('exposes worker-count requests', function (scope) {
+            scope.assert(sameType<RunRequest['workers'], number | null>());
+            return scope.assert.collect();
         }),
-        test('exposes resolved worker-count facts', function (typeScope) {
-            typeScope.assert(
+        test('exposes resolved worker-count facts', function (scope) {
+            scope.assert(
                 sameType<
                     IsEqual<
                         Extract<RunExecutionFacts, { readonly processModel: 'worker-pool'; }>['workerCount'],
@@ -384,7 +393,7 @@ export const testNode = suite('run', [
                     true
                 >()
             );
-            typeScope.assert(sameType<
+            scope.assert(sameType<
                 IsEqual<RunWorkerCountFacts, {
                     readonly hostMaximum: number;
                     readonly profileMaximum: number | null;
@@ -393,10 +402,10 @@ export const testNode = suite('run', [
                 }>,
                 true
             >());
-            return typeScope.assert.collect();
+            return scope.assert.collect();
         }),
-        test('exposes worker-pool profile maximums', function (typeScope) {
-            typeScope.assert(sameType<
+        test('exposes worker-pool profile maximums', function (scope) {
+            scope.assert(sameType<
                 [{
                     readonly execution: {
                         readonly maxWorkers: number;
@@ -407,30 +416,30 @@ export const testNode = suite('run', [
                 }] extends [ProjectIntegrationProfileConfig] ? true : false,
                 true
             >());
-            return typeScope.assert.collect();
+            return scope.assert.collect();
         }),
-        test('exposes per-executor concurrency limits', function (typeScope) {
-            typeScope.assert(sameType<MaxConcurrency, number | 'unlimited'>());
-            typeScope.assert(sameType<IsEqual<MicrotestExecution['maxConcurrency'], MaxConcurrency>, true>());
-            typeScope.assert(sameType<IsEqual<IntegrationExecution['maxConcurrency'], MaxConcurrency>, true>());
-            typeScope.assert(sameType<
+        test('exposes per-executor concurrency limits', function (scope) {
+            scope.assert(sameType<MaxConcurrency, number | 'unlimited'>());
+            scope.assert(sameType<IsEqual<MicrotestExecution['maxConcurrency'], MaxConcurrency>, true>());
+            scope.assert(sameType<IsEqual<IntegrationExecution['maxConcurrency'], MaxConcurrency>, true>());
+            scope.assert(sameType<
                 IsAssignable<{
                     readonly maxConcurrency: 'unlimited';
                     readonly processModel: 'in-process';
                 }, ProjectMicrotestExecution>,
                 true
             >());
-            typeScope.assert(sameType<
+            scope.assert(sameType<
                 IsAssignable<{
                     readonly maxConcurrency: 'unlimited';
                     readonly processModel: 'worker-pool';
                 }, ProjectIntegrationExecution>,
                 true
             >());
-            return typeScope.assert.collect();
+            return scope.assert.collect();
         }),
-        test('exposes worker-pool assignment policy facts', function (typeScope) {
-            typeScope.assert(
+        test('exposes worker-pool assignment policy facts', function (scope) {
+            scope.assert(
                 sameType<
                     IsEqual<
                         Extract<RunExecutionFacts, { readonly processModel: 'worker-pool'; }>['assignmentPolicy'],
@@ -439,11 +448,11 @@ export const testNode = suite('run', [
                     true
                 >()
             );
-            typeScope.assert(
+            scope.assert(
                 sameType<WorkerPoolAssignmentPolicy, 'case-count-balanced' | 'duration-history-balanced' | 'stable'>()
             );
-            typeScope.assert(sameType<WorkerPoolDispatchPolicy, 'dynamic-lease' | 'static-assignment'>());
-            return typeScope.assert.collect();
+            scope.assert(sameType<WorkerPoolDispatchPolicy, 'dynamic-lease' | 'static-assignment'>());
+            return scope.assert.collect();
         })
     ])
 ]);

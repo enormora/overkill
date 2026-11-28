@@ -1,5 +1,6 @@
 import { type TestScope, suite, test, testDouble } from '@overkill-dev/test';
 
+import { captureRejectedError, captureThrownError } from '../test-support/captured-error.ts';
 import { observationCase } from '../test-support/observation-lifetime.ts';
 import type { BenchmarkScope } from '../engine/benchmark-node.ts';
 import { defaultMeasurementTarget } from './measurement-target.ts';
@@ -29,8 +30,9 @@ export const testNode = suite('garbage collection capability policy', [
             scope: collectionScope(scope.cleanup, scope.signal),
             lifecycle
         }, target);
-        scope.assert.throws(collection.validate, { message: 'not available' });
-        await scope.assert.rejects(collection.collect, { message: 'not available' });
+        scope.assert.equal(captureThrownError(collection.validate)?.message, 'not available');
+        const failure = await captureRejectedError(collection.collect);
+        scope.assert.equal(failure?.message, 'not available');
         scope.assert.deepEqual(collection.snapshot(), { mode: 'after-sample', completed: 0, failures: 0 });
         return scope.assert.collect();
     }),
@@ -57,7 +59,8 @@ export const testNode = suite('garbage collection capability policy', [
             scope: collectionScope(scope.cleanup, scope.signal),
             lifecycle
         }, target);
-        await scope.assert.rejects(collection.collect, { message: 'Benchmark garbage collection failed.' });
+        const failure = await captureRejectedError(collection.collect);
+        scope.assert.equal(failure?.message, 'Benchmark garbage collection failed.');
         scope.assert.deepEqual(collection.snapshot(), { mode: 'after-sample', completed: 0, failures: 1 });
         return scope.assert.collect();
     }),

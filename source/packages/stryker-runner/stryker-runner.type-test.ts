@@ -2,16 +2,16 @@ import type { IsEqual } from 'type-fest';
 import type { Logger } from '@stryker-mutator/api/logging';
 import type { FileDescriptions } from '@stryker-mutator/api/core';
 import type { TestRunner } from '@stryker-mutator/api/test-runner';
-import { suite, test } from '../../../tools/type-tests/authoring.entry-point.ts';
-import { sameType } from '../../../tools/type-tests/relations.entry-point.ts';
+import { suite, test } from '@overkill-dev/test';
+import { sameType } from '@overkill-dev/type-test';
 import type { MicrotestProfileConfig } from '../run/run.entry-point.ts';
 import type { createOverkillTestRunner } from './overkill-test-runner.ts';
 import type { SelectedMicrotestProfile } from './microtest-profile.ts';
 import type { OverkillRunnerOptions } from './runner-settings-schema.ts';
 
 export const testNode = suite('Stryker profile initialization', [
-    test('requires injected options and narrows selected profiles to microtests', function (typeScope) {
-        typeScope.assert(
+    test('requires injected options and narrows selected profiles to microtests', function (scope) {
+        scope.assert(
             sameType<
                 IsEqual<
                     Parameters<typeof createOverkillTestRunner>,
@@ -20,12 +20,12 @@ export const testNode = suite('Stryker profile initialization', [
                 true
             >()
         );
-        typeScope.assert(sameType<IsEqual<ReturnType<typeof createOverkillTestRunner>, Required<TestRunner>>, true>());
-        typeScope.assert(
+        scope.assert(sameType<IsEqual<ReturnType<typeof createOverkillTestRunner>, Required<TestRunner>>, true>());
+        scope.assert(
             sameType<IsEqual<typeof createOverkillTestRunner.inject, ['options', 'fileDescriptions', 'logger']>, true>()
         );
-        typeScope.assert(sameType<IsEqual<SelectedMicrotestProfile['profile'], MicrotestProfileConfig>, true>());
-        typeScope.assert(sameType<
+        scope.assert(sameType<IsEqual<SelectedMicrotestProfile['profile'], MicrotestProfileConfig>, true>());
+        scope.assert(sameType<
             IsEqual<OverkillRunnerOptions, {
                 readonly configPath: string | null;
                 readonly paths: readonly string[];
@@ -36,6 +36,6 @@ export const testNode = suite('Stryker profile initialization', [
             }>,
             true
         >());
-        return typeScope.assert.collect();
+        return scope.assert.collect();
     })
 ]);

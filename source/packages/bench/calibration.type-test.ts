@@ -1,12 +1,12 @@
-import { suite, test } from '../../../tools/type-tests/authoring.entry-point.ts';
-import { sameType } from '../../../tools/type-tests/relations.entry-point.ts';
+import { suite, test } from '@overkill-dev/test';
+import { sameType } from '@overkill-dev/type-test';
 import * as standard from '../test/bench.entry-point.ts';
 import { defineResource } from '../resources/resources.entry-point.ts';
 import { isEqualTo } from '../../test-support/type-relations.ts';
 import * as bench from './bench.entry-point.ts';
 
 export const testNode = suite('calibrated measurement inference', [
-    test('preserves synchronous sample inference', function (typeScope) {
+    test('preserves synchronous sample inference', function (scope) {
         const measurement = bench.calibratedMeasurement(bench.wallClockMeasurement(), {
             durationMicroseconds: { calibration: bench.cpuCalibration(), scaling: 'proportional' }
         });
@@ -15,7 +15,7 @@ export const testNode = suite('calibrated measurement inference', [
             workloads: [ bench.workload('one', {}) ],
             measurement,
             measure({ sample }) {
-                typeScope.assert(
+                scope.assert(
                     sameType.withActual<true>(),
                     isEqualTo<bench.BenchmarkSample<bench.MeasurementSample>>()(sample)
                 );
@@ -28,13 +28,13 @@ export const testNode = suite('calibrated measurement inference', [
             diagnosticMetrics: [],
             budgets: { one: { durationMicroseconds: { maximum: 100 } } }
         });
-        typeScope.assert(
+        scope.assert(
             sameType.withActual<true>(),
             isEqualTo<typeof bench.calibratedMeasurement>()(standard.calibratedMeasurement)
         );
-        return typeScope.assert.collect();
+        return scope.assert.collect();
     }),
-    test('preserves asynchronous and process sample inference', function (typeScope) {
+    test('preserves asynchronous and process sample inference', function (scope) {
         const calibration = bench.cpuCalibration();
         const asyncStrategy = bench.calibratedMeasurement(bench.asyncMeasurementStrategy([]), {
             value: { calibration, scaling: 'inverse' }
@@ -44,7 +44,7 @@ export const testNode = suite('calibrated measurement inference', [
             workloads: [ bench.workload('one', {}) ],
             measurement: asyncStrategy,
             measure({ sample }) {
-                typeScope.assert(
+                scope.assert(
                     sameType.withActual<true>(),
                     isEqualTo<bench.BenchmarkSample<bench.AsyncMeasurementSample>>()(sample)
                 );
@@ -61,7 +61,7 @@ export const testNode = suite('calibrated measurement inference', [
             workloads: [ bench.workload('one', {}) ],
             measurement: processStrategy,
             measure({ sample }) {
-                typeScope.assert(
+                scope.assert(
                     sameType.withActual<true>(),
                     isEqualTo<bench.BenchmarkSample<bench.ProcessSample>>()(sample)
                 );
@@ -70,9 +70,9 @@ export const testNode = suite('calibrated measurement inference', [
             diagnosticMetrics: [],
             budgets: { one: { durationMicroseconds: { maximum: 100 } } }
         });
-        return typeScope.assert.collect();
+        return scope.assert.collect();
     }),
-    test('infers ordinary calibration dependencies', function (typeScope) {
+    test('infers ordinary calibration dependencies', function (scope) {
         const value = defineResource({
             name: 'value',
             scope: 'shared-per-worker',
@@ -90,8 +90,8 @@ export const testNode = suite('calibrated measurement inference', [
             dependencies: { value },
             measurement: bench.wallClockMeasurement(),
             measure({ dependencies, sample }) {
-                typeScope.assert(sameType.withActual<number>(), dependencies.value);
-                typeScope.assert(
+                scope.assert(sameType.withActual<number>(), dependencies.value);
+                scope.assert(
                     sameType.withActual<true>(),
                     isEqualTo<bench.BenchmarkSample<bench.MeasurementSample>>()(sample)
                 );
@@ -103,6 +103,6 @@ export const testNode = suite('calibrated measurement inference', [
                     .durationMicroseconds;
             }
         });
-        return typeScope.assert.collect();
+        return scope.assert.collect();
     })
 ]);

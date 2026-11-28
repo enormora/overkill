@@ -1,5 +1,5 @@
-import { suite, test } from '../../../tools/type-tests/authoring.entry-point.ts';
-import { sameType } from '../../../tools/type-tests/relations.entry-point.ts';
+import { suite, test } from '@overkill-dev/test';
+import { sameType } from '@overkill-dev/type-test';
 import { isEqualTo } from '../../test-support/type-relations.ts';
 import {
     defineResource
@@ -33,15 +33,15 @@ const database = defineResource({
 });
 
 export const testNode = suite('resource callbacks', [
-    test('infers database dependencies in resource callbacks', function (typeScope) {
+    test('infers database dependencies in resource callbacks', function (scope) {
         defineResource({
             name: 'server',
             scope: 'shared-per-worker',
             requirements: [ { kind: 'single-worker' } ],
             dependencies: { database },
             async acquire(context): Promise<Server> {
-                typeScope.assert(sameType.withActual<true>(), isEqualTo<Database>()(context.dependencies.database));
-                typeScope.assert(
+                scope.assert(sameType.withActual<true>(), isEqualTo<Database>()(context.dependencies.database));
+                scope.assert(
                     sameType.withActual<true>(),
                     isEqualTo<(sql: string) => Promise<readonly string[]>>()(context.dependencies.database.query)
                 );
@@ -50,12 +50,12 @@ export const testNode = suite('resource callbacks', [
                 return { url: String(queryResult[0]) };
             },
             dispose(_server, context) {
-                typeScope.assert(sameType.withActual<true>(), isEqualTo<Database>()(context.dependencies.database));
+                scope.assert(sameType.withActual<true>(), isEqualTo<Database>()(context.dependencies.database));
             }
         });
-        return typeScope.assert.collect();
+        return scope.assert.collect();
     }),
-    test('infers scenario keys in resource callbacks', function (typeScope) {
+    test('infers scenario keys in resource callbacks', function (scope) {
         defineResource({
             name: 'scenario-database',
             scope: 'per-case',
@@ -68,14 +68,14 @@ export const testNode = suite('resource callbacks', [
                 }
             },
             acquire(context) {
-                typeScope.assert(sameType.withActual<'empty' | 'populated'>(), context.scenarios.database);
+                scope.assert(sameType.withActual<'empty' | 'populated'>(), context.scenarios.database);
 
                 return context.scenarios.database;
             },
             dispose(_handle, context) {
-                typeScope.assert(sameType.withActual<'empty' | 'populated'>(), context.scenarios.database);
+                scope.assert(sameType.withActual<'empty' | 'populated'>(), context.scenarios.database);
             }
         });
-        return typeScope.assert.collect();
+        return scope.assert.collect();
     })
 ]);

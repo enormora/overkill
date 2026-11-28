@@ -1,6 +1,6 @@
 import type { IsEqual } from 'type-fest';
-import { suite, test } from '../../../tools/type-tests/authoring.entry-point.ts';
-import { sameType } from '../../../tools/type-tests/relations.entry-point.ts';
+import { suite, test } from '@overkill-dev/test';
+import { sameType } from '@overkill-dev/type-test';
 import { isEqualTo, type IsAssignable } from '../../test-support/type-relations.ts';
 import {
     CaseRunnerError,
@@ -88,8 +88,8 @@ type SuiteStartReporterEvent = Extract<ReporterEvent, { readonly kind: 'suite-st
 
 export const testNode = suite('engine outcomes and data', [
     suite('TestOutcome', [
-        test('exports resource descriptor attachment predicates', function (typeScope) {
-            typeScope.assert(
+        test('exports resource descriptor attachment predicates', function (scope) {
+            scope.assert(
                 sameType<
                     IsEqual<
                         typeof hasAttachedResourceDescriptors,
@@ -98,31 +98,31 @@ export const testNode = suite('engine outcomes and data', [
                     true
                 >()
             );
-            return typeScope.assert.collect();
+            return scope.assert.collect();
         }),
-        test('exports case runner error markers', function (typeScope) {
+        test('exports case runner error markers', function (scope) {
             const error = new CaseRunnerError('Fixture failed.', {
                 cause: unknownValue,
                 subtype: 'fixture'
             });
 
-            typeScope.assert(sameType<
+            scope.assert(sameType<
                 IsEqual<CaseRunnerErrorOptions, {
                     readonly cause: unknown;
                     readonly subtype: RunnerError['subtype'];
                 }>,
                 true
             >());
-            typeScope.assert(sameType.withActual<true>(), isEqualTo<CaseRunnerError>()(error));
-            typeScope.assert(sameType.withActual<true>(), isEqualTo<RunnerError>()(error.runnerError(caseId, workId)));
-            typeScope.assert(
+            scope.assert(sameType.withActual<true>(), isEqualTo<CaseRunnerError>()(error));
+            scope.assert(sameType.withActual<true>(), isEqualTo<RunnerError>()(error.runnerError(caseId, workId)));
+            scope.assert(
                 sameType<IsEqual<typeof isCaseRunnerError, (value: unknown) => value is CaseRunnerError>, true>()
             );
-            return typeScope.assert.collect();
+            return scope.assert.collect();
         }),
-        test('accepts public outcome shapes', function (typeScope) {
-            typeScope.assert(sameType<IsAssignable<{ readonly kind: 'pass'; }, TestOutcome>, true>());
-            typeScope.assert(sameType<
+        test('accepts public outcome shapes', function (scope) {
+            scope.assert(sameType<IsAssignable<{ readonly kind: 'pass'; }, TestOutcome>, true>());
+            scope.assert(sameType<
                 IsAssignable<{
                     readonly failures: readonly [
                         {
@@ -134,34 +134,34 @@ export const testNode = suite('engine outcomes and data', [
                 }, TestOutcome>,
                 true
             >());
-            typeScope.assert(
+            scope.assert(
                 sameType<IsAssignable<{ readonly kind: 'skip'; readonly reason: 'filtered'; }, TestOutcome>, true>()
             );
-            typeScope.assert(sameType<
+            scope.assert(sameType<
                 IsAssignable<{
                     readonly kind: 'inconclusive';
                     readonly reason: 'adapter lost result';
                 }, TestOutcome>,
                 true
             >());
-            return typeScope.assert.collect();
+            return scope.assert.collect();
         }),
-        test('rejects mixed public outcome shapes', function (typeScope) {
-            typeScope.assert(sameType<
+        test('rejects mixed public outcome shapes', function (scope) {
+            scope.assert(sameType<
                 IsAssignable<{
                     readonly checks: readonly [];
                     readonly kind: 'pass';
                 }, TestOutcome>,
                 false
             >());
-            typeScope.assert(sameType<
+            scope.assert(sameType<
                 IsAssignable<{
                     readonly kind: 'pass';
                     readonly reason: null;
                 }, TestOutcome>,
                 false
             >());
-            typeScope.assert(sameType<
+            scope.assert(sameType<
                 IsAssignable<{
                     readonly checks: readonly [FailedCheckFixture];
                     readonly kind: 'skip';
@@ -169,7 +169,7 @@ export const testNode = suite('engine outcomes and data', [
                 }, TestOutcome>,
                 false
             >());
-            typeScope.assert(sameType<
+            scope.assert(sameType<
                 IsAssignable<{
                     readonly checks: readonly [FailedCheckFixture];
                     readonly kind: 'inconclusive';
@@ -177,8 +177,8 @@ export const testNode = suite('engine outcomes and data', [
                 }, TestOutcome>,
                 false
             >());
-            typeScope.assert(sameType<IsAssignable<{ readonly kind: 'fail'; }, TestOutcome>, false>());
-            typeScope.assert(sameType<
+            scope.assert(sameType<IsAssignable<{ readonly kind: 'fail'; }, TestOutcome>, false>());
+            scope.assert(sameType<
                 IsAssignable<{
                     readonly checks: readonly [FailedCheckFixture];
                     readonly kind: 'fail';
@@ -186,33 +186,33 @@ export const testNode = suite('engine outcomes and data', [
                 }, TestOutcome>,
                 false
             >());
-            typeScope.assert(sameType<
+            scope.assert(sameType<
                 IsAssignable<{
                     readonly failures: readonly [];
                     readonly kind: 'fail';
                 }, TestOutcome>,
                 false
             >());
-            typeScope.assert(sameType<IsAssignable<{ readonly kind: 'skip'; }, TestOutcome>, false>());
-            typeScope.assert(sameType<IsAssignable<{ readonly kind: 'inconclusive'; }, TestOutcome>, false>());
-            return typeScope.assert.collect();
+            scope.assert(sameType<IsAssignable<{ readonly kind: 'skip'; }, TestOutcome>, false>());
+            scope.assert(sameType<IsAssignable<{ readonly kind: 'inconclusive'; }, TestOutcome>, false>());
+            return scope.assert.collect();
         }),
-        test('exposes structured failed check diagnostics', function (typeScope) {
-            typeScope.assert(sameType<keyof FailedCheck, keyof FailedCheckKeyByName>());
-            typeScope.assert(sameType<IsEqual<keyof FailedLeafCheck, FailedLeafCheckKey>, true>());
-            typeScope.assert(sameType<IsEqual<keyof FailedCompositeCheck, FailedCompositeCheckKey>, true>());
-            typeScope.assert(sameType<IsEqual<keyof FailedForeignCheck, FailedForeignCheckKey>, true>());
-            typeScope.assert(sameType<IsEqual<FailedCheck['actual'], SerializedValue>, true>());
-            typeScope.assert(sameType<IsEqual<FailedCheck['expected'], SerializedValue>, true>());
-            typeScope.assert(sameType<IsEqual<FailedCheck['diff'], Diff | null>, true>());
-            typeScope.assert(sameType<IsEqual<FailedCheck['path'], readonly DiffPathSegment[]>, true>());
-            return typeScope.assert.collect();
+        test('exposes structured failed check diagnostics', function (scope) {
+            scope.assert(sameType<keyof FailedCheck, keyof FailedCheckKeyByName>());
+            scope.assert(sameType<IsEqual<keyof FailedLeafCheck, FailedLeafCheckKey>, true>());
+            scope.assert(sameType<IsEqual<keyof FailedCompositeCheck, FailedCompositeCheckKey>, true>());
+            scope.assert(sameType<IsEqual<keyof FailedForeignCheck, FailedForeignCheckKey>, true>());
+            scope.assert(sameType<IsEqual<FailedCheck['actual'], SerializedValue>, true>());
+            scope.assert(sameType<IsEqual<FailedCheck['expected'], SerializedValue>, true>());
+            scope.assert(sameType<IsEqual<FailedCheck['diff'], Diff | null>, true>());
+            scope.assert(sameType<IsEqual<FailedCheck['path'], readonly DiffPathSegment[]>, true>());
+            return scope.assert.collect();
         }),
-        test('exports serialized value and diff contracts', function (typeScope) {
-            typeScope.assert(
+        test('exports serialized value and diff contracts', function (scope) {
+            scope.assert(
                 sameType<IsAssignable<{ readonly kind: 'number'; readonly value: '-0'; }, SerializedValue>, true>()
             );
-            typeScope.assert(sameType<
+            scope.assert(sameType<
                 IsAssignable<{
                     readonly kind: 'string';
                     readonly truncation: SerializationTruncation | null;
@@ -220,21 +220,21 @@ export const testNode = suite('engine outcomes and data', [
                 }, SerializedValue>,
                 true
             >());
-            typeScope.assert(sameType<
+            scope.assert(sameType<
                 IsAssignable<{
                     readonly key: { readonly kind: 'string'; readonly value: 'name'; };
                     readonly kind: 'property';
                 }, DiffPathSegment>,
                 true
             >());
-            typeScope.assert(sameType<
+            scope.assert(sameType<
                 IsAssignable<{
                     readonly key: { readonly kind: 'number'; readonly value: 1; };
                     readonly kind: 'map-value';
                 }, DiffPathSegment>,
                 true
             >());
-            typeScope.assert(sameType<
+            scope.assert(sameType<
                 IsAssignable<{
                     readonly actual: 'actual';
                     readonly expected: 'expected';
@@ -243,7 +243,7 @@ export const testNode = suite('engine outcomes and data', [
                 }, Diff>,
                 true
             >());
-            typeScope.assert(sameType<
+            scope.assert(sameType<
                 IsAssignable<{
                     readonly kind: 'binary';
                     readonly actualHash: 'hash';
@@ -254,17 +254,17 @@ export const testNode = suite('engine outcomes and data', [
                 }, Diff>,
                 true
             >());
-            return typeScope.assert.collect();
+            return scope.assert.collect();
         }),
-        test('accepts public test failure shapes', function (typeScope) {
-            typeScope.assert(sameType<
+        test('accepts public test failure shapes', function (scope) {
+            scope.assert(sameType<
                 IsAssignable<{
                     readonly checks: readonly [FailedCheckFixture];
                     readonly kind: 'assertion';
                 }, TestFailure>,
                 true
             >());
-            typeScope.assert(sameType<
+            scope.assert(sameType<
                 IsAssignable<{
                     readonly error: {
                         readonly message: 'boom';
@@ -276,7 +276,7 @@ export const testNode = suite('engine outcomes and data', [
                 }, TestFailure>,
                 true
             >());
-            typeScope.assert(sameType<
+            scope.assert(sameType<
                 IsAssignable<{
                     readonly actual: 1;
                     readonly code: 'plan-mismatch';
@@ -286,7 +286,7 @@ export const testNode = suite('engine outcomes and data', [
                 }, TestFailure>,
                 true
             >());
-            typeScope.assert(sameType<
+            scope.assert(sameType<
                 IsAssignable<{
                     readonly error: {
                         readonly message: 'cleanup failed';
@@ -298,19 +298,19 @@ export const testNode = suite('engine outcomes and data', [
                 }, TestFailure>,
                 true
             >());
-            return typeScope.assert.collect();
+            return scope.assert.collect();
         })
     ]),
     suite('Test Data', [
-        test('exposes authored and resolved test data shapes', function (typeScope) {
-            typeScope.assert(sameType<
+        test('exposes authored and resolved test data shapes', function (scope) {
+            scope.assert(sameType<
                 IsAssignable<{
                     readonly ownership: readonly ['@team'];
                     readonly tags: readonly ['fast'];
                 }, TestAnnotationsInput>,
                 true
             >());
-            typeScope.assert(sameType<
+            scope.assert(sameType<
                 IsAssignable<{
                     readonly capture: 'buffered';
                     readonly duplicateExecution: 'idempotent';
@@ -318,14 +318,14 @@ export const testNode = suite('engine outcomes and data', [
                 }, TestControlsInput>,
                 true
             >());
-            typeScope.assert(sameType<
+            scope.assert(sameType<
                 IsEqual<TestAnnotations, {
                     readonly ownership: readonly string[];
                     readonly tags: readonly string[];
                 }>,
                 true
             >());
-            typeScope.assert(sameType<
+            scope.assert(sameType<
                 IsEqual<TestControls, {
                     readonly capture: 'buffered' | 'live' | null;
                     readonly duplicateExecution: 'forbidden' | 'idempotent' | null;
@@ -333,16 +333,16 @@ export const testNode = suite('engine outcomes and data', [
                 }>,
                 true
             >());
-            typeScope.assert(sameType<TestFamilyId, string>());
-            return typeScope.assert.collect();
+            scope.assert(sameType<TestFamilyId, string>());
+            return scope.assert.collect();
         })
     ]),
     suite('CaseId', [
-        test('accepts structured public identity shapes', function (typeScope) {
-            typeScope.assert(sameType<IsAssignable<CaseIdFixture, CaseId>, true>());
-            typeScope.assert(sameType<IsEqual<PerTestResult['id'], CaseId>, true>());
-            typeScope.assert(sameType<IsEqual<TestStartReporterEvent['case'], CaseId>, true>());
-            typeScope.assert(sameType<
+        test('accepts structured public identity shapes', function (scope) {
+            scope.assert(sameType<IsAssignable<CaseIdFixture, CaseId>, true>());
+            scope.assert(sameType<IsEqual<PerTestResult['id'], CaseId>, true>());
+            scope.assert(sameType<IsEqual<TestStartReporterEvent['case'], CaseId>, true>());
+            scope.assert(sameType<
                 IsEqual<
                     SuiteStartReporterEvent['suitePath'],
                     readonly {
@@ -352,18 +352,18 @@ export const testNode = suite('engine outcomes and data', [
                 >,
                 true
             >());
-            typeScope.assert(sameType<IsEqual<RunnerError['attributedTo'], CaseId | null>, true>());
-            return typeScope.assert.collect();
+            scope.assert(sameType<IsEqual<RunnerError['attributedTo'], CaseId | null>, true>());
+            return scope.assert.collect();
         }),
-        test('requires explicit nullable identity fields', function (typeScope) {
-            typeScope.assert(sameType<
+        test('requires explicit nullable identity fields', function (scope) {
+            scope.assert(sameType<
                 IsAssignable<{
                     readonly suite: readonly ['suite'];
                     readonly title: 'case';
                 }, CaseId>,
                 false
             >());
-            typeScope.assert(sameType<
+            scope.assert(sameType<
                 IsAssignable<{
                     readonly file: null;
                     readonly suite: readonly ['suite'];
@@ -371,7 +371,7 @@ export const testNode = suite('engine outcomes and data', [
                 }, CaseId>,
                 false
             >());
-            return typeScope.assert.collect();
+            return scope.assert.collect();
         })
     ])
 ]);

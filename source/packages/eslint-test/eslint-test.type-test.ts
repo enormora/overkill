@@ -1,6 +1,6 @@
 import type { Rule } from 'eslint';
-import { suite, test } from '../../../tools/type-tests/authoring.entry-point.ts';
-import { rejectsCall, sameType } from '../../../tools/type-tests/relations.entry-point.ts';
+import { suite, test } from '@overkill-dev/test';
+import { rejectsCall, sameType } from '@overkill-dev/type-test';
 import type { Suite } from '../engine/engine.entry-point.ts';
 import { isEqualTo, isAssignableTo } from '../../test-support/type-relations.ts';
 import { defineRuleTests, type ConfigSelection } from './eslint-test.entry-point.ts';
@@ -11,8 +11,8 @@ const rule: Rule.RuleModule = {
     }
 };
 
-export const testNode = suite('eslint test', [
-    test('returns ordinary suite builders for shared configurations', function (typeScope) {
+export const testNode = suite('Typed ESLint rule verification', [
+    test('returns ordinary suite builders for shared configurations', function (scope) {
         const definition = defineRuleTests({
             name: 'rule',
             rule,
@@ -20,28 +20,29 @@ export const testNode = suite('eslint test', [
             valid: [ 'value', { code: 'value', configs: [ 'ts' ] } ],
             invalid: []
         });
-        typeScope.assert(sameType.withActual<true>(), isEqualTo<Suite>()(definition.examples()));
-        typeScope.assert(sameType.withActual<true>(), isEqualTo<Suite>()(definition.properties()));
-        return typeScope.assert.collect();
+        scope.assert(sameType.withActual<true>(), isEqualTo<Suite>()(definition.examples()));
+        scope.assert(sameType.withActual<true>(), isEqualTo<Suite>()(definition.properties()));
+        return scope.assert.collect();
     }),
-    test('restricts configuration selections to declared names', function (typeScope) {
-        typeScope.assert(
+    test('restricts configuration selections to declared names', function (scope) {
+        scope.assert(
             sameType.withActual<true>(),
             isAssignableTo<ConfigSelection<'js' | 'ts'>>()([ 'js' ] as const)
         );
-        typeScope.assert(
+        scope.assert(
             sameType.withActual<false>(),
             isAssignableTo<ConfigSelection<'js' | 'ts'>>()([ 'missing' ] as const)
         );
-        typeScope.assert(sameType.withActual<false>(), isAssignableTo<ConfigSelection<'js' | 'ts'>>()([] as const));
-        typeScope.assert(rejectsCall('argument-type'), () =>
-            defineRuleTests<'js'>({
+        scope.assert(sameType.withActual<false>(), isAssignableTo<ConfigSelection<'js' | 'ts'>>()([] as const));
+        scope.assert(rejectsCall('argument-type'), function () {
+            return defineRuleTests<'js'>({
                 name: 'rule',
                 rule,
                 configs: { js: {} },
                 valid: [ { code: 'value', configs: [ 'missing' ] } ],
                 invalid: []
-            }));
-        return typeScope.assert.collect();
+            });
+        });
+        return scope.assert.collect();
     })
 ]);

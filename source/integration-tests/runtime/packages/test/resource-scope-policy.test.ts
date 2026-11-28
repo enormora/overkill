@@ -6,6 +6,7 @@ import {
     readTestBodyResourceAttachments
 } from '../../../../packages/engine/engine.entry-point.ts';
 import { mappedResourceScope } from '../../../../test-support/mapped-resource-scope.ts';
+import { captureRejectedError } from '../../../../test-support/captured-error.ts';
 
 import { defineResource, withResource } from '../../../../packages/test/resources.entry-point.ts';
 
@@ -35,22 +36,24 @@ export const testNode = suite('resource wrapper scope validation', [
             const resources = scope.parameters.input;
 
             const wrapped = withResource(resource, body);
-            const supplied = { ...scope, resources };
-            await scope.assert.rejects(async function () {
+            const supplied = { cleanup: scope.cleanup, signal: scope.signal, resources };
+            const failure = await captureRejectedError(async function () {
                 const result: unknown = Reflect.apply(wrapped, undefined, [ supplied ]);
                 await result;
-            }, { message: 'Resource scope composition failed.' });
+            });
+            scope.assert.equal(failure?.message, 'Resource scope composition failed.');
             return scope.assert.collect();
         }
     }),
     test('rejects collisions without changing the existing resource map', async function (scope) {
         const wrapped = withResource(resource, body);
         const resources = { value: 'existing' };
-        await scope.assert.rejects(async function () {
-            const supplied = { ...scope, resources };
+        const failure = await captureRejectedError(async function () {
+            const supplied = { cleanup: scope.cleanup, signal: scope.signal, resources };
             const result: unknown = Reflect.apply(wrapped, undefined, [ supplied ]);
             await result;
-        }, { message: 'Resource scope "value" already exists.' });
+        });
+        scope.assert.equal(failure?.message, 'Resource scope "value" already exists.');
         scope.assert.deepEqual(resources, { value: 'existing' });
         return scope.assert.collect();
     }),

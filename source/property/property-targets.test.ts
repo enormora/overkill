@@ -2,6 +2,7 @@ import { suite, test } from '@overkill-dev/test';
 
 import { Random } from 'fast-check';
 import { xoroshiro128plus } from 'pure-rand/generator/xoroshiro128plus';
+import { captureThrownError } from '../test-support/captured-error.ts';
 
 import { generatorContext } from '../test-support/generator-execution.ts';
 import { executePropertyNode, propertyExecutionDefaults } from '../test-support/property-execution.ts';
@@ -119,21 +120,33 @@ export const testNode = suite('property targeting', [
         targets.target('distance', -5);
         targets.target('distance', -10);
         scope.assert.equal(targets.finish().get('distance'), -5);
-        scope.assert.throws(function expired() {
-            targets.target('distance', 0);
-        }, { message: /outlived/ });
+        scope.assert.equal(
+            captureThrownError(function expired() {
+                targets.target('distance', 0);
+            })
+                ?.message,
+            'Property targeting observation outlived its trial.'
+        );
         return scope.assert.collect();
     }),
     test('rejects invalid scores and shared label overflow', function (scope) {
         const labels = propertyLabels(1);
         labels('coverage');
         const targets = trialTargets(labels);
-        scope.assert.throws(function invalid() {
-            targets.target('coverage', Number.NaN);
-        }, { message: /finite/ });
-        scope.assert.throws(function overflow() {
-            targets.target('score', 1);
-        }, { message: /limit/ });
+        scope.assert.equal(
+            captureThrownError(function invalid() {
+                targets.target('coverage', Number.NaN);
+            })
+                ?.message,
+            'Property target scores must be finite numbers.'
+        );
+        scope.assert.equal(
+            captureThrownError(function overflow() {
+                targets.target('score', 1);
+            })
+                ?.message,
+            'Property observation label limit exceeded.'
+        );
         return scope.assert.collect();
     }),
     test('scores change deterministic exploration while preserving domains', function (scope) {

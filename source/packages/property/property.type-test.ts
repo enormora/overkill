@@ -1,6 +1,6 @@
 import type { IsEqual } from 'type-fest';
-import { suite, test } from '../../../tools/type-tests/authoring.entry-point.ts';
-import { acceptsCall, assignableFrom, rejectsCall, sameType } from '../../../tools/type-tests/relations.entry-point.ts';
+import { suite, test } from '@overkill-dev/test';
+import { acceptsCall, assignableFrom, rejectsCall, sameType } from '@overkill-dev/type-test';
 import type {
     AssertionResult,
     BodyImplementation,
@@ -18,35 +18,35 @@ declare const numberGenerator: leaf.Generator<number>;
 declare const booleanGenerator: leaf.Generator<boolean>;
 declare const propertyBody: BodyImplementation<leaf.PropertyCaseScope, ReturnType<TestBody>>;
 
-export const testNode = suite('property', [
+export const testNode = suite('Property authoring, previews, and relations', [
     suite('property authoring types', [
-        test('accepts property body unions', function (typeScope) {
-            typeScope.assert(
+        test('accepts property body unions', function (scope) {
+            scope.assert(
                 sameType.withActual<true>(),
                 isEqualTo<BodyReference | TestBody>()(leaf.withProperties(propertyBody))
             );
-            typeScope.assert(
+            scope.assert(
                 sameType.withActual<true>(),
                 isEqualTo<BodyReference | TestBody>()(standard.withProperties(propertyBody))
             );
-            return typeScope.assert.collect();
+            return scope.assert.collect();
         }),
-        test('integration properties retain input inference', function (typeScope) {
+        test('integration properties retain input inference', function (scope) {
             const node = leaf.property({
                 testFamily: 'integration',
                 title: 'project inputs',
                 generator: numberGenerator,
                 test(value, sample) {
-                    typeScope.assert(sameType.withActual<number>(), value);
-                    typeScope.assert(sameType<IsEqual<typeof sample, leaf.PropertySampleScope<number>>, true>());
+                    scope.assert(sameType.withActual<number>(), value);
+                    scope.assert(sameType<IsEqual<typeof sample, leaf.PropertySampleScope<number>>, true>());
                     sample.assert.equal(value, 1);
                     return sample.assert.collect();
                 }
             });
-            typeScope.assert(sameType.withActual<true>(), isEqualTo<TestCase>()(node));
-            return typeScope.assert.collect();
+            scope.assert(sameType.withActual<true>(), isEqualTo<TestCase>()(node));
+            return scope.assert.collect();
         }),
-        test('infers custom codec values on both entry points', function (typeScope) {
+        test('infers custom codec values on both entry points', function (scope) {
             const codec = leaf.defineCodec({
                 name: 'numeric',
                 version: 1,
@@ -56,22 +56,22 @@ export const testNode = suite('property', [
                 },
                 decode: Number
             });
-            typeScope.assert(sameType.withActual<true>(), isEqualTo<leaf.PropertyInputCodec<number>>()(codec));
-            typeScope.assert(sameType<IsEqual<typeof standard.defineCodec, typeof leaf.defineCodec>, true>());
-            return typeScope.assert.collect();
+            scope.assert(sameType.withActual<true>(), isEqualTo<leaf.PropertyInputCodec<number>>()(codec));
+            scope.assert(sameType<IsEqual<typeof standard.defineCodec, typeof leaf.defineCodec>, true>());
+            return scope.assert.collect();
         }),
-        test('infers property inputs and injected sample scope', function (typeScope) {
+        test('infers property inputs and injected sample scope', function (scope) {
             const generator = namedGenerator;
             const node = leaf.property({
                 title: 'typed input',
                 coverage: [ { label: 'empty', minimumPercent: 20 } ],
                 generator,
                 test(value, sample) {
-                    typeScope.assert(sameType.withActual<true>(), isEqualTo<{ readonly name: string; }>()(value));
-                    typeScope.assert(
+                    scope.assert(sameType.withActual<true>(), isEqualTo<{ readonly name: string; }>()(value));
+                    scope.assert(
                         sameType<IsEqual<typeof sample, leaf.PropertySampleScope<{ readonly name: string; }>>, true>()
                     );
-                    typeScope.assert(
+                    scope.assert(
                         sameType.withActual<true>(),
                         isEqualTo<{ readonly name: string; }>()(sample.reconstructInput())
                     );
@@ -82,13 +82,13 @@ export const testNode = suite('property', [
                     return sample.assert.collect();
                 }
             });
-            typeScope.assert(sameType.withActual<true>(), isEqualTo<TestCase>()(node));
-            typeScope.assert(sameType<IsEqual<typeof standard.property, typeof leaf.property>, true>());
-            typeScope.assert(sameType<IsEqual<standard.Generator<string>, leaf.Generator<string>>, true>());
-            typeScope.assert(sameType<IsEqual<standard.PropertyBody<string>, leaf.PropertyBody<string>>, true>());
-            return typeScope.assert.collect();
+            scope.assert(sameType.withActual<true>(), isEqualTo<TestCase>()(node));
+            scope.assert(sameType<IsEqual<typeof standard.property, typeof leaf.property>, true>());
+            scope.assert(sameType<IsEqual<standard.Generator<string>, leaf.Generator<string>>, true>());
+            scope.assert(sameType<IsEqual<standard.PropertyBody<string>, leaf.PropertyBody<string>>, true>());
+            return scope.assert.collect();
         }),
-        test('infers factory examples for first-class and nested properties', function (typeScope) {
+        test('infers factory examples for first-class and nested properties', function (scope) {
             const node = leaf.property({
                 title: 'examples',
                 generator: namedGenerator,
@@ -96,33 +96,33 @@ export const testNode = suite('property', [
                     return { name: 'Ada' };
                 } ],
                 test(value, sample) {
-                    typeScope.assert(sameType.withActual<true>(), isEqualTo<{ readonly name: string; }>()(value));
+                    scope.assert(sameType.withActual<true>(), isEqualTo<{ readonly name: string; }>()(value));
                     sample.assert.equal(value.name, 'Ada');
                     return sample.assert.collect();
                 }
             });
-            typeScope.assert(sameType.withActual<true>(), isEqualTo<TestCase>()(node));
-            typeScope.assert(sameType<IsEqual<standard.PropertyExample<number>, leaf.PropertyExample<number>>, true>());
-            standard.withProperties(async function (scope) {
-                const authoredValue = scope.forall({
+            scope.assert(sameType.withActual<true>(), isEqualTo<TestCase>()(node));
+            scope.assert(sameType<IsEqual<standard.PropertyExample<number>, leaf.PropertyExample<number>>, true>());
+            standard.withProperties(async function (callbackScope) {
+                const authoredValue = callbackScope.forall({
                     generator: numberGenerator,
                     examples: [ function () {
                         return 0;
                     } ],
                     test(value, sample) {
-                        typeScope.assert(sameType.withActual<number>(), value);
+                        scope.assert(sameType.withActual<number>(), value);
                         sample.assert.equal(value, 0);
                         return sample.assert.collect();
                     }
                 });
-                typeScope.assert(sameType.withActual<true>(), isEqualTo<Promise<AssertionResult>>()(authoredValue));
-                return scope.assert.collect();
+                scope.assert(sameType.withActual<true>(), isEqualTo<Promise<AssertionResult>>()(authoredValue));
+                return callbackScope.assert.collect();
             });
             function wrongExample(): boolean {
                 return true;
             }
-            typeScope.assert(rejectsCall('argument-type'), () =>
-                leaf.property({
+            scope.assert(rejectsCall('argument-type'), function () {
+                return leaf.property({
                     title: 'wrong example',
                     generator: numberGenerator,
                     examples: [ wrongExample ],
@@ -130,31 +130,32 @@ export const testNode = suite('property', [
                         sample.assert.equal(value, 0);
                         return sample.assert.collect();
                     }
-                }));
-            return typeScope.assert.collect();
+                });
+            });
+            return scope.assert.collect();
         }),
-        test('nested authoring adds forall without changing the base scope', function (typeScope) {
+        test('nested authoring adds forall without changing the base scope', function (scope) {
             const generator = numberGenerator;
-            const body = standard.withProperties(async function (scope) {
-                typeScope.assert(sameType<IsEqual<typeof scope, leaf.PropertyCaseScope>, true>());
-                const authoredValue2 = scope.forall(generator, function (value, sample) {
-                    typeScope.assert(sameType.withActual<number>(), value);
+            const body = standard.withProperties(async function (callbackScope) {
+                scope.assert(sameType<IsEqual<typeof callbackScope, leaf.PropertyCaseScope>, true>());
+                const authoredValue2 = callbackScope.forall(generator, function (value, sample) {
+                    scope.assert(sameType.withActual<number>(), value);
                     sample.assert.equal(value, 1);
                     return sample.assert.collect();
                 });
-                typeScope.assert(sameType.withActual<true>(), isEqualTo<Promise<AssertionResult>>()(authoredValue2));
-                return scope.assert.collect();
+                scope.assert(sameType.withActual<true>(), isEqualTo<Promise<AssertionResult>>()(authoredValue2));
+                return callbackScope.assert.collect();
             });
-            typeScope.assert(sameType.withActual<true>(), isEqualTo<TestBody>()(body));
-            typeScope.assert(assignableFrom.not<keyof TestScope, 'forall'>());
-            typeScope.assert(assignableFrom.not<keyof TestScope, 'target'>());
-            typeScope.assert(assignableFrom.not<keyof TestScope, 'cover'>());
-            typeScope.assert(sameType<[() => void] extends [leaf.PropertyBody<number>] ? true : false, false>());
-            return typeScope.assert.collect();
+            scope.assert(sameType.withActual<true>(), isEqualTo<TestBody>()(body));
+            scope.assert(assignableFrom.not<keyof TestScope, 'forall'>());
+            scope.assert(assignableFrom.not<keyof TestScope, 'target'>());
+            scope.assert(assignableFrom.not<keyof TestScope, 'cover'>());
+            scope.assert(sameType<[() => void] extends [leaf.PropertyBody<number>] ? true : false, false>());
+            return scope.assert.collect();
         }),
-        test('accepts collected overrides without changing forall or the base scope', function (typeScope) {
-            typeScope.assert(acceptsCall, () =>
-                leaf.property({
+        test('accepts collected overrides without changing forall or the base scope', function (scope) {
+            scope.assert(acceptsCall, function () {
+                return leaf.property({
                     title: 'configured',
                     generator: numberGenerator,
                     test(value: number, sample: leaf.PropertySampleScope) {
@@ -162,35 +163,37 @@ export const testNode = suite('property', [
                         return sample.assert.collect();
                     },
                     settings: { newTrials: 200, maxShrinkWork: 0 }
-                }));
-            typeScope.assert(acceptsCall, () =>
-                leaf.withProperties(
-                    function (scope: leaf.PropertyCaseScope) {
-                        return scope.assert.collect();
+                });
+            });
+            scope.assert(acceptsCall, function () {
+                return leaf.withProperties(
+                    function (callbackScope: leaf.PropertyCaseScope) {
+                        return callbackScope.assert.collect();
                     },
                     { maxWork: 20_000 }
-                ));
-            typeScope.assert(assignableFrom.not<keyof leaf.PropertySettings, 'timeouts'>());
-            typeScope.assert(assignableFrom.not<keyof leaf.PropertySettings, 'coverage'>());
-            return typeScope.assert.collect();
+                );
+            });
+            scope.assert(assignableFrom.not<keyof leaf.PropertySettings, 'timeouts'>());
+            scope.assert(assignableFrom.not<keyof leaf.PropertySettings, 'coverage'>());
+            return scope.assert.collect();
         }),
-        test('fluent generator composition preserves input types and branding', function (typeScope) {
+        test('fluent generator composition preserves input types and branding', function (scope) {
             const generator = numberGenerator;
-            typeScope.assert(sameType.withActual<true>(), isEqualTo<leaf.Generator<string>>()(generator.map(String)));
-            typeScope.assert(
+            scope.assert(sameType.withActual<true>(), isEqualTo<leaf.Generator<string>>()(generator.map(String)));
+            scope.assert(
                 sameType.withActual<true>(),
                 isEqualTo<leaf.Generator<boolean>>()(generator.flatMap(function () {
                     return booleanGenerator;
                 }))
             );
-            typeScope.assert(
+            scope.assert(
                 sameType.withActual<true>(),
                 isEqualTo<leaf.Generator<number>>()(generator.filter(function (value) {
                     return value > 0;
                 }))
             );
-            typeScope.assert(acceptsCall, () =>
-                generator.withCodec({
+            scope.assert(acceptsCall, function () {
+                return generator.withCodec({
                     name: 'number',
                     version: 1,
                     previousDecoders: [],
@@ -198,8 +201,9 @@ export const testNode = suite('property', [
                         return value;
                     },
                     decode: Number
-                }));
-            typeScope.assert(
+                });
+            });
+            scope.assert(
                 sameType<
                     IsAssignable<
                         Pick<leaf.Generator<number>, 'filter' | 'flatMap' | 'map' | 'withCodec'>,
@@ -208,15 +212,15 @@ export const testNode = suite('property', [
                     false
                 >()
             );
-            typeScope.assert(sameType<IsAssignable<() => number, leaf.Generator<number>>, false>());
-            return typeScope.assert.collect();
+            scope.assert(sameType<IsAssignable<() => number, leaf.Generator<number>>, false>());
+            return scope.assert.collect();
         })
     ]),
     suite('preview and relation types', [
-        test('shares exports and infers relation inputs and asynchronous outputs', function (typeScope) {
-            typeScope.assert(sameType<IsEqual<typeof standard.relation, typeof leaf.relation>, true>());
-            typeScope.assert(sameType<IsEqual<typeof standard.sampleGenerator, typeof leaf.sampleGenerator>, true>());
-            typeScope.assert(
+        test('shares exports and infers relation inputs and asynchronous outputs', function (scope) {
+            scope.assert(sameType<IsEqual<typeof standard.relation, typeof leaf.relation>, true>());
+            scope.assert(sameType<IsEqual<typeof standard.sampleGenerator, typeof leaf.sampleGenerator>, true>());
+            scope.assert(
                 sameType.withActual<true>(),
                 isEqualTo<readonly number[]>()(
                     leaf.sampleGenerator(numberGenerator, { seed: 42n, count: 2, size: 3, depth: 0 })
@@ -234,14 +238,14 @@ export const testNode = suite('property', [
                         return String(value);
                     },
                     check({ original }, sample) {
-                        typeScope.assert(sameType.withActual<number>(), original.input);
-                        typeScope.assert(sameType.withActual<string>(), original.output);
+                        scope.assert(sameType.withActual<number>(), original.input);
+                        scope.assert(sameType.withActual<string>(), original.output);
                         sample.assert.equal(original.output, '1');
                         return sample.assert.collect();
                     }
                 })
             });
-            return typeScope.assert.collect();
+            return scope.assert.collect();
         })
     ])
 ]);

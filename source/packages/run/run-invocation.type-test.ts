@@ -1,6 +1,6 @@
 import type { IsEqual } from 'type-fest';
-import { suite, test } from '../../../tools/type-tests/authoring.entry-point.ts';
-import { sameType } from '../../../tools/type-tests/relations.entry-point.ts';
+import { suite, test } from '@overkill-dev/test';
+import { sameType } from '@overkill-dev/type-test';
 import type {
     orchestrator,
     BenchmarkOrchestrator,
@@ -18,15 +18,15 @@ import type {
 } from './run.entry-point.ts';
 
 export const testNode = suite('public runner invocation', [
-    test('preserves timing-only methods and adds supervised cancellation', function (typeScope) {
-        typeScope.assert(sameType<IsEqual<typeof orchestrator, RunOrchestrator>, true>());
-        typeScope.assert(
+    test('preserves timing-only methods and adds supervised cancellation', function (scope) {
+        scope.assert(sameType<IsEqual<typeof orchestrator, RunOrchestrator>, true>());
+        scope.assert(
             sameType<
                 IsEqual<typeof orchestrator.freezePolicy, (input: FreezePolicyInput) => Promise<FrozenMicrotestPolicy>>,
                 true
             >()
         );
-        typeScope.assert(sameType<
+        scope.assert(sameType<
             IsEqual<
                 typeof orchestrator.resolve,
                 (
@@ -36,7 +36,7 @@ export const testNode = suite('public runner invocation', [
             >,
             true
         >());
-        typeScope.assert(sameType<
+        scope.assert(sameType<
             IsEqual<
                 typeof orchestrator.run,
                 (
@@ -46,17 +46,17 @@ export const testNode = suite('public runner invocation', [
             >,
             true
         >());
-        typeScope.assert(
+        scope.assert(
             sameType<
                 IsEqual<RunInvocationOptions, RunInvocationTimingOptions & { readonly signal: AbortSignal | null; }>,
                 true
             >()
         );
-        return typeScope.assert.collect();
+        return scope.assert.collect();
     }),
-    test('preserves benchmark invocation contracts', function (typeScope) {
-        typeScope.assert(sameType<IsEqual<typeof orchestrator.bench, BenchmarkOrchestrator>, true>());
-        typeScope.assert(
+    test('preserves benchmark invocation contracts', function (scope) {
+        scope.assert(sameType<IsEqual<typeof orchestrator.bench, BenchmarkOrchestrator>, true>());
+        scope.assert(
             sameType<
                 IsEqual<
                     typeof orchestrator.bench.list,
@@ -65,7 +65,7 @@ export const testNode = suite('public runner invocation', [
                 true
             >()
         );
-        typeScope.assert(
+        scope.assert(
             sameType<
                 IsEqual<
                     typeof orchestrator.bench.run,
@@ -74,7 +74,7 @@ export const testNode = suite('public runner invocation', [
                 true
             >()
         );
-        typeScope.assert(
+        scope.assert(
             sameType<
                 IsEqual<
                     typeof orchestrator.bench.runWithReporterDelivery,
@@ -86,6 +86,6 @@ export const testNode = suite('public runner invocation', [
                 true
             >()
         );
-        return typeScope.assert.collect();
+        return scope.assert.collect();
     })
 ]);

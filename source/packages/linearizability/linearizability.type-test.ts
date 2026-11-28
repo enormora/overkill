@@ -1,5 +1,5 @@
-import { suite, test } from '../../../tools/type-tests/authoring.entry-point.ts';
-import { sameType } from '../../../tools/type-tests/relations.entry-point.ts';
+import { suite, test } from '@overkill-dev/test';
+import { sameType } from '@overkill-dev/type-test';
 import type { PropertyBody } from '../property/property.entry-point.ts';
 import type { ModelTransition } from '../model/model.entry-point.ts';
 import { isEqualTo, type IsAssignable } from '../../test-support/type-relations.ts';
@@ -11,9 +11,9 @@ import {
     type LinearizabilityTransition
 } from './linearizability.entry-point.ts';
 
-export const testNode = suite('linearizability', [
-    test('infers observation types and accepts deterministic model transitions', function (typeScope) {
-        typeScope.assert(sameType<IsAssignable<ModelTransition<number>, LinearizabilityTransition<number>>, true>());
+export const testNode = suite('Checking concurrent operation histories', [
+    test('infers observation types and accepts deterministic model transitions', function (scope) {
+        scope.assert(sameType<IsAssignable<ModelTransition<number>, LinearizabilityTransition<number>>, true>());
         const controller = new AbortController();
         const result = checkLinearizability({
             history: [ { kind: 'invoke', id: 'one', operation: 1 }, {
@@ -26,10 +26,10 @@ export const testNode = suite('linearizability', [
                     return 0;
                 },
                 transition(state, observation) {
-                    typeScope.assert(sameType.withActual<number>(), state);
-                    typeScope.assert(sameType.withActual<number>(), observation.operation);
+                    scope.assert(sameType.withActual<number>(), state);
+                    scope.assert(sameType.withActual<number>(), observation.operation);
                     if (observation.outcome.kind === 'returned') {
-                        typeScope.assert(sameType.withActual<string>(), observation.outcome.value);
+                        scope.assert(sameType.withActual<string>(), observation.outcome.value);
                     }
                     return { kind: 'alternatives', states: [ state, state + 1 ] };
                 }
@@ -37,17 +37,17 @@ export const testNode = suite('linearizability', [
             maxWork: 100,
             signal: controller.signal
         });
-        typeScope.assert(sameType.withActual<true>(), isEqualTo<Promise<LinearizabilityResult>>()(result));
-        return typeScope.assert.collect();
+        scope.assert(sameType.withActual<true>(), isEqualTo<Promise<LinearizabilityResult>>()(result));
+        return scope.assert.collect();
     }),
-    test('infers concurrent operation and output types', function (typeScope) {
+    test('infers concurrent operation and output types', function (scope) {
         const body = linearizability({
             create() {
                 return { value: 0 };
             },
             run(operation: number, system, signal) {
-                typeScope.assert(sameType.withActual<number>(), system.value);
-                typeScope.assert(sameType.withActual<true>(), isEqualTo<AbortSignal>()(signal));
+                scope.assert(sameType.withActual<number>(), system.value);
+                scope.assert(sameType.withActual<true>(), isEqualTo<AbortSignal>()(signal));
                 return String(operation);
             },
             model: {
@@ -55,16 +55,16 @@ export const testNode = suite('linearizability', [
                     return 0;
                 },
                 transition(state, observation) {
-                    typeScope.assert(sameType.withActual<number>(), observation.operation);
+                    scope.assert(sameType.withActual<number>(), observation.operation);
                     if (observation.outcome.kind === 'returned') {
-                        typeScope.assert(sameType.withActual<string>(), observation.outcome.value);
+                        scope.assert(sameType.withActual<string>(), observation.outcome.value);
                     }
                     return { kind: 'enabled', state };
                 }
             },
             maxWork: 100
         });
-        typeScope.assert(sameType.withActual<true>(), isEqualTo<PropertyBody<LinearizabilityProgram<number>>>()(body));
-        return typeScope.assert.collect();
+        scope.assert(sameType.withActual<true>(), isEqualTo<PropertyBody<LinearizabilityProgram<number>>>()(body));
+        return scope.assert.collect();
     })
 ]);

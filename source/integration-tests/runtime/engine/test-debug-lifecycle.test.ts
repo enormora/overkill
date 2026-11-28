@@ -5,11 +5,14 @@ import { createDeterministicClock } from '@enormora/clock';
 import {
     isTestDebugArtifact,
     type ExecuteOptions,
+    type RunnerError,
     type RunResult,
     type TestDebugArtifact
 } from '../../../packages/engine/engine.entry-point.ts';
+import { captureThrownError } from '../../../test-support/captured-error.ts';
 import { createTestEngine, createTimedTestEngine } from '../../../test-support/create-test-engine.ts';
 import { defaultAttachmentLimits } from '../../../engine/runtime-attachment.ts';
+import { withLateAssertionFallback } from '../../../engine/late-assertion-delivery.ts';
 
 const metadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
 const options: ExecuteOptions = {
@@ -292,9 +295,23 @@ export const testNode = suite('debug lifecycle', [
                 })
             ]
         }));
-        const result = await engine.execute(plan, options);
+        const lateErrors: RunnerError[] = [];
+        const result = await withLateAssertionFallback(function record(error) {
+            lateErrors.push(error);
+        }, async function executeWithLateEvidence() {
+            return await engine.execute(plan, options);
+        });
         const encoded = JSON.stringify(artifactFrom(result));
-        scope.assert.throws(late, { message: /assertion context settled/u });
+        scope.assert.equal(
+            captureThrownError(late)?.message,
+            'Cannot record an assertion after the assertion context settled.'
+        );
+        scope.assert.deepEqual(
+            lateErrors.map(function message(error) {
+                return error.message;
+            }),
+            [ 'Cannot record an assertion after the assertion context settled.' ]
+        );
         scope.assert.equal(JSON.stringify(artifactFrom(result)), encoded);
         return scope.assert.collect();
     })

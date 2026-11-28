@@ -1,6 +1,6 @@
 import type { IsEqual } from 'type-fest';
-import { suite, test as typeTest } from '../../../tools/type-tests/authoring.entry-point.ts';
-import { acceptsCall, rejectsCall, sameType } from '../../../tools/type-tests/relations.entry-point.ts';
+import { acceptsCall, rejectsCall, sameType } from '@overkill-dev/type-test';
+import { suite, test as typeTest } from '@overkill-dev/test';
 import type {
     DefinedOutputRenderer,
     DefinedReporter,
@@ -41,29 +41,32 @@ declare const reporter: DefinedReporter;
 
 declare const createTestFacadeUnderTest: typeof createTestFacade;
 
-export const testNode = suite('@overkill-dev/test capture and direct execution types', [
-    typeTest('types capture controls as selected-profile policy', function (typeScope) {
-        typeScope.assert(acceptsCall, () =>
-            createTestFacadeUnderTest({
+export const testNode = suite('Test capture and direct execution', [
+    typeTest('types capture controls as selected-profile policy', function (scope) {
+        scope.assert(acceptsCall, function () {
+            return createTestFacadeUnderTest({
                 controls: authoringControls
-            }));
-        typeScope.assert(acceptsCall, () =>
-            test({
+            });
+        });
+        scope.assert(acceptsCall, function () {
+            return test({
                 body,
                 controls: { capture: 'live' },
                 title: 'passes'
-            }));
-        typeScope.assert(acceptsCall, () =>
-            skippedTest({
+            });
+        });
+        scope.assert(acceptsCall, function () {
+            return skippedTest({
                 controls: { capture: 'live' },
                 reason: 'unsupported platform',
                 title: 'skips'
-            }));
-        return typeScope.assert.collect();
+            });
+        });
+        return scope.assert.collect();
     }),
     suite('re-exports high-level authoring types from the engine', [
-        typeTest('re-exports engine node and body types', function (typeScope) {
-            typeScope.assert(sameType<
+        typeTest('re-exports engine node and body types', function (scope) {
+            scope.assert(sameType<
                 IsEqual<RootRunIfMainOptions, {
                     readonly outputRenderer?: DefinedOutputRenderer;
                     readonly reporters?: readonly DefinedReporter[];
@@ -71,7 +74,7 @@ export const testNode = suite('@overkill-dev/test capture and direct execution t
                 }>,
                 true
             >());
-            typeScope.assert(sameType<
+            scope.assert(sameType<
                 IsEqual<RootRunIfMainRootOptions, {
                     readonly annotations?: AuthoringAnnotations;
                     readonly controls?: AuthoringControls;
@@ -79,24 +82,26 @@ export const testNode = suite('@overkill-dev/test capture and direct execution t
                 }>,
                 true
             >());
-            typeScope.assert(sameType<IsEqual<RootInFlightTask<string>, InFlightTask<string>>, true>());
-            typeScope.assert(sameType<IsEqual<RootSuite, Suite>, true>());
-            typeScope.assert(sameType<IsEqual<RootTable, Table>, true>());
-            return typeScope.assert.collect();
+            scope.assert(sameType<IsEqual<RootInFlightTask<string>, InFlightTask<string>>, true>());
+            scope.assert(sameType<IsEqual<RootSuite, Suite>, true>());
+            scope.assert(sameType<IsEqual<RootTable, Table>, true>());
+            return scope.assert.collect();
         }),
-        typeTest('re-exports engine annotation and planning types', function (typeScope) {
-            typeScope.assert(sameType<IsEqual<RootTestBody, TestBody>, true>());
-            typeScope.assert(sameType<IsEqual<RootTestCase, TestCase>, true>());
-            typeScope.assert(sameType<IsEqual<RootTestNode, TestNode>, true>());
-            typeScope.assert(sameType<IsEqual<RootTestScope, TestScope>, true>());
-            typeScope.assert(sameType<IsEqual<RootTestScopeAssertContext, TestScopeAssertContext>, true>());
-            return typeScope.assert.collect();
+        typeTest('re-exports engine annotation and planning types', function (scope) {
+            scope.assert(sameType<IsEqual<RootTestBody, TestBody>, true>());
+            scope.assert(sameType<IsEqual<RootTestCase, TestCase>, true>());
+            scope.assert(sameType<IsEqual<RootTestNode, TestNode>, true>());
+            scope.assert(sameType<IsEqual<RootTestScope, TestScope>, true>());
+            scope.assert(sameType<IsEqual<RootTestScopeAssertContext, TestScopeAssertContext>, true>());
+            return scope.assert.collect();
         })
     ]),
-    typeTest('runs direct entrypoints with runner-owned options', function (typeScope) {
-        typeScope.assert(acceptsCall, async () => runIfMain(import.meta, node));
-        typeScope.assert(acceptsCall, async () =>
-            runIfMain(import.meta, node, {
+    typeTest('runs direct entrypoints with runner-owned options', function (scope) {
+        scope.assert(acceptsCall, async function () {
+            return runIfMain(import.meta, node);
+        });
+        scope.assert(acceptsCall, async function () {
+            return runIfMain(import.meta, node, {
                 outputRenderer,
                 reporters: [ reporter ],
                 root: {
@@ -104,13 +109,20 @@ export const testNode = suite('@overkill-dev/test capture and direct execution t
                     controls: authoringControls,
                     title: 'root'
                 }
-            }));
-        typeScope.assert(rejectsCall('argument-type'), async () => runIfMain(import.meta, node, { runFacts: {} }));
-        typeScope.assert(
+            });
+        });
+        scope.assert(rejectsCall('argument-type'), async function () {
+            return runIfMain(import.meta, node, { runFacts: {} });
+        });
+        scope.assert(
             rejectsCall('argument-type'),
-            async () => runIfMain(import.meta, node, { profile: 'microtest' })
+            async function () {
+                return runIfMain(import.meta, node, { profile: 'microtest' });
+            }
         );
-        typeScope.assert(rejectsCall('argument-type'), async () => runIfMain(import.meta, node, { cwd: 'project' }));
-        return typeScope.assert.collect();
+        scope.assert(rejectsCall('argument-type'), async function () {
+            return runIfMain(import.meta, node, { cwd: 'project' });
+        });
+        return scope.assert.collect();
     })
 ]);

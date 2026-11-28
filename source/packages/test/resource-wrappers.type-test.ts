@@ -1,6 +1,6 @@
 import type { IsEqual } from 'type-fest';
-import { suite, test } from '../../../tools/type-tests/authoring.entry-point.ts';
-import { acceptsCall, rejectsCall, sameType } from '../../../tools/type-tests/relations.entry-point.ts';
+import { acceptsCall, rejectsCall, sameType } from '@overkill-dev/type-test';
+import { suite, test } from '@overkill-dev/test';
 import type {
     Table,
     TestBody,
@@ -26,9 +26,9 @@ import {
 import {
     createTestFacade,
     table as rootTable,
-    test as rootTest,
     type ParameterizedTestScope,
-    type TableTestBody
+    type TableTestBody,
+    test as rootTest
 } from './test.entry-point.ts';
 
 type Database = {
@@ -57,236 +57,263 @@ const temporaryDirectory = createTemporaryDirectoryResource('scratch');
 
 declare const withRuntimeUnderTest: typeof withRuntime;
 
-export const testNode = suite('@overkill-dev/test/resources wrapper standard subpath', [
-    test('exposes runtime test context wrappers through the resources subpath', function (typeScope) {
-        const runtimeBody = withRuntime(runtime, function runWithDatabase(scope) {
-            typeScope.assert(sameType<IsEqual<typeof scope, RuntimeTestScope<typeof runtime>>, true>());
-            typeScope.assert(sameType.withActual<true>(), isEqualTo<Database>()(scope.runtimes.api.database));
-            typeScope.assert(sameType.withActual<true>(), isEqualTo<RuntimeAttachments>()(scope.attachments));
+export const testNode = suite('Resource and runtime attachment wrappers', [
+    test('exposes runtime test context wrappers through the resources subpath', function (scope) {
+        const runtimeBody = withRuntime(runtime, function runWithDatabase(callbackScope) {
+            scope.assert(sameType<IsEqual<typeof callbackScope, RuntimeTestScope<typeof runtime>>, true>());
+            scope.assert(sameType.withActual<true>(), isEqualTo<Database>()(callbackScope.runtimes.api.database));
+            scope.assert(sameType.withActual<true>(), isEqualTo<RuntimeAttachments>()(callbackScope.attachments));
 
-            return scope.assert.collect();
+            return callbackScope.assert.collect();
         });
 
-        typeScope.assert(sameType.withActual<true>(), isEqualTo<RuntimeWrappedTestBody<typeof runtime>>()(runtimeBody));
-        typeScope.assert(sameType<[typeof runtimeBody] extends [TestBody] ? true : false, true>());
-        typeScope.assert(sameType<IsAssignable<typeof runtime, RuntimeGraph>, true>());
-        typeScope.assert(rejectsCall('argument-count'), () =>
-            withRuntimeUnderTest(runtime, {
+        scope.assert(sameType.withActual<true>(), isEqualTo<RuntimeWrappedTestBody<typeof runtime>>()(runtimeBody));
+        scope.assert(sameType<[typeof runtimeBody] extends [TestBody] ? true : false, true>());
+        scope.assert(sameType<IsAssignable<typeof runtime, RuntimeGraph>, true>());
+        scope.assert(rejectsCall('argument-count'), function () {
+            return withRuntimeUnderTest(runtime, {
                 database: { url: 'postgres://localhost' }
-            }, function runInvalidRuntimeScope(scope: TestScope) {
-                return scope.assert.collect();
-            }));
-        return typeScope.assert.collect();
+            }, function runInvalidRuntimeScope(callbackScope: TestScope) {
+                return callbackScope.assert.collect();
+            });
+        });
+        return scope.assert.collect();
     }),
-    test('types table runtime wrappers through the resources subpath', function (typeScope) {
+    test('types table runtime wrappers through the resources subpath', function (scope) {
         const tableRuntimeBody = withRuntime<typeof runtime, ParameterizedTestScope<TableRow>>(
             runtime,
-            function runTableWithDatabase(scope) {
-                typeScope.assert(
+            function runTableWithDatabase(callbackScope) {
+                scope.assert(
                     sameType<
-                        IsEqual<typeof scope, RuntimeTestScope<typeof runtime, ParameterizedTestScope<TableRow>>>,
+                        IsEqual<
+                            typeof callbackScope,
+                            RuntimeTestScope<typeof runtime, ParameterizedTestScope<TableRow>>
+                        >,
                         true
                     >()
                 );
-                typeScope.assert(sameType.withActual<number>(), scope.parameters.value);
-                typeScope.assert(sameType.withActual<string>(), scope.runtimes.api.database.url);
+                scope.assert(sameType.withActual<number>(), callbackScope.parameters.value);
+                scope.assert(sameType.withActual<string>(), callbackScope.runtimes.api.database.url);
 
-                return scope.assert.collect();
+                return callbackScope.assert.collect();
             }
         );
 
-        typeScope.assert(
+        scope.assert(
             sameType.withActual<true>(),
             isEqualTo<RuntimeWrappedTestBody<typeof runtime, ParameterizedTestScope<TableRow>>>()(tableRuntimeBody)
         );
-        typeScope.assert(
+        scope.assert(
             sameType<[typeof tableRuntimeBody] extends [TableTestBody<TableRow>] ? true : false, true>()
         );
-        return typeScope.assert.collect();
+        return scope.assert.collect();
     }),
-    test('types direct resource wrappers through the resources subpath', function (typeScope) {
-        const resourceBody = withResource(temporaryDirectory, function runWithScratch(scope) {
-            typeScope.assert(
+    test('types direct resource wrappers through the resources subpath', function (scope) {
+        const resourceBody = withResource(temporaryDirectory, function runWithScratch(callbackScope) {
+            scope.assert(
                 sameType<
-                    IsEqual<typeof scope, ResourceTestScope<Record<'scratch', typeof temporaryDirectory>>>,
+                    IsEqual<typeof callbackScope, ResourceTestScope<Record<'scratch', typeof temporaryDirectory>>>,
                     true
                 >()
             );
-            typeScope.assert(
+            scope.assert(
                 sameType.withActual<true>(),
-                isEqualTo<TemporaryDirectoryHandle>()(scope.resources.scratch)
+                isEqualTo<TemporaryDirectoryHandle>()(callbackScope.resources.scratch)
             );
 
-            return scope.assert.collect();
+            return callbackScope.assert.collect();
         });
-        const resourcesBody = withResources({ dir: temporaryDirectory }, function runWithResources(scope) {
-            typeScope.assert(
+        const resourcesBody = withResources({ dir: temporaryDirectory }, function runWithResources(callbackScope) {
+            scope.assert(
                 sameType<
-                    IsEqual<typeof scope, ResourceTestScope<{ readonly dir: typeof temporaryDirectory; }>>,
+                    IsEqual<typeof callbackScope, ResourceTestScope<{ readonly dir: typeof temporaryDirectory; }>>,
                     true
                 >()
             );
-            typeScope.assert(sameType.withActual<string>(), scope.resources.dir.path);
-            typeScope.assert(sameType.withActual<true>(), isEqualTo<RuntimeAttachments>()(scope.attachments));
+            scope.assert(sameType.withActual<string>(), callbackScope.resources.dir.path);
+            scope.assert(sameType.withActual<true>(), isEqualTo<RuntimeAttachments>()(callbackScope.attachments));
 
-            return scope.assert.collect();
+            return callbackScope.assert.collect();
         });
 
-        typeScope.assert(
+        scope.assert(
             sameType.withActual<true>(),
             isEqualTo<ResourceWrappedTestBody<Record<'scratch', typeof temporaryDirectory>>>()(resourceBody)
         );
-        typeScope.assert(
+        scope.assert(
             sameType.withActual<true>(),
             isEqualTo<ResourceWrappedTestBody<{ readonly dir: typeof temporaryDirectory; }>>()(resourcesBody)
         );
-        typeScope.assert(sameType<[typeof resourceBody] extends [TestBody] ? true : false, true>());
-        typeScope.assert(sameType<[typeof resourcesBody] extends [TestBody] ? true : false, true>());
-        return typeScope.assert.collect();
+        scope.assert(sameType<[typeof resourceBody] extends [TestBody] ? true : false, true>());
+        scope.assert(sameType<[typeof resourcesBody] extends [TestBody] ? true : false, true>());
+        return scope.assert.collect();
     }),
-    test('types nested resource wrappers through explicit scope generics', function (typeScope) {
+    test('types nested resource wrappers through explicit scope generics', function (scope) {
         const nestedBody = withResource(
             temporaryDirectory,
             withRuntime<typeof runtime, ResourceTestScope<Record<'scratch', typeof temporaryDirectory>>>(
                 runtime,
-                function runWithScratchAndRuntime(scope) {
-                    typeScope.assert(
+                function runWithScratchAndRuntime(callbackScope) {
+                    scope.assert(
                         sameType.withActual<true>(),
-                        isEqualTo<TemporaryDirectoryHandle>()(scope.resources.scratch)
+                        isEqualTo<TemporaryDirectoryHandle>()(callbackScope.resources.scratch)
                     );
-                    typeScope.assert(sameType.withActual<true>(), isEqualTo<Database>()(scope.runtimes.api.database));
-                    typeScope.assert(sameType.withActual<true>(), isEqualTo<RuntimeAttachments>()(scope.attachments));
+                    scope.assert(
+                        sameType.withActual<true>(),
+                        isEqualTo<Database>()(callbackScope.runtimes.api.database)
+                    );
+                    scope.assert(
+                        sameType.withActual<true>(),
+                        isEqualTo<RuntimeAttachments>()(callbackScope.attachments)
+                    );
 
-                    return scope.assert.collect();
+                    return callbackScope.assert.collect();
                 }
             )
         );
 
-        typeScope.assert(sameType.withActual<true>(), isAssignableTo<TestBody>()(nestedBody));
-        return typeScope.assert.collect();
+        scope.assert(sameType.withActual<true>(), isAssignableTo<TestBody>()(nestedBody));
+        return scope.assert.collect();
     }),
-    test('accepts descriptor wrappers from neutral test authoring types', function (typeScope) {
-        const runtimeBody = withRuntime(runtime, function runWithDatabase(scope) {
-            return scope.assert.collect();
+    test('accepts descriptor wrappers from neutral test authoring types', function (scope) {
+        const runtimeBody = withRuntime(runtime, function runWithDatabase(callbackScope) {
+            return callbackScope.assert.collect();
         });
-        const resourceBody = withResource(temporaryDirectory, function runWithScratch(scope) {
-            return scope.assert.collect();
+        const resourceBody = withResource(temporaryDirectory, function runWithScratch(callbackScope) {
+            return callbackScope.assert.collect();
         });
         const facade = createTestFacade();
 
-        typeScope.assert(acceptsCall, () => rootTest('uses database', runtimeBody));
-        typeScope.assert(acceptsCall, () => rootTest('uses scratch', resourceBody));
-        typeScope.assert(acceptsCall, () => rootTest({ body: runtimeBody, title: 'uses database' }));
-        typeScope.assert(acceptsCall, () => facade.test('uses database', runtimeBody));
-        typeScope.assert(acceptsCall, () => facade.test('uses scratch', resourceBody));
-        return typeScope.assert.collect();
+        scope.assert(acceptsCall, function () {
+            return rootTest('uses database', runtimeBody);
+        });
+        scope.assert(acceptsCall, function () {
+            return rootTest('uses scratch', resourceBody);
+        });
+        scope.assert(acceptsCall, function () {
+            return rootTest({ body: runtimeBody, title: 'uses database' });
+        });
+        scope.assert(acceptsCall, function () {
+            return facade.test('uses database', runtimeBody);
+        });
+        scope.assert(acceptsCall, function () {
+            return facade.test('uses scratch', resourceBody);
+        });
+        return scope.assert.collect();
     }),
-    test('accepts descriptor wrappers from neutral table authoring types', function (typeScope) {
+    test('accepts descriptor wrappers from neutral table authoring types', function (scope) {
         const tableRuntimeBody = withRuntime<typeof runtime, ParameterizedTestScope<TableRow>>(
             runtime,
-            function runTableWithDatabase(scope) {
-                return scope.assert.collect();
+            function runTableWithDatabase(callbackScope) {
+                return callbackScope.assert.collect();
             }
         );
         const tableResourceBody = withResource<typeof temporaryDirectory, ParameterizedTestScope<TableRow>>(
             temporaryDirectory,
-            function runTableWithScratch(scope) {
-                return scope.assert.collect();
+            function runTableWithScratch(callbackScope) {
+                return callbackScope.assert.collect();
             }
         );
         const facade = createTestFacade();
 
-        typeScope.assert(acceptsCall, () =>
-            rootTable({
+        scope.assert(acceptsCall, function () {
+            return rootTable({
                 cases: [ { value: 1 }, { value: 2 } ],
                 test: tableRuntimeBody,
                 title: 'rows'
-            }));
-        typeScope.assert(acceptsCall, () =>
-            rootTable({
+            });
+        });
+        scope.assert(acceptsCall, function () {
+            return rootTable({
                 cases: [ { value: 1 }, { value: 2 } ],
                 test: tableResourceBody,
                 title: 'rows'
-            }));
-        typeScope.assert(acceptsCall, () =>
-            facade.table({
+            });
+        });
+        scope.assert(acceptsCall, function () {
+            return facade.table({
                 cases: [ { value: 1 }, { value: 2 } ],
                 test: tableRuntimeBody,
                 title: 'rows'
-            }));
-        typeScope.assert(acceptsCall, () =>
-            facade.table({
+            });
+        });
+        scope.assert(acceptsCall, function () {
+            return facade.table({
                 cases: [ { value: 1 }, { value: 2 } ],
                 test: tableResourceBody,
                 title: 'rows'
-            }));
-        return typeScope.assert.collect();
+            });
+        });
+        return scope.assert.collect();
     }),
-    test('accepts runtime wrappers from neutral authoring types', function (typeScope) {
-        const runtimeBody = withRuntime(runtime, function runWithDatabase(scope) {
-            return scope.assert.collect();
+    test('accepts runtime wrappers from neutral authoring types', function (scope) {
+        const runtimeBody = withRuntime(runtime, function runWithDatabase(callbackScope) {
+            return callbackScope.assert.collect();
         });
         const tableRuntimeBody = withRuntime<typeof runtime, ParameterizedTestScope<TableRow>>(
             runtime,
-            function runTableWithDatabase(scope) {
-                return scope.assert.collect();
+            function runTableWithDatabase(callbackScope) {
+                return callbackScope.assert.collect();
             }
         );
         const facade = createTestFacade();
 
-        typeScope.assert(acceptsCall, () => facade.test('uses database', runtimeBody));
-        typeScope.assert(acceptsCall, () =>
-            facade.table({
+        scope.assert(acceptsCall, function () {
+            return facade.test('uses database', runtimeBody);
+        });
+        scope.assert(acceptsCall, function () {
+            return facade.table({
                 cases: [ { value: 1 }, { value: 2 } ],
                 test: tableRuntimeBody,
                 title: 'rows'
-            }));
-        return typeScope.assert.collect();
+            });
+        });
+        return scope.assert.collect();
     }),
-    test('types facade-bound runtime resources and mapped scope', function (typeScope) {
+    test('types facade-bound runtime resources and mapped scope', function (scope) {
         const facade = createTestFacade({
             runtime,
             resources: { scratch: temporaryDirectory },
-            mapScope(scope) {
-                typeScope.assert(sameType.withActual<true>(), isEqualTo<Database>()(scope.runtimes.api.database));
-                typeScope.assert(sameType.withActual<true>(), isEqualTo<RuntimeAttachments>()(scope.attachments));
-                typeScope.assert(
+            mapScope(callbackScope) {
+                scope.assert(sameType.withActual<true>(), isEqualTo<Database>()(callbackScope.runtimes.api.database));
+                scope.assert(sameType.withActual<true>(), isEqualTo<RuntimeAttachments>()(callbackScope.attachments));
+                scope.assert(
                     sameType.withActual<true>(),
-                    isEqualTo<TemporaryDirectoryHandle>()(scope.resources.scratch)
+                    isEqualTo<TemporaryDirectoryHandle>()(callbackScope.resources.scratch)
                 );
 
                 return {
-                    databaseUrl: scope.runtimes.api.database.url,
-                    scratchPath: scope.resources.scratch.path
+                    databaseUrl: callbackScope.runtimes.api.database.url,
+                    scratchPath: callbackScope.resources.scratch.path
                 };
             }
         });
 
-        const authoredCase = facade.test('uses facade runtime', function runWithFacade(scope) {
-            typeScope.assert(sameType.withActual<string>(), scope.databaseUrl);
-            typeScope.assert(sameType.withActual<string>(), scope.scratchPath);
-            typeScope.assert(
+        const authoredCase = facade.test('uses facade runtime', function runWithFacade(callbackScope) {
+            scope.assert(sameType.withActual<string>(), callbackScope.databaseUrl);
+            scope.assert(sameType.withActual<string>(), callbackScope.scratchPath);
+            scope.assert(
                 sameType.withActual<true>(),
-                isEqualTo<TemporaryDirectoryHandle>()(scope.resources.scratch)
+                isEqualTo<TemporaryDirectoryHandle>()(callbackScope.resources.scratch)
             );
-            typeScope.assert(sameType.withActual<true>(), isEqualTo<Database>()(scope.runtimes.api.database));
-            typeScope.assert(sameType.withActual<true>(), isEqualTo<RuntimeAttachments>()(scope.attachments));
+            scope.assert(sameType.withActual<true>(), isEqualTo<Database>()(callbackScope.runtimes.api.database));
+            scope.assert(sameType.withActual<true>(), isEqualTo<RuntimeAttachments>()(callbackScope.attachments));
 
-            return scope.assert.collect();
+            return callbackScope.assert.collect();
         });
-        typeScope.assert(sameType.withActual<true>(), isEqualTo<TestCase>()(authoredCase));
+        scope.assert(sameType.withActual<true>(), isEqualTo<TestCase>()(authoredCase));
         const authoredTable = facade.table({
             cases: [ { value: 1 }, { value: 2 } ],
-            test(scope) {
-                typeScope.assert(sameType.withActual<number>(), scope.parameters.value);
-                typeScope.assert(sameType.withActual<string>(), scope.databaseUrl);
-                typeScope.assert(sameType.withActual<string>(), scope.resources.scratch.path);
+            test(callbackScope) {
+                scope.assert(sameType.withActual<number>(), callbackScope.parameters.value);
+                scope.assert(sameType.withActual<string>(), callbackScope.databaseUrl);
+                scope.assert(sameType.withActual<string>(), callbackScope.resources.scratch.path);
 
-                return scope.assert.collect();
+                return callbackScope.assert.collect();
             },
             title: 'rows'
         });
-        typeScope.assert(sameType.withActual<true>(), isEqualTo<Table>()(authoredTable));
-        return typeScope.assert.collect();
+        scope.assert(sameType.withActual<true>(), isEqualTo<Table>()(authoredTable));
+        return scope.assert.collect();
     })
 ]);

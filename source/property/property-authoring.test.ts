@@ -268,7 +268,9 @@ export const testNode = suite('property authoring', [
     }),
     test('direct invocation of nested envelopes rejects execution', async function (scope) {
         await scope.assert.rejects(async function () {
-            const outcome: unknown = Reflect.apply(withProperties(unexpectedPropertyBody), undefined, [ scope ]);
+            const outcome: unknown = Reflect.apply(withProperties(unexpectedPropertyBody), undefined, [
+                { cleanup: scope.cleanup, signal: scope.signal }
+            ]);
             return await outcome;
         }, {
             message: 'Property execution requires an engine property scope and resolved collection policy.'

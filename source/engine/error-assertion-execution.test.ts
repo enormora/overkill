@@ -326,17 +326,18 @@ export const testNode = suite('Error assertion execution', [
         return scope.assert.collect();
     }),
     test('rejects unawaited async rejects assertions at collect', async function (scope: TestScope) {
+        const pendingAssertions: Promise<void>[] = [];
         const result = await executeSingleBody(function testBody(testScope) {
-            const pendingAssertions = [
+            pendingAssertions.push(
                 testScope.assert.rejects(async function rejectExpectedError() {
                     await Promise.reject(new Error('expected'));
                 }, { message: 'expected' })
-            ];
+            );
 
-            scope.assert.equal(pendingAssertions.length, 1);
             return testScope.assert.collect();
         });
 
+        scope.assert.equal(pendingAssertions.length, 1);
         const outcome = firstFailOutcome(result);
         scope.require.notNull(outcome);
         scope.assert.deepEqual(outcome.failures, [

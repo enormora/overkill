@@ -3,6 +3,7 @@ import path from 'node:path';
 import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { suite, test, type TestScope } from '@overkill-dev/test';
 
+import { captureRejectedError } from '../../../test-support/captured-error.ts';
 import { attachmentFixture, attachmentWork as work } from '../../../test-support/attachment-fixture.ts';
 
 import { defaultAttachmentLimits, type RuntimeAttachmentArtifact } from '../../../engine/runtime-attachment.ts';
@@ -127,9 +128,10 @@ export const testNode = suite('Runtime attachments', [
                 mediaType: 'image/png',
                 name: 'screenshot'
             });
-            await scope.assert.rejects(async function overflowScreenshot() {
+            const overflow = await captureRejectedError(async function overflowScreenshot() {
                 await binary.write(new Uint8Array([ 1, 2, 3, 4 ]));
-            }, { message: 'Binary attachment byte limit exceeded.' });
+            });
+            scope.assert.equal(overflow?.message, 'Binary attachment byte limit exceeded.');
         });
         await execution.finish();
         const artifact = store.artifacts()[1];

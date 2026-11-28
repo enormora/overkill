@@ -136,7 +136,8 @@ its inferred type, as in the quickstart.
 
 ### Check calls
 
-Pass an inline, parameterless arrow with a single TypeScript call:
+Pass an inline, parameterless function with a single TypeScript call. The body
+can be an arrow expression, a call statement, or a return of the call.
 
 ```ts
 scope.assert(acceptsCall, () => greet('Ada'));

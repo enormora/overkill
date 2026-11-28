@@ -1,6 +1,6 @@
 import type { IsEqual } from 'type-fest';
-import { suite, test } from '../../../tools/type-tests/authoring.entry-point.ts';
-import { acceptsCall, rejectsCall, sameType } from '../../../tools/type-tests/relations.entry-point.ts';
+import { suite, test } from '@overkill-dev/test';
+import { acceptsCall, rejectsCall, sameType } from '@overkill-dev/type-test';
 import { defineSimulatedHttpServer } from '../simulation/simulation.entry-point.ts';
 import { isEqualTo, type IsAssignable } from '../../test-support/type-relations.ts';
 import {
@@ -277,76 +277,78 @@ const projectedDatabase = defineResource({
 
 declare const assertPerCaseResourceGraphUnderTest: typeof assertPerCaseResourceGraph;
 
-export const testNode = suite('resources', [
-    suite('@overkill-dev/resources', [
+export const testNode = suite('Resource descriptors, scenarios, and attachments', [
+    suite('Resource descriptors and runtime context inference', [
         suite('infers resource handles and runtime context from descriptors', [
-            test('infers handles from descriptors', function (typeScope) {
-                typeScope.assert(sameType<IsEqual<ResourceHandle<typeof database>, Database>, true>());
-                typeScope.assert(sameType<IsEqual<ResourceHandle<typeof server>, Server>, true>());
-                typeScope.assert(
+            test('infers handles from descriptors', function (scope) {
+                scope.assert(sameType<IsEqual<ResourceHandle<typeof database>, Database>, true>());
+                scope.assert(sameType<IsEqual<ResourceHandle<typeof server>, Server>, true>());
+                scope.assert(
                     sameType<
                         IsEqual<ResourceContext<typeof server.dependencies>, ExpectedDatabaseResourceContext>,
                         true
                     >()
                 );
-                typeScope.assert(
+                scope.assert(
                     sameType.withActual<true>(),
                     isEqualTo<typeof database>()(server.dependencies.database)
                 );
-                typeScope.assert(
+                scope.assert(
                     sameType.withActual<true>(),
                     isEqualTo<Readonly<Record<PropertyKey, never>>>()(database.dependencies)
                 );
-                return typeScope.assert.collect();
+                return scope.assert.collect();
             }),
-            test('infers runtime and resource contexts', function (typeScope) {
-                typeScope.assert(sameType<IsEqual<RuntimeContext<typeof runtime>, ExpectedRuntimeContext>, true>());
-                typeScope.assert(sameType<IsEqual<RuntimeContext<typeof runtime>['database'], Database>, true>());
-                typeScope.assert(sameType<IsEqual<RuntimeContext<typeof runtime>['server'], Server>, true>());
-                typeScope.assert(
+            test('infers runtime and resource contexts', function (scope) {
+                scope.assert(sameType<IsEqual<RuntimeContext<typeof runtime>, ExpectedRuntimeContext>, true>());
+                scope.assert(sameType<IsEqual<RuntimeContext<typeof runtime>['database'], Database>, true>());
+                scope.assert(sameType<IsEqual<RuntimeContext<typeof runtime>['server'], Server>, true>());
+                scope.assert(
                     sameType<IsEqual<RuntimeScopeContext<typeof runtime>, ExpectedRuntimeScopeContext>, true>()
                 );
-                typeScope.assert(sameType.withActual<'api'>(), runtime.name);
-                return typeScope.assert.collect();
+                scope.assert(sameType.withActual<'api'>(), runtime.name);
+                return scope.assert.collect();
             })
         ]),
-        test('infers projected resource handles', function (typeScope) {
-            typeScope.assert(sameType<IsEqual<ResourceHandle<typeof projectedDatabase>, ProjectedDatabase>, true>());
-            typeScope.assert(sameType.withActual<'projected-database'>(), projectedDatabase.name);
-            return typeScope.assert.collect();
+        test('infers projected resource handles', function (scope) {
+            scope.assert(sameType<IsEqual<ResourceHandle<typeof projectedDatabase>, ProjectedDatabase>, true>());
+            scope.assert(sameType.withActual<'projected-database'>(), projectedDatabase.name);
+            return scope.assert.collect();
         }),
-        test('infers aliased and hidden dependency runtime contexts', function (typeScope) {
-            typeScope.assert(sameType<
+        test('infers aliased and hidden dependency runtime contexts', function (scope) {
+            scope.assert(sameType<
                 IsEqual<RuntimeContext<typeof aliasedRuntime>, {
                     readonly server: Server;
                     readonly store: Database;
                 }>,
                 true
             >());
-            typeScope.assert(sameType.withActual<'aliased-api'>(), aliasedRuntime.name);
-            typeScope.assert(sameType<
+            scope.assert(sameType.withActual<'aliased-api'>(), aliasedRuntime.name);
+            scope.assert(sameType<
                 IsEqual<RuntimeContext<typeof hiddenDependencyRuntime>, {
                     readonly server: Server;
                 }>,
                 true
             >());
-            typeScope.assert(sameType.withActual<'hidden-dependency-api'>(), hiddenDependencyRuntime.name);
-            return typeScope.assert.collect();
+            scope.assert(sameType.withActual<'hidden-dependency-api'>(), hiddenDependencyRuntime.name);
+            return scope.assert.collect();
         }),
-        test('exposes runtime lifecycle session types', function (typeScope) {
+        test('exposes runtime lifecycle session types', function (scope) {
             const runtimeSession = startRuntime({ runtime, signal: typeTestController.signal });
             const resourceSession = startResources({ resources: { database }, signal: typeTestController.signal });
 
-            typeScope.assert(
+            scope.assert(
                 sameType.withActual<true>(),
                 isEqualTo<Promise<RuntimeSession<typeof runtime>>>()(runtimeSession)
             );
-            typeScope.assert(
+            scope.assert(
                 sameType.withActual<true>(),
                 isEqualTo<Promise<ResourceSession<{ readonly database: typeof database; }>>>()(resourceSession)
             );
-            typeScope.assert(acceptsCall, () => assertPerCaseResourceGraphUnderTest({ database }));
-            typeScope.assert(sameType<
+            scope.assert(acceptsCall, function () {
+                assertPerCaseResourceGraphUnderTest({ database });
+            });
+            scope.assert(sameType<
                 IsEqual<ResourceLifecycleFailure, {
                     readonly cause: unknown;
                     readonly phase: 'acquire' | 'dispose' | 'graph';
@@ -354,43 +356,43 @@ export const testNode = suite('resources', [
                 }>,
                 true
             >());
-            typeScope.assert(sameType<IsAssignable<ResourceLifecycleError, Error>, true>());
-            return typeScope.assert.collect();
+            scope.assert(sameType<IsAssignable<ResourceLifecycleError, Error>, true>());
+            return scope.assert.collect();
         }),
-        test('infers built-in temporary directory resources', function (typeScope) {
-            typeScope.assert(
+        test('infers built-in temporary directory resources', function (scope) {
+            scope.assert(
                 sameType<IsEqual<ResourceHandle<typeof temporaryDirectory>, TemporaryDirectoryHandle>, true>()
             );
-            typeScope.assert(sameType.withActual<'scratch'>(), temporaryDirectory.name);
-            typeScope.assert(sameType<
+            scope.assert(sameType.withActual<'scratch'>(), temporaryDirectory.name);
+            scope.assert(sameType<
                 IsEqual<TemporaryDirectoryHandle, {
                     readonly path: string;
                     readonly transcript: TranscriptView<never>;
                 }>,
                 true
             >());
-            return typeScope.assert.collect();
+            return scope.assert.collect();
         }),
-        test('infers local-service and simulated HTTP resource handles', function (typeScope) {
-            typeScope.assert(
+        test('infers local-service and simulated HTTP resource handles', function (scope) {
+            scope.assert(
                 sameType<
                     IsEqual<ResourceHandle<typeof localService>, { readonly url: `http://${string}:${number}`; }>,
                     true
                 >()
             );
-            typeScope.assert(
+            scope.assert(
                 sameType<
                     IsEqual<ResourceHandle<typeof localHttpService>, LocalHttpResourceHandle<LocalHttpServiceHandle>>,
                     true
                 >()
             );
-            typeScope.assert(
+            scope.assert(
                 sameType<IsEqual<ResourceHandle<typeof localProcessService>, { readonly output: string; }>, true>()
             );
-            typeScope.assert(sameType.withActual<'local-service'>(), localService.name);
-            typeScope.assert(sameType.withActual<'http-service'>(), localHttpService.name);
-            typeScope.assert(sameType.withActual<'process-service'>(), localProcessService.name);
-            typeScope.assert(
+            scope.assert(sameType.withActual<'local-service'>(), localService.name);
+            scope.assert(sameType.withActual<'http-service'>(), localHttpService.name);
+            scope.assert(sameType.withActual<'process-service'>(), localProcessService.name);
+            scope.assert(
                 sameType<
                     IsEqual<
                         ResourceHandle<typeof simulatedApiResource>,
@@ -399,7 +401,7 @@ export const testNode = suite('resources', [
                     true
                 >()
             );
-            typeScope.assert(
+            scope.assert(
                 sameType<
                     IsEqual<
                         ResourceHandle<typeof simulatedApiResource>['scenarioUrl'],
@@ -408,15 +410,15 @@ export const testNode = suite('resources', [
                     true
                 >()
             );
-            typeScope.assert(sameType.withActual<'simulated-api'>(), simulatedApiResource.name);
-            return typeScope.assert.collect();
+            scope.assert(sameType.withActual<'simulated-api'>(), simulatedApiResource.name);
+            return scope.assert.collect();
         }),
-        test('exposes required descriptor field contracts', function (typeScope) {
-            typeScope.assert(
+        test('exposes required descriptor field contracts', function (scope) {
+            scope.assert(
                 sameType<ResourceScope, 'per-case' | 'per-file' | 'per-run' | 'per-suite' | 'shared-per-worker'>()
             );
-            typeScope.assert(sameType<IsEqual<RuntimeDimensions, Readonly<Record<string, string>>>, true>());
-            typeScope.assert(sameType<
+            scope.assert(sameType<IsEqual<RuntimeDimensions, Readonly<Record<string, string>>>, true>());
+            scope.assert(sameType<
                 IsEqual<RuntimeId<'api', { readonly node: '26'; }>, {
                     readonly name: 'api';
                     readonly dimensions: { readonly node: '26'; };
@@ -425,19 +427,19 @@ export const testNode = suite('resources', [
                 }>,
                 true
             >());
-            typeScope.assert(sameType.withActual<'node'>(), runtimeMatrix.name);
-            typeScope.assert(sameType.withActual<'node-26'>(), runtimeMatrix.variants['node-26'].id);
-            typeScope.assert(
+            scope.assert(sameType.withActual<'node'>(), runtimeMatrix.name);
+            scope.assert(sameType.withActual<'node-26'>(), runtimeMatrix.variants['node-26'].id);
+            scope.assert(
                 sameType.withActual<true>(),
                 isEqualTo<typeof runtime>()(runtimeMatrix.variants['node-26'].runtime)
             );
-            typeScope.assert(
+            scope.assert(
                 sameType<
                     IsAssignable<ExpectedLocalResourceDefinitionInput, ResourceDefinitionInput<'database', Database>>,
                     true
                 >()
             );
-            typeScope.assert(sameType<
+            scope.assert(sameType<
                 IsAssignable<
                     ExpectedProjectedResourceDefinitionInput,
                     ResourceDefinitionInput<
@@ -450,30 +452,38 @@ export const testNode = suite('resources', [
                 >,
                 true
             >());
-            return typeScope.assert.collect();
+            return scope.assert.collect();
         })
     ]),
     suite('runtime scenarios', [
-        test('types partial bindings from resource slots', function (typeScope) {
-            typeScope.assert(acceptsCall, () => scenarioRuntime.scenario({}));
-            typeScope.assert(acceptsCall, () => scenarioRuntime.scenario({ database: 'empty' }));
-            typeScope.assert(rejectsCall('argument-type'), () => scenarioRuntime.scenario({ database: 'missing' }));
-            typeScope.assert(rejectsCall('argument-type'), () => scenarioRuntime.scenario({ unknown: 'empty' }));
-            typeScope.assert(
+        test('types partial bindings from resource slots', function (scope) {
+            scope.assert(acceptsCall, function () {
+                return scenarioRuntime.scenario({});
+            });
+            scope.assert(acceptsCall, function () {
+                return scenarioRuntime.scenario({ database: 'empty' });
+            });
+            scope.assert(rejectsCall('argument-type'), function () {
+                return scenarioRuntime.scenario({ database: 'missing' });
+            });
+            scope.assert(rejectsCall('argument-type'), function () {
+                return scenarioRuntime.scenario({ unknown: 'empty' });
+            });
+            scope.assert(
                 sameType.withActual<true>(),
                 isEqualTo<readonly ['default' | 'outage', ...('default' | 'outage')[]]>()(
                     simulatedApiResource.scenarios['simulated-api'].values
                 )
             );
-            return typeScope.assert.collect();
+            return scope.assert.collect();
         })
     ]),
     suite('resource attachment contexts', [
-        test('provides attachments across resource lifecycle contexts', function (typeScope) {
-            typeScope.assert(sameType<IsEqual<ResourceCreationContext['attachments'], RuntimeAttachments>, true>());
-            typeScope.assert(sameType<IsEqual<ResourceDisposalContext['attachments'], RuntimeAttachments>, true>());
-            typeScope.assert(sameType<IsEqual<ResourceProjectionContext['attachments'], RuntimeAttachments>, true>());
-            return typeScope.assert.collect();
+        test('provides attachments across resource lifecycle contexts', function (scope) {
+            scope.assert(sameType<IsEqual<ResourceCreationContext['attachments'], RuntimeAttachments>, true>());
+            scope.assert(sameType<IsEqual<ResourceDisposalContext['attachments'], RuntimeAttachments>, true>());
+            scope.assert(sameType<IsEqual<ResourceProjectionContext['attachments'], RuntimeAttachments>, true>());
+            return scope.assert.collect();
         })
     ])
 ]);

@@ -1,6 +1,6 @@
 import type { IsEqual } from 'type-fest';
-import { suite, test } from '../../../tools/type-tests/authoring.entry-point.ts';
-import { acceptsCall, sameType } from '../../../tools/type-tests/relations.entry-point.ts';
+import { suite, test } from '@overkill-dev/test';
+import { acceptsCall, sameType } from '@overkill-dev/type-test';
 import type { ProjectDefinedFamilyProfile } from '../../config/schema.ts';
 import type {
     AttachmentLimits,
@@ -75,43 +75,43 @@ type OrdinaryProjectProfile = ProjectIntegrationProfileConfig | ProjectMicrotest
 
 declare const defineConfigUnderTest: typeof defineConfig;
 
-export const testNode = suite('@overkill-dev/run config', [
-    test('exposes collection, soft, and hard timeout facts', function (typeScope) {
-        typeScope.assert(sameType<RunExecutionFacts['timeoutPolicy']['collectionMilliseconds'], number>());
-        typeScope.assert(sameType<RunExecutionFacts['timeoutPolicy']['hardMilliseconds'], number>());
-        typeScope.assert(sameType<RunExecutionFacts['timeoutPolicy']['softMilliseconds'], number>());
-        return typeScope.assert.collect();
+export const testNode = suite('Runner profile and execution policy configuration', [
+    test('exposes collection, soft, and hard timeout facts', function (scope) {
+        scope.assert(sameType<RunExecutionFacts['timeoutPolicy']['collectionMilliseconds'], number>());
+        scope.assert(sameType<RunExecutionFacts['timeoutPolicy']['hardMilliseconds'], number>());
+        scope.assert(sameType<RunExecutionFacts['timeoutPolicy']['softMilliseconds'], number>());
+        return scope.assert.collect();
     }),
-    test('exposes config and resolution errors', function (typeScope) {
-        typeScope.assert(
+    test('exposes config and resolution errors', function (scope) {
+        scope.assert(
             sameType<
                 keyof NormalizedConfig,
                 'history' | 'loader' | 'outputRenderer' | 'profiles' | 'reporters' | 'runtimeStateDir'
             >()
         );
-        typeScope.assert(sameType<IsEqual<NormalizedConfig['outputRenderer'], DefinedOutputRenderer>, true>());
-        typeScope.assert(sameType<IsEqual<NormalizedConfig['profiles'][string], ProfileConfig>, true>());
-        typeScope.assert(
+        scope.assert(sameType<IsEqual<NormalizedConfig['outputRenderer'], DefinedOutputRenderer>, true>());
+        scope.assert(sameType<IsEqual<NormalizedConfig['profiles'][string], ProfileConfig>, true>());
+        scope.assert(
             sameType<
                 IsEqual<ProfileConfig, BenchmarkProfileConfig | DefinedFamilyProfile | OrdinaryProfile>,
                 true
             >()
         );
-        typeScope.assert(sameType<IsEqual<NormalizedConfig['profiles']['backend-http'], ProfileConfig>, true>());
-        typeScope.assert(
+        scope.assert(sameType<IsEqual<NormalizedConfig['profiles']['backend-http'], ProfileConfig>, true>());
+        scope.assert(
             sameType<IsEqual<NormalizedConfig['reporters'], readonly DefinedReporter[] | null>, true>()
         );
-        typeScope.assert(sameType<IsEqual<TestProfileConfig['timings'], TimingProfilePolicy>, true>());
-        typeScope.assert(
+        scope.assert(sameType<IsEqual<TestProfileConfig['timings'], TimingProfilePolicy>, true>());
+        scope.assert(
             sameType<IsEqual<TimingProfilePolicy, { readonly collection: TimingCollectionMode; }>, true>()
         );
-        typeScope.assert(
+        scope.assert(
             sameType<IsEqual<ProjectTimingProfilePolicy, { readonly collection: TimingCollectionMode; }>, true>()
         );
-        return typeScope.assert.collect();
+        return scope.assert.collect();
     }),
-    test('exposes run process budget and resolution error types', function (typeScope) {
-        typeScope.assert(sameType<
+    test('exposes run process budget and resolution error types', function (scope) {
+        scope.assert(sameType<
             IsEqual<
                 keyof ProcessBudgets,
                 [
@@ -123,11 +123,11 @@ export const testNode = suite('@overkill-dev/run config', [
             >,
             true
         >());
-        typeScope.assert(
+        scope.assert(
             sameType.withActual<true>(),
             isEqualTo<RunResolutionError>()(new RunResolutionError('Unsupported.', undefined, 'unsupported-request'))
         );
-        typeScope.assert(
+        scope.assert(
             sameType<
                 IsEqual<
                     ReturnType<RunExecutionPlanError['conflicts']>,
@@ -136,24 +136,24 @@ export const testNode = suite('@overkill-dev/run config', [
                 true
             >()
         );
-        return typeScope.assert.collect();
+        return scope.assert.collect();
     }),
-    test('exposes profile file discovery types', function (typeScope) {
-        typeScope.assert(sameType<IsEqual<MicrotestProfileConfig['files'], ProfileFiles | null>, true>());
-        typeScope.assert(sameType<IsEqual<IntegrationProfileConfig['files'], ProfileFiles>, true>());
-        typeScope.assert(sameType<IsAssignable<RuntimeProfileFilePatterns, ProfileFiles>, true>());
-        typeScope.assert(sameType<IsAssignable<RuntimeProfileFileSets, ProfileFiles>, true>());
-        typeScope.assert(sameType<IsAssignable<MixedRuntimeProfileFiles, ProfileFiles>, false>());
-        typeScope.assert(
+    test('exposes profile file discovery types', function (scope) {
+        scope.assert(sameType<IsEqual<MicrotestProfileConfig['files'], ProfileFiles | null>, true>());
+        scope.assert(sameType<IsEqual<IntegrationProfileConfig['files'], ProfileFiles>, true>());
+        scope.assert(sameType<IsAssignable<RuntimeProfileFilePatterns, ProfileFiles>, true>());
+        scope.assert(sameType<IsAssignable<RuntimeProfileFileSets, ProfileFiles>, true>());
+        scope.assert(sameType<IsAssignable<MixedRuntimeProfileFiles, ProfileFiles>, false>());
+        scope.assert(
             sameType<IsEqual<ProjectMicrotestProfileConfig['files'], ProjectProfileFiles | undefined>, true>()
         );
-        typeScope.assert(sameType<IsEqual<ProjectIntegrationProfileConfig['files'], ProjectProfileFiles>, true>());
-        typeScope.assert(sameType<IsAssignable<ProjectProfileFilePatterns, ProjectProfileFiles>, true>());
-        typeScope.assert(sameType<IsAssignable<ProjectProfileFileSets, ProjectProfileFiles>, true>());
-        return typeScope.assert.collect();
+        scope.assert(sameType<IsEqual<ProjectIntegrationProfileConfig['files'], ProjectProfileFiles>, true>());
+        scope.assert(sameType<IsAssignable<ProjectProfileFilePatterns, ProjectProfileFiles>, true>());
+        scope.assert(sameType<IsAssignable<ProjectProfileFileSets, ProjectProfileFiles>, true>());
+        return scope.assert.collect();
     }),
-    test('exposes property profile config types', function (typeScope) {
-        typeScope.assert(
+    test('exposes property profile config types', function (scope) {
+        scope.assert(
             sameType<
                 IsEqual<
                     Exclude<ProjectProfileConfig, ProjectPropertyProfileConfig>,
@@ -162,7 +162,7 @@ export const testNode = suite('@overkill-dev/run config', [
                 true
             >()
         );
-        typeScope.assert(
+        scope.assert(
             sameType<
                 IsEqual<
                     Extract<ProjectProfileConfig, { readonly testFamily: 'property'; }>,
@@ -171,38 +171,40 @@ export const testNode = suite('@overkill-dev/run config', [
                 true
             >()
         );
-        return typeScope.assert.collect();
+        return scope.assert.collect();
     }),
-    test('exposes config loading helpers from the main package surface', function (typeScope) {
-        typeScope.assert(
+    test('exposes config loading helpers from the main package surface', function (scope) {
+        scope.assert(
             acceptsCall,
-            () => defineConfigUnderTest({ profiles: { unit: { testFamily: 'microtest' } } })
+            function () {
+                return defineConfigUnderTest({ profiles: { unit: { testFamily: 'microtest' } } });
+            }
         );
-        typeScope.assert(
+        scope.assert(
             sameType<IsEqual<typeof loadConfig, (request: ConfigLoadRequest) => Promise<LoadedConfig>>, true>()
         );
-        typeScope.assert(sameType<IsEqual<Config['outputRenderer'], DefinedOutputRenderer | undefined>, true>());
-        typeScope.assert(
+        scope.assert(sameType<IsEqual<Config['outputRenderer'], DefinedOutputRenderer | undefined>, true>());
+        scope.assert(
             sameType<
                 IsEqual<Config['reporters'], readonly [DefinedReporter, ...DefinedReporter[]] | undefined>,
                 true
             >()
         );
-        typeScope.assert(sameType<
+        scope.assert(sameType<
             [{
                 readonly execution: ProjectMicrotestProfileConfig['execution'];
                 readonly testFamily: 'microtest';
             }] extends [ProjectProfileConfig] ? true : false,
             true
         >());
-        typeScope.assert(sameType<
+        scope.assert(sameType<
             [{
                 readonly files: ProjectProfileFiles;
                 readonly testFamily: 'integration';
             }] extends [ProjectProfileConfig] ? true : false,
             true
         >());
-        typeScope.assert(sameType<
+        scope.assert(sameType<
             [{
                 readonly property: null;
                 readonly baselines: OrdinaryBaselinePolicy;
@@ -231,7 +233,7 @@ export const testNode = suite('@overkill-dev/run config', [
             }] extends [IntegrationProfileConfig] ? true : false,
             true
         >());
-        typeScope.assert(sameType<
+        scope.assert(sameType<
             [{
                 readonly execution: {
                     readonly hostProcess: { readonly kind: 'child'; readonly nodeArguments: readonly string[]; };
@@ -242,7 +244,7 @@ export const testNode = suite('@overkill-dev/run config', [
             }] extends [ProjectIntegrationProfileConfig] ? true : false,
             false
         >());
-        typeScope.assert(sameType.withActual<true>(), isEqualTo<ConfigError>()(new ConfigError('Invalid config.')));
-        return typeScope.assert.collect();
+        scope.assert(sameType.withActual<true>(), isEqualTo<ConfigError>()(new ConfigError('Invalid config.')));
+        return scope.assert.collect();
     })
 ]);

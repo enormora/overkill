@@ -1,48 +1,36 @@
 {
     "$schema": "https://unpkg.com/knip@5/schema.json",
+    "entry": [
+        "source/**/*.test.ts",
+        "!source/integration-tests/runtime/fixtures/**/*.test.ts",
+        "source/integration-tests/runtime/fixtures/custom-engine.ts",
+        "source/**/*.type-test.ts",
+        "source/packages/**/*.ts",
+        "source/run/node-command-line-runner.entry-point.ts",
+        "source/run/worker-pool-bootstrap.entry-point.ts",
+        "source/test-support/body-plan-implementation.ts",
+        "source/integration-tests/runtime/support/stryker-lifecycle.entry-point.ts",
+        "source/reporters/null-reporter.ts",
+        "build-benchmark-html.js",
+        "source/reporters/benchmark-html-browser.entry-point.ts",
+        "dependency-cruiser.config.js",
+        "packtory.config.js",
+        "overkill.config.ts",
+        "tstyche.json",
+        "source/integration-tests/package-smoke/support/pack-packages.ts",
+        "source/benchmarks/run-performance.entry-point.ts"
+    ],
+    "project": [
+        "source/**/*.ts!",
+        "*.{js,ts}",
+        "!source/**/*.test.ts!",
+        "!source/**/*.type-test.ts!"
+    ],
     "ignore": [
         "source/integration-tests/runtime/fixtures/**/*.test.ts"
     ],
     "ignoreDependencies": [
         "@ls-lint/ls-lint",
         "jscpd"
-    ],
-    "workspaces": {
-        ".": {
-            "entry": [
-                "source/**/*.test.ts",
-                "!source/integration-tests/runtime/fixtures/**/*.test.ts",
-                "source/integration-tests/runtime/fixtures/custom-engine.ts",
-                "source/**/*.type-test.ts",
-                "source/packages/**/*.ts",
-                "source/run/node-command-line-runner.entry-point.ts",
-                "source/run/worker-pool-bootstrap.entry-point.ts",
-                "source/test-support/body-plan-implementation.ts",
-                "source/integration-tests/runtime/support/stryker-lifecycle.entry-point.ts",
-                "source/reporters/null-reporter.ts",
-                "build-benchmark-html.js",
-                "source/reporters/benchmark-html-browser.entry-point.ts",
-                "dependency-cruiser.config.js",
-                "packtory.config.js",
-                "overkill.config.ts",
-                "overkill.types.config.ts",
-                "source/integration-tests/package-smoke/support/pack-packages.ts",
-                "source/benchmarks/run-performance.entry-point.ts"
-            ],
-            "project": [
-                "source/**/*.ts!",
-                "*.{js,ts}",
-                "!source/**/*.test.ts!",
-                "!source/**/*.type-test.ts!"
-            ]
-        },
-        "tools/type-tests": {
-            "entry": [
-                "*.entry-point.ts"
-            ],
-            "project": [
-                "*.entry-point.ts"
-            ]
-        }
-    }
+    ]
 }

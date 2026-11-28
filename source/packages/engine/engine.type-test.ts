@@ -1,6 +1,6 @@
 import type { IsEqual } from 'type-fest';
-import { suite, test } from '../../../tools/type-tests/authoring.entry-point.ts';
-import { acceptsCall, assignableFrom, rejectsCall, sameType } from '../../../tools/type-tests/relations.entry-point.ts';
+import { suite, test } from '@overkill-dev/test';
+import { acceptsCall, assignableFrom, rejectsCall, sameType } from '@overkill-dev/type-test';
 import {
     defineCompositeAssertion,
     defineNarrowingCompositeAssertion,
@@ -70,19 +70,19 @@ declare const unknownValues: readonly unknown[];
 
 declare const createThrowingTestCaseUnderTest: typeof createThrowingTestCase;
 
-export const testNode = suite('engine', [
+export const testNode = suite('Assertion operands and engine contracts', [
     suite('Assertion protocol', [
-        test('exports source-discriminated assertion nodes', function (typeScope) {
-            typeScope.assert(sameType<AssertionSource, 'assert' | 'require'>());
-            typeScope.assert(sameType<IsEqual<AssertionNode, AssertAssertionNode | RequireAssertionNode>, true>());
-            typeScope.assert(
+        test('exports source-discriminated assertion nodes', function (scope) {
+            scope.assert(sameType<AssertionSource, 'assert' | 'require'>());
+            scope.assert(sameType<IsEqual<AssertionNode, AssertAssertionNode | RequireAssertionNode>, true>());
+            scope.assert(
                 sameType<
                     IsEqual<AssertionResult, AssertAssertionNode | NonEmptyReadonlyArray<AssertAssertionNode>>,
                     true
                 >()
             );
-            typeScope.assert(sameType<IsAssignable<readonly [], AssertionResult>, false>());
-            typeScope.assert(sameType<
+            scope.assert(sameType<IsAssignable<readonly [], AssertionResult>, false>());
+            scope.assert(sameType<
                 IsAssignable<{
                     readonly actual: 'value';
                     readonly check: 'string';
@@ -91,10 +91,10 @@ export const testNode = suite('engine', [
                 }, AssertionResult>,
                 false
             >());
-            return typeScope.assert.collect();
+            return scope.assert.collect();
         }),
-        test('exports source location helpers for raw assertion nodes', function (typeScope) {
-            typeScope.assert(sameType<
+        test('exports source location helpers for raw assertion nodes', function (scope) {
+            scope.assert(sameType<
                 IsEqual<
                     SourceLocation,
                     {
@@ -111,22 +111,22 @@ export const testNode = suite('engine', [
                 >,
                 true
             >());
-            typeScope.assert(sameType<IsEqual<SourceLocationProvider, () => SourceLocation>, true>());
-            typeScope.assert(
+            scope.assert(sameType<IsEqual<SourceLocationProvider, () => SourceLocation>, true>());
+            scope.assert(
                 sameType<IsEqual<ResolvableSourceLocation, SourceLocation | SourceLocationProvider>, true>()
             );
-            typeScope.assert(sameType<IsEqual<typeof captureSourceLocation, () => SourceLocationProvider>, true>());
-            typeScope.assert(sameType<IsAssignable<typeof unknownSourceLocation, SourceLocation>, true>());
-            typeScope.assert(sameType<
+            scope.assert(sameType<IsEqual<typeof captureSourceLocation, () => SourceLocationProvider>, true>());
+            scope.assert(sameType<IsAssignable<typeof unknownSourceLocation, SourceLocation>, true>());
+            scope.assert(sameType<
                 IsAssignable<AssertAssertionNode, {
                     readonly sourceLocations: NonEmptyReadonlyArray<ResolvableSourceLocation>;
                 }>,
                 true
             >());
-            return typeScope.assert.collect();
+            return scope.assert.collect();
         }),
-        test('exposes first-class throwing test body types', function (typeScope) {
-            typeScope.assert(sameType<
+        test('exposes first-class throwing test body types', function (scope) {
+            scope.assert(sameType<
                 IsEqual<ThrowingTestScope, {
                     readonly debug: TestDebugScope;
                     readonly seed: bigint;
@@ -137,71 +137,77 @@ export const testNode = suite('engine', [
                 }>,
                 true
             >());
-            typeScope.assert(assignableFrom.not<keyof ThrowingTestScope, 'plan'>());
-            typeScope.assert(assignableFrom.not<keyof ThrowingTestScope['assert'], 'collect'>());
-            typeScope.assert(
+            scope.assert(assignableFrom.not<keyof ThrowingTestScope, 'plan'>());
+            scope.assert(assignableFrom.not<keyof ThrowingTestScope['assert'], 'collect'>());
+            scope.assert(
                 sameType<IsEqual<ThrowingTestBody, (scope: ThrowingTestScope) => Promise<void> | void>, true>()
             );
-            typeScope.assert(acceptsCall, () =>
-                createThrowingTestCaseUnderTest({
+            scope.assert(acceptsCall, function () {
+                return createThrowingTestCaseUnderTest({
                     annotations: {},
                     body: throwingBody,
                     controls: {},
                     definitionLocations: [ { kind: 'unknown' as const } ],
                     title: 'case'
-                }));
-            return typeScope.assert.collect();
+                });
+            });
+            return scope.assert.collect();
         }),
-        test('defines explicit thrown matcher shapes', function (typeScope) {
-            typeScope.assert(sameType<IsAssignable<{ readonly exact: 'raw'; }, ExactThrownMatcher>, true>());
-            typeScope.assert(sameType<
+        test('defines explicit thrown matcher shapes', function (scope) {
+            scope.assert(sameType<IsAssignable<{ readonly exact: 'raw'; }, ExactThrownMatcher>, true>());
+            scope.assert(sameType<
                 IsAssignable<{
                     readonly message: 'expected';
                     readonly type: typeof Error;
                 }, ErrorMatcher>,
                 true
             >());
-            typeScope.assert(sameType<
+            scope.assert(sameType<
                 IsAssignable<{
                     readonly cause: { readonly exact: 'raw'; };
                     readonly message: RegExp;
                 }, ThrownMatcher>,
                 true
             >());
-            typeScope.assert(sameType<IsAssignable<{ readonly unused?: never; }, ErrorMatcher>, false>());
-            typeScope.assert(sameType<
+            scope.assert(sameType<IsAssignable<{ readonly unused?: never; }, ErrorMatcher>, false>());
+            scope.assert(sameType<
                 IsAssignable<{
                     readonly exact: 'raw';
                     readonly message: 'expected';
                 }, ThrownMatcher>,
                 false
             >());
-            return typeScope.assert.collect();
+            return scope.assert.collect();
         }),
-        test('accepts explicit throws and rejects assertions', function (typeScope) {
-            typeScope.assert(acceptsCall, () =>
+        test('accepts explicit throws and rejects assertions', function (scope) {
+            scope.assert(acceptsCall, function () {
                 assertFacade.throws(function throwValue() {
                     throw new Error('expected');
-                }, { message: 'expected' }));
-            typeScope.assert(acceptsCall, () =>
+                }, { message: 'expected' });
+            });
+            scope.assert(acceptsCall, function () {
                 assertFacade.throws(function returnRawValue() {
                     return 'raw';
-                }, { exact: 'raw' }));
-            typeScope.assert(acceptsCall, async () =>
-                assertFacade.rejects(async function rejectValue() {
+                }, { exact: 'raw' });
+            });
+            scope.assert(acceptsCall, async function () {
+                return assertFacade.rejects(async function rejectValue() {
                     await Promise.reject(new Error('expected'));
-                }, { type: Error, message: 'expected' }));
-            typeScope.assert(acceptsCall, () =>
-                compositeCheckBuilder.throws(function throwValue() {
+                }, { type: Error, message: 'expected' });
+            });
+            scope.assert(acceptsCall, function () {
+                return compositeCheckBuilder.throws(function throwValue() {
                     throw new Error('expected');
-                }, { message: /expected/u }));
-            typeScope.assert(acceptsCall, async () =>
-                compositeCheckBuilder.rejects(async function rejectValue() {
+                }, { message: /expected/u });
+            });
+            scope.assert(acceptsCall, async function () {
+                return compositeCheckBuilder.rejects(async function rejectValue() {
                     await Promise.reject(new Error('expected'));
-                }, { exact: new Error('expected') }));
-            return typeScope.assert.collect();
+                }, { exact: new Error('expected') });
+            });
+            return scope.assert.collect();
         }),
-        test('requires another matcher field for the base Error constructor', function (typeScope) {
+        test('requires another matcher field for the base Error constructor', function (scope) {
             class RateLimitError extends Error {
                 public constructor() {
                     super('Rate limit exceeded.');
@@ -217,123 +223,191 @@ export const testNode = suite('engine', [
                 throw new RateLimitError();
             }
 
-            typeScope.assert(acceptsCall, () => assertFacade.throws(throwRateLimit, { type: RateLimitError }));
-            typeScope.assert(acceptsCall, async () => assertFacade.rejects(rejectRateLimit, { type: TypeError }));
-            typeScope.assert(rejectsCall('argument-type'), () => assertFacade.throws(throwRateLimit, { type: Error }));
-            typeScope.assert(
+            scope.assert(acceptsCall, function () {
+                assertFacade.throws(throwRateLimit, { type: RateLimitError });
+            });
+            scope.assert(acceptsCall, async function () {
+                return assertFacade.rejects(rejectRateLimit, { type: TypeError });
+            });
+            scope.assert(rejectsCall('argument-type'), function () {
+                assertFacade.throws(throwRateLimit, { type: Error });
+            });
+            scope.assert(
                 rejectsCall('argument-type'),
-                async () => assertFacade.rejects(rejectRateLimit, { type: Error })
+                async function () {
+                    return assertFacade.rejects(rejectRateLimit, { type: Error });
+                }
             );
-            typeScope.assert(
+            scope.assert(
                 rejectsCall('argument-type'),
-                () => compositeCheckBuilder.throws(throwRateLimit, { type: Error })
+                function () {
+                    return compositeCheckBuilder.throws(throwRateLimit, { type: Error });
+                }
             );
-            typeScope.assert(
+            scope.assert(
                 rejectsCall('argument-type'),
-                async () => compositeCheckBuilder.rejects(rejectRateLimit, { cause: { type: Error } })
+                async function () {
+                    return compositeCheckBuilder.rejects(rejectRateLimit, { cause: { type: Error } });
+                }
             );
-            return typeScope.assert.collect();
+            return scope.assert.collect();
         }),
-        test('rejects ambiguous thrown matcher calls', function (typeScope) {
+        test('rejects ambiguous thrown matcher calls', function (scope) {
             async function rejectValue(): Promise<void> {
                 await Promise.reject(new Error('expected'));
             }
-            typeScope.assert(
+            scope.assert(
                 rejectsCall('argument-type'),
-                () => assertFacade.throws(rejectValue, { type: Error, message: 'expected' })
+                function () {
+                    assertFacade.throws(rejectValue, { type: Error, message: 'expected' });
+                }
             );
             function returnValue(): undefined {
                 return undefined;
             }
-            typeScope.assert(
+            scope.assert(
                 rejectsCall('argument-type'),
-                async () => assertFacade.rejects(returnValue, { type: Error, message: 'expected' })
+                async function () {
+                    return assertFacade.rejects(returnValue, { type: Error, message: 'expected' });
+                }
             );
             function throwValue(): void {
                 throw new Error('expected');
             }
-            typeScope.assert(rejectsCall('argument-type'), () => assertFacade.throws(throwValue, {}));
-            typeScope.assert(
+            scope.assert(rejectsCall('argument-type'), function () {
+                assertFacade.throws(throwValue, {});
+            });
+            scope.assert(
                 rejectsCall('argument-type'),
-                () => assertFacade.throws(throwValue, { exact: 'raw', message: 'expected' })
+                function () {
+                    assertFacade.throws(throwValue, { exact: 'raw', message: 'expected' });
+                }
             );
-            return typeScope.assert.collect();
+            return scope.assert.collect();
         }),
-        test('infers callable custom assertion references', function (typeScope) {
+        test('infers callable custom assertion references', function (scope) {
             const value: unknown = null;
 
-            typeScope.assert(sameType.withActual<true>(), isEqualTo<typeof syncAssertion>()(syncAssertion));
-            typeScope.assert(
+            scope.assert(sameType.withActual<true>(), isEqualTo<typeof syncAssertion>()(syncAssertion));
+            scope.assert(
                 sameType<IsEqual<AssertReferenceArguments<typeof syncAssertion>, readonly [value: boolean]>, true>()
             );
-            typeScope.assert(
+            scope.assert(
                 sameType<IsEqual<AssertReferenceReturn<typeof syncAssertion>, SyncAssertionReturn>, true>()
             );
-            typeScope.assert(sameType<IsEqual<AssertReferenceReturn<typeof asyncAssertion>, Promise<void>>, true>());
-            typeScope.assert(
+            scope.assert(sameType<IsEqual<AssertReferenceReturn<typeof asyncAssertion>, Promise<void>>, true>());
+            scope.assert(
                 sameType<IsEqual<AssertReferenceReturn<typeof narrowingAssertion>, SyncAssertionReturn>, true>()
             );
-            typeScope.assert(sameType.withActual<true>(), isEqualTo<typeof asyncAssertion>()(asyncAssertion));
+            scope.assert(sameType.withActual<true>(), isEqualTo<typeof asyncAssertion>()(asyncAssertion));
             requireFacade(narrowingAssertion, value);
-            typeScope.assert(sameType.withActual<string>(), value);
-            return typeScope.assert.collect();
+            scope.assert(sameType.withActual<string>(), value);
+            return scope.assert.collect();
         })
     ]),
     suite('Deep assertion operands', [
-        test('defines deep comparable operands', function (typeScope) {
-            typeScope.assert(sameType<DeepComparable, unknown>());
-            typeScope.assert(sameType<DeepComparable<number>, never>());
-            typeScope.assert(sameType<DeepComparable<string | { readonly id: string; }>, never>());
-            typeScope.assert(sameType<DeepComparable<ReturnType<typeof JSON.parse>>, never>());
-            return typeScope.assert.collect();
+        test('defines deep comparable operands', function (scope) {
+            scope.assert(sameType<DeepComparable, unknown>());
+            scope.assert(sameType<DeepComparable<number>, never>());
+            scope.assert(sameType<DeepComparable<string | { readonly id: string; }>, never>());
+            scope.assert(sameType<DeepComparable<ReturnType<typeof JSON.parse>>, never>());
+            return scope.assert.collect();
         }),
-        test('accepts exact deep assertion operands', function (typeScope) {
-            typeScope.assert(acceptsCall, () => assertFacade.deepEqual({ id: 1 }, { id: 1 }));
-            typeScope.assert(acceptsCall, () => assertFacade.deepEqual([ 1 ], [ 1 ]));
-            typeScope.assert(acceptsCall, () => assertFacade.deepEqual(functionValue, functionValue));
-            typeScope.assert(
+        test('accepts exact deep assertion operands', function (scope) {
+            scope.assert(acceptsCall, function () {
+                assertFacade.deepEqual({ id: 1 }, { id: 1 });
+            });
+            scope.assert(acceptsCall, function () {
+                assertFacade.deepEqual([ 1 ], [ 1 ]);
+            });
+            scope.assert(acceptsCall, function () {
+                assertFacade.deepEqual(functionValue, functionValue);
+            });
+            scope.assert(
                 acceptsCall,
-                () => assertFacade.deepEqual(new Map<string, number>(), new Map<string, number>())
+                function () {
+                    assertFacade.deepEqual(new Map<string, number>(), new Map<string, number>());
+                }
             );
-            typeScope.assert(acceptsCall, () => assertFacade.deepEqual(new Set<number>(), new Set<number>()));
-            typeScope.assert(acceptsCall, () => assertFacade.deepEqual(unknownValue, { id: 1 }));
-            typeScope.assert(acceptsCall, () => assertFacade.notDeepEqual({ id: 1 }, { id: 2 }));
-            return typeScope.assert.collect();
+            scope.assert(acceptsCall, function () {
+                assertFacade.deepEqual(new Set<number>(), new Set<number>());
+            });
+            scope.assert(acceptsCall, function () {
+                assertFacade.deepEqual(unknownValue, { id: 1 });
+            });
+            scope.assert(acceptsCall, function () {
+                assertFacade.notDeepEqual({ id: 1 }, { id: 2 });
+            });
+            return scope.assert.collect();
         }),
-        test('accepts partial deep assertion operands', function (typeScope) {
-            typeScope.assert(acceptsCall, () => assertFacade.partialDeepEqual({ id: 1, name: 'Ada' }, { id: 1 }));
-            typeScope.assert(acceptsCall, () => assertFacade.arrayContainsPartial(objectValues, { id: 1 }));
-            typeScope.assert(acceptsCall, () => assertFacade.arrayContainsPartial(unknownValues, { id: 1 }));
-            typeScope.assert(acceptsCall, () => assertFacade.membersPartialDeepEqual(objectValues, [ { id: 1 } ]));
-            typeScope.assert(acceptsCall, () => assertFacade.membersPartialDeepEqual(unknownValues, unknownValues));
-            return typeScope.assert.collect();
+        test('accepts partial deep assertion operands', function (scope) {
+            scope.assert(acceptsCall, function () {
+                assertFacade.partialDeepEqual({ id: 1, name: 'Ada' }, { id: 1 });
+            });
+            scope.assert(acceptsCall, function () {
+                assertFacade.arrayContainsPartial(objectValues, { id: 1 });
+            });
+            scope.assert(acceptsCall, function () {
+                assertFacade.arrayContainsPartial(unknownValues, { id: 1 });
+            });
+            scope.assert(acceptsCall, function () {
+                assertFacade.membersPartialDeepEqual(objectValues, [ { id: 1 } ]);
+            });
+            scope.assert(acceptsCall, function () {
+                assertFacade.membersPartialDeepEqual(unknownValues, unknownValues);
+            });
+            return scope.assert.collect();
         }),
-        test('accepts composite builder deep assertion operands', function (typeScope) {
-            typeScope.assert(acceptsCall, () => compositeCheckBuilder.deepEqual({ id: 1 }, { id: 1 }));
-            typeScope.assert(acceptsCall, () => compositeCheckBuilder.partialDeepEqual({ id: 1 }, { id: 1 }));
-            return typeScope.assert.collect();
+        test('accepts composite builder deep assertion operands', function (scope) {
+            scope.assert(acceptsCall, function () {
+                return compositeCheckBuilder.deepEqual({ id: 1 }, { id: 1 });
+            });
+            scope.assert(acceptsCall, function () {
+                return compositeCheckBuilder.partialDeepEqual({ id: 1 }, { id: 1 });
+            });
+            return scope.assert.collect();
         }),
-        test('rejects exact primitive deep assertion operands', function (typeScope) {
-            typeScope.assert(rejectsCall('argument-type'), () => assertFacade.deepEqual(1, 1));
-            typeScope.assert(rejectsCall('argument-type'), () => assertFacade.notDeepEqual('a', 'b'));
-            typeScope.assert(rejectsCall('argument-type'), () => assertFacade.deepEqual(mixedDeepValue, { id: 'a' }));
-            typeScope.assert(rejectsCall('argument-type'), () => compositeCheckBuilder.deepEqual(1, 1));
-            return typeScope.assert.collect();
+        test('rejects exact primitive deep assertion operands', function (scope) {
+            scope.assert(rejectsCall('argument-type'), function () {
+                assertFacade.deepEqual(1, 1);
+            });
+            scope.assert(rejectsCall('argument-type'), function () {
+                assertFacade.notDeepEqual('a', 'b');
+            });
+            scope.assert(rejectsCall('argument-type'), function () {
+                assertFacade.deepEqual(mixedDeepValue, { id: 'a' });
+            });
+            scope.assert(rejectsCall('argument-type'), function () {
+                return compositeCheckBuilder.deepEqual(1, 1);
+            });
+            return scope.assert.collect();
         }),
-        test('rejects partial primitive deep assertion operands', function (typeScope) {
-            typeScope.assert(rejectsCall('argument-type'), () => assertFacade.partialDeepEqual(true, false));
-            typeScope.assert(rejectsCall('argument-type'), () => assertFacade.arrayContainsPartial([ 1 ], { id: 1 }));
-            typeScope.assert(rejectsCall('argument-type'), () => assertFacade.arrayContainsPartial(objectValues, 1));
-            typeScope.assert(
+        test('rejects partial primitive deep assertion operands', function (scope) {
+            scope.assert(rejectsCall('argument-type'), function () {
+                assertFacade.partialDeepEqual(true, false);
+            });
+            scope.assert(rejectsCall('argument-type'), function () {
+                assertFacade.arrayContainsPartial([ 1 ], { id: 1 });
+            });
+            scope.assert(rejectsCall('argument-type'), function () {
+                assertFacade.arrayContainsPartial(objectValues, 1);
+            });
+            scope.assert(
                 rejectsCall('argument-type'),
-                () => assertFacade.membersPartialDeepEqual([ 1 ], [ { id: 1 } ])
+                function () {
+                    assertFacade.membersPartialDeepEqual([ 1 ], [ { id: 1 } ]);
+                }
             );
-            typeScope.assert(
+            scope.assert(
                 rejectsCall('argument-type'),
-                () => assertFacade.membersPartialDeepEqual(objectValues, [ 1 ])
+                function () {
+                    assertFacade.membersPartialDeepEqual(objectValues, [ 1 ]);
+                }
             );
-            typeScope.assert(rejectsCall('argument-type'), () => compositeCheckBuilder.partialDeepEqual(true, false));
-            return typeScope.assert.collect();
+            scope.assert(rejectsCall('argument-type'), function () {
+                return compositeCheckBuilder.partialDeepEqual(true, false);
+            });
+            return scope.assert.collect();
         })
     ])
 ]);

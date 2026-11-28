@@ -10,6 +10,7 @@ const asyncDispose: typeof Symbol.asyncDispose = disposalSymbols.asyncDispose;
 const compilerContext = new AsyncLocalStorage<symbol>();
 const processChannel = channel('child_process');
 const processEvent = z.object({ process: z.instanceof(ChildProcess) });
+const compilerCloseMilliseconds = 10_000;
 const compilerShutdownMilliseconds = 1000;
 export type CompilerLifetime = AsyncDisposable & {
     readonly closed: AbortSignal;
@@ -135,7 +136,7 @@ export async function closeCompilerConnection(lifetime: CompilerLifetime, releas
     const timer = timers.setTimeout(function endCompilerShutdown() {
         lifetime.terminate();
         expired.reject(new Error('Native TypeScript compiler shutdown exceeded its deadline.'));
-    }, compilerShutdownMilliseconds);
+    }, compilerCloseMilliseconds);
     try {
         await Promise.race([ release(), expired.promise ]);
     } finally {

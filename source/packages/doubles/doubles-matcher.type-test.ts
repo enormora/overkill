@@ -1,6 +1,6 @@
 import { P } from 'ts-pattern';
-import { suite, test } from '../../../tools/type-tests/authoring.entry-point.ts';
-import { acceptsCall, rejectsCall, sameType } from '../../../tools/type-tests/relations.entry-point.ts';
+import { suite, test } from '@overkill-dev/test';
+import { acceptsCall, rejectsCall, sameType } from '@overkill-dev/type-test';
 import { isAssignableTo } from '../../test-support/type-relations.ts';
 import { matches, rule, testDouble, type ArgumentMatcher } from './doubles.entry-point.ts';
 
@@ -12,75 +12,90 @@ type RoleOptions = { readonly role: Role; };
 type Load = (id: string, options: LoadOptions) => string;
 
 export const testNode = suite('typed argument patterns', [
-    test('preserves compatible patterns and return types', function (typeScope) {
-        typeScope.assert(sameType.withActual<true>(), isAssignableTo<ArgumentMatcher>()(matches(P.string)));
-        typeScope.assert(sameType.withActual<true>(), isAssignableTo<ArgumentMatcher>()(matches(P._)));
+    test('preserves compatible patterns and return types', function (scope) {
+        scope.assert(sameType.withActual<true>(), isAssignableTo<ArgumentMatcher>()(matches(P.string)));
+        scope.assert(sameType.withActual<true>(), isAssignableTo<ArgumentMatcher>()(matches(P._)));
         const config = {
             rules: [ rule.when(matches(P.string), matches({ limit: P.number })).returns('found') ]
         };
-        typeScope.assert(acceptsCall, () => testDouble<Load>(config));
+        scope.assert(acceptsCall, function () {
+            return testDouble<Load>(config);
+        });
         const load = testDouble<Load>(config);
-        typeScope.assert(sameType.withActual<string>(), load('id', { limit: 1 }));
-        return typeScope.assert.collect();
+        scope.assert(sameType.withActual<string>(), load('id', { limit: 1 }));
+        return scope.assert.collect();
     }),
-    test('supports nested wildcards and collections', function (typeScope) {
-        typeScope.assert(acceptsCall, () =>
-            testDouble<Load>({
+    test('supports nested wildcards and collections', function (scope) {
+        scope.assert(acceptsCall, function () {
+            return testDouble<Load>({
                 rules: [ rule.when(matches(P.string), matches({ limit: P._ })).returns('found') ]
-            }));
-        typeScope.assert(acceptsCall, () =>
-            testDouble<(values: ReadonlyMap<string, string>) => string>({
+            });
+        });
+        scope.assert(acceptsCall, function () {
+            return testDouble<(values: ReadonlyMap<string, string>) => string>({
                 rules: [ rule.when(matches(P.map(P.string, P._))).returns('found') ]
-            }));
-        return typeScope.assert.collect();
+            });
+        });
+        return scope.assert.collect();
     }),
-    test('supports primitive matchers for literal unions', function (typeScope) {
-        typeScope.assert(acceptsCall, () =>
-            testDouble<(role: Role) => string>({
+    test('supports primitive matchers for literal unions', function (scope) {
+        scope.assert(acceptsCall, function () {
+            return testDouble<(role: Role) => string>({
                 rules: [ rule.when(matches(P.string)).returns('found') ]
-            }));
-        typeScope.assert(acceptsCall, () =>
-            testDouble<(options: RoleOptions) => string>({
+            });
+        });
+        scope.assert(acceptsCall, function () {
+            return testDouble<(options: RoleOptions) => string>({
                 rules: [ rule.when(matches({ role: P.string })).returns('found') ]
-            }));
-        typeScope.assert(rejectsCall('argument-type'), () =>
-            testDouble<(role: Role) => string>({
+            });
+        });
+        scope.assert(rejectsCall('argument-type'), function () {
+            return testDouble<(role: Role) => string>({
                 rules: [ rule.when(matches('root')).returns('found') ]
-            }));
-        return typeScope.assert.collect();
+            });
+        });
+        return scope.assert.collect();
     }),
-    test('rejects incompatible patterns and results', function (typeScope) {
-        typeScope.assert(rejectsCall('argument-type'), () =>
-            testDouble<Load>({
+    test('rejects incompatible patterns and results', function (scope) {
+        scope.assert(rejectsCall('argument-type'), function () {
+            return testDouble<Load>({
                 rules: [ rule.when(matches(P.number)).returns('found') ]
-            }));
-        typeScope.assert(rejectsCall('argument-type'), () =>
-            testDouble<Load>({
+            });
+        });
+        scope.assert(rejectsCall('argument-type'), function () {
+            return testDouble<Load>({
                 rules: [ rule.when(matches(P.string), matches({ limit: P.string })).returns('found') ]
-            }));
-        typeScope.assert(
+            });
+        });
+        scope.assert(
             rejectsCall('argument-type'),
-            () => testDouble<Load>({ rules: [ rule.when(matches(P.string)).returns(1) ] })
+            function () {
+                return testDouble<Load>({ rules: [ rule.when(matches(P.string)).returns(1) ] });
+            }
         );
-        return typeScope.assert.collect();
+        return scope.assert.collect();
     }),
-    test('supports wildcards optional arguments and constructors', function (typeScope) {
-        typeScope.assert(acceptsCall, () =>
-            testDouble<(id?: string) => string>({
+    test('supports wildcards optional arguments and constructors', function (scope) {
+        scope.assert(acceptsCall, function () {
+            return testDouble<(id?: string) => string>({
                 rules: [ rule.when(matches(undefined)).returns('found') ]
-            }));
-        typeScope.assert(acceptsCall, () =>
-            testDouble<(id: string, limit?: number) => string>({
+            });
+        });
+        scope.assert(acceptsCall, function () {
+            return testDouble<(id: string, limit?: number) => string>({
                 rules: [ rule.when(matches(P.string), matches(undefined)).returns('found') ]
-            }));
-        typeScope.assert(acceptsCall, () =>
-            testDouble<(id?: string) => string>({
+            });
+        });
+        scope.assert(acceptsCall, function () {
+            return testDouble<(id?: string) => string>({
                 rules: [ rule.when(matches(P._)).returns('found') ]
-            }));
-        typeScope.assert(acceptsCall, () =>
-            testDouble<ClientConstructor>({
+            });
+        });
+        scope.assert(acceptsCall, function () {
+            return testDouble<ClientConstructor>({
                 rules: [ rule.whenConstructedWith(matches(P.string)).constructs({ id: 'client' }) ]
-            }));
-        return typeScope.assert.collect();
+            });
+        });
+        return scope.assert.collect();
     })
 ]);

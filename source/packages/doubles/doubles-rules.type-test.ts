@@ -1,5 +1,5 @@
-import { suite, test } from '../../../tools/type-tests/authoring.entry-point.ts';
-import { acceptsCall, rejectsCall, sameType } from '../../../tools/type-tests/relations.entry-point.ts';
+import { suite, test } from '@overkill-dev/test';
+import { acceptsCall, rejectsCall, sameType } from '@overkill-dev/type-test';
 import { hasKey, isEqualTo } from '../../test-support/type-relations.ts';
 import {
     rule,
@@ -37,21 +37,21 @@ const user: User = { id: '1', name: 'Ada' };
 const client: Client = { baseUrl: 'https://api.example.test' };
 
 export const testNode = suite('rule-based doubles', [
-    test('does not expose fluent behavior on created doubles', function (typeScope) {
+    test('does not expose fluent behavior on created doubles', function (scope) {
         const typed = testDouble.returns<LoadUser>(user);
         const configured = testDouble<LoadUser>({
             fallback: rule.returns(user)
         });
 
-        typeScope.assert(sameType.withActual<false>(), hasKey<'returns'>()(typed));
-        typeScope.assert(sameType.withActual<false>(), hasKey<'resolves'>()(typed));
-        typeScope.assert(sameType.withActual<false>(), hasKey<'rejects'>()(typed));
-        typeScope.assert(sameType.withActual<false>(), hasKey<'throws'>()(typed));
-        typeScope.assert(sameType.withActual<false>(), hasKey<'constructs'>()(typed));
-        typeScope.assert(sameType.withActual<false>(), hasKey<'returns'>()(configured));
-        return typeScope.assert.collect();
+        scope.assert(sameType.withActual<false>(), hasKey<'returns'>()(typed));
+        scope.assert(sameType.withActual<false>(), hasKey<'resolves'>()(typed));
+        scope.assert(sameType.withActual<false>(), hasKey<'rejects'>()(typed));
+        scope.assert(sameType.withActual<false>(), hasKey<'throws'>()(typed));
+        scope.assert(sameType.withActual<false>(), hasKey<'constructs'>()(typed));
+        scope.assert(sameType.withActual<false>(), hasKey<'returns'>()(configured));
+        return scope.assert.collect();
     }),
-    test('exports configured rule-based doubles', function (typeScope) {
+    test('exports configured rule-based doubles', function (scope) {
         const loadUser = testDouble<LoadUser>({
             rules: [
                 rule.when('1').returns(user),
@@ -60,17 +60,20 @@ export const testNode = suite('rule-based doubles', [
             fallback: rule.throws(new Error('unexpected user'))
         });
 
-        typeScope.assert(sameType.withActual<true>(), isEqualTo<TestDouble<LoadUser>>()(loadUser));
-        typeScope.assert(acceptsCall, () => loadUser('1', false));
-        typeScope.assert(sameType.withActual<true>(), isEqualTo<User>()(loadUser('1', false)));
-        typeScope.assert(rejectsCall('argument-type'), () =>
-            testDouble<LoadUser>({
+        scope.assert(sameType.withActual<true>(), isEqualTo<TestDouble<LoadUser>>()(loadUser));
+        scope.assert(acceptsCall, function () {
+            return loadUser('1', false);
+        });
+        scope.assert(sameType.withActual<true>(), isEqualTo<User>()(loadUser('1', false)));
+        scope.assert(rejectsCall('argument-type'), function () {
+            return testDouble<LoadUser>({
                 fallback: rule.returns(user),
                 unknown: true
-            }));
-        return typeScope.assert.collect();
+            });
+        });
+        return scope.assert.collect();
     }),
-    test('type-checks deep-partial argument patterns', function (typeScope) {
+    test('type-checks deep-partial argument patterns', function (scope) {
         const searchUser = testDouble<SearchUser>({
             rules: [
                 rule.when({ profile: { role: 'admin' } }).returns(user),
@@ -78,68 +81,87 @@ export const testNode = suite('rule-based doubles', [
             ]
         });
 
-        typeScope.assert(sameType.withActual<true>(), isEqualTo<TestDouble<SearchUser>>()(searchUser));
-        typeScope.assert(rejectsCall('argument-type'), () =>
-            testDouble<SearchUser>({
+        scope.assert(sameType.withActual<true>(), isEqualTo<TestDouble<SearchUser>>()(searchUser));
+        scope.assert(rejectsCall('argument-type'), function () {
+            return testDouble<SearchUser>({
                 rules: [ rule.when({ missing: true }).returns(user) ]
-            }));
-        typeScope.assert(rejectsCall('argument-type'), () =>
-            testDouble<SearchUser>({
+            });
+        });
+        scope.assert(rejectsCall('argument-type'), function () {
+            return testDouble<SearchUser>({
                 rules: [ rule.when({ id: '1' }, false, 'extra').returns(user) ]
-            }));
-        return typeScope.assert.collect();
+            });
+        });
+        return scope.assert.collect();
     }),
-    test('requires non-empty when forms', function (typeScope) {
-        typeScope.assert(rejectsCall('argument-count'), () => rule.when());
-        typeScope.assert(rejectsCall('argument-count'), () => rule.whenConstructedWith());
-        return typeScope.assert.collect();
+    test('requires non-empty when forms', function (scope) {
+        scope.assert(rejectsCall('argument-count'), function () {
+            return rule.when();
+        });
+        scope.assert(rejectsCall('argument-count'), function () {
+            return rule.whenConstructedWith();
+        });
+        return scope.assert.collect();
     }),
-    test('requires sequence arrays with at least two entries', function (typeScope) {
-        typeScope.assert(acceptsCall, () => rule.sequence([ 'a', 'b' ]));
-        typeScope.assert(acceptsCall, () =>
-            rule.sequence([
+    test('requires sequence arrays with at least two entries', function (scope) {
+        scope.assert(acceptsCall, function () {
+            return rule.sequence([ 'a', 'b' ]);
+        });
+        scope.assert(acceptsCall, function () {
+            return rule.sequence([
                 rule.resolves('a'),
                 rule.resolves('b')
-            ]));
-        typeScope.assert(rejectsCall('argument-type'), () => rule.sequence([ 'a' ]));
-        typeScope.assert(rejectsCall('argument-type'), () => rule.sequence([]));
-        return typeScope.assert.collect();
+            ]);
+        });
+        scope.assert(rejectsCall('argument-type'), function () {
+            return rule.sequence([ 'a' ]);
+        });
+        scope.assert(rejectsCall('argument-type'), function () {
+            return rule.sequence([]);
+        });
+        return scope.assert.collect();
     }),
-    test('distinguishes returns and resolves for async rules', function (typeScope) {
-        typeScope.assert(acceptsCall, () =>
-            testDouble<SaveUser>({
+    test('distinguishes returns and resolves for async rules', function (scope) {
+        scope.assert(acceptsCall, function () {
+            return testDouble<SaveUser>({
                 rules: [ rule.when(user).resolves(user) ]
-            }));
-        typeScope.assert(rejectsCall('argument-type'), () =>
-            testDouble<SaveUser>({
+            });
+        });
+        scope.assert(rejectsCall('argument-type'), function () {
+            return testDouble<SaveUser>({
                 rules: [ rule.when(user).returns(user) ]
-            }));
-        typeScope.assert(rejectsCall('argument-type'), () =>
-            testDouble<LoadUser>({
+            });
+        });
+        scope.assert(rejectsCall('argument-type'), function () {
+            return testDouble<LoadUser>({
                 rules: [ rule.when('1', false).resolves(user) ]
-            }));
-        return typeScope.assert.collect();
+            });
+        });
+        return scope.assert.collect();
     }),
-    test('type-checks constructor arguments and instances', function (typeScope) {
-        typeScope.assert(acceptsCall, () =>
-            testDouble<ClientConstructor>({
+    test('type-checks constructor arguments and instances', function (scope) {
+        scope.assert(acceptsCall, function () {
+            return testDouble<ClientConstructor>({
                 rules: [
                     rule.whenConstructedWith('https://api.example.test').constructs(client),
                     rule.onConstruction(1).constructs(client)
                 ],
                 fallback: rule.constructs(client)
-            }));
-        typeScope.assert(rejectsCall('argument-type'), () =>
-            testDouble<ClientConstructor>({
+            });
+        });
+        scope.assert(rejectsCall('argument-type'), function () {
+            return testDouble<ClientConstructor>({
                 rules: [ rule.whenConstructedWith(1).constructs(client) ]
-            }));
-        typeScope.assert(rejectsCall('argument-type'), () =>
-            testDouble<ClientConstructor>({
+            });
+        });
+        scope.assert(rejectsCall('argument-type'), function () {
+            return testDouble<ClientConstructor>({
                 rules: [ rule.whenConstructedWith('https://api.example.test').constructs({ id: 'client' }) ]
-            }));
-        return typeScope.assert.collect();
+            });
+        });
+        return scope.assert.collect();
     }),
-    test('types fallback objects and answer invocations', function (typeScope) {
+    test('types fallback objects and answer invocations', function (scope) {
         const Client = testDouble<ClientFactory>({
             fallback: {
                 call: rule.returns(client),
@@ -148,7 +170,7 @@ export const testNode = suite('rule-based doubles', [
         });
         const answered = testDouble<SearchUser>({
             answer(invocation) {
-                typeScope.assert(
+                scope.assert(
                     sameType.withActual<true>(),
                     isEqualTo<DoubleInvocation<Parameters<SearchUser>>>()(invocation)
                 );
@@ -157,15 +179,16 @@ export const testNode = suite('rule-based doubles', [
             }
         });
 
-        typeScope.assert(sameType.withActual<true>(), isEqualTo<TestDouble<ClientFactory>>()(Client));
-        typeScope.assert(sameType.withActual<true>(), isEqualTo<TestDouble<SearchUser>>()(answered));
-        typeScope.assert(rejectsCall('argument-type'), () =>
-            testDouble<LoadUser>({
+        scope.assert(sameType.withActual<true>(), isEqualTo<TestDouble<ClientFactory>>()(Client));
+        scope.assert(sameType.withActual<true>(), isEqualTo<TestDouble<SearchUser>>()(answered));
+        scope.assert(rejectsCall('argument-type'), function () {
+            return testDouble<LoadUser>({
                 answer() {
                     return user;
                 },
                 fallback: rule.returns(user)
-            }));
-        return typeScope.assert.collect();
+            });
+        });
+        return scope.assert.collect();
     })
 ]);

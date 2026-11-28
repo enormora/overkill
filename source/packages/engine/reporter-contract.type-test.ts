@@ -1,6 +1,6 @@
 import type { IsEqual } from 'type-fest';
-import { suite, test } from '../../../tools/type-tests/authoring.entry-point.ts';
-import { sameType } from '../../../tools/type-tests/relations.entry-point.ts';
+import { suite, test } from '@overkill-dev/test';
+import { sameType } from '@overkill-dev/type-test';
 import { isAssignableTo, type IsAssignable } from '../../test-support/type-relations.ts';
 import {
     defineOutputRenderer,
@@ -87,62 +87,62 @@ type LateManagedStdoutRealTimeReporter = RealTimeReporter<
     ]
 >;
 
-export const testNode = suite('Reporter contract', [
+export const testNode = suite('Reporter lifecycle, context, and output sinks', [
     suite('uses explicit run facts and nullable finish callbacks', [
-        test('types run lifecycle callbacks', function (typeScope) {
-            typeScope.assert(sameType<IsEqual<keyof ExecuteOptions, ExpectedExecuteOptionKey>, true>());
-            typeScope.assert(
+        test('types run lifecycle callbacks', function (scope) {
+            scope.assert(sameType<IsEqual<keyof ExecuteOptions, ExpectedExecuteOptionKey>, true>());
+            scope.assert(
                 sameType<IsEqual<ExecuteOptions['outputRenderer'], DefinedOutputRenderer | undefined>, true>()
             );
-            typeScope.assert(
+            scope.assert(
                 sameType<IsEqual<ExecuteOptions['finalizeResult'], ExecuteResultFinalizer | undefined>, true>()
             );
-            typeScope.assert(sameType<IsEqual<ExecuteExecution, ExpectedExecuteExecution>, true>());
-            typeScope.assert(sameType<IsEqual<RunFacts, Readonly<Record<string, unknown>>>, true>());
-            return typeScope.assert.collect();
+            scope.assert(sameType<IsEqual<ExecuteExecution, ExpectedExecuteExecution>, true>());
+            scope.assert(sameType<IsEqual<RunFacts, Readonly<Record<string, unknown>>>, true>());
+            return scope.assert.collect();
         }),
-        test('types nullable completion and execution facts', function (typeScope) {
-            typeScope.assert(
+        test('types nullable completion and execution facts', function (scope) {
+            scope.assert(
                 sameType<IsEqual<RealTimeReporter['dispose'], (() => Promise<void> | void) | null>, true>()
             );
-            typeScope.assert(
+            scope.assert(
                 sameType<IsEqual<RealTimeReporter['onEvent'], (event: ReporterEvent) => Promise<void> | void>, true>()
             );
-            typeScope.assert(
+            scope.assert(
                 sameType<
                     IsEqual<RealTimeReporter['onFinish'], ((report: RunReport) => Promise<void> | void) | null>,
                     true
                 >()
             );
-            typeScope.assert(
+            scope.assert(
                 sameType<IsEqual<FinalResultReporter['dispose'], (() => Promise<void> | void) | null>, true>()
             );
-            typeScope.assert(sameType<FinalResultReporter['kind'], 'final-result'>());
-            return typeScope.assert.collect();
+            scope.assert(sameType<FinalResultReporter['kind'], 'final-result'>());
+            return scope.assert.collect();
         })
     ]),
-    test('allows returned output only for managed output sink reporters', function (typeScope) {
-        typeScope.assert(
+    test('allows returned output only for managed output sink reporters', function (scope) {
+        scope.assert(
             sameType<
                 [(event: ReporterEvent) => ReporterOutput] extends [RawStdoutRealTimeReporter['onEvent']] ? true
                     : false,
                 false
             >()
         );
-        typeScope.assert(
+        scope.assert(
             sameType<
                 [(report: RunReport) => ReporterOutput] extends [RawStdoutRealTimeReporter['onFinish']] ? true : false,
                 false
             >()
         );
-        typeScope.assert(
+        scope.assert(
             sameType<
                 [(event: ReporterEvent) => ReporterOutput] extends [ManagedStdoutRealTimeReporter['onEvent']] ? true
                     : false,
                 true
             >()
         );
-        typeScope.assert(
+        scope.assert(
             sameType<
                 IsAssignable<
                     (report: RunReport) => Promise<ReporterOutput>,
@@ -151,33 +151,33 @@ export const testNode = suite('Reporter contract', [
                 true
             >()
         );
-        typeScope.assert(
+        scope.assert(
             sameType<
                 [(event: ReporterEvent) => ReporterOutput] extends [LateManagedStdoutRealTimeReporter['onEvent']] ? true
                     : false,
                 true
             >()
         );
-        return typeScope.assert.collect();
+        return scope.assert.collect();
     }),
-    test('accepts reporter contexts without diagnostic limits', function (typeScope) {
-        typeScope.assert(
+    test('accepts reporter contexts without diagnostic limits', function (scope) {
+        scope.assert(
             sameType<IsEqual<ReportingContext['failureArtifacts'], FailureArtifactPolicy | undefined>, true>()
         );
-        return typeScope.assert.collect();
+        return scope.assert.collect();
     }),
-    test('exposes sink declarations for every supported sink kind', function (typeScope) {
-        typeScope.assert(sameType<IsEqual<SinkDeclaration['kind'], ExpectedSinkKind>, true>());
-        return typeScope.assert.collect();
+    test('exposes sink declarations for every supported sink kind', function (scope) {
+        scope.assert(sameType<IsEqual<SinkDeclaration['kind'], ExpectedSinkKind>, true>());
+        return scope.assert.collect();
     }),
-    test('exposes managed output contracts', function (typeScope) {
-        typeScope.assert(sameType<OutputLineIntent['kind'], 'stderr-line' | 'stdout-line'>());
-        typeScope.assert(sameType<OutputLineIntent['role'], 'primary' | 'supplemental'>());
-        typeScope.assert(sameType<IsEqual<OutputRenderer['render'], (intent: OutputLineIntent) => string>, true>());
-        typeScope.assert(sameType<IsEqual<ReporterOutput, readonly OutputLineIntent[]>, true>());
-        return typeScope.assert.collect();
+    test('exposes managed output contracts', function (scope) {
+        scope.assert(sameType<OutputLineIntent['kind'], 'stderr-line' | 'stdout-line'>());
+        scope.assert(sameType<OutputLineIntent['role'], 'primary' | 'supplemental'>());
+        scope.assert(sameType<IsEqual<OutputRenderer['render'], (intent: OutputLineIntent) => string>, true>());
+        scope.assert(sameType<IsEqual<ReporterOutput, readonly OutputLineIntent[]>, true>());
+        return scope.assert.collect();
     }),
-    test('exposes extension branding helpers without replacing structural contracts', function (typeScope) {
+    test('exposes extension branding helpers without replacing structural contracts', function (scope) {
         const context: ReportingContext = {
             relativizeLocationPath(location) {
                 return location.file;
@@ -202,21 +202,21 @@ export const testNode = suite('Reporter contract', [
             };
         });
 
-        typeScope.assert(sameType<[typeof reporter] extends [DefinedReporter] ? true : false, true>());
-        typeScope.assert(sameType.withActual<true>(), isAssignableTo<FinalResultReporter>()(reporter(context)));
-        typeScope.assert(sameType<IsEqual<typeof isReporter, (value: unknown) => value is DefinedReporter>, true>());
-        typeScope.assert(sameType.withActual<true>(), isAssignableTo<DefinedOutputRenderer>()(outputRenderer));
-        typeScope.assert(sameType.withActual<true>(), isAssignableTo<OutputRenderer>()(outputRenderer(context)));
-        typeScope.assert(
+        scope.assert(sameType<[typeof reporter] extends [DefinedReporter] ? true : false, true>());
+        scope.assert(sameType.withActual<true>(), isAssignableTo<FinalResultReporter>()(reporter(context)));
+        scope.assert(sameType<IsEqual<typeof isReporter, (value: unknown) => value is DefinedReporter>, true>());
+        scope.assert(sameType.withActual<true>(), isAssignableTo<DefinedOutputRenderer>()(outputRenderer));
+        scope.assert(sameType.withActual<true>(), isAssignableTo<OutputRenderer>()(outputRenderer(context)));
+        scope.assert(
             sameType<IsEqual<typeof isOutputRenderer, (value: unknown) => value is DefinedOutputRenderer>, true>()
         );
-        return typeScope.assert.collect();
+        return scope.assert.collect();
     }),
-    test('exposes non-empty planned case arrays', function (typeScope) {
-        typeScope.assert(sameType<IsEqual<TestPlan['cases'], NonEmptyReadonlyArray<TestPlanCase>>, true>());
-        typeScope.assert(sameType<IsEqual<TestPlan['discoveredCases'], NonEmptyReadonlyArray<TestPlanCase>>, true>());
-        typeScope.assert(sameType<IsEqual<TestPlanCase['execution'], TestPlanCaseExecution>, true>());
-        typeScope.assert(sameType<
+    test('exposes non-empty planned case arrays', function (scope) {
+        scope.assert(sameType<IsEqual<TestPlan['cases'], NonEmptyReadonlyArray<TestPlanCase>>, true>());
+        scope.assert(sameType<IsEqual<TestPlan['discoveredCases'], NonEmptyReadonlyArray<TestPlanCase>>, true>());
+        scope.assert(sameType<IsEqual<TestPlanCase['execution'], TestPlanCaseExecution>, true>());
+        scope.assert(sameType<
             [{
                 readonly body: () => never;
                 readonly bodyMode: 'builder';
@@ -224,7 +224,7 @@ export const testNode = suite('Reporter contract', [
             }] extends [TestPlanCaseExecution] ? true : false,
             true
         >());
-        typeScope.assert(sameType<
+        scope.assert(sameType<
             [{
                 readonly body: () => undefined;
                 readonly bodyMode: 'throwing';
@@ -232,13 +232,13 @@ export const testNode = suite('Reporter contract', [
             }] extends [TestPlanCaseExecution] ? true : false,
             true
         >());
-        typeScope.assert(sameType<
+        scope.assert(sameType<
             [{
                 readonly kind: 'skip';
                 readonly reason: 'unsupported platform';
             }] extends [TestPlanCaseExecution] ? true : false,
             true
         >());
-        return typeScope.assert.collect();
+        return scope.assert.collect();
     })
 ]);

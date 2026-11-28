@@ -305,7 +305,9 @@ export const testNode = suite('model contracts', [
                 return [];
             },
             run(operation, system) {
-                scope.assert.equal(operation.trace[0], operation);
+                if (operation.trace[0] !== operation) {
+                    throw new Error('The model operation lost its trace alias.');
+                }
                 Object.assign(operation, { value: 99 });
                 system.push(operation);
             },

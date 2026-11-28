@@ -1,4 +1,5 @@
 import { table, suite, test } from '@overkill-dev/test';
+import { captureThrownError } from '../../test-support/captured-error.ts';
 
 import { defineResource, defineRuntime, composeRuntimes } from '../resources/resources.entry-point.ts';
 
@@ -33,9 +34,13 @@ export const testNode = suite('runtime wrapper scope composition', [
     }),
     test('rejects duplicate runtime scopes before replacing existing values', function (scope) {
         const runtimes = { api: { value: 'existing' } };
-        scope.assert.throws(function () {
-            composeRuntimeScope({ ...scope, runtimes }, api, { value: 'replacement' });
-        }, { message: 'Runtime scope "api" already exists.' });
+        scope.assert.equal(
+            captureThrownError(function () {
+                composeRuntimeScope({ ...scope, runtimes }, api, { value: 'replacement' });
+            })
+                ?.message,
+            'Runtime scope "api" already exists.'
+        );
         scope.assert.deepEqual(runtimes, { api: { value: 'existing' } });
         return scope.assert.collect();
     }),
@@ -51,19 +56,31 @@ export const testNode = suite('runtime wrapper scope composition', [
         test(scope) {
             const runtimes = scope.parameters.input;
 
-            scope.assert.throws(function () {
-                Reflect.apply(composeRuntimeScope, undefined, [ { ...scope, runtimes }, api, { value: 'api' } ]);
-            }, { message: 'Runtime scope composition failed.' });
+            scope.assert.equal(
+                captureThrownError(function () {
+                    Reflect.apply(composeRuntimeScope, undefined, [ { ...scope, runtimes }, api, { value: 'api' } ]);
+                })
+                    ?.message,
+                'Runtime scope composition failed.'
+            );
             return scope.assert.collect();
         }
     }),
     test('rejects missing handles for individual and composed runtimes', function (scope) {
-        scope.assert.throws(function () {
-            Reflect.apply(composeRuntimeScope, undefined, [ scope, api, undefined ]);
-        }, { message: 'Runtime scope composition failed.' });
-        scope.assert.throws(function () {
-            Reflect.apply(composeRuntimeScope, undefined, [ scope, composed, { api: { value: 'api' } } ]);
-        }, { message: 'Runtime scope composition failed.' });
+        scope.assert.equal(
+            captureThrownError(function () {
+                Reflect.apply(composeRuntimeScope, undefined, [ scope, api, undefined ]);
+            })
+                ?.message,
+            'Runtime scope composition failed.'
+        );
+        scope.assert.equal(
+            captureThrownError(function () {
+                Reflect.apply(composeRuntimeScope, undefined, [ scope, composed, { api: { value: 'api' } } ]);
+            })
+                ?.message,
+            'Runtime scope composition failed.'
+        );
         return scope.assert.collect();
     })
 ]);

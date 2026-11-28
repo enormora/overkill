@@ -1,5 +1,5 @@
-import { suite, test } from '../../../tools/type-tests/authoring.entry-point.ts';
-import { sameType } from '../../../tools/type-tests/relations.entry-point.ts';
+import { suite, test } from '@overkill-dev/test';
+import { sameType } from '@overkill-dev/type-test';
 import type { DefinedReporter, FinalResultReporter, RealTimeReporter } from '../engine/engine.entry-point.ts';
 import { isEqualTo } from '../../test-support/type-relations.ts';
 import {
@@ -8,39 +8,39 @@ import {
     createLineTreeReporter
 } from './reporter-line.entry-point.ts';
 
-export const testNode = suite('createLineReporter', [
-    test('returns the public real-time reporter contract', function (typeScope) {
-        typeScope.assert(
+export const testNode = suite('Line reporter modes and output contracts', [
+    test('returns the public real-time reporter contract', function (scope) {
+        scope.assert(
             sameType.withActual<true>(),
             isEqualTo<DefinedReporter<RealTimeReporter>>()(createLineReporter())
         );
-        typeScope.assert(
+        scope.assert(
             sameType.withActual<true>(),
             isEqualTo<DefinedReporter<RealTimeReporter>>()(createLineReporter({ verbose: true }))
         );
-        return typeScope.assert.collect();
+        return scope.assert.collect();
     }),
-    test('exposes progress and tree presentation variants', function (typeScope) {
-        typeScope.assert(
+    test('exposes progress and tree presentation variants', function (scope) {
+        scope.assert(
             sameType.withActual<true>(),
             isEqualTo<DefinedReporter<RealTimeReporter>>()(createLineProgressReporter())
         );
-        typeScope.assert(
+        scope.assert(
             sameType.withActual<true>(),
             isEqualTo<DefinedReporter<RealTimeReporter>>()(
                 createLineProgressReporter({ showPassing: false, verbose: true })
             )
         );
-        typeScope.assert(
+        scope.assert(
             sameType.withActual<true>(),
             isEqualTo<DefinedReporter<FinalResultReporter>>()(createLineTreeReporter())
         );
-        typeScope.assert(
+        scope.assert(
             sameType.withActual<true>(),
             isEqualTo<DefinedReporter<FinalResultReporter>>()(
                 createLineTreeReporter({ showPassing: false, verbose: true })
             )
         );
-        return typeScope.assert.collect();
+        return scope.assert.collect();
     })
 ]);

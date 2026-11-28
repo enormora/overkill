@@ -1,5 +1,6 @@
 import { suite, test } from '@overkill-dev/test';
 
+import { captureRejectedError } from '../test-support/captured-error.ts';
 import { managedAcquisition, managedDescriptor, managedRecord } from '../test-support/managed-resource-acquisition.ts';
 import { defineResource } from '../resources/resources.ts';
 
@@ -65,11 +66,15 @@ export const testNode = suite('managed resource acquisition policy', [
         await fixture.acquire(managedDescriptor(function () {
             return 'first';
         }));
-        await scope.assert.rejects(async function () {
+        const failure = await captureRejectedError(async function () {
             await fixture.acquire(managedDescriptor(function () {
                 return 'second';
             }));
-        }, { message: 'Resource name "owner" is used by multiple descriptors in one lifecycle boundary.' });
+        });
+        scope.assert.equal(
+            failure?.message,
+            'Resource name "owner" is used by multiple descriptors in one lifecycle boundary.'
+        );
         scope.assert.equal(fixture.stores.records().length, 1);
         return scope.assert.collect();
     }),

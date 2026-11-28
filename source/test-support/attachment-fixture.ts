@@ -53,10 +53,15 @@ export async function attachmentFixtureForWork(
 ): Promise<AttachmentFixture> {
     await mkdir('target/attachment-tests', { recursive: true });
     const directory = await mkdtemp('target/attachment-tests/run-');
+    const fixture = createAttachmentFixture(directory, limits, work);
     cleanup(async function removeAttachmentRun() {
-        await rm(directory, { recursive: true, force: true });
+        try {
+            await fixture.store.finish(null);
+        } finally {
+            await rm(directory, { recursive: true, force: true });
+        }
     });
-    return createAttachmentFixture(directory, limits, work);
+    return fixture;
 }
 
 export function inlineAttachmentFixture(limits: AttachmentLimits, work: readonly WorkId[]): AttachmentFixture {

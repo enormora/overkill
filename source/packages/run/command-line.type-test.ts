@@ -1,6 +1,6 @@
 import type { IsEqual } from 'type-fest';
-import { suite, test } from '../../../tools/type-tests/authoring.entry-point.ts';
-import { acceptsCall, sameType } from '../../../tools/type-tests/relations.entry-point.ts';
+import { suite, test } from '@overkill-dev/test';
+import { acceptsCall, sameType } from '@overkill-dev/type-test';
 import type { ProjectDefinedFamilyProfile } from '../../config/schema.ts';
 import type { TestProfileConfig } from '../../config/types.ts';
 import type {
@@ -59,11 +59,11 @@ type OrdinaryProjectProfile = ProjectIntegrationProfileConfig | ProjectMicrotest
 
 declare const defineConfigUnderTest: typeof defineConfig;
 
-export const testNode = suite('@overkill-dev/run/command-line', [
+export const testNode = suite('Command-line parsing and profile selection', [
     suite('exposes an instantiated command-line runner', [
-        test('types runner dependencies', function (typeScope) {
-            typeScope.assert(sameType<IsEqual<typeof commandLineRunner, CommandLineRunner>, true>());
-            typeScope.assert(
+        test('types runner dependencies', function (scope) {
+            scope.assert(sameType<IsEqual<typeof commandLineRunner, CommandLineRunner>, true>());
+            scope.assert(
                 sameType<
                     IsEqual<
                         typeof createNodeCommandLineRunner,
@@ -72,7 +72,7 @@ export const testNode = suite('@overkill-dev/run/command-line', [
                     true
                 >()
             );
-            typeScope.assert(
+            scope.assert(
                 sameType<
                     IsEqual<
                         typeof commandLineRunner.runTests,
@@ -81,7 +81,7 @@ export const testNode = suite('@overkill-dev/run/command-line', [
                     true
                 >()
             );
-            typeScope.assert(
+            scope.assert(
                 sameType<
                     IsEqual<
                         typeof commandLineRunner.listTests,
@@ -90,11 +90,11 @@ export const testNode = suite('@overkill-dev/run/command-line', [
                     true
                 >()
             );
-            typeScope.assert(sameType<IsEqual<typeof commandLineRunner.replayRun, CommandLineCommand>, true>());
-            return typeScope.assert.collect();
+            scope.assert(sameType<IsEqual<typeof commandLineRunner.replayRun, CommandLineCommand>, true>());
+            return scope.assert.collect();
         }),
-        test('types runner command execution', function (typeScope) {
-            typeScope.assert(
+        test('types runner command execution', function (scope) {
+            scope.assert(
                 sameType<
                     IsEqual<
                         typeof commandLineRunner.replayWitness,
@@ -103,9 +103,9 @@ export const testNode = suite('@overkill-dev/run/command-line', [
                     true
                 >()
             );
-            typeScope.assert(sameType<IsEqual<typeof commandLineRunner.baseline, CommandLineBaselineCommands>, true>());
-            typeScope.assert(sameType<IsEqual<typeof commandLineRunner.bench, CommandLineBenchmarkCommands>, true>());
-            typeScope.assert(
+            scope.assert(sameType<IsEqual<typeof commandLineRunner.baseline, CommandLineBaselineCommands>, true>());
+            scope.assert(sameType<IsEqual<typeof commandLineRunner.bench, CommandLineBenchmarkCommands>, true>());
+            scope.assert(
                 sameType<
                     IsEqual<
                         typeof commandLineRunner.bench.runBenchmarks,
@@ -114,7 +114,7 @@ export const testNode = suite('@overkill-dev/run/command-line', [
                     true
                 >()
             );
-            typeScope.assert(
+            scope.assert(
                 sameType<
                     IsEqual<
                         typeof commandLineRunner.bench.listBenchmarks,
@@ -123,24 +123,24 @@ export const testNode = suite('@overkill-dev/run/command-line', [
                     true
                 >()
             );
-            return typeScope.assert.collect();
+            return scope.assert.collect();
         })
     ]),
     suite('keeps command-line run input explicit', [
-        test('types recording and profile input', function (typeScope) {
-            typeScope.assert(sameType<keyof CommandLineRunTestsRequest, 'configPath' | 'cwd' | 'runRequest'>());
-            typeScope.assert(sameType<CommandLineRunTestsRequest['configPath'], string | null>());
-            typeScope.assert(sameType<CommandLineRunTestsRequest['cwd'], string>());
-            typeScope.assert(sameType<IsEqual<CommandLineRunTestsRequest['runRequest'], RunRequest>, true>());
-            typeScope.assert(sameType<keyof CommandLineCommandContext, 'arguments' | 'configPath' | 'cwd'>());
-            return typeScope.assert.collect();
+        test('types recording and profile input', function (scope) {
+            scope.assert(sameType<keyof CommandLineRunTestsRequest, 'configPath' | 'cwd' | 'runRequest'>());
+            scope.assert(sameType<CommandLineRunTestsRequest['configPath'], string | null>());
+            scope.assert(sameType<CommandLineRunTestsRequest['cwd'], string>());
+            scope.assert(sameType<IsEqual<CommandLineRunTestsRequest['runRequest'], RunRequest>, true>());
+            scope.assert(sameType<keyof CommandLineCommandContext, 'arguments' | 'configPath' | 'cwd'>());
+            return scope.assert.collect();
         }),
-        test('types selection and execution input', function (typeScope) {
-            typeScope.assert(sameType<IsEqual<CommandLineCommandContext['arguments'], readonly string[]>, true>());
-            typeScope.assert(sameType<CommandLineCommandContext['configPath'], string | null>());
-            typeScope.assert(sameType<CommandLineCommandContext['cwd'], string>());
-            typeScope.assert(sameType<keyof CommandLineListTestsRequest, 'configPath' | 'cwd' | 'listRequest'>());
-            typeScope.assert(sameType<
+        test('types selection and execution input', function (scope) {
+            scope.assert(sameType<IsEqual<CommandLineCommandContext['arguments'], readonly string[]>, true>());
+            scope.assert(sameType<CommandLineCommandContext['configPath'], string | null>());
+            scope.assert(sameType<CommandLineCommandContext['cwd'], string>());
+            scope.assert(sameType<keyof CommandLineListTestsRequest, 'configPath' | 'cwd' | 'listRequest'>());
+            scope.assert(sameType<
                 IsEqual<CommandLineListTestsRequest['listRequest'], {
                     readonly lastFailed: boolean;
                     readonly order: Exclude<RunRequest['order'], 'plan'>;
@@ -154,43 +154,45 @@ export const testNode = suite('@overkill-dev/run/command-line', [
                 }>,
                 true
             >());
-            return typeScope.assert.collect();
+            return scope.assert.collect();
         })
     ]),
-    test('exposes stable command-line results and exit codes', function (typeScope) {
-        typeScope.assert(
+    test('exposes stable command-line results and exit codes', function (scope) {
+        scope.assert(
             sameType<CommandLineRunnerResultKeys, 'exitCode' | 'fallbackDiagnostics' | 'runResult' | 'stdoutLines'>()
         );
-        typeScope.assert(sameType<IsEqual<CommandLineExitCode, ExpectedCommandLineExitCode>, true>());
-        typeScope.assert(sameType<IsEqual<CommandLineRunnerResult['fallbackDiagnostics'], readonly string[]>, true>());
-        typeScope.assert(sameType<IsEqual<CommandLineRunnerResult['stdoutLines'], readonly string[]>, true>());
-        return typeScope.assert.collect();
+        scope.assert(sameType<IsEqual<CommandLineExitCode, ExpectedCommandLineExitCode>, true>());
+        scope.assert(sameType<IsEqual<CommandLineRunnerResult['fallbackDiagnostics'], readonly string[]>, true>());
+        scope.assert(sameType<IsEqual<CommandLineRunnerResult['stdoutLines'], readonly string[]>, true>());
+        return scope.assert.collect();
     }),
-    test('requires benchmark run and list intent with nullable profile selection', function (typeScope) {
-        typeScope.assert(sameType<keyof CommandLineBenchmarkRunRequest, 'configPath' | 'cwd' | 'runRequest'>());
-        typeScope.assert(sameType<keyof CommandLineBenchmarkListRequest, 'configPath' | 'cwd' | 'listRequest'>());
-        typeScope.assert(sameType<CommandLineBenchmarkRunRequest['runRequest']['profile'], string | null>());
-        typeScope.assert(sameType<CommandLineBenchmarkListRequest['listRequest']['profile'], string | null>());
-        typeScope.assert(sameType<IsAssignable<CommandLineCommandContext, CommandLineBenchmarkRunRequest>, false>());
-        return typeScope.assert.collect();
+    test('requires benchmark run and list intent with nullable profile selection', function (scope) {
+        scope.assert(sameType<keyof CommandLineBenchmarkRunRequest, 'configPath' | 'cwd' | 'runRequest'>());
+        scope.assert(sameType<keyof CommandLineBenchmarkListRequest, 'configPath' | 'cwd' | 'listRequest'>());
+        scope.assert(sameType<CommandLineBenchmarkRunRequest['runRequest']['profile'], string | null>());
+        scope.assert(sameType<CommandLineBenchmarkListRequest['listRequest']['profile'], string | null>());
+        scope.assert(sameType<IsAssignable<CommandLineCommandContext, CommandLineBenchmarkRunRequest>, false>());
+        return scope.assert.collect();
     }),
-    test('exposes typed config helpers', function (typeScope) {
-        typeScope.assert(acceptsCall, () => defineConfigUnderTest({ profiles: { unit: { testFamily: 'microtest' } } }));
-        typeScope.assert(sameType<IsEqual<Config['outputRenderer'], DefinedOutputRenderer | undefined>, true>());
-        typeScope.assert(sameType<IsEqual<LoadedConfig['outputRenderer'], DefinedOutputRenderer>, true>());
-        typeScope.assert(
+    test('exposes typed config helpers', function (scope) {
+        scope.assert(acceptsCall, function () {
+            return defineConfigUnderTest({ profiles: { unit: { testFamily: 'microtest' } } });
+        });
+        scope.assert(sameType<IsEqual<Config['outputRenderer'], DefinedOutputRenderer | undefined>, true>());
+        scope.assert(sameType<IsEqual<LoadedConfig['outputRenderer'], DefinedOutputRenderer>, true>());
+        scope.assert(
             sameType<IsEqual<Config['reporters'], readonly [DefinedReporter, ...DefinedReporter[]] | undefined>, true>()
         );
-        typeScope.assert(sameType<IsEqual<LoadedConfig['reporters'], readonly DefinedReporter[] | null>, true>());
-        typeScope.assert(sameType<ProjectProcessBudgets['residentSetBytes'], number | null | undefined>());
-        typeScope.assert(sameType.withActual<true>(), isEqualTo<ConfigError>()(new ConfigError('Invalid config.')));
-        return typeScope.assert.collect();
+        scope.assert(sameType<IsEqual<LoadedConfig['reporters'], readonly DefinedReporter[] | null>, true>());
+        scope.assert(sameType<ProjectProcessBudgets['residentSetBytes'], number | null | undefined>());
+        scope.assert(sameType.withActual<true>(), isEqualTo<ConfigError>()(new ConfigError('Invalid config.')));
+        return scope.assert.collect();
     }),
     suite('exposes typed runner profiles', [
-        test('types profile definitions', function (typeScope) {
-            typeScope.assert(sameType<IsEqual<Config['profiles'], ProjectProfilesConfig | undefined>, true>());
-            typeScope.assert(sameType<IsEqual<ProjectProfilesConfig[string], ProjectProfileConfig>, true>());
-            typeScope.assert(
+        test('types profile definitions', function (scope) {
+            scope.assert(sameType<IsEqual<Config['profiles'], ProjectProfilesConfig | undefined>, true>());
+            scope.assert(sameType<IsEqual<ProjectProfilesConfig[string], ProjectProfileConfig>, true>());
+            scope.assert(
                 sameType<
                     IsEqual<
                         Exclude<ProjectProfileConfig, ProjectPropertyProfileConfig>,
@@ -199,7 +201,7 @@ export const testNode = suite('@overkill-dev/run/command-line', [
                     true
                 >()
             );
-            typeScope.assert(
+            scope.assert(
                 sameType<
                     IsEqual<
                         Extract<ProjectProfileConfig, { readonly testFamily: 'property'; }>,
@@ -208,35 +210,35 @@ export const testNode = suite('@overkill-dev/run/command-line', [
                     true
                 >()
             );
-            typeScope.assert(sameType<
+            scope.assert(sameType<
                 [{
                     readonly execution: ProjectMicrotestProfileConfig['execution'];
                     readonly testFamily: 'microtest';
                 }] extends [ProjectProfileConfig] ? true : false,
                 true
             >());
-            return typeScope.assert.collect();
+            return scope.assert.collect();
         }),
-        test('types normalized profiles', function (typeScope) {
-            typeScope.assert(sameType<
+        test('types normalized profiles', function (scope) {
+            scope.assert(sameType<
                 [{
                     readonly files: ProjectProfileFiles;
                     readonly testFamily: 'integration';
                 }] extends [ProjectProfileConfig] ? true : false,
                 true
             >());
-            typeScope.assert(sameType<IsEqual<ProjectProfilesConfig['backend-http'], ProjectProfileConfig>, true>());
-            typeScope.assert(
+            scope.assert(sameType<IsEqual<ProjectProfilesConfig['backend-http'], ProjectProfileConfig>, true>());
+            scope.assert(
                 sameType<IsEqual<ProjectMicrotestProfileConfig['files'], ProjectProfileFiles | undefined>, true>()
             );
-            typeScope.assert(sameType<TestProfileConfig['processUsage']['measure'], boolean>());
-            typeScope.assert(sameType.not<LoadedConfig['profiles']['backend-http']['files'], undefined>());
-            return typeScope.assert.collect();
+            scope.assert(sameType<TestProfileConfig['processUsage']['measure'], boolean>());
+            scope.assert(sameType.not<LoadedConfig['profiles']['backend-http']['files'], undefined>());
+            return scope.assert.collect();
         })
     ]),
-    test('exposes typed profile file discovery', function (typeScope) {
-        typeScope.assert(sameType<IsAssignable<ProjectProfileFilePatterns, ProjectProfileFiles>, true>());
-        typeScope.assert(sameType<IsAssignable<ProjectProfileFileSets, ProjectProfileFiles>, true>());
-        return typeScope.assert.collect();
+    test('exposes typed profile file discovery', function (scope) {
+        scope.assert(sameType<IsAssignable<ProjectProfileFilePatterns, ProjectProfileFiles>, true>());
+        scope.assert(sameType<IsAssignable<ProjectProfileFileSets, ProjectProfileFiles>, true>());
+        return scope.assert.collect();
     })
 ]);
