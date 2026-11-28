@@ -137,37 +137,11 @@ and failures point to the comparison and print the actual and expected types.
 For example, adding a `secret` field fails `hides secrets` and shows the requested
 key and available keys. Use a regular callback for call probes and inference setup.
 
-### Legacy references
-
-The root exports `family`, `sameType`, `assignableTo`, `assignableFrom`,
-`acceptsCall`, and `rejectsCall`.
-Its type exports are `CompilerSelection`, `CompilerPolicy`,
-`TypeTestSettings`, `TypeAssertionReference`, `TypeRelationBindings`,
-`TypeRelation`, and `CallRejection`.
-
-Each relation supports the following forms inside a case body:
-
-| Form                | Example                                                   |
-| ------------------- | --------------------------------------------------------- |
-| Two type arguments  | `scope.assert(sameType<Actual, Expected>())`              |
-| Actual expression   | `scope.assert(sameType.withActual<Expected>(), actual)`   |
-| Expected expression | `scope.assert(sameType.withExpected<Actual>(), expected)` |
-| Two expressions     | `scope.assert(sameType.expressions, actual, expected)`    |
-
-Put `.not` immediately after the relation name in any form, as in
-`scope.assert(sameType.not.expressions, actual, expected)`. An inconclusive
-relation stays inconclusive under negation.
-
-`assignableTo` asks whether actual is assignable to expected under the project's
-compiler options. `assignableFrom` asks whether expected is assignable to actual.
-`sameType` compares structure while preserving distinctions such as literal
-types, optional and readonly members, and nominal declaration identity.
+Equality preserves literals, optional and readonly members, and nominal
+declaration identity. Assignability uses the project's compiler options.
 Equality is inconclusive when recursive expansion exceeds 256 comparison levels.
-Any relation is inconclusive when operand inspection exceeds 2,048 distinct
-compiler types.
-Expression operands use the types at their authored locations. For calls,
-constructors, and generic inference, write the TypeScript expression and assert
-its inferred type, as in the quickstart.
+Operand inspection is limited to 2,048 distinct compiler types. Negation preserves
+inconclusive outcomes.
 
 ### Check calls
 
@@ -224,7 +198,7 @@ Install `@types/node` as a development dependency and set
 
 ```ts
 import * as engine from '@overkill-dev/engine';
-import { family, sameType } from '@overkill-dev/type-test';
+import { family, types } from '@overkill-dev/type-test';
 
 const metadata = {
     annotations: {},
@@ -240,7 +214,7 @@ const root = engine.createRoot({
             title: 'preserves the literal type',
             body(scope) {
                 const value = 'hello' as const;
-                scope.assert(sameType<typeof value, 'hello'>());
+                scope.assert(types.equal<typeof value, 'hello'>());
                 return scope.assert.collect();
             }
         })

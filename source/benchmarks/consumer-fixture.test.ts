@@ -34,7 +34,7 @@ export const testNode = suite('performance consumer fixtures', [
         const source = files.get('file-0.mts');
         scope.require.defined(source);
         scope.assert.includes(source, '/source/packages/type-test/type-test.entry-point.ts');
-        scope.assert.includes(source, 'sameType<number, number>()');
+        scope.assert.includes(source, 'types.equal<number, number>()');
         return scope.assert.collect();
     }),
     test('put one failed assertion in the first reporter fixture file', function (scope) {

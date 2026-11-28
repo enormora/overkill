@@ -207,7 +207,7 @@ reports static evidence against the selected cases.
 
 ```ts
 import { test } from '@overkill-dev/test';
-import { sameType } from '@overkill-dev/type-test';
+import { types } from '@overkill-dev/type-test';
 
 function identity<Value>(value: Value): Value {
     return value;
@@ -215,7 +215,7 @@ function identity<Value>(value: Value): Value {
 
 export const testNode = test('preserves inference', (scope) => {
     const result = identity('hello' as const);
-    scope.assert(sameType<typeof result, 'hello'>());
+    scope.assert(types.equal<typeof result, 'hello'>());
     return scope.assert.collect();
 });
 ```
@@ -251,14 +251,7 @@ rows to inline assertions in the original project by row index and title.
 Use a regular callback with `scope.assert(types.equal<typeof result, Expected>())`
 for inference setup or narrowing. Call probes also use ordinary callbacks.
 
-### Legacy Package API
-
-The root `@overkill-dev/type-test` export supplies `family`, `sameType`,
-`assignableTo`, and `assignableFrom`, plus the settings and reference types below.
-These legacy references remain available for existing consumers. Existing ability
-bindings, the `_` placeholder, and the separate adapter/profile/check entry
-points are not part of this target API. Any migration compatibility exports must
-be temporary delegates to the same engine contract, not another checking path.
+### Compiler settings
 
 ```ts
 type CompilerSelection =
@@ -279,38 +272,8 @@ type TypeTestSettings = {
     readonly compiler: CompilerPolicy;
 };
 
-type TypeRelationBindings = {
-    <Actual, Expected>(): TypeAssertionReference<readonly [], readonly [Actual, Expected]>;
-    readonly withActual: <Expected>() => TypeAssertionReference<readonly [actual: unknown], readonly [Expected]>;
-    readonly withExpected: <Actual>() => TypeAssertionReference<readonly [expected: unknown], readonly [Actual]>;
-    readonly expressions: TypeAssertionReference<readonly [actual: unknown, expected: unknown], readonly []>;
-};
-
-type TypeRelation = TypeRelationBindings & { readonly not: TypeRelationBindings; };
-
 declare const family: TestFamily<TypeTestSettings>;
-declare const sameType: TypeRelation;
-declare const assignableTo: TypeRelation;
-declare const assignableFrom: TypeRelation;
 ```
-
-`TypeAssertionReference<Operands, Types>` is an engine-branded assert-only
-composite reference carrying the declared operand tuple and a type-only marker
-for the source type arguments. Those types are never recovered from a runtime
-object. Negation applies to the complete relation, not to compiler errors or
-unsupported evidence.
-
-```ts
-scope.assert(assignableTo<'hello', string>());
-scope.assert(assignableFrom<string, 'hello'>());
-scope.assert(sameType.withActual<string>(), value);
-scope.assert(assignableTo.not<number, string>());
-```
-
-`withActual<Expected>()` takes its actual operand from the following expression;
-`withExpected<Actual>()` takes its expected operand there. `expressions` takes
-both expressions, using their compiler types at those exact source locations.
-No expression is executed or widened to a declared type solely to make it fit.
 
 The family ID is `@overkill-dev/type-test`. Its execution mode is `analysis`,
 its profile option list is empty, and it supports in-process and supervised
@@ -339,12 +302,11 @@ does not imply production support for unstable APIs.
 ### Relation Semantics
 
 `assignableTo<Actual, Expected>` asks the selected compiler whether `Actual` is
-assignable to `Expected` under the actual project options. `assignableFrom`
-reverses that direction. Preserve native `any` and `never` assignability rules;
-users can explicitly test them with `sameType`. Error-recovery types and missing
+assignable to `Expected` under the actual project options. The compiler's
+`any` and `never` assignability rules apply. Use `types.equal` for exact comparisons. Error-recovery types and missing
 symbols are invalid evidence, not instances of intentionally authored `any`.
 
-`sameType` means structural type equivalence with nominal identities and
+`types.equal` means structural type equivalence with nominal identities and
 inference-relevant modifiers preserved. It is not syntax equality and not a
 promise to decide mathematical equivalence of arbitrary conditional types.
 The following observable rules define its minimum contract:

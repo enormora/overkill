@@ -175,7 +175,7 @@ export const testNode = suite('isolated callback source ownership', [
     }),
     table({
         title: 'recognizes references by exported symbol identity',
-        cases: [ 'sameType', 'assignableTo', 'assignableFrom' ] as const,
+        cases: [ 'equal', 'assignableTo' ] as const,
         caseTitle(name) {
             return name;
         },
@@ -183,17 +183,25 @@ export const testNode = suite('isolated callback source ownership', [
             const name = scope.parameters;
 
             const fixture = sourceFixture();
-            const symbol = sourceSymbol(name, []);
-            fixture.bindName(name, symbol);
+            const symbol = sourceSymbol('types', []);
+            fixture.bindName('alias', symbol);
             fixture.addRelationExport(symbol);
-            const reference = sourceTree(sourceMember(ast.factory.createIdentifier(name), 'expressions'));
+            const actual = ast.factory.createKeywordTypeNode(ast.SyntaxKind.StringKeyword);
+            const expected = ast.factory.createKeywordTypeNode(ast.SyntaxKind.StringKeyword);
+            const reference = sourceTree(ast.factory.createCallExpression(
+                sourceMember(ast.factory.createIdentifier('alias'), name),
+                undefined,
+                [ actual, expected ],
+                [],
+                ast.NodeFlags.None
+            ));
             const result = await nativeReference(fixture.analysis, reference);
             scope.assert.deepEqual(result, {
                 kind: 'relation',
                 relation: name,
-                form: 'expressions',
                 negated: false,
-                types: []
+                actual,
+                expected
             });
             return scope.assert.collect();
         }

@@ -1,4 +1,4 @@
-export type Relation = 'assignableFrom' | 'assignableTo' | 'sameType';
+export type Relation = 'assignableTo' | 'equal';
 type EstablishedRelation = { readonly kind: 'established'; readonly holds: boolean; };
 type InconclusiveRelation = { readonly kind: 'inconclusive'; readonly reason: string; };
 export type RelationEvidence = EstablishedRelation | InconclusiveRelation;

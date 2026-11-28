@@ -28,14 +28,14 @@ function ownedSite(input: NativeCheckEvidence, message: string | null): NativeSi
         line: 1,
         column: 2,
         message,
-        label: 'sameType',
+        label: 'equal',
         call: sourceCall(ast.factory.createIdentifier('assert'), []),
         reference: {
             kind: 'relation',
-            relation: 'sameType',
+            relation: 'equal',
             negated: false,
-            actual: { kind: 'type', node: ast.factory.createKeywordTypeNode(ast.SyntaxKind.StringKeyword) },
-            expected: { kind: 'type', node: ast.factory.createKeywordTypeNode(ast.SyntaxKind.NumberKeyword) }
+            actual: ast.factory.createKeywordTypeNode(ast.SyntaxKind.StringKeyword),
+            expected: ast.factory.createKeywordTypeNode(ast.SyntaxKind.NumberKeyword)
         }
     };
 }
@@ -104,9 +104,9 @@ export const testNode = suite('native checker completion policy', [
                     checks: [ {
                         kind: 'foreign',
                         source: 'assert',
-                        summary: `${annotation}Type relation sameType failed. Actual string. Expected number.`,
+                        summary: `${annotation}Type relation equal failed. Actual string. Expected number.`,
                         sourceLocations: [ { kind: 'known', file: '/project/case.ts', line: 1, column: 2 } ],
-                        error: { name: 'TypeAssertionError', thrown: 'sameType' }
+                        error: { name: 'TypeAssertionError', thrown: 'equal' }
                     } ]
                 } ]
             });

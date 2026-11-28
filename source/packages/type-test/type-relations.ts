@@ -14,13 +14,10 @@ export async function compareRelation(
     if (invalid !== null) {
         return { kind: 'inconclusive', reason: invalid };
     }
-    if (relation === 'sameType') {
+    if (relation === 'equal') {
         return await compareEquality(analysis, actual, expected);
     }
     return established(
-        await analysis.checker.isTypeAssignableTo(
-            relation === 'assignableTo' ? actual : expected,
-            relation === 'assignableTo' ? expected : actual
-        )
+        await analysis.checker.isTypeAssignableTo(actual, expected)
     );
 }

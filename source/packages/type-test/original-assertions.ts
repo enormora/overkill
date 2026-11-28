@@ -9,29 +9,13 @@ import {
 import { UnsupportedEvidenceError } from './unsupported-evidence-error.ts';
 import type { SourceAnalysis } from './source-analysis-port.ts';
 import { resolveBodyOrigin, resolveTypeTableRow, namedBodyParameter, type SourceBody } from './source-ownership.ts';
-import {
-    nativeReference,
-    typesMember,
-    type NativeReference,
-    type NativeRelationReference
-} from './native-reference.ts';
+import { nativeReference, type NativeReference } from './native-reference.ts';
 import { scopeAssertions, assertionAnnotation } from './scope-assertions.ts';
 
 type SourceRange = {
     readonly start: number;
     readonly end: number;
 };
-type ExpressionOperand = { readonly kind: 'expression'; readonly node: TypeScript.Expression; };
-type TypeOperand = { readonly kind: 'type'; readonly node: TypeScript.TypeNode; };
-export type Operand = ExpressionOperand | TypeOperand;
-
-type RelationAssertion = Pick<NativeRelationReference, 'kind' | 'negated' | 'relation'> & {
-    readonly actual: Operand;
-    readonly expected: Operand;
-};
-
-type Assertion = Exclude<NativeReference, NativeRelationReference> | RelationAssertion;
-
 export type NativeSite = {
     readonly path: string;
     readonly range: SourceRange;
@@ -41,7 +25,7 @@ export type NativeSite = {
     readonly message: string | null;
     readonly label: string;
     readonly call: TypeScript.CallExpression;
-    readonly reference: Assertion;
+    readonly reference: NativeReference;
 };
 export type OriginalAssertionPlan = {
     readonly modules: readonly {
@@ -73,28 +57,11 @@ function validateAssertionSyntax(analysis: SourceAnalysis, call: TypeScript.Call
         );
     }
 }
-function orderedAssertion(binding: NativeReference, expressions: readonly TypeScript.Expression[]): Assertion {
-    if (binding.kind !== 'relation') {
-        return binding;
+function assertionLabel(reference: NativeReference): string {
+    if (reference.kind === 'relation' && reference.negated) {
+        return reference.relation === 'equal' ? 'notEqual' : 'notAssignableTo';
     }
-    const typed = binding.types.map(function operand(node): Operand {
-        return { kind: 'type', node };
-    });
-    const authored = expressions.map(function operand(node): Operand {
-        return { kind: 'expression', node };
-    });
-    const pairs = {
-        typed,
-        withActual: [ ...authored, ...typed ],
-        withExpected: [ ...typed, ...authored ],
-        expressions: authored
-    };
-    const counts = { typed: 0, withActual: 1, withExpected: 1, expressions: 2 };
-    const [ actual, expected ] = pairs[binding.form];
-    if (actual === undefined || expected === undefined || expressions.length !== counts[binding.form]) {
-        throw new UnsupportedEvidenceError('Invalid native relation operand count.', undefined);
-    }
-    return { kind: 'relation', relation: binding.relation, negated: binding.negated, actual, expected };
+    return reference.relation;
 }
 
 async function tableSite(
@@ -102,9 +69,8 @@ async function tableSite(
     node: TypeScript.CallExpression,
     owner: WorkId
 ): Promise<NativeSite> {
-    const member = await typesMember(analysis, node.expression);
     const binding = await nativeReference(analysis, node);
-    if (member === null || binding.kind === 'call') {
+    if (binding.kind === 'call') {
         throw new UnsupportedEvidenceError('Type-table rows require direct comparisons from types.', undefined);
     }
     return {
@@ -112,8 +78,8 @@ async function tableSite(
         call: node,
         owners: [ owner ],
         message: null,
-        label: member,
-        reference: orderedAssertion(binding, [])
+        label: assertionLabel(binding),
+        reference: binding
     };
 }
 
@@ -128,15 +94,13 @@ async function assertionSite(
         throw new UnsupportedEvidenceError('Native assertion is missing its reference.', undefined);
     }
     const binding = await nativeReference(analysis, reference, call.arguments.slice(1));
-    const expression = analysis.compiler.isCallExpression(reference) ? reference.expression : reference;
-    const member = await typesMember(analysis, expression);
     return {
         call,
-        reference: orderedAssertion(binding, call.arguments.slice(1)),
+        reference: binding,
         ...authoredPosition(binding.kind === 'call' ? binding.probe : call),
         owners: [ owner ],
         message: await assertionAnnotation(analysis, call),
-        label: member ?? (binding.negated ? `${binding.relation}.not` : binding.relation)
+        label: assertionLabel(binding)
     };
 }
 function bodyAnchor(origin: TestBodyOrigin): string {

@@ -12,11 +12,11 @@ import { observationPlan } from '../../../../test-support/observation-lifetime.t
 import { runMatrixTypeProject } from '../../../../test-support/native-type-project.ts';
 
 const sharedBody = `const nodes=[table({title:'rows',cases:[1,2],test:scope=>{
-    bodyCalls++;scope.assert(same<typeof scope.parameters,number>());return scope.assert.collect();
+    bodyCalls++;scope.assert(types.equal<typeof scope.parameters,number>());return scope.assert.collect();
 }})];`;
 
 const changedAfterChecking = `const nodes=[test('passing',scope=>{
-    bodyCalls++;scope.assert(same<string,string>());return scope.assert.collect();
+    bodyCalls++;scope.assert(types.equal<string,string>());return scope.assert.collect();
 })];
 const {Program}=await import('typescript-beta/async');
 const {appendFileSync}=await import('node:fs');

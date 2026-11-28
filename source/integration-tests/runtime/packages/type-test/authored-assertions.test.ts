@@ -29,15 +29,15 @@ const nodes = [describe];`;
         const definitions = `function supply(callback: (value: string) => void): void { callback('Ada'); }
 const nodes=[test('nested',scope=>{
     supply(value => {
-        scope.assert(same<typeof value,string>());
-        scope.assert(same<typeof value,number>());
+        scope.assert(types.equal<typeof value,string>());
+        scope.assert(types.equal<typeof value,number>());
     });
     return scope.assert.collect();
 })];`;
         const result = await runNativeProject(scope.cleanup, definitions, null);
         scope.assert.deepEqual(result.completions, [ { title: 'nested', verdict: 'fail' } ]);
         scope.assert.deepEqual(result.errors, []);
-        scope.assert.includes(result.diagnostics.join('\n'), 'Type relation sameType');
+        scope.assert.includes(result.diagnostics.join('\n'), 'Type relation equal');
         scope.assert.equal(result.checkerFacts?.compilers[0]?.evidence?.length, 2);
         return scope.assert.collect();
     }),
@@ -49,25 +49,25 @@ function overloaded(value: string | number): string | number { return value; }
 const nodes=[
     test('accepts a name',scope=>{
         bodyCalls++;
-        scope.assert(acceptsCall, () => greet('Adá'));
+        scope.assert(types.acceptsCall, () => greet('Adá'));
         return scope.assert.collect();
     }),
     test('requires a name',scope=>{
-        scope.assert(rejectsCall('argument-count'), () => greet());
-        scope.assert(rejectsCall('argument-type'), () => greet(42));
-        scope.assert(rejectsCall('no-matching-overload'), () => overloaded(true));
+        scope.assert(types.rejectsCall('argument-count'), () => greet());
+        scope.assert(types.rejectsCall('argument-type'), () => greet(42));
+        scope.assert(types.rejectsCall('no-matching-overload'), () => overloaded(true));
         return scope.assert.collect();
     }),
     test('reports a different reason',scope=>{
-        scope.assert(rejectsCall('argument-count'), () => greet(42));
+        scope.assert(types.rejectsCall('argument-count'), () => greet(42));
         return scope.assert.collect();
     }),
     test('reports an unexpectedly rejected call',scope=>{
-        scope.assert(acceptsCall, () => greet(42));
+        scope.assert(types.acceptsCall, () => greet(42));
         return scope.assert.collect();
     }),
     test('reports an unexpectedly valid call',scope=>{
-        scope.assert(rejectsCall('argument-count'), () => greet('Ada'));
+        scope.assert(types.rejectsCall('argument-count'), () => greet('Ada'));
         return scope.assert.collect();
     })
 ];`;
@@ -99,7 +99,7 @@ const nodes=[
         const definitions = `function greet(name: string): string { return name; }
 function supply(callback: () => string): string { return callback(); }
 const nodes=[test('unrelated callback error',scope=>{
-    scope.assert(rejectsCall('argument-type'), () => supply(() => greet(42)));
+    scope.assert(types.rejectsCall('argument-type'), () => supply(() => greet(42)));
     return scope.assert.collect();
 })];`;
         const result = await runNativeProject(scope.cleanup, definitions, null);
@@ -111,7 +111,7 @@ const nodes=[test('unrelated callback error',scope=>{
         const definitions = `function greet(name: string): string { return name; }
 const nodes=[test('shadowed scope',scope=>{
     function nested(scope: engine.TestScope): void {
-        scope.assert(rejectsCall('argument-count'), () => greet());
+        scope.assert(types.rejectsCall('argument-count'), () => greet());
     }
     void nested;
     return scope.assert.collect();

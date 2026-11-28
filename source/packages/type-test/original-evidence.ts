@@ -2,17 +2,11 @@ import type { Node, TypeNode } from 'typescript-beta/ast';
 import type { Type } from 'typescript-beta/async';
 import type { CallDiagnostic } from './call-diagnostics.ts';
 import type { CallProbe, KeyReference } from './native-reference.ts';
-import type { NativeSite, Operand } from './original-assertions.ts';
+import type { NativeSite } from './original-assertions.ts';
 import type { TypeAnalysis } from './source-analysis-port.ts';
 import type { SiteEvidence } from './native-results.ts';
 import { invalidOperand, recoveryTypeReason } from './operand-evidence.ts';
 import { compareRelation } from './type-relations.ts';
-
-async function operandType(analysis: TypeAnalysis, operand: Operand): Promise<Type> {
-    return operand.kind === 'type'
-        ? await analysis.checker.getTypeFromTypeNode(operand.node)
-        : await analysis.checker.getTypeAtLocation(operand.node);
-}
 
 async function hasAuthoredRecoveryType(
     analysis: TypeAnalysis,
@@ -148,10 +142,10 @@ async function evaluateRelation(
     reference: Extract<NativeSite['reference'], { readonly kind: 'relation'; }>
 ): Promise<Evidence> {
     const [ actual, expected ] = await Promise.all([
-        operandType(analysis, reference.actual),
-        operandType(analysis, reference.expected)
+        analysis.checker.getTypeFromTypeNode(reference.actual),
+        analysis.checker.getTypeFromTypeNode(reference.expected)
     ]);
-    const result = await hasAuthoredRecoveryType(analysis, [ reference.actual.node, reference.expected.node ])
+    const result = await hasAuthoredRecoveryType(analysis, [ reference.actual, reference.expected ])
         ? { kind: 'inconclusive' as const, reason: recoveryTypeReason }
         : await compareRelation(analysis, reference.relation, actual, expected);
     const actualText = await analysis.checker.typeToString(actual);
@@ -160,8 +154,8 @@ async function evaluateRelation(
     const showSources = actualText === expectedText && failure;
     return {
         diagnostics: [],
-        actual: showSources ? `${actualText} (${reference.actual.node.getText()})` : actualText,
-        expected: showSources ? `${expectedText} (${reference.expected.node.getText()})` : expectedText,
+        actual: showSources ? `${actualText} (${reference.actual.getText()})` : actualText,
+        expected: showSources ? `${expectedText} (${reference.expected.getText()})` : expectedText,
         result: negateResult(result, reference.negated)
     };
 }

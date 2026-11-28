@@ -2,7 +2,7 @@ import type * as TypeScript from 'typescript-beta/ast';
 import type { SourceAnalysis } from './source-analysis-port.ts';
 import { UnsupportedEvidenceError } from './unsupported-evidence-error.ts';
 import { sourceSymbol, sourceChildren } from './source-analysis.ts';
-import { isNativeReference } from './native-reference.ts';
+import { typesMember } from './native-reference.ts';
 import type { SourceBody } from './source-ownership.ts';
 
 function annotatedReceiver(analysis: SourceAnalysis, initial: TypeScript.Expression): TypeScript.Expression {
@@ -60,7 +60,7 @@ async function assertionCall(
 async function rejectUnownedReference(analysis: SourceAnalysis, node: TypeScript.Node): Promise<void> {
     if (
         (analysis.compiler.isIdentifier(node) || analysis.compiler.isPropertyAccessExpression(node)) &&
-        await isNativeReference(analysis, node)
+        await typesMember(analysis, node) !== null
     ) {
         throw new UnsupportedEvidenceError(
             'Native assertion references require a direct scope.assert boundary.',

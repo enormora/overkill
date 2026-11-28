@@ -222,21 +222,21 @@ console.log('engine and runner delivered original-source evidence');
 }
 
 const parityCases = `import * as engine from '@overkill-dev/engine';
-import {sameType} from '@overkill-dev/type-test';
+import {types} from '@overkill-dev/type-test';
 const metadata={annotations:{},controls:{},definitionLocations:[{kind:'unknown'}]} as const;
 function mustNotRun(): void { throw new Error('Static body ran'); }
 export const testNode=engine.createSuite({...metadata,title:'root',children:[
     engine.createTestCase({...metadata,title:'selected z',body(scope){
         mustNotRun();
-        scope.assert(sameType<string,string>());return scope.assert.collect();
+        scope.assert(types.equal<string,string>());return scope.assert.collect();
     }}),
     engine.createTestCase({...metadata,title:'selected a',body(scope){
         mustNotRun();
-        scope.assert(sameType<string,number>());return scope.assert.collect();
+        scope.assert(types.equal<string,number>());return scope.assert.collect();
     }}),
     engine.createSkippedTestCase({...metadata,title:'skipped',reason:'authored skip'}),
     engine.createTestCase({...metadata,title:'excluded',body(scope){
-        scope.assert(sameType<number,boolean>());return scope.assert.collect();
+        scope.assert(types.equal<number,boolean>());return scope.assert.collect();
     }})
 ]});`;
 
