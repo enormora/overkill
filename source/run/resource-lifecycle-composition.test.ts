@@ -208,13 +208,15 @@ export const testNode = suite('Resource lifecycle composition', [
         scope.assert.equal(
             captureThrownError(function readMissingRuntimeContext() {
                 runtimeContextForStep(runtime, session);
-            })?.message,
+            })
+                ?.message,
             'Runtime scope composition failed.'
         );
         scope.assert.equal(
             captureThrownError(function readIncompleteRuntimeContext() {
                 runtimeContextForStep(runtime, incompleteSession);
-            })?.message,
+            })
+                ?.message,
             'Runtime scope composition failed.'
         );
 
@@ -240,7 +242,8 @@ export const testNode = suite('Resource lifecycle composition', [
                     managedResourceSession(resources, new Map(), function () {
                         return [];
                     });
-                })?.message,
+                })
+                    ?.message,
                 'Runtime does not provide Symbol.asyncDispose.'
             );
         } finally {
@@ -269,7 +272,8 @@ export const testNode = suite('Resource lifecycle composition', [
                     managedResourceSession(resources, new Map(), function () {
                         return [];
                     });
-                })?.message,
+                })
+                    ?.message,
                 'Resource scope composition failed.'
             );
         } finally {
