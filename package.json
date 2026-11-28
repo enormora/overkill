@@ -78,7 +78,7 @@
         "knip": "6.47.0",
         "packtory": "0.0.115",
         "rust-just": "1.59.0",
-        "typescript-beta": "npm:typescript@7.1.0-beta"
+        "typescript-beta": "npm:typescript@7.1.0-dev.20261125.1"
     },
     "engines": {
         "node": "^26.9.0"
