@@ -1,3 +1,4 @@
+import { throws as assertThrows } from 'node:assert/strict';
 import { type TestScope, suite, test } from '@overkill-dev/test';
 
 import { ResourceLifecycleError } from '../resources/resource-lifecycle-error.ts';
@@ -36,9 +37,11 @@ export const testNode = suite('ESLint config failure propagation', [
     }),
     test('preserves permission denials nested in Error causes', function (scope) {
         const denied = Object.assign(new Error('Permission denied.'), { code: 'ERR_ACCESS_DENIED' });
-        scope.assert.throws(function () {
+        assertThrows(function () {
             projectFailure(new Error('Wrapper.', { cause: denied }), '/project', scope.signal);
-        }, { exact: denied });
+        }, function isExpectedError(error) {
+            return error === denied;
+        });
         return scope.assert.collect();
     }),
     test('preserves control failures inside resource lifecycle aggregates', function (scope) {
@@ -47,9 +50,11 @@ export const testNode = suite('ESLint config failure propagation', [
             cause: null,
             failures: [ { cause: denied, phase: 'acquire', resourceName: 'service' } ]
         });
-        scope.assert.throws(function () {
+        assertThrows(function () {
             projectFailure(error, '/project', scope.signal);
-        }, { exact: denied });
+        }, function isExpectedError(error) {
+            return error === denied;
+        });
         return scope.assert.collect();
     }),
     test('terminates cause traversal when errors contain cycles', function (scope: TestScope) {

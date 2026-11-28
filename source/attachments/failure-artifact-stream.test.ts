@@ -1,3 +1,4 @@
+import { rejects as assertRejects } from 'node:assert/strict';
 import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { table, suite, test, type TestScope } from '@overkill-dev/test';
 
@@ -39,11 +40,11 @@ const assertCaptureFailure = defineCompositeAssertion({
             }
             return await fixture.store.exchange('test', request);
         }, defaultAttachmentLimits);
-        const capture = await runWithAttachmentExecution(execution, async function () {
-            return await execution.runAttempt(work, { index: 0 }, async function () {
+        await runWithAttachmentExecution(execution, async function () {
+            await execution.runAttempt(work, { index: 0 }, async function () {
                 const stream = attemptStream();
                 stream.write('received');
-                const rejected = await check.rejects(async function () {
+                await assertRejects(async function () {
                     if (closeOnOwner) {
                         await closeAttemptFailureStreams(work, { index: 0 });
                     } else {
@@ -51,13 +52,9 @@ const assertCaptureFailure = defineCompositeAssertion({
                     }
                 }, { message: captureFailureMessage(cause, closeOnOwner) });
                 await stream.close();
-                return rejected;
             });
         });
-        return check.group([
-            capture,
-            check.equal(execution.takeErrors({ kind: 'case', work, attempt: { index: 0 } }).length, 1)
-        ]);
+        return check.equal(execution.takeErrors({ kind: 'case', work, attempt: { index: 0 } }).length, 1);
     }
 });
 

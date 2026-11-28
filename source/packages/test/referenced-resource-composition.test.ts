@@ -1,7 +1,8 @@
-import { suite, test, type TestScope } from '@overkill-dev/test';
+import { suite, test } from '@overkill-dev/test';
 
 import { defineResource, defineRuntime, defineRuntimeMatrix } from '../resources/resources.entry-point.ts';
 import { referencedTestBody } from '../../test-support/referenced-test-body.ts';
+import { executeSingleBody } from '../../test-support/execute-assertion-case.ts';
 import { resolveTestBodyWorkload } from '../../engine/test-body.ts';
 import {
     attachTestBodyResourceAttachments,
@@ -74,7 +75,7 @@ export const testNode = suite('referenced resource composition', [
     }),
     test('binds scope mappings after resolving a referenced implementation', async function (scope) {
         const fixture = referencedTestBody();
-        const body = attachComposedResourceActions<TestScope>(
+        const body = attachComposedResourceActions(
             [ {
                 kind: 'scope',
                 name: 'tag',
@@ -95,13 +96,16 @@ export const testNode = suite('referenced resource composition', [
                 }
             }
         };
-        const result = await body.bind(namespace, fixture.facts, fixture.context)(scope);
+        const result = await body.bind(namespace, fixture.facts, fixture.context)({
+            cleanup: scope.cleanup,
+            signal: scope.signal
+        });
         scope.assert.equal(result, 'mapped');
         return scope.assert.collect();
     }),
     test('retains deferred scope mappings when binding workload identity', async function (scope) {
         const fixture = referencedTestBody();
-        const body = attachComposedResourceActions<TestScope>(
+        const body = attachComposedResourceActions(
             [ {
                 kind: 'scope',
                 name: 'tag',
@@ -124,7 +128,10 @@ export const testNode = suite('referenced resource composition', [
             }
         };
         scope.assert.equal(
-            await selected.bind(namespace, fixture.facts, fixture.context)(scope),
+            await selected.bind(namespace, fixture.facts, fixture.context)({
+                cleanup: scope.cleanup,
+                signal: scope.signal
+            }),
             'mapped'
         );
         return scope.assert.collect();
@@ -132,28 +139,31 @@ export const testNode = suite('referenced resource composition', [
     test('maps referenced execution after binding its implementation', async function (scope) {
         const fixture = referencedTestBody();
         const observed: unknown[] = [];
-        const body = mapComposedResourceBody(
-            fixture.body,
-            async function (original, inner) {
-                observed.push(Reflect.apply(original, undefined, [ inner ]));
-                scope.assert.deepEqual(observed, [ 42 ]);
-                return scope.assert.collect();
-            },
-            'capture',
-            null
-        );
-        await body.bind(
-            {
-                body: {
-                    version: '1',
-                    implementation() {
-                        return 42;
+        const result = await executeSingleBody(async function (bodyScope) {
+            const body = mapComposedResourceBody(
+                fixture.body,
+                async function (original, inner) {
+                    observed.push(Reflect.apply(original, undefined, [ inner ]));
+                    bodyScope.assert.deepEqual(observed, [ 42 ]);
+                    return bodyScope.assert.collect();
+                },
+                'capture',
+                null
+            );
+            return await body.bind(
+                {
+                    body: {
+                        version: '1',
+                        implementation() {
+                            return 42;
+                        }
                     }
-                }
-            },
-            fixture.facts,
-            fixture.context
-        )(scope);
+                },
+                fixture.facts,
+                fixture.context
+            )(bodyScope);
+        });
+        scope.assert.equal(result.summary.passed, 1);
         scope.assert.equal(observed.length, 1);
         return scope.assert.collect();
     }),

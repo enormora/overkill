@@ -135,7 +135,7 @@ export const testNode = suite('differential lifecycle', [
         },
         async test(scope) {
             const { mode, kind } = scope.parameters;
-            const controlFlow = { continued: 0, propagated: 0 };
+            const controlFlow = { continued: 0, propagated: 0, original: 0 };
             const result = await executePropertyNode(
                 property({
                     title: 'control',
@@ -188,7 +188,9 @@ export const testNode = suite('differential lifecycle', [
                         try {
                             return await body(value, sample);
                         } catch (error: unknown) {
-                            scope.assert.equal(error === original, true);
+                            if (error === original) {
+                                controlFlow.original += 1;
+                            }
                             controlFlow.propagated += 1;
                             throw error;
                         }
@@ -198,6 +200,7 @@ export const testNode = suite('differential lifecycle', [
             );
             scope.assert.equal(controlFlow.continued, 0);
             scope.assert.true(controlFlow.propagated > 0);
+            scope.assert.equal(controlFlow.original, controlFlow.propagated);
             scope.assert.equal(result.summary.inconclusive, kind === 'inconclusive' ? 1 : 0);
             if (kind === 'permission') {
                 scope.assert.true(result.runnerErrors.some(function permission(error) {

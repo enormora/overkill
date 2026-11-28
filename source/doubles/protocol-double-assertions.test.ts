@@ -101,7 +101,7 @@ export const testNode = suite('Protocol double assertions', [
     test('protocol iterator assertions accept protocol objects', async function body(scope) {
         const source = testIterable.yields([ 'created', 'updated' ]);
         const result = await executeSingleBody(function testBody(testScope) {
-            scope.assert.deepEqual(Array.from(source), [ 'created', 'updated' ]);
+            testScope.assert.deepEqual(Array.from(source), [ 'created', 'updated' ]);
 
             testScope.assert(doubleUsage.iterated, source);
             testScope.assert(doubleUsage.iteratorEventCount, source, 3);
@@ -123,7 +123,7 @@ export const testNode = suite('Protocol double assertions', [
                 using firstResource = first;
                 using secondResource = second;
 
-                scope.assert.deepEqual([ firstResource, secondResource ], [ first, second ]);
+                testScope.assert.deepEqual([ firstResource, secondResource ], [ first, second ]);
             }
 
             testScope.assert(doubleUsage.disposed, first);

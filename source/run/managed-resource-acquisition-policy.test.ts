@@ -1,3 +1,4 @@
+import { rejects as assertRejects } from 'node:assert/strict';
 import { suite, test } from '@overkill-dev/test';
 
 import { managedAcquisition, managedDescriptor, managedRecord } from '../test-support/managed-resource-acquisition.ts';
@@ -65,7 +66,7 @@ export const testNode = suite('managed resource acquisition policy', [
         await fixture.acquire(managedDescriptor(function () {
             return 'first';
         }));
-        await scope.assert.rejects(async function () {
+        await assertRejects(async function () {
             await fixture.acquire(managedDescriptor(function () {
                 return 'second';
             }));

@@ -1,3 +1,4 @@
+import { throws as assertThrows } from 'node:assert/strict';
 import { type TestScope, suite, test } from '@overkill-dev/test';
 
 import { defineResource, defineRuntime } from '../resources/resources.ts';
@@ -50,12 +51,12 @@ function selectedWork(variantId: string | null): WorkId {
 }
 export const testNode = suite('runner managed runtime composition', [
     test('requires runner selection before composing runtime matrix resources', function (scope) {
-        scope.assert.throws(function () {
+        assertThrows(function () {
             return combinedResourceEntries(steps, null);
         }, {
             message: 'Runtime matrix "transport-matrix" requires runner-managed execution.'
         });
-        scope.assert.throws(function () {
+        assertThrows(function () {
             return combinedResourceEntries(steps, { ...selectedWork('first'), runtimes: [] });
         }, {
             message: 'Runtime matrix "transport-matrix" requires runner-managed execution.'
@@ -63,12 +64,12 @@ export const testNode = suite('runner managed runtime composition', [
         return scope.assert.collect();
     }),
     test('rejects missing and unknown matrix variant selections', function (scope) {
-        scope.assert.throws(function () {
+        assertThrows(function () {
             return combinedResourceEntries(steps, selectedWork(null));
         }, {
             message: 'Runtime matrix "transport-matrix" has no selected variant for this work item.'
         });
-        scope.assert.throws(function () {
+        assertThrows(function () {
             return combinedResourceEntries(steps, selectedWork('unknown'));
         }, {
             message: 'Runtime matrix "transport-matrix" has no variant "unknown".'

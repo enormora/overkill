@@ -1,3 +1,4 @@
+import { rejects as assertRejects } from 'node:assert/strict';
 import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { testDouble, table, suite, test, type TestScope } from '@overkill-dev/test';
 
@@ -47,7 +48,7 @@ export const testNode = suite('Runtime attachment failure', [
         const { execution } = inlineAttachmentFixture(defaultAttachmentLimits, [ work ]);
         await execution.runAttempt(work, { index: 0 }, async function closeRunInsideAttempt() {
             await execution.finish();
-            await scope.assert.rejects(async function rejectClosedRun() {
+            await assertRejects(async function rejectClosedRun() {
                 await execution.context.forProducer({ kind: 'case' }).json(metadata, {});
             }, { message: 'Attachment escaped its integration run.' });
         });
@@ -77,7 +78,7 @@ export const testNode = suite('Runtime attachment failure', [
                 return rejectJsonReflection(null);
             }
         });
-        await scope.assert.rejects(async function rejectHostileJson() {
+        await assertRejects(async function rejectHostileJson() {
             await execution.context.forProducer({ kind: 'case' }).json(metadata, value);
         }, { message: 'Invalid JSON attachment.' });
         const errors = await execution.finish();
@@ -96,7 +97,7 @@ export const testNode = suite('Runtime attachment failure', [
         const execution = createAttachmentExecution(async function invalidReply() {
             return { kind: 'written' };
         }, { ...defaultAttachmentLimits, maxInlineBytes: 1024 });
-        await scope.assert.rejects(async function rejectWrongOpenReply() {
+        await assertRejects(async function rejectWrongOpenReply() {
             await execution.context.forProducer({ kind: 'case' }).open(metadata);
         }, { message: 'Attachment open returned an invalid reply.' });
         const openErrors = await execution.finish();
@@ -105,7 +106,7 @@ export const testNode = suite('Runtime attachment failure', [
             return operation.kind === 'open' ? { kind: 'opened', writer: 0 } : { kind: 'written' };
         }, { ...defaultAttachmentLimits, maxInlineBytes: 1024 });
         const writer = await closing.context.forProducer({ kind: 'case' }).open(metadata);
-        await scope.assert.rejects(async function rejectWrongCloseReply() {
+        await assertRejects(async function rejectWrongCloseReply() {
             await writer.close();
         }, { message: 'Attachment close returned an invalid reply.' });
         const errors = await closing.finish();
@@ -126,7 +127,7 @@ export const testNode = suite('Runtime attachment failure', [
                 maxInlineBytes: 1024
             });
             await transportFailureExecution.runAttempt(work, { index: 1 }, async function rejectTransport() {
-                await scope.assert.rejects(async function openFailedTransport() {
+                await assertRejects(async function openFailedTransport() {
                     await transportFailureExecution.context.forProducer({ kind: 'case' }).open(metadata);
                 }, { message });
             });

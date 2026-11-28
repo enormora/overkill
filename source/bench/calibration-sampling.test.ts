@@ -1,3 +1,4 @@
+import { rejects as assertRejects } from 'node:assert/strict';
 import { getEventListeners } from 'node:events';
 import { table, type TestScope, suite, test } from '@overkill-dev/test';
 
@@ -359,7 +360,7 @@ export const testNode = suite('calibration sampling lifetimes', [
             }
         };
         const retained: BenchmarkExecutionResult[] = [];
-        await scope.assert.rejects(async function () {
+        await assertRejects(async function () {
             return await collectBenchmarkNormalization(
                 {
                     ...calibrationScope(scope.cleanup, scope.signal),
@@ -400,7 +401,7 @@ export const testNode = suite('calibration sampling lifetimes', [
                 );
             }
             const retained: BenchmarkExecutionResult[] = [];
-            await scope.assert.rejects(
+            await assertRejects(
                 async function () {
                     return await collectBenchmarkNormalization(
                         {

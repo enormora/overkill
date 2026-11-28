@@ -1,3 +1,4 @@
+import { throws as assertThrows } from 'node:assert/strict';
 import { table, suite, test } from '@overkill-dev/test';
 
 import { defineResource, defineRuntime, composeRuntimes } from '../resources/resources.entry-point.ts';
@@ -51,17 +52,17 @@ export const testNode = suite('runtime wrapper scope composition', [
         test(scope) {
             const runtimes = scope.parameters.input;
 
-            scope.assert.throws(function () {
+            assertThrows(function () {
                 Reflect.apply(composeRuntimeScope, undefined, [ { ...scope, runtimes }, api, { value: 'api' } ]);
             }, { message: 'Runtime scope composition failed.' });
             return scope.assert.collect();
         }
     }),
     test('rejects missing handles for individual and composed runtimes', function (scope) {
-        scope.assert.throws(function () {
+        assertThrows(function () {
             Reflect.apply(composeRuntimeScope, undefined, [ scope, api, undefined ]);
         }, { message: 'Runtime scope composition failed.' });
-        scope.assert.throws(function () {
+        assertThrows(function () {
             Reflect.apply(composeRuntimeScope, undefined, [ scope, composed, { api: { value: 'api' } } ]);
         }, { message: 'Runtime scope composition failed.' });
         return scope.assert.collect();

@@ -1,3 +1,4 @@
+import { throws as assertThrows } from 'node:assert/strict';
 import { suite, test } from '@overkill-dev/test';
 
 import { CaseRunnerError } from '../engine/run-result.ts';
@@ -204,10 +205,10 @@ export const testNode = suite('Resource lifecycle composition', [
             runtimeContexts: new Map([ [ runtime, emptyContext ] ])
         });
 
-        scope.assert.throws(function readMissingRuntimeContext() {
+        assertThrows(function readMissingRuntimeContext() {
             runtimeContextForStep(runtime, session);
         }, { message: 'Runtime scope composition failed.' });
-        scope.assert.throws(function readIncompleteRuntimeContext() {
+        assertThrows(function readIncompleteRuntimeContext() {
             runtimeContextForStep(runtime, incompleteSession);
         }, { message: 'Runtime scope composition failed.' });
 
@@ -228,7 +229,7 @@ export const testNode = suite('Resource lifecycle composition', [
         });
 
         try {
-            scope.assert.throws(function createInvalidManagedSession() {
+            assertThrows(function createInvalidManagedSession() {
                 managedResourceSession(resources, new Map(), function () {
                     return [];
                 });
@@ -254,7 +255,7 @@ export const testNode = suite('Resource lifecycle composition', [
         });
 
         try {
-            scope.assert.throws(function createInvalidManagedSession() {
+            assertThrows(function createInvalidManagedSession() {
                 managedResourceSession(resources, new Map(), function () {
                     return [];
                 });

@@ -1,3 +1,4 @@
+import { rejects as assertRejects } from 'node:assert/strict';
 import { AsyncResource } from 'node:async_hooks';
 import { defineCompositeAssertion } from '@overkill-dev/test/assert';
 import { type ParameterizedTestScope, table, suite, test, type TestScope } from '@overkill-dev/test';
@@ -33,7 +34,7 @@ export const testNode = suite('inline attachment ownership', [
                         'attachment'
                     );
                     scope.require.defined(attachments);
-                    await scope.assert.rejects(async function rejectUnknownAttempt() {
+                    await assertRejects(async function rejectUnknownAttempt() {
                         await attachments.json(metadata, { ready: true });
                     }, { message: 'Failure artifact escaped its test attempt.' });
                 });
@@ -141,7 +142,7 @@ export const testNode = suite('inline attachment ownership', [
         const attachments = execution.context.forProducer({ kind: 'resource', name: 'service' });
         await attachments.json(metadata, { ready: true });
         await execution.finish();
-        await scope.assert.rejects(async function rejectLateRunAttachment() {
+        await assertRejects(async function rejectLateRunAttachment() {
             await attachments.json(metadata, { late: true });
         }, { message: 'Attachment escaped its integration run.' });
         scope.assert(
@@ -174,7 +175,7 @@ export const testNode = suite('inline attachment ownership', [
                     mediaType: 'text/plain'
                 });
                 await rejectedTextBytesWriter.write('a');
-                await scope.assert.rejects(async function rejectMalformedText() {
+                await assertRejects(async function rejectMalformedText() {
                     await rejectedTextBytesWriter.write(Uint8Array.of(byte));
                     await rejectedTextBytesWriter.close();
                 }, { name: 'AttachmentOperationError' });
@@ -204,7 +205,7 @@ export const testNode = suite('inline attachment ownership', [
             });
         });
         const expired = await deferred.promise;
-        await scope.assert.rejects(expired, { message: 'Attachment escaped its test attempt.' });
+        await assertRejects(expired, { message: 'Attachment escaped its test attempt.' });
         const errors = execution.takeErrors({ kind: 'run' });
         scope.assert(
             defineCompositeAssertion({
