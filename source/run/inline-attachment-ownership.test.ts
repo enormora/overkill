@@ -242,10 +242,10 @@ export const testNode = suite('inline attachment ownership', [
                 });
             }
             const retryLimitError = await captureRejectedError(async function exceedRetryCount() {
-                    await execution.runAttempt(work, { index: 2 }, async function thirdAttempt() {
-                        await attachmentsForProducer({ kind: 'case' }).json(metadata, {});
-                    });
+                await execution.runAttempt(work, { index: 2 }, async function thirdAttempt() {
+                    await attachmentsForProducer({ kind: 'case' }).json(metadata, {});
                 });
+            });
             scope.assert.equal(
                 retryLimitError.message,
                 'Attachment count limit exceeded.'
@@ -283,8 +283,8 @@ export const testNode = suite('inline attachment ownership', [
                 const omitted = await attachments.json(metadata, { large: 'evidence' });
                 scope.assert.deepEqual(omitted.payload.content, { kind: 'omitted', limit: 5, reason: 'byte-limit' });
                 const invalidJsonError = await captureRejectedError(async function invalidJson() {
-                        await attachments.json(metadata, Number.NaN);
-                    });
+                    await attachments.json(metadata, Number.NaN);
+                });
                 scope.assert.equal(
                     invalidJsonError.name,
                     'AttachmentOperationError'

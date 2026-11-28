@@ -252,8 +252,8 @@ export const testNode = suite('family preparation validation', [
             signal
         });
         const collectionError = await captureRejectedError(async function () {
-                await prepared.collect({ workIds: [ testPlan.cases[0].workId ], signal });
-            });
+            await prepared.collect({ workIds: [ testPlan.cases[0].workId ], signal });
+        });
         scope.assert.match(
             collectionError.message,
             /collection kind/u

@@ -14,11 +14,18 @@ async function relationEntries(project: FrozenProject): Promise<readonly string[
         return [ relationEntry ];
     }
     const resolutions = await Promise.all(project.project.fileNames.map(async function resolveAuthoring(file) {
-        return await project.program.getResolvedModule(file, relationPackage, project.compiler.syntax.ModuleKind.ESNext);
+        return await project.program.getResolvedModule(
+            file,
+            relationPackage,
+            project.compiler.syntax.ModuleKind.ESNext
+        );
     }));
-    return [ relationEntry, ...resolutions.flatMap(function publishedEntry(resolution) {
-        return resolution?.packageId?.name === relationPackage ? [ resolution.resolvedFileName ] : [];
-    }) ];
+    return [
+        relationEntry,
+        ...resolutions.flatMap(function publishedEntry(resolution) {
+            return resolution?.packageId?.name === relationPackage ? [ resolution.resolvedFileName ] : [];
+        })
+    ];
 }
 
 async function relationModuleExports(project: FrozenProject): Promise<readonly CompilerSymbol[]> {
